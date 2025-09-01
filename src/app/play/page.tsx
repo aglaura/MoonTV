@@ -190,7 +190,7 @@ function PlayPageClient() {
           try {
             // 检查是否有第一集的播放地址
             if (!source.episodes || source.episodes.length === 0) {
-              console.warn(`播放源 ${source.source_name} 没有可用的播放地址`);
+              console.warn(`播放源 ${source.source_name} 找不到 也不要找爸爸`);
               return null;
             }
 
