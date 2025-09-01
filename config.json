@@ -86,7 +86,7 @@
       "name": "小猫咪资源"
     },
     "chinaq": {
-      "api": "https://chinaq.fun",
+      "api": "https://chinaq.fun/api.php/provide/vod",
       "name": "ChinaQ",
       "detail": "https://chinaq.fun"
     }
