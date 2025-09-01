@@ -87,7 +87,8 @@
     }
     "chinaq": {
       "api": "https://chinaq.fun",
-      "name": "ChinaQ"
+      "name": "ChinaQ",
+      "detail": "https://chinaq.fun"
     }
   }
 }
