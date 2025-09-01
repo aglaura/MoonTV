@@ -531,8 +531,8 @@ function PlayPageClient() {
       setLoadingStage(currentSource && currentId ? 'fetching' : 'searching');
       setLoadingMessage(
         currentSource && currentId
-          ? '🎬 正在获取视频详情...'
-          : '🔍 正在搜索播放源...'
+          ? '🎬 Getting video info.....'
+          : '🔍 Serching Player resources...'
       );
 
       let sourcesInfo = await fetchSourcesData(searchTitle || videoTitle);
