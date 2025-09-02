@@ -3,8 +3,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { getDoubanCategories } from '@/lib/douban.client';
 import { DoubanItem } from '@/lib/types';
@@ -28,10 +27,7 @@ function DoubanPageClient() {
 
   const type = searchParams.get('type') || 'movie';
 
-  // 选择器状态 - 完全独立，不依赖URL参数
-  const [primarySelection, setPrimarySelection] = useState<string>(() => {
-    return type === 'movie' ? '热门' : '';
-  });
+  const [primarySelection, setPrimarySelection] = useState<string>(() => (type === 'movie' ? '热门' : ''));
   const [secondarySelection, setSecondarySelection] = useState<string>(() => {
     if (type === 'movie') return '全部';
     if (type === 'tv') return 'tv';
@@ -39,25 +35,17 @@ function DoubanPageClient() {
     return '全部';
   });
 
-  // 初始化时标记选择器为准备好状态
+  // 初始化選擇器準備就緒
   useEffect(() => {
-    // 短暂延迟确保初始状态设置完成
-    const timer = setTimeout(() => {
-      setSelectorsReady(true);
-    }, 50);
-
+    const timer = setTimeout(() => setSelectorsReady(true), 50);
     return () => clearTimeout(timer);
-  }, []); // 只在组件挂载时执行一次
+  }, []);
 
-  // type变化时立即重置selectorsReady（最高优先级）
+  // type 改變時重置選擇器和 loading
   useEffect(() => {
     setSelectorsReady(false);
-    setLoading(true); // 立即显示loading状态
-  }, [type]);
+    setLoading(true);
 
-  // 当type变化时重置选择器状态
-  useEffect(() => {
-    // 批量更新选择器状态
     if (type === 'movie') {
       setPrimarySelection('热门');
       setSecondarySelection('全部');
@@ -72,21 +60,14 @@ function DoubanPageClient() {
       setSecondarySelection('全部');
     }
 
-    // 使用短暂延迟确保状态更新完成后标记选择器准备好
-    const timer = setTimeout(() => {
-      setSelectorsReady(true);
-    }, 50);
-
+    const timer = setTimeout(() => setSelectorsReady(true), 50);
     return () => clearTimeout(timer);
   }, [type]);
 
-  // 生成骨架屏数据
   const skeletonData = Array.from({ length: 25 }, (_, index) => index);
 
-  // 生成API请求参数的辅助函数
   const getRequestParams = useCallback(
     (pageStart: number) => {
-      // 当type为tv或show时，kind统一为'tv'，category使用type本身
       if (type === 'tv' || type === 'show') {
         return {
           kind: 'tv' as const,
@@ -96,8 +77,6 @@ function DoubanPageClient() {
           pageStart,
         };
       }
-
-      // 电影类型保持原逻辑
       return {
         kind: type as 'tv' | 'movie',
         category: primarySelection,
@@ -109,7 +88,6 @@ function DoubanPageClient() {
     [type, primarySelection, secondarySelection]
   );
 
-  // 防抖的数据加载函数
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -118,62 +96,42 @@ function DoubanPageClient() {
       if (data.code === 200) {
         setDoubanData(data.list);
         setHasMore(data.list.length === 25);
-        setLoading(false);
       } else {
         throw new Error(data.message || '获取数据失败');
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
-  }, [type, primarySelection, secondarySelection, getRequestParams]);
+  }, [getRequestParams]);
 
-  // 只在选择器准备好后才加载数据
+  // 只有選擇器準備好才載入資料
   useEffect(() => {
-    // 只有在选择器准备好时才开始加载
-    if (!selectorsReady) {
-      return;
-    }
+    if (!selectorsReady) return;
 
-    // 重置页面状态
     setDoubanData([]);
     setCurrentPage(0);
     setHasMore(true);
     setIsLoadingMore(false);
 
-    // 清除之前的防抖定时器
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // 使用防抖机制加载数据，避免连续状态更新触发多次请求
+    if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     debounceTimeoutRef.current = setTimeout(() => {
       loadInitialData();
-    }, 100); // 100ms 防抖延迟
+    }, 100);
 
-    // 清理函数
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
-  }, [
-    selectorsReady,
-    type,
-    primarySelection,
-    secondarySelection,
-    loadInitialData,
-  ]);
+  }, [selectorsReady, type, primarySelection, secondarySelection, loadInitialData]);
 
-  // 单独处理 currentPage 变化（加载更多）
+  // 當 currentPage > 0 時載入更多資料
   useEffect(() => {
     if (currentPage > 0) {
       const fetchMoreData = async () => {
         try {
           setIsLoadingMore(true);
-
-          const data = await getDoubanCategories(
-            getRequestParams(currentPage * 25)
-          );
+          const data = await getDoubanCategories(getRequestParams(currentPage * 25));
 
           if (data.code === 200) {
             setDoubanData((prev) => [...prev, ...data.list]);
@@ -187,22 +145,13 @@ function DoubanPageClient() {
           setIsLoadingMore(false);
         }
       };
-
       fetchMoreData();
     }
-  }, [currentPage, type, primarySelection, secondarySelection]);
+  }, [currentPage, getRequestParams]);
 
-  // 设置滚动监听
+  // 滾動監聽
   useEffect(() => {
-    // 如果没有更多数据或正在加载，则不设置监听
-    if (!hasMore || isLoadingMore || loading) {
-      return;
-    }
-
-    // 确保 loadingRef 存在
-    if (!loadingRef.current) {
-      return;
-    }
+    if (!hasMore || isLoadingMore || loading || !loadingRef.current) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -216,17 +165,11 @@ function DoubanPageClient() {
     observer.observe(loadingRef.current);
     observerRef.current = observer;
 
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
+    return () => observerRef.current?.disconnect();
   }, [hasMore, isLoadingMore, loading]);
 
-  // 处理选择器变化
   const handlePrimaryChange = useCallback(
     (value: string) => {
-      // 只有当值真正改变时才设置loading状态
       if (value !== primarySelection) {
         setLoading(true);
         setPrimarySelection(value);
@@ -237,7 +180,6 @@ function DoubanPageClient() {
 
   const handleSecondaryChange = useCallback(
     (value: string) => {
-      // 只有当值真正改变时才设置loading状态
       if (value !== secondarySelection) {
         setLoading(true);
         setSecondarySelection(value);
@@ -246,36 +188,26 @@ function DoubanPageClient() {
     [secondarySelection]
   );
 
-  const getPageTitle = () => {
-    // 根据 type 生成标题
-    return type === 'movie' ? '电影' : type === 'tv' ? '电视剧' : '综艺';
-  };
+  const getPageTitle = () => (type === 'movie' ? '电影' : type === 'tv' ? '电视剧' : '综艺');
 
   const getActivePath = () => {
     const params = new URLSearchParams();
     if (type) params.set('type', type);
-
     const queryString = params.toString();
-    const activePath = `/douban${queryString ? `?${queryString}` : ''}`;
-    return activePath;
+    return `/douban${queryString ? `?${queryString}` : ''}`;
   };
 
   return (
     <PageLayout activePath={getActivePath()}>
       <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible'>
-        {/* 页面标题和选择器 */}
         <div className='mb-6 sm:mb-8 space-y-4 sm:space-y-6'>
-          {/* 页面标题 */}
           <div>
             <h1 className='text-2xl sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2 dark:text-gray-200'>
               {getPageTitle()}
             </h1>
-            <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400'>
-              来自豆瓣的精选内容
-            </p>
+            <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400'>来自豆瓣的精选内容</p>
           </div>
 
-          {/* 选择器组件 */}
           <div className='bg-white/60 dark:bg-gray-800/40 rounded-2xl p-4 sm:p-6 border border-gray-200/30 dark:border-gray-700/30 backdrop-blur-sm'>
             <DoubanSelector
               type={type as 'movie' | 'tv' | 'show'}
@@ -287,38 +219,30 @@ function DoubanPageClient() {
           </div>
         </div>
 
-        {/* 内容展示区域 */}
         <div className='max-w-[95%] mx-auto mt-8 overflow-visible'>
-          {/* 内容网格 */}
           <div className='grid grid-cols-3 gap-x-2 gap-y-12 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fit,minmax(160px,1fr))] sm:gap-x-8 sm:gap-y-20'>
             {loading || !selectorsReady
-              ? // 显示骨架屏
-                skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
-              : // 显示实际数据
-                doubanData.map((item, index) => (
+              ? skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
+              : doubanData.map((item, index) => (
                   <div key={`${item.title}-${index}`} className='w-full'>
                     <VideoCard
                       from='douban'
-                      title={item.title}
+                      title={item.title}                    // 中文名
+                      originalTitle={item.original_title}   // 英文名
                       poster={item.poster}
                       douban_id={item.id}
                       rate={item.rate}
                       year={item.year}
-                      type={type === 'movie' ? 'movie' : ''} // 电影类型严格控制，tv 不控
+                      type={type === 'movie' ? 'movie' : ''}
                     />
                   </div>
                 ))}
           </div>
 
-          {/* 加载更多指示器 */}
           {hasMore && !loading && (
             <div
               ref={(el) => {
-                if (el && el.offsetParent !== null) {
-                  (
-                    loadingRef as React.MutableRefObject<HTMLDivElement | null>
-                  ).current = el;
-                }
+                if (el && el.offsetParent !== null) loadingRef.current = el;
               }}
               className='flex justify-center mt-12 py-8'
             >
@@ -331,12 +255,10 @@ function DoubanPageClient() {
             </div>
           )}
 
-          {/* 没有更多数据提示 */}
           {!hasMore && doubanData.length > 0 && (
             <div className='text-center text-gray-500 py-8'>已加载全部内容</div>
           )}
 
-          {/* 空状态 */}
           {!loading && doubanData.length === 0 && (
             <div className='text-center text-gray-500 py-8'>暂无相关内容</div>
           )}
