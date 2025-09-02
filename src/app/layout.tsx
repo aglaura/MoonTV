@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: siteName,
-    description: 'Esmee's Videos',
+    description: "Esmee's Videos",
     manifest: '/manifest.json',
   };
 }
