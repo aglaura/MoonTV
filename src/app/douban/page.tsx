@@ -33,13 +33,11 @@ function DoubanPageClient() {
     return '全部';
   });
 
-  // 初始化選擇器準備就緒
   useEffect(() => {
     const timer = setTimeout(() => setSelectorsReady(true), 50);
     return () => clearTimeout(timer);
   }, []);
 
-  // type 改變時重置選擇器和 loading
   useEffect(() => {
     setSelectorsReady(false);
     setLoading(true);
@@ -90,7 +88,6 @@ function DoubanPageClient() {
     try {
       setLoading(true);
       const data = await getDoubanCategories(getRequestParams(0));
-
       if (data.code === 200) {
         setDoubanData(data.list);
         setHasMore(data.list.length === 25);
@@ -104,7 +101,6 @@ function DoubanPageClient() {
     }
   }, [getRequestParams]);
 
-  // 只有選擇器準備好才載入資料
   useEffect(() => {
     if (!selectorsReady) return;
 
@@ -114,23 +110,19 @@ function DoubanPageClient() {
     setIsLoadingMore(false);
 
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    debounceTimeoutRef.current = setTimeout(() => {
-      loadInitialData();
-    }, 100);
+    debounceTimeoutRef.current = setTimeout(() => loadInitialData(), 100);
 
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
-  }, [selectorsReady, type, primarySelection, secondarySelection, loadInitialData]);
+  }, [selectorsReady, loadInitialData]);
 
-  // 當 currentPage > 0 時載入更多資料
   useEffect(() => {
     if (currentPage > 0) {
       const fetchMoreData = async () => {
         try {
           setIsLoadingMore(true);
           const data = await getDoubanCategories(getRequestParams(currentPage * 25));
-
           if (data.code === 200) {
             setDoubanData((prev) => [...prev, ...data.list]);
             setHasMore(data.list.length === 25);
@@ -147,7 +139,6 @@ function DoubanPageClient() {
     }
   }, [currentPage, getRequestParams]);
 
-  // 滾動監聽
   useEffect(() => {
     if (!hasMore || isLoadingMore || loading || !loadingRef.current) return;
 
@@ -226,7 +217,7 @@ function DoubanPageClient() {
                     <VideoCard
                       from='douban'
                       title={item.title}
-                      originalTitle={item.original_title}
+                      originalTitle={item.original_title || ''}
                       poster={item.poster}
                       douban_id={item.id}
                       rate={item.rate}
@@ -239,9 +230,7 @@ function DoubanPageClient() {
 
           {hasMore && !loading && (
             <div
-              ref={(el) => {
-                if (el && el.offsetParent !== null) loadingRef.current = el;
-              }}
+              ref={(el) => { if (el && el.offsetParent !== null) loadingRef.current = el; }}
               className='flex justify-center mt-12 py-8'
             >
               {isLoadingMore && (
