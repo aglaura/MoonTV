@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: siteName,
-    description: '影视聚合',
+    description: 'Esmee's Videos',
     manifest: '/manifest.json',
   };
 }
@@ -38,7 +38,7 @@ export default async function RootLayout({
   let siteName = process.env.SITE_NAME || 'MoonTV';
   let announcement =
     process.env.ANNOUNCEMENT ||
-    '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
+    '本網站僅提供影視資訊搜尋服務，所有內容均來自第三方網站。本站不存儲任何影片資源，亦不對任何內容的準確性、合法性或完整性負責。';
   let enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
   let imageProxy = process.env.NEXT_PUBLIC_IMAGE_PROXY || '';
   if (process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1') {
