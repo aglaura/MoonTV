@@ -155,8 +155,8 @@ function HomeClient() {
         <div className='mb-8 flex justify-center'>
           <CapsuleSwitch
             options={[
-              { label: '首页', value: 'home' },
-              { label: '收藏夹', value: 'favorites' },
+              { label: 'Home', value: 'home' },
+              { label: 'Favorite', value: 'favorites' },
             ]}
             active={activeTab}
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
@@ -169,7 +169,7 @@ function HomeClient() {
             <section className='mb-8'>
               <div className='mb-4 flex items-center justify-between'>
                 <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                  我的收藏
+                  My Favorite!
                 </h2>
                 {favoriteItems.length > 0 && (
                   <button
@@ -179,7 +179,7 @@ function HomeClient() {
                       setFavoriteItems([]);
                     }}
                   >
-                    清空
+                    Empty
                   </button>
                 )}
               </div>
@@ -196,7 +196,7 @@ function HomeClient() {
                 ))}
                 {favoriteItems.length === 0 && (
                   <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    暂无收藏内容
+                    No Favorite  !!!
                   </div>
                 )}
               </div>
@@ -211,13 +211,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门电影
+                    HOT Movies !!!
                   </h2>
                   <Link
                     href='/douban?type=movie'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    More ...
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -259,13 +259,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门剧集
+                    HOT TV Drama !!!!
                   </h2>
                   <Link
                     href='/douban?type=tv'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    More ...
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -319,7 +319,7 @@ function HomeClient() {
               <button
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className='text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white transition-colors'
-                aria-label='关闭'
+                aria-label='Close'
               ></button>
             </div>
             <div className='mb-6'>
