@@ -1,5 +1,3 @@
-/* eslint-disable no-console,react-hooks/exhaustive-deps */
-
 'use client';
 
 import { useSearchParams } from 'next/navigation';
@@ -227,8 +225,8 @@ function DoubanPageClient() {
                   <div key={`${item.title}-${index}`} className='w-full'>
                     <VideoCard
                       from='douban'
-                      title={item.title}                    // 中文名
-                      originalTitle={item.original_title}   // 英文名
+                      title={item.title}
+                      originalTitle={item.original_title}
                       poster={item.poster}
                       douban_id={item.id}
                       rate={item.rate}
