@@ -21,7 +21,8 @@ import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 interface VideoCardProps {
   id?: string;
   source?: string;
-  title?: string;
+  title?: string;           // 中文片名
+  originalTitle?: string;   // 英文片名
   query?: string;
   poster?: string;
   episodes?: number;
@@ -40,6 +41,7 @@ interface VideoCardProps {
 export default function VideoCard({
   id,
   title = '',
+  originalTitle = '',   // 新增預設值
   query = '',
   poster = '',
   episodes,
@@ -97,6 +99,7 @@ export default function VideoCard({
   }, [isAggregate, items]);
 
   const actualTitle = aggregateData?.first.title ?? title;
+  const actualOriginalTitle = aggregateData?.first.original_title ?? originalTitle;
   const actualPoster = aggregateData?.first.poster ?? poster;
   const actualSource = aggregateData?.first.source ?? source;
   const actualId = aggregateData?.first.id ?? id;
@@ -127,12 +130,10 @@ export default function VideoCard({
 
     fetchFavoriteStatus();
 
-    // 监听收藏状态更新事件
     const storageKey = generateStorageKey(actualSource, actualId);
     const unsubscribe = subscribeToDataUpdates(
       'favoritesUpdated',
       (newFavorites: Record<string, any>) => {
-        // 检查当前项目是否在新的收藏列表中
         const isNowFavorited = !!newFavorites[storageKey];
         setFavorited(isNowFavorited);
       }
@@ -148,11 +149,9 @@ export default function VideoCard({
       if (from === 'douban' || !actualSource || !actualId) return;
       try {
         if (favorited) {
-          // 如果已收藏，删除收藏
           await deleteFavorite(actualSource, actualId);
           setFavorited(false);
         } else {
-          // 如果未收藏，添加收藏
           await saveFavorite(actualSource, actualId, {
             title: actualTitle,
             source_name: source_name || '',
@@ -274,9 +273,7 @@ export default function VideoCard({
     >
       {/* 海报容器 */}
       <div className='relative aspect-[2/3] overflow-hidden rounded-lg'>
-        {/* 骨架屏 */}
         {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
-        {/* 图片 */}
         <Image
           src={processImageUrl(actualPoster)}
           alt={actualTitle}
@@ -286,10 +283,8 @@ export default function VideoCard({
           onLoadingComplete={() => setIsLoading(true)}
         />
 
-        {/* 悬浮遮罩 */}
+        {/* 遮罩 & 播放按钮 & 操作按钮 & 徽章 */}
         <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100' />
-
-        {/* 播放按钮 */}
         {config.showPlayButton && (
           <div className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'>
             <PlayCircleIcon
@@ -299,8 +294,6 @@ export default function VideoCard({
             />
           </div>
         )}
-
-        {/* 操作按钮 */}
         {(config.showHeart || config.showCheckCircle) && (
           <div className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:translate-y-0'>
             {config.showCheckCircle && (
@@ -323,14 +316,11 @@ export default function VideoCard({
             )}
           </div>
         )}
-
-        {/* 徽章 */}
         {config.showRating && rate && (
           <div className='absolute top-2 right-2 bg-pink-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ease-out group-hover:scale-110'>
             {rate}
           </div>
         )}
-
         {actualEpisodes && actualEpisodes > 1 && (
           <div className='absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md transition-all duration-300 ease-out group-hover:scale-110'>
             {currentEpisode
@@ -338,8 +328,6 @@ export default function VideoCard({
               : actualEpisodes}
           </div>
         )}
-
-        {/* 豆瓣链接 */}
         {config.showDoubanLink && actualDoubanId && (
           <a
             href={`https://movie.douban.com/subject/${actualDoubanId}`}
@@ -365,18 +353,25 @@ export default function VideoCard({
         </div>
       )}
 
-      {/* 标题与来源 */}
+      {/* 标题和英文片名 */}
       <div className='mt-2 text-center'>
         <div className='relative'>
           <span className='block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer'>
             {actualTitle}
           </span>
-          {/* 自定义 tooltip */}
+
+          {actualOriginalTitle && (
+            <span className='block text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 break-words'>
+              {actualOriginalTitle}
+            </span>
+          )}
+
+          {/* tooltip */}
           <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'>
             {actualTitle}
-            <div className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'></div>
           </div>
         </div>
+
         {config.showSourceName && source_name && (
           <span className='block text-xs text-gray-500 dark:text-gray-400 mt-1'>
             <span className='inline-block border rounded px-2 py-0.5 border-gray-500/60 dark:border-gray-400/60 transition-all duration-300 ease-in-out group-hover:border-green-500/60 group-hover:text-green-600 dark:group-hover:text-green-400'>
