@@ -217,13 +217,20 @@ function DoubanPageClient() {
                     <VideoCard
                       from='douban'
                       title={item.title}
-                      originalTitle={item.original_title || ''}
                       poster={item.poster}
                       douban_id={item.id}
                       rate={item.rate}
                       year={item.year}
                       type={type === 'movie' ? 'movie' : ''}
                     />
+                    {item.original_title && (
+                      <div
+                        className='text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 break-words'
+                        title={item.original_title}
+                      >
+                        {item.original_title}
+                      </div>
+                    )}
                   </div>
                 ))}
           </div>
