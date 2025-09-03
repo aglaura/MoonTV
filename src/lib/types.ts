@@ -1,94 +1,95 @@
-import { AdminConfig } from './admin.types'
+import { AdminConfig } from './admin.types';
 
-// 播放记录数据结构
+// 播放記錄資料結構
 export interface PlayRecord {
-  title: string
-  source_name: string
-  cover: string
-  year: string
-  index: number // 第几集
-  total_episodes: number // 总集数
-  play_time: number // 播放进度（秒）
-  total_time: number // 总进度（秒）
-  save_time: number // 记录保存时间（时间戳）
-  search_title: string // 搜索时使用的标题
+  title: string;           // 中文片名
+  source_name: string;     // 來源名稱
+  cover: string;           // 海報封面
+  year: string;            // 年份
+  index: number;           // 第幾集
+  total_episodes: number;  // 總集數
+  play_time: number;       // 播放進度（秒）
+  total_time: number;      // 總長度（秒）
+  save_time: number;       // 記錄保存時間（時間戳）
+  search_title: string;    // 搜索時使用的標題
 }
 
-// 收藏数据结构
+// 收藏資料結構
 export interface Favorite {
-  source_name: string
-  total_episodes: number // 总集数
-  title: string
-  year: string
-  cover: string
-  save_time: number // 记录保存时间（时间戳）
-  search_title: string // 搜索时使用的标题
+  source_name: string;     // 來源名稱
+  total_episodes: number;  // 總集數
+  title: string;           // 中文片名
+  year: string;            // 年份
+  cover: string;           // 海報封面
+  save_time: number;       // 記錄保存時間（時間戳）
+  search_title: string;    // 搜索時使用的標題
 }
 
-// 存储接口
+// 存儲介面
 export interface IStorage {
-  // 播放记录相关
-  getPlayRecord(userName: string, key: string): Promise<PlayRecord | null>
-  setPlayRecord(userName: string, key: string, record: PlayRecord): Promise<void>
-  getAllPlayRecords(userName: string): Promise<{ [key: string]: PlayRecord }>
-  deletePlayRecord(userName: string, key: string): Promise<void>
+  // 播放記錄相關
+  getPlayRecord(userName: string, key: string): Promise<PlayRecord | null>;
+  setPlayRecord(
+    userName: string,
+    key: string,
+    record: PlayRecord
+  ): Promise<void>;
+  getAllPlayRecords(userName: string): Promise<{ [key: string]: PlayRecord }>;
+  deletePlayRecord(userName: string, key: string): Promise<void>;
 
-  // 收藏相关
-  getFavorite(userName: string, key: string): Promise<Favorite | null>
-  setFavorite(userName: string, key: string, favorite: Favorite): Promise<void>
-  getAllFavorites(userName: string): Promise<{ [key: string]: Favorite }>
-  deleteFavorite(userName: string, key: string): Promise<void>
+  // 收藏相關
+  getFavorite(userName: string, key: string): Promise<Favorite | null>;
+  setFavorite(userName: string, key: string, favorite: Favorite): Promise<void>;
+  getAllFavorites(userName: string): Promise<{ [key: string]: Favorite }>;
+  deleteFavorite(userName: string, key: string): Promise<void>;
 
-  // 用户相关
-  registerUser(userName: string, password: string): Promise<void>
-  verifyUser(userName: string, password: string): Promise<boolean>
-  // 检查用户是否存在（无需密码）
-  checkUserExist(userName: string): Promise<boolean>
-  // 修改用户密码
-  changePassword(userName: string, newPassword: string): Promise<void>
-  // 删除用户（包括密码、搜索历史、播放记录、收藏夹）
-  deleteUser(userName: string): Promise<void>
+  // 使用者相關
+  registerUser(userName: string, password: string): Promise<void>;
+  verifyUser(userName: string, password: string): Promise<boolean>;
+  checkUserExist(userName: string): Promise<boolean>; // 檢查使用者是否存在（無需密碼）
+  changePassword(userName: string, newPassword: string): Promise<void>;
+  deleteUser(userName: string): Promise<void>; // 刪除使用者（包含密碼、搜尋歷史、播放記錄、收藏）
 
-  // 搜索历史相关
-  getSearchHistory(userName: string): Promise<string[]>
-  addSearchHistory(userName: string, keyword: string): Promise<void>
-  deleteSearchHistory(userName: string, keyword?: string): Promise<void>
+  // 搜尋歷史相關
+  getSearchHistory(userName: string): Promise<string[]>;
+  addSearchHistory(userName: string, keyword: string): Promise<void>;
+  deleteSearchHistory(userName: string, keyword?: string): Promise<void>;
 
-  // 用户列表
-  getAllUsers(): Promise<string[]>
+  // 使用者列表
+  getAllUsers(): Promise<string[]>;
 
-  // 管理员配置相关
-  getAdminConfig(): Promise<AdminConfig | null>
-  setAdminConfig(config: AdminConfig): Promise<void>
+  // 管理員配置相關
+  getAdminConfig(): Promise<AdminConfig | null>;
+  setAdminConfig(config: AdminConfig): Promise<void>;
 }
 
-// 搜索结果数据结构
+// 搜尋結果資料結構
 export interface SearchResult {
-  id: string
-  title: string
-  poster: string
-  episodes: string[]
-  source: string
-  source_name: string
-  class?: string
-  year: string
-  desc?: string
-  type_name?: string
-  douban_id?: number
+  id: string;                // 唯一 ID
+  title: string;             // 中文片名
+  original_title?: string;   // 英文片名（可選）
+  poster: string;            // 海報
+  episodes: string[];        // 集數陣列
+  source: string;            // 來源
+  source_name: string;       // 來源名稱
+  class?: string;            // 分類（可選）
+  year: string;              // 年份
+  desc?: string;             // 簡介（可選）
+  type_name?: string;        // 類型名稱（可選）
+  douban_id?: number;        // 豆瓣 ID（可選）
 }
 
-// 豆瓣数据结构
+// 豆瓣資料結構
 export interface DoubanItem {
-  id: string
-  title: string
-  poster: string
-  rate: string
-  year: string
-  original_title?: string // ⭐️ 新增，避免 TS 报错
+  id: string;
+  title: string;
+  poster: string;
+  rate: string;
+  year: string;
 }
 
 export interface DoubanResult {
-  code: number
-  message: string
-  list: DoubanItem[]
+  code: number;
+  message: string;
+  list: DoubanItem[];
 }
