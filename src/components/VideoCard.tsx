@@ -41,7 +41,7 @@ interface VideoCardProps {
 export default function VideoCard({
   id,
   title = '',
-  originalTitle = '',   // 新增預設值
+  originalTitle = '', // 英文片名預設
   query = '',
   poster = '',
   episodes,
@@ -65,6 +65,7 @@ export default function VideoCard({
 
   const aggregateData = useMemo(() => {
     if (!isAggregate || !items) return null;
+
     const countMap = new Map<string | number, number>();
     const episodeCountMap = new Map<number, number>();
     items.forEach((item) => {
@@ -98,8 +99,10 @@ export default function VideoCard({
     };
   }, [isAggregate, items]);
 
+  // 安全獲取英文片名，避免 TypeScript 報錯
   const actualTitle = aggregateData?.first.title ?? title;
-  const actualOriginalTitle = aggregateData?.first.original_title ?? originalTitle;
+  const actualOriginalTitle =
+    aggregateData?.first.original_title ?? originalTitle; // SearchResult 中需加 optional original_title
   const actualPoster = aggregateData?.first.poster ?? poster;
   const actualSource = aggregateData?.first.source ?? source;
   const actualId = aggregateData?.first.id ?? id;
@@ -115,7 +118,6 @@ export default function VideoCard({
       : 'tv'
     : type;
 
-  // 获取收藏状态
   useEffect(() => {
     if (from === 'douban' || !actualSource || !actualId) return;
 
@@ -134,8 +136,7 @@ export default function VideoCard({
     const unsubscribe = subscribeToDataUpdates(
       'favoritesUpdated',
       (newFavorites: Record<string, any>) => {
-        const isNowFavorited = !!newFavorites[storageKey];
-        setFavorited(isNowFavorited);
+        setFavorited(!!newFavorites[storageKey]);
       }
     );
 
@@ -268,39 +269,41 @@ export default function VideoCard({
 
   return (
     <div
-      className='group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500]'
+      className="group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500]"
       onClick={handleClick}
     >
-      {/* 海报容器 */}
-      <div className='relative aspect-[2/3] overflow-hidden rounded-lg'>
-        {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
+      {/* 海报 */}
+      <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+        {!isLoading && <ImagePlaceholder aspectRatio="aspect-[2/3]" />}
         <Image
           src={processImageUrl(actualPoster)}
           alt={actualTitle}
           fill
-          className='object-cover'
-          referrerPolicy='no-referrer'
+          className="object-cover"
+          referrerPolicy="no-referrer"
           onLoadingComplete={() => setIsLoading(true)}
         />
 
-        {/* 遮罩 & 播放按钮 & 操作按钮 & 徽章 */}
-        <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100' />
+        {/* 遮罩 & 播放 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100" />
         {config.showPlayButton && (
-          <div className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'>
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100">
             <PlayCircleIcon
               size={50}
               strokeWidth={0.8}
-              className='text-white fill-transparent transition-all duration-300 ease-out hover:fill-green-500 hover:scale-[1.1]'
+              className="text-white fill-transparent transition-all duration-300 ease-out hover:fill-green-500 hover:scale-[1.1]"
             />
           </div>
         )}
+
+        {/* Heart & CheckCircle */}
         {(config.showHeart || config.showCheckCircle) && (
-          <div className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:translate-y-0'>
+          <div className="absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out group-hover:opacity-100 group-hover:translate-y-0">
             {config.showCheckCircle && (
               <CheckCircle
                 onClick={handleDeleteRecord}
                 size={20}
-                className='text-white transition-all duration-300 ease-out hover:stroke-green-500 hover:scale-[1.1]'
+                className="text-white transition-all duration-300 ease-out hover:stroke-green-500 hover:scale-[1.1]"
               />
             )}
             {config.showHeart && (
@@ -316,13 +319,15 @@ export default function VideoCard({
             )}
           </div>
         )}
+
+        {/* 豆瓣鏈接 & 徽章 */}
         {config.showRating && rate && (
-          <div className='absolute top-2 right-2 bg-pink-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ease-out group-hover:scale-110'>
+          <div className="absolute top-2 right-2 bg-pink-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ease-out group-hover:scale-110">
             {rate}
           </div>
         )}
         {actualEpisodes && actualEpisodes > 1 && (
-          <div className='absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md transition-all duration-300 ease-out group-hover:scale-110'>
+          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-md shadow-md transition-all duration-300 ease-out group-hover:scale-110">
             {currentEpisode
               ? `${currentEpisode}/${actualEpisodes}`
               : actualEpisodes}
@@ -331,50 +336,50 @@ export default function VideoCard({
         {config.showDoubanLink && actualDoubanId && (
           <a
             href={`https://movie.douban.com/subject/${actualDoubanId}`}
-            target='_blank'
-            rel='noopener noreferrer'
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className='absolute top-2 left-2 opacity-0 -translate-x-2 transition-all duration-300 ease-in-out delay-100 group-hover:opacity-100 group-hover:translate-x-0'
+            className="absolute top-2 left-2 opacity-0 -translate-x-2 transition-all duration-300 ease-in-out delay-100 group-hover:opacity-100 group-hover:translate-x-0"
           >
-            <div className='bg-green-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:bg-green-600 hover:scale-[1.1] transition-all duration-300 ease-out'>
+            <div className="bg-green-500 text-white text-xs font-bold w-7 h-7 rounded-full flex items-center justify-center shadow-md hover:bg-green-600 hover:scale-[1.1] transition-all duration-300 ease-out">
               <Link size={16} />
             </div>
           </a>
         )}
       </div>
 
-      {/* 进度条 */}
+      {/* 進度條 */}
       {config.showProgress && progress !== undefined && (
-        <div className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'>
+        <div className="mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden">
           <div
-            className='h-full bg-green-500 transition-all duration-500 ease-out'
+            className="h-full bg-green-500 transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       )}
 
-      {/* 标题和英文片名 */}
-      <div className='mt-2 text-center'>
-        <div className='relative'>
-          <span className='block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer'>
+      {/* 標題 */}
+      <div className="mt-2 text-center">
+        <div className="relative">
+          <span className="block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer">
             {actualTitle}
           </span>
 
           {actualOriginalTitle && (
-            <span className='block text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 break-words'>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 break-words">
               {actualOriginalTitle}
             </span>
           )}
 
           {/* tooltip */}
-          <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'>
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none">
             {actualTitle}
           </div>
         </div>
 
         {config.showSourceName && source_name && (
-          <span className='block text-xs text-gray-500 dark:text-gray-400 mt-1'>
-            <span className='inline-block border rounded px-2 py-0.5 border-gray-500/60 dark:border-gray-400/60 transition-all duration-300 ease-in-out group-hover:border-green-500/60 group-hover:text-green-600 dark:group-hover:text-green-400'>
+          <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <span className="inline-block border rounded px-2 py-0.5 border-gray-500/60 dark:border-gray-400/60 transition-all duration-300 ease-in-out group-hover:border-green-500/60 group-hover:text-green-600 dark:group-hover:text-green-400">
               {source_name}
             </span>
           </span>
