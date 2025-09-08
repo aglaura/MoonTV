@@ -22,18 +22,17 @@ import ScrollableRow from '@/components/ScrollableRow';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
-// ====================
-// Client-side converter
-// ====================
-let converter: (s: string) => string = (s) => s;
-if (typeof window !== 'undefined') {
-  try {
-    const OpenCC = require('opencc-js');
-    converter = OpenCC.simplifiedToTraditional;
-  } catch {
-    console.warn('opencc-js not available');
-  }
-}
+type FavoriteItem = {
+  id: string;
+  source: string;
+  title: string;
+  poster: string;
+  episodes: number;
+  source_name: string;
+  currentEpisode?: number;
+  search_title?: string;
+  origin?: 'vod' | 'live';
+};
 
 function HomeClient() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
@@ -43,20 +42,19 @@ function HomeClient() {
   const [loading, setLoading] = useState(true);
   const { announcement } = useSite();
   const [showAnnouncement, setShowAnnouncement] = useState(false);
-
+  const [converter, setConverter] = useState<(s: string) => string>(() => (s) => s);
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
-  type FavoriteItem = {
-    id: string;
-    source: string;
-    title: string;
-    poster: string;
-    episodes: number;
-    source_name: string;
-    currentEpisode?: number;
-    search_title?: string;
-    origin?: 'vod' | 'live';
-  };
+  // ===============================
+  // Dynamic client-side import OpenCC
+  // ===============================
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import('opencc-js')
+        .then((OpenCC) => setConverter(() => OpenCC.simplifiedToTraditional))
+        .catch(() => console.warn('opencc-js load failed'));
+    }
+  }, []);
 
   // Announcement handling
   useEffect(() => {
@@ -204,15 +202,9 @@ function HomeClient() {
           ) : (
             <>
               <ContinueWatching />
-
-              {/* 熱門電影 */}
-              <Section title="熱門電影" href="/douban?type=movie" items={hotMovies} loading={loading} type="movie" />
-
-              {/* 熱門劇集 */}
-              <Section title="熱門劇集" href="/douban?type=tv" items={hotTvShows} loading={loading} type="tv" />
-
-              {/* 熱門綜藝 */}
-              <Section title="熱門綜藝" href="/douban?type=show" items={hotVarietyShows} loading={loading} type="tv" />
+              <Section title="熱門電影" href="/douban?type=movie" items={hotMovies} loading={loading} type="movie" converter={converter} />
+              <Section title="熱門劇集" href="/douban?type=tv" items={hotTvShows} loading={loading} type="tv" converter={converter} />
+              <Section title="熱門綜藝" href="/douban?type=show" items={hotVarietyShows} loading={loading} type="tv" converter={converter} />
             </>
           )}
         </div>
@@ -254,10 +246,23 @@ function HomeClient() {
 }
 
 // ====================
-// Reusable Section Component
+// Section Component
 // ====================
-function Section({ title, href, items, loading, type }: { title: string; href: string; items: DoubanItem[]; loading: boolean; type: 'movie' | 'tv' }) {
-  const converter = typeof window !== 'undefined' ? require('opencc-js').simplifiedToTraditional : (s: string) => s;
+function Section({
+  title,
+  href,
+  items,
+  loading,
+  type,
+  converter,
+}: {
+  title: string;
+  href: string;
+  items: DoubanItem[];
+  loading: boolean;
+  type: 'movie' | 'tv';
+  converter: (s: string) => string;
+}) {
   const LoadingCard = () => (
     <div className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
@@ -275,19 +280,21 @@ function Section({ title, href, items, loading, type }: { title: string; href: s
         </Link>
       </div>
       <ScrollableRow>
-        {loading ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />) : items.map((item) => (
-          <div key={item.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
-            <VideoCard
-              from="douban"
-              title={converter(item.title)}
-              poster={item.poster}
-              douban_id={Number(item.id)}
-              rate={item.rate}
-              year={item.year}
-              type={type === 'movie' ? 'movie' : 'tv'}
-            />
-          </div>
-        ))}
+        {loading
+          ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />)
+          : items.map((item) => (
+              <div key={item.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
+                <VideoCard
+                  from="douban"
+                  title={converter(item.title)}
+                  poster={item.poster}
+                  douban_id={Number(item.id)}
+                  rate={item.rate}
+                  year={item.year}
+                  type={type === 'movie' ? 'movie' : 'tv'}
+                />
+              </div>
+            ))}
       </ScrollableRow>
     </section>
   );
