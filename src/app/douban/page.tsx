@@ -309,6 +309,7 @@ function DoubanPageClient() {
               onPrimaryChange={handlePrimaryChange}
               onSecondaryChange={handleSecondaryChange}
               onMultiLevelChange={handleMultiLevelChange}
+              // eslint-disable-next-line @typescript-eslint/no-empty-function
               onWeekdayChange={() => {}}
             />
           </div>
