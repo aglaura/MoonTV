@@ -1,309 +1,302 @@
-/* eslint-disable react-hooks/exhaustive-deps, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps, no-console */
+
 'use client';
 
-import { Search, X } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Suspense, useEffect, useState } from 'react';
 
 import {
-  addSearchHistory,
-  clearSearchHistory,
-  deleteSearchHistory,
-  getSearchHistory,
+  clearAllFavorites,
+  getAllFavorites,
+  getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { SearchResult } from '@/lib/types';
+import { getDoubanCategories } from '@/lib/douban.client';
+import { DoubanItem } from '@/lib/types';
 
+import CapsuleSwitch from '@/components/CapsuleSwitch';
+import ContinueWatching from '@/components/ContinueWatching';
 import PageLayout from '@/components/PageLayout';
+import ScrollableRow from '@/components/ScrollableRow';
+import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
-function SearchPageClient() {
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+// ====================
+// Client-side converter
+// ====================
+let converter: (s: string) => string = (s) => s;
+if (typeof window !== 'undefined') {
+  try {
+    const OpenCC = require('opencc-js');
+    converter = OpenCC.simplifiedToTraditional;
+  } catch {
+    console.warn('opencc-js not available');
+  }
+}
 
-  const getDefaultAggregate = () => {
-    if (typeof window !== 'undefined') {
-      const userSetting = localStorage.getItem('defaultAggregateSearch');
-      if (userSetting !== null) {
-        return JSON.parse(userSetting);
-      }
-    }
-    return true;
+function HomeClient() {
+  const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
+  const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
+  const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
+  const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { announcement } = useSite();
+  const [showAnnouncement, setShowAnnouncement] = useState(false);
+
+  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+
+  type FavoriteItem = {
+    id: string;
+    source: string;
+    title: string;
+    poster: string;
+    episodes: number;
+    source_name: string;
+    currentEpisode?: number;
+    search_title?: string;
+    origin?: 'vod' | 'live';
   };
 
-  const [viewMode, setViewMode] = useState<'agg' | 'all'>(() =>
-    getDefaultAggregate() ? 'agg' : 'all'
-  );
-
-  const aggregatedResults = useMemo(() => {
-    const map = new Map<string, SearchResult[]>();
-    searchResults.forEach((item) => {
-      const key = `${item.title.replaceAll(' ', '')}-${
-        item.year || 'unknown'
-      }-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
-      const arr = map.get(key) || [];
-      arr.push(item);
-      map.set(key, arr);
-    });
-    return Array.from(map.entries()).sort((a, b) => {
-      const aExactMatch = a[1][0].title
-        .replaceAll(' ', '')
-        .includes(searchQuery.trim().replaceAll(' ', ''));
-      const bExactMatch = b[1][0].title
-        .replaceAll(' ', '')
-        .includes(searchQuery.trim().replaceAll(' ', ''));
-
-      if (aExactMatch && !bExactMatch) return -1;
-      if (!aExactMatch && bExactMatch) return 1;
-
-      if (a[1][0].year === b[1][0].year) {
-        return a[0].localeCompare(b[0]);
-      } else {
-        const aYear = a[1][0].year;
-        const bYear = b[1][0].year;
-        if (aYear === 'unknown' && bYear === 'unknown') return 0;
-        if (aYear === 'unknown') return 1;
-        if (bYear === 'unknown') return -1;
-        return aYear > bYear ? -1 : 1;
-      }
-    });
-  }, [searchResults, searchQuery]);
-
+  // Announcement handling
   useEffect(() => {
-    !searchParams.get('q') && document.getElementById('searchInput')?.focus();
-    getSearchHistory().then(setSearchHistory);
+    if (!announcement) return;
+    const hasSeen = localStorage.getItem('hasSeenAnnouncement');
+    setShowAnnouncement(hasSeen !== announcement);
+  }, [announcement]);
 
-    const unsubscribe = subscribeToDataUpdates(
-      'searchHistoryUpdated',
-      (newHistory: string[]) => {
-        setSearchHistory(newHistory);
+  // Fetch recommended data
+  useEffect(() => {
+    const fetchRecommendData = async () => {
+      setLoading(true);
+      try {
+        const categories = [
+          { kind: 'movie', category: '熱門', type: '全部', setter: setHotMovies },
+          { kind: 'tv', category: 'tv', type: 'tv', setter: setHotTvShows },
+          { kind: 'tv', category: 'show', type: 'show', setter: setHotVarietyShows },
+        ];
+
+        await Promise.all(
+          categories.map(async ({ kind, category, type, setter }) => {
+            const data = await getDoubanCategories({ kind, category, type });
+            if (data.code === 200) setter(data.list);
+          })
+        );
+      } catch (err) {
+        console.error('獲取推薦數據失敗:', err);
+      } finally {
+        setLoading(false);
       }
-    );
-    return unsubscribe;
+    };
+
+    fetchRecommendData();
   }, []);
 
+  // Update favorites
+  const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
+    const allPlayRecords = await getAllPlayRecords();
+    const sorted = Object.entries(allFavorites)
+      .sort(([, a], [, b]) => b.save_time - a.save_time)
+      .map(([key, fav]) => {
+        const [source, id] = key.split('+');
+        const playRecord = allPlayRecords[key];
+        return {
+          id,
+          source,
+          title: fav.title,
+          year: fav.year,
+          poster: fav.cover,
+          episodes: fav.total_episodes,
+          source_name: fav.source_name,
+          currentEpisode: playRecord?.index,
+          search_title: fav?.search_title,
+          origin: fav?.origin,
+        } as FavoriteItem;
+      });
+    setFavoriteItems(sorted);
+  };
+
+  // Load favorites when tab is active
   useEffect(() => {
-    const query = searchParams.get('q');
-    if (query) {
-      setSearchQuery(query);
-      fetchSearchResults(query);
-      addSearchHistory(query);
-    } else {
-      setShowResults(false);
-    }
-  }, [searchParams]);
+    if (activeTab !== 'favorites') return;
 
-  const fetchSearchResults = async (query: string) => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query.trim())}`
-      );
-      const data = await response.json();
-      setSearchResults(
-        data.results.sort((a: SearchResult, b: SearchResult) => {
-          const aExactMatch = a.title === query.trim();
-          const bExactMatch = b.title === query.trim();
-          if (aExactMatch && !bExactMatch) return -1;
-          if (!aExactMatch && bExactMatch) return 1;
-          if (a.year === b.year) {
-            return a.title.localeCompare(b.title);
-          } else {
-            if (a.year === 'unknown' && b.year === 'unknown') return 0;
-            if (a.year === 'unknown') return 1;
-            if (b.year === 'unknown') return -1;
-            return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
-          }
-        })
-      );
-      setShowResults(true);
-    } catch (error) {
-      setSearchResults([]);
-    } finally {
-      setIsLoading(false);
-    }
+    const loadFavorites = async () => {
+      const allFavorites = await getAllFavorites();
+      await updateFavoriteItems(allFavorites);
+    };
+
+    loadFavorites();
+
+    const unsubscribe = subscribeToDataUpdates(
+      'favoritesUpdated',
+      (newFavorites: Record<string, any>) => {
+        updateFavoriteItems(newFavorites);
+      }
+    );
+
+    return unsubscribe;
+  }, [activeTab]);
+
+  const handleCloseAnnouncement = (announcement: string) => {
+    setShowAnnouncement(false);
+    localStorage.setItem('hasSeenAnnouncement', announcement);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = searchQuery.trim().replace(/\s+/g, ' ');
-    if (!trimmed) return;
-    setSearchQuery(trimmed);
-    setIsLoading(true);
-    setShowResults(true);
-    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
-    fetchSearchResults(trimmed);
-    addSearchHistory(trimmed);
-  };
+  const LoadingCard = () => (
+    <div className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
+      <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
+    </div>
+  );
 
   return (
-    <PageLayout activePath="/search">
-      <div className="px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10">
-        <div className="mb-8">
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-              <input
-                id="searchInput"
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索电影、电视剧..."
-                className="w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700"
-              />
-            </div>
-          </form>
+    <PageLayout>
+      <div className="px-2 sm:px-10 py-4 sm:py-8 overflow-visible">
+        <div className="mb-8 flex justify-center">
+          <CapsuleSwitch
+            options={[
+              { label: '首頁', value: 'home' },
+              { label: '收藏夾', value: 'favorites' },
+            ]}
+            active={activeTab}
+            onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
+          />
         </div>
 
-        <div className="max-w-[95%] mx-auto mt-12 overflow-visible">
-          {isLoading ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-            </div>
-          ) : showResults ? (
-            <section className="mb-12">
-              <div className="mb-8 flex items-center justify-between">
+        <div className="max-w-[95%] mx-auto">
+          {activeTab === 'favorites' ? (
+            <section className="mb-8">
+              <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                  搜索结果
+                  我的收藏
                 </h2>
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    聚合
-                  </span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={viewMode === 'agg'}
-                      onChange={() =>
-                        setViewMode(viewMode === 'agg' ? 'all' : 'agg')
-                      }
-                    />
-                    <div className="w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600"></div>
-                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
-                  </div>
-                </label>
-              </div>
-              <div
-                key={`search-results-${viewMode}`}
-                className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8"
-              >
-                {viewMode === 'agg'
-                  ? aggregatedResults.map(([mapKey, group]) =>
-                      group.map((item) => (
-                        <div
-                          key={`agg-${mapKey}-${item.id}`}
-                          className="w-full"
-                        >
-                          <VideoCard
-                            id={item.id}
-                            title={item.title}
-                            poster={item.poster}
-                            episodes={item.episodes.length}
-                            source={item.source}
-                            source_name={item.source_name}
-                            douban_id={item.douban_id}
-                            query={
-                              searchQuery.trim() !== item.title
-                                ? searchQuery.trim()
-                                : ''
-                            }
-                            year={item.year}
-                            from="search"
-                            type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                          />
-                        </div>
-                      ))
-                    )
-                  : searchResults.map((item) => (
-                      <div
-                        key={`all-${item.source}-${item.id}`}
-                        className="w-full"
-                      >
-                        <VideoCard
-                          id={item.id}
-                          title={item.title}
-                          poster={item.poster}
-                          episodes={item.episodes.length}
-                          source={item.source}
-                          source_name={item.source_name}
-                          douban_id={item.douban_id}
-                          query={
-                            searchQuery.trim() !== item.title
-                              ? searchQuery.trim()
-                              : ''
-                          }
-                          year={item.year}
-                          from="search"
-                          type={item.episodes.length > 1 ? 'tv' : 'movie'}
-                        />
-                      </div>
-                    ))}
-                {searchResults.length === 0 && (
-                  <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
-                    未找到相关结果
-                  </div>
-                )}
-              </div>
-            </section>
-          ) : searchHistory.length > 0 ? (
-            <section className="mb-12">
-              <h2 className="mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200">
-                搜索历史
-                {searchHistory.length > 0 && (
+                {favoriteItems.length > 0 && (
                   <button
-                    onClick={() => clearSearchHistory()}
-                    className="ml-3 text-sm text-gray-500 hover:text-red-500 transition-colors dark:text-gray-400 dark:hover:text-red-500"
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    onClick={async () => {
+                      await clearAllFavorites();
+                      setFavoriteItems([]);
+                    }}
                   >
                     清空
                   </button>
                 )}
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {searchHistory.map((item) => (
-                  <div key={item} className="relative group">
-                    <button
-                      onClick={() => {
-                        setSearchQuery(item);
-                        router.push(
-                          `/search?q=${encodeURIComponent(item.trim())}`
-                        );
-                      }}
-                      className="px-4 py-2 bg-gray-500/10 hover:bg-gray-300 rounded-full text-sm text-gray-700 transition-colors duration-200 dark:bg-gray-700/50 dark:hover:bg-gray-600 dark:text-gray-300"
-                    >
-                      {item}
-                    </button>
-                    <button
-                      aria-label="删除搜索历史"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        deleteSearchHistory(item);
-                      }}
-                      className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 bg-gray-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+              </div>
+              <div className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8">
+                {favoriteItems.length === 0 ? (
+                  <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
+                    暫無收藏內容
                   </div>
-                ))}
+                ) : (
+                  favoriteItems.map((item) => (
+                    <div key={item.id + item.source} className="w-full">
+                      <VideoCard
+                        query={item.search_title}
+                        {...item}
+                        from="favorite"
+                        type={item.episodes > 1 ? 'tv' : ''}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
             </section>
-          ) : null}
+          ) : (
+            <>
+              <ContinueWatching />
+
+              {/* 熱門電影 */}
+              <Section title="熱門電影" href="/douban?type=movie" items={hotMovies} loading={loading} type="movie" />
+
+              {/* 熱門劇集 */}
+              <Section title="熱門劇集" href="/douban?type=tv" items={hotTvShows} loading={loading} type="tv" />
+
+              {/* 熱門綜藝 */}
+              <Section title="熱門綜藝" href="/douban?type=show" items={hotVarietyShows} loading={loading} type="tv" />
+            </>
+          )}
         </div>
       </div>
+
+      {/* Announcement Modal */}
+      {announcement && showAnnouncement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm dark:bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-2xl font-bold tracking-tight text-gray-800 dark:text-white border-b border-green-500 pb-1">
+                提示
+              </h3>
+              <button
+                onClick={() => handleCloseAnnouncement(announcement)}
+                className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white"
+                aria-label="關閉"
+              />
+            </div>
+            <div className="mb-6">
+              <div className="relative overflow-hidden rounded-lg mb-4 bg-green-50 dark:bg-green-900/20">
+                <div className="absolute inset-y-0 left-0 w-1.5 bg-green-500 dark:bg-green-400"></div>
+                <p className="ml-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {converter(announcement)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleCloseAnnouncement(announcement)}
+              className="w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 text-white font-medium shadow-md hover:shadow-lg"
+            >
+              我知道了
+            </button>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 }
 
-export default function SearchPage() {
+// ====================
+// Reusable Section Component
+// ====================
+function Section({ title, href, items, loading, type }: { title: string; href: string; items: DoubanItem[]; loading: boolean; type: 'movie' | 'tv' }) {
+  const converter = typeof window !== 'undefined' ? require('opencc-js').simplifiedToTraditional : (s: string) => s;
+  const LoadingCard = () => (
+    <div className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
+      <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
+    </div>
+  );
+
   return (
-    <Suspense>
-      <SearchPageClient />
+    <section className="mb-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">{title}</h2>
+        <Link href={href} className="flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+          查看更多
+          <ChevronRight className="w-4 h-4 ml-1" />
+        </Link>
+      </div>
+      <ScrollableRow>
+        {loading ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />) : items.map((item) => (
+          <div key={item.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
+            <VideoCard
+              from="douban"
+              title={converter(item.title)}
+              poster={item.poster}
+              douban_id={Number(item.id)}
+              rate={item.rate}
+              year={item.year}
+              type={type === 'movie' ? 'movie' : 'tv'}
+            />
+          </div>
+        ))}
+      </ScrollableRow>
+    </section>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="text-center py-8">載入中...</div>}>
+      <HomeClient />
     </Suspense>
   );
 }
