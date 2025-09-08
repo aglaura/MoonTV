@@ -220,7 +220,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     }
   }, [origin, from, actualSource, actualId, displayTitle, actualYear, isAggregate, actualQuery, actualSearchType]);
 
-  const longPressEvents = useLongPress(() => setShowMobileActions(true), { delay: 500 });
+  //const longPressEvents = useLongPress(() => setShowMobileActions(true), { delay: 500 });
 
   return (
     <>
