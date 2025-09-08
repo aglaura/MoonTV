@@ -72,7 +72,7 @@ function SearchPageClient() {
         return aYear > bYear ? -1 : 1;
       }
     });
-  }, [searchResults]);
+  }, [searchResults, searchQuery]);
 
   useEffect(() => {
     !searchParams.get('q') && document.getElementById('searchInput')?.focus();
@@ -194,10 +194,12 @@ function SearchPageClient() {
                 className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8"
               >
                 {viewMode === 'agg'
-                  ? aggregatedResults.map(([mapKey, group]) => {
-                      const item = group[0]; // pick first item from group
-                      return (
-                        <div key={`agg-${mapKey}`} className="w-full">
+                  ? aggregatedResults.map(([mapKey, group]) =>
+                      group.map((item) => (
+                        <div
+                          key={`agg-${mapKey}-${item.id}`}
+                          className="w-full"
+                        >
                           <VideoCard
                             id={item.id}
                             title={item.title}
@@ -205,7 +207,7 @@ function SearchPageClient() {
                             episodes={item.episodes.length}
                             source={item.source}
                             source_name={item.source_name}
-                            douban_id={item.douban_id?.toString()}
+                            douban_id={item.douban_id}
                             query={
                               searchQuery.trim() !== item.title
                                 ? searchQuery.trim()
@@ -216,10 +218,13 @@ function SearchPageClient() {
                             type={item.episodes.length > 1 ? 'tv' : 'movie'}
                           />
                         </div>
-                      );
-                    })
+                      ))
+                    )
                   : searchResults.map((item) => (
-                      <div key={`all-${item.source}-${item.id}`} className="w-full">
+                      <div
+                        key={`all-${item.source}-${item.id}`}
+                        className="w-full"
+                      >
                         <VideoCard
                           id={item.id}
                           title={item.title}
@@ -227,7 +232,7 @@ function SearchPageClient() {
                           episodes={item.episodes.length}
                           source={item.source}
                           source_name={item.source_name}
-                          douban_id={item.douban_id?.toString()}
+                          douban_id={item.douban_id}
                           query={
                             searchQuery.trim() !== item.title
                               ? searchQuery.trim()
@@ -265,7 +270,9 @@ function SearchPageClient() {
                     <button
                       onClick={() => {
                         setSearchQuery(item);
-                        router.push(`/search?q=${encodeURIComponent(item.trim())}`);
+                        router.push(
+                          `/search?q=${encodeURIComponent(item.trim())}`
+                        );
                       }}
                       className="px-4 py-2 bg-gray-500/10 hover:bg-gray-300 rounded-full text-sm text-gray-700 transition-colors duration-200 dark:bg-gray-700/50 dark:hover:bg-gray-600 dark:text-gray-300"
                     >
