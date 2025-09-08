@@ -4,8 +4,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-import MultiLevelSelector from './MultiLevelSelector';
-import WeekdaySelector from './WeekdaySelector';
+import MultiLevelSelector from ''@/components/MultiLevelSelector';
+import WeekdaySelector from ''@/components/WeekdaySelector';
 
 interface SelectorOption {
   label: string;
