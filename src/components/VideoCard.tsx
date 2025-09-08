@@ -350,7 +350,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
 
       {showMobileActions && (
         <MobileActionSheet
-          items={mobileActions}
+          actions={mobileActions}
           onClose={() => setShowMobileActions(false)}
         />
       )}
