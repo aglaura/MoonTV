@@ -21,6 +21,7 @@ import {
 } from '@/lib/db.client';
 import { useLongPress } from '@/components/useLongPress';
 import MobileActionSheet from '@/components/MobileActionSheet';
+import ImagePlaceholder from '@/components/ImagePlaceholder';
 
 export interface VideoCardProps {
   id?: string;
@@ -32,15 +33,15 @@ export interface VideoCardProps {
   episodes?: number;
   source_name?: string;
   source_names?: string[];
-  progress?: number; // will rename to _progress if unused
+  progress?: number; // _progress if unused
   year?: string;
   from: 'playrecord' | 'favorite' | 'search' | 'douban';
   currentEpisode?: number;
   douban_id?: number;
   onDelete?: () => void;
-  rate?: string; // rename to _rate if unused
+  rate?: string; // _rate if unused
   type?: string;
-  isBangumi?: boolean; // rename to _isBangumi if unused
+  isBangumi?: boolean; // _isBangumi if unused
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
 }
@@ -221,8 +222,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
 
   return (
     <>
-      <div {...longPressProps} className="group relative w-full rounded-lg cursor-pointer">
-        {/* Poster, badges, buttons etc. */}
+      <div
+        {...longPressProps}
+        className="group relative w-full rounded-lg cursor-pointer overflow-hidden bg-gray-200 dark:bg-gray-800"
+      >
+        {poster ? (
+          <img
+            src={poster}
+            alt={actualTitle}
+            className="w-full aspect-[2/3] object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <ImagePlaceholder className="w-full aspect-[2/3] rounded-lg" />
+        )}
+        <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white px-2 py-1 text-sm font-semibold truncate">
+          {actualTitle}
+        </div>
       </div>
       <MobileActionSheet
         isOpen={showMobileActions}
