@@ -3,13 +3,9 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  getDoubanCategories,
-  getDoubanRecommends,
-} from '@/lib/douban.client';
+import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
 import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
@@ -19,25 +15,29 @@ import VideoCard from '@/components/VideoCard';
 
 function DoubanPageClient() {
   const searchParams = useSearchParams();
+  const type = searchParams.get('type') || 'movie';
+
+  // States
   const [doubanData, setDoubanData] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectorsReady, setSelectorsReady] = useState(false);
+
+  // Ref for infinite scroll
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadingRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef<HTMLDivElement | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const type = searchParams.get('type') || 'movie';
-
-  // 选择器状态
+  // Selector states
   const [primarySelection, setPrimarySelection] = useState<string>(() => {
     if (type === 'movie') return '热门';
     if (type === 'tv' || type === 'show') return '最近热门';
     if (type === 'anime') return '每日放送';
     return '';
   });
+
   const [secondarySelection, setSecondarySelection] = useState<string>(() => {
     if (type === 'movie') return '全部';
     if (type === 'tv') return 'tv';
@@ -45,7 +45,6 @@ function DoubanPageClient() {
     return '全部';
   });
 
-  // MultiLevelSelector 状态
   const [multiLevelValues, setMultiLevelValues] = useState<Record<string, string>>({
     type: 'all',
     region: 'all',
@@ -55,7 +54,7 @@ function DoubanPageClient() {
     sort: 'T',
   });
 
-  // 同步最新参数值到 ref
+  // Ref to store current parameters snapshot
   const currentParamsRef = useRef({
     type,
     primarySelection,
@@ -74,26 +73,22 @@ function DoubanPageClient() {
     };
   }, [type, primarySelection, secondarySelection, multiLevelValues, currentPage]);
 
-  // 初始化时标记选择器为准备好状态
+  // Mark selectors as ready after a short delay
   useEffect(() => {
     const timer = setTimeout(() => setSelectorsReady(true), 50);
     return () => clearTimeout(timer);
   }, []);
 
-  // type变化时立即重置selectorsReady
+  // Reset selectorsReady when type changes
   useEffect(() => {
     setSelectorsReady(false);
     setLoading(true);
   }, [type]);
 
-  // 生成骨架屏数据
-  const skeletonData = Array.from({ length: 25 }, (_, index) => index);
+  const skeletonData = Array.from({ length: 25 }, (_, i) => i);
 
   const isSnapshotEqual = useCallback(
-    (
-      snapshot1: any,
-      snapshot2: any
-    ) => JSON.stringify(snapshot1) === JSON.stringify(snapshot2),
+    (snapshot1: any, snapshot2: any) => JSON.stringify(snapshot1) === JSON.stringify(snapshot2),
     []
   );
 
@@ -107,6 +102,7 @@ function DoubanPageClient() {
     [type, primarySelection, secondarySelection]
   );
 
+  // Load initial data
   const loadInitialData = useCallback(async () => {
     const requestSnapshot = {
       type,
@@ -143,8 +139,7 @@ function DoubanPageClient() {
       }
 
       if (data.code === 200) {
-        const currentSnapshot = { ...currentParamsRef.current };
-        if (isSnapshotEqual(requestSnapshot, currentSnapshot)) {
+        if (isSnapshotEqual(requestSnapshot, currentParamsRef.current)) {
           setDoubanData(data.list);
           setHasMore(data.list.length !== 0);
           setLoading(false);
@@ -158,68 +153,69 @@ function DoubanPageClient() {
     }
   }, [type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
 
+  // Debounced initial load
   useEffect(() => {
     if (!selectorsReady) return;
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
 
     debounceTimeoutRef.current = setTimeout(() => loadInitialData(), 100);
+
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
   }, [selectorsReady, loadInitialData]);
 
-  // 分页加载更多
+  // Load more data on pagination
   useEffect(() => {
-    if (currentPage > 0) {
-      const fetchMoreData = async () => {
-        const requestSnapshot = {
-          type,
-          primarySelection,
-          secondarySelection,
-          multiLevelSelection: multiLevelValues,
-          currentPage,
-        };
+    if (currentPage === 0) return;
 
-        try {
-          setIsLoadingMore(true);
-          let data: DoubanResult;
-
-          if (primarySelection === '全部') {
-            data = await getDoubanRecommends({
-              kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
-              pageLimit: 25,
-              pageStart: currentPage * 25,
-              category: multiLevelValues.type || '',
-              format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
-              region: multiLevelValues.region || '',
-              year: multiLevelValues.year || '',
-              platform: multiLevelValues.platform || '',
-              sort: multiLevelValues.sort || '',
-              label: multiLevelValues.label || '',
-            });
-          } else {
-            data = await getDoubanCategories(getRequestParams(currentPage * 25));
-          }
-
-          if (data.code === 200) {
-            const currentSnapshot = { ...currentParamsRef.current };
-            if (isSnapshotEqual(requestSnapshot, currentSnapshot)) {
-              setDoubanData((prev) => [...prev, ...data.list]);
-              setHasMore(data.list.length !== 0);
-            }
-          }
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setIsLoadingMore(false);
-        }
+    const fetchMoreData = async () => {
+      const requestSnapshot = {
+        type,
+        primarySelection,
+        secondarySelection,
+        multiLevelSelection: multiLevelValues,
+        currentPage,
       };
 
-      fetchMoreData();
-    }
+      try {
+        setIsLoadingMore(true);
+        let data: DoubanResult;
+
+        if (primarySelection === '全部') {
+          data = await getDoubanRecommends({
+            kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
+            pageLimit: 25,
+            pageStart: currentPage * 25,
+            category: multiLevelValues.type || '',
+            format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
+            region: multiLevelValues.region || '',
+            year: multiLevelValues.year || '',
+            platform: multiLevelValues.platform || '',
+            sort: multiLevelValues.sort || '',
+            label: multiLevelValues.label || '',
+          });
+        } else {
+          data = await getDoubanCategories(getRequestParams(currentPage * 25));
+        }
+
+        if (data.code === 200) {
+          if (isSnapshotEqual(requestSnapshot, currentParamsRef.current)) {
+            setDoubanData((prev) => [...prev, ...data.list]);
+            setHasMore(data.list.length !== 0);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    };
+
+    fetchMoreData();
   }, [currentPage, type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
 
-  // 监听滚动
+  // Infinite scroll observer
   useEffect(() => {
     if (!hasMore || isLoadingMore || loading || !loadingRef.current) return;
 
@@ -240,7 +236,12 @@ function DoubanPageClient() {
     };
   }, [hasMore, isLoadingMore, loading]);
 
-  // 选择器变化处理
+  // Callback ref for TypeScript safety
+  const setLoadingRef = useCallback((el: HTMLDivElement | null) => {
+    loadingRef.current = el;
+  }, []);
+
+  // Selector handlers
   const handlePrimaryChange = useCallback((value: string) => {
     if (value !== primarySelection) {
       setLoading(true);
@@ -272,15 +273,9 @@ function DoubanPageClient() {
     setMultiLevelValues(values);
   }, []);
 
-  const getPageTitle = () => {
-    return type === 'movie' ? '电影' :
-      type === 'tv' ? '电视剧' :
-      type === 'anime' ? '动漫' :
-      type === 'show' ? '综艺' : '自定义';
-  };
-
+  // Page info
+  const getPageTitle = () => type === 'movie' ? '电影' : type === 'tv' ? '电视剧' : type === 'anime' ? '动漫' : type === 'show' ? '综艺' : '自定义';
   const getPageDescription = () => '来自豆瓣的精选内容';
-
   const getActivePath = () => {
     const params = new URLSearchParams();
     if (type) params.set('type', type);
@@ -309,7 +304,6 @@ function DoubanPageClient() {
               onPrimaryChange={handlePrimaryChange}
               onSecondaryChange={handleSecondaryChange}
               onMultiLevelChange={handleMultiLevelChange}
-              // eslint-disable-next-line @typescript-eslint/no-empty-function
               onWeekdayChange={() => {}}
             />
           </div>
@@ -320,24 +314,24 @@ function DoubanPageClient() {
             {loading || !selectorsReady
               ? skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
               : doubanData.map((item, index) => (
-                <div key={`${item.title}-${index}`} className='w-full'>
-                  <VideoCard
-                    from='douban'
-                    title={item.title}
-                    poster={item.poster}
-                    douban_id={Number(item.id)}
-                    rate={item.rate}
-                    year={item.year}
-                    type={type === 'movie' ? 'movie' : ''}
-                    isBangumi={false}
-                  />
-                </div>
-              ))}
+                  <div key={`${item.title}-${index}`} className='w-full'>
+                    <VideoCard
+                      from='douban'
+                      title={item.title}
+                      poster={item.poster}
+                      douban_id={Number(item.id)}
+                      rate={item.rate}
+                      year={item.year}
+                      type={type === 'movie' ? 'movie' : ''}
+                      isBangumi={false}
+                    />
+                  </div>
+                ))}
           </div>
 
           {hasMore && !loading && (
             <div
-              ref={(el) => { if (el) loadingRef.current = el; }}
+              ref={setLoadingRef}
               className='flex justify-center mt-12 py-8'
             >
               {isLoadingMore && (
