@@ -22,7 +22,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { processImageUrl } from '@/lib/utils';
-import { useLongPress } from '@/hooks/useLongPress';
+import { useLongPress } from '@/components/useLongPress';
 
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
