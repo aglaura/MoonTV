@@ -29,26 +29,27 @@ function SearchPageClient() {
   const getDefaultAggregate = () => {
     if (typeof window !== 'undefined') {
       const userSetting = localStorage.getItem('defaultAggregateSearch');
-      if (userSetting !== null) return JSON.parse(userSetting);
+      if (userSetting !== null) {
+        return JSON.parse(userSetting);
+      }
     }
     return true;
   };
 
-  const [viewMode, setViewMode] = useState<'agg' | 'all'>(() => {
-    return getDefaultAggregate() ? 'agg' : 'all';
-  });
+  const [viewMode, setViewMode] = useState<'agg' | 'all'>(() =>
+    getDefaultAggregate() ? 'agg' : 'all'
+  );
 
   const aggregatedResults = useMemo(() => {
     const map = new Map<string, SearchResult[]>();
     searchResults.forEach((item) => {
-      const key = `${item.title.replaceAll(' ', '')}-${item.year || 'unknown'}-${
-        item.episodes.length === 1 ? 'movie' : 'tv'
-      }`;
+      const key = `${item.title.replaceAll(' ', '')}-${
+        item.year || 'unknown'
+      }-${item.episodes.length === 1 ? 'movie' : 'tv'}`;
       const arr = map.get(key) || [];
       arr.push(item);
       map.set(key, arr);
     });
-
     return Array.from(map.entries()).sort((a, b) => {
       const aExactMatch = a[1][0].title
         .replaceAll(' ', '')
@@ -60,24 +61,29 @@ function SearchPageClient() {
       if (aExactMatch && !bExactMatch) return -1;
       if (!aExactMatch && bExactMatch) return 1;
 
-      const aYear = a[1][0].year;
-      const bYear = b[1][0].year;
-
-      if (aYear === bYear) return a[0].localeCompare(b[0]);
-      if (aYear === 'unknown') return 1;
-      if (bYear === 'unknown') return -1;
-      return aYear > bYear ? -1 : 1;
+      if (a[1][0].year === b[1][0].year) {
+        return a[0].localeCompare(b[0]);
+      } else {
+        const aYear = a[1][0].year;
+        const bYear = b[1][0].year;
+        if (aYear === 'unknown' && bYear === 'unknown') return 0;
+        if (aYear === 'unknown') return 1;
+        if (bYear === 'unknown') return -1;
+        return aYear > bYear ? -1 : 1;
+      }
     });
-  }, [searchResults, searchQuery]);
+  }, [searchResults]);
 
   useEffect(() => {
     !searchParams.get('q') && document.getElementById('searchInput')?.focus();
     getSearchHistory().then(setSearchHistory);
 
-    const unsubscribe = subscribeToDataUpdates('searchHistoryUpdated', (newHistory: string[]) => {
-      setSearchHistory(newHistory);
-    });
-
+    const unsubscribe = subscribeToDataUpdates(
+      'searchHistoryUpdated',
+      (newHistory: string[]) => {
+        setSearchHistory(newHistory);
+      }
+    );
     return unsubscribe;
   }, []);
 
@@ -95,24 +101,28 @@ function SearchPageClient() {
   const fetchSearchResults = async (query: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(query.trim())}`
+      );
       const data = await response.json();
       setSearchResults(
         data.results.sort((a: SearchResult, b: SearchResult) => {
           const aExactMatch = a.title === query.trim();
           const bExactMatch = b.title === query.trim();
-
           if (aExactMatch && !bExactMatch) return -1;
           if (!aExactMatch && bExactMatch) return 1;
-
-          if (a.year === b.year) return a.title.localeCompare(b.title);
-          if (a.year === 'unknown') return 1;
-          if (b.year === 'unknown') return -1;
-          return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
+          if (a.year === b.year) {
+            return a.title.localeCompare(b.title);
+          } else {
+            if (a.year === 'unknown' && b.year === 'unknown') return 0;
+            if (a.year === 'unknown') return 1;
+            if (b.year === 'unknown') return -1;
+            return parseInt(a.year) > parseInt(b.year) ? -1 : 1;
+          }
         })
       );
       setShowResults(true);
-    } catch {
+    } catch (error) {
       setSearchResults([]);
     } finally {
       setIsLoading(false);
@@ -132,69 +142,84 @@ function SearchPageClient() {
   };
 
   return (
-    <PageLayout activePath='/search'>
-      <div className='px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10'>
-        {/* 搜索框 */}
-        <div className='mb-8'>
-          <form onSubmit={handleSearch} className='max-w-2xl mx-auto'>
-            <div className='relative'>
-              <Search className='absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500' />
+    <PageLayout activePath="/search">
+      <div className="px-4 sm:px-10 py-4 sm:py-8 overflow-visible mb-10">
+        <div className="mb-8">
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
-                id='searchInput'
-                type='text'
+                id="searchInput"
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder='搜索电影、电视剧...'
-                className='w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700'
+                placeholder="搜索电影、电视剧..."
+                className="w-full h-12 rounded-lg bg-gray-50/80 py-3 pl-10 pr-4 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white border border-gray-200/50 shadow-sm dark:bg-gray-800 dark:text-gray-300 dark:placeholder-gray-500 dark:focus:bg-gray-700 dark:border-gray-700"
               />
             </div>
           </form>
         </div>
 
-        {/* 搜索结果或搜索历史 */}
-        <div className='max-w-[95%] mx-auto mt-12 overflow-visible'>
+        <div className="max-w-[95%] mx-auto mt-12 overflow-visible">
           {isLoading ? (
-            <div className='flex justify-center items-center h-40'>
-              <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
             </div>
           ) : showResults ? (
-            <section className='mb-12'>
-              <div className='mb-8 flex items-center justify-between'>
-                <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+            <section className="mb-12">
+              <div className="mb-8 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
                   搜索结果
                 </h2>
-                <label className='flex items-center gap-2 cursor-pointer select-none'>
-                  <span className='text-sm text-gray-700 dark:text-gray-300'>
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     聚合
                   </span>
-                  <div className='relative'>
+                  <div className="relative">
                     <input
-                      type='checkbox'
-                      className='sr-only peer'
+                      type="checkbox"
+                      className="sr-only peer"
                       checked={viewMode === 'agg'}
-                      onChange={() => setViewMode(viewMode === 'agg' ? 'all' : 'agg')}
+                      onChange={() =>
+                        setViewMode(viewMode === 'agg' ? 'all' : 'agg')
+                      }
                     />
-                    <div className='w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600'></div>
-                    <div className='absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4'></div>
+                    <div className="w-9 h-5 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors dark:bg-gray-600"></div>
+                    <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
                   </div>
                 </label>
               </div>
               <div
                 key={`search-results-${viewMode}`}
-                className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'
+                className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8"
               >
                 {viewMode === 'agg'
-                  ? aggregatedResults.map(([mapKey, group]) => (
-                      <div key={`agg-${mapKey}`} className='w-full'>
-                        <VideoCard
-                          from='search'
-                          items={group}
-                          query={searchQuery.trim() !== group[0].title ? searchQuery.trim() : ''}
-                        />
-                      </div>
-                    ))
+                  ? aggregatedResults.map(([mapKey, group]) => {
+                      const item = group[0]; // pick first item from group
+                      return (
+                        <div key={`agg-${mapKey}`} className="w-full">
+                          <VideoCard
+                            id={item.id}
+                            title={item.title}
+                            poster={item.poster}
+                            episodes={item.episodes.length}
+                            source={item.source}
+                            source_name={item.source_name}
+                            douban_id={item.douban_id?.toString()}
+                            query={
+                              searchQuery.trim() !== item.title
+                                ? searchQuery.trim()
+                                : ''
+                            }
+                            year={item.year}
+                            from="search"
+                            type={item.episodes.length > 1 ? 'tv' : 'movie'}
+                          />
+                        </div>
+                      );
+                    })
                   : searchResults.map((item) => (
-                      <div key={`all-${item.source}-${item.id}`} className='w-full'>
+                      <div key={`all-${item.source}-${item.id}`} className="w-full">
                         <VideoCard
                           id={item.id}
                           title={item.title}
@@ -203,55 +228,59 @@ function SearchPageClient() {
                           source={item.source}
                           source_name={item.source_name}
                           douban_id={item.douban_id?.toString()}
-                          query={searchQuery.trim() !== item.title ? searchQuery.trim() : ''}
+                          query={
+                            searchQuery.trim() !== item.title
+                              ? searchQuery.trim()
+                              : ''
+                          }
                           year={item.year}
-                          from='search'
+                          from="search"
                           type={item.episodes.length > 1 ? 'tv' : 'movie'}
                         />
                       </div>
                     ))}
                 {searchResults.length === 0 && (
-                  <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
+                  <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
                     未找到相关结果
                   </div>
                 )}
               </div>
             </section>
           ) : searchHistory.length > 0 ? (
-            <section className='mb-12'>
-              <h2 className='mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200'>
+            <section className="mb-12">
+              <h2 className="mb-4 text-xl font-bold text-gray-800 text-left dark:text-gray-200">
                 搜索历史
                 {searchHistory.length > 0 && (
                   <button
                     onClick={() => clearSearchHistory()}
-                    className='ml-3 text-sm text-gray-500 hover:text-red-500 transition-colors dark:text-gray-400 dark:hover:text-red-500'
+                    className="ml-3 text-sm text-gray-500 hover:text-red-500 transition-colors dark:text-gray-400 dark:hover:text-red-500"
                   >
                     清空
                   </button>
                 )}
               </h2>
-              <div className='flex flex-wrap gap-2'>
+              <div className="flex flex-wrap gap-2">
                 {searchHistory.map((item) => (
-                  <div key={item} className='relative group'>
+                  <div key={item} className="relative group">
                     <button
                       onClick={() => {
                         setSearchQuery(item);
                         router.push(`/search?q=${encodeURIComponent(item.trim())}`);
                       }}
-                      className='px-4 py-2 bg-gray-500/10 hover:bg-gray-300 rounded-full text-sm text-gray-700 transition-colors duration-200 dark:bg-gray-700/50 dark:hover:bg-gray-600 dark:text-gray-300'
+                      className="px-4 py-2 bg-gray-500/10 hover:bg-gray-300 rounded-full text-sm text-gray-700 transition-colors duration-200 dark:bg-gray-700/50 dark:hover:bg-gray-600 dark:text-gray-300"
                     >
                       {item}
                     </button>
                     <button
-                      aria-label='删除搜索历史'
+                      aria-label="删除搜索历史"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         deleteSearchHistory(item);
                       }}
-                      className='absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 bg-gray-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors'
+                      className="absolute -top-1 -right-1 w-4 h-4 opacity-0 group-hover:opacity-100 bg-gray-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] transition-colors"
                     >
-                      <X className='w-3 h-3' />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
