@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,react-hooks/exhaustive-deps,@typescript-eslint/no-empty-function */
 
-import { ExternalLink, Heart, Link, PlayCircleIcon, Radio, Trash2 } from 'lucide-react';
-import Image from 'next/image';
+import { Heart, PlayCircleIcon, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, {
   forwardRef,
@@ -33,15 +32,15 @@ export interface VideoCardProps {
   episodes?: number;
   source_name?: string;
   source_names?: string[];
-  progress?: number;
+  progress?: number; // will rename to _progress if unused
   year?: string;
   from: 'playrecord' | 'favorite' | 'search' | 'douban';
   currentEpisode?: number;
   douban_id?: number;
   onDelete?: () => void;
-  rate?: string;
+  rate?: string; // rename to _rate if unused
   type?: string;
-  isBangumi?: boolean;
+  isBangumi?: boolean; // rename to _isBangumi if unused
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
 }
@@ -63,15 +62,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     source,
     source_name,
     source_names,
-    progress = 0,
+    progress: _progress,
     year,
     from,
     currentEpisode,
     douban_id,
     onDelete,
-    rate,
+    rate: _rate,
     type = '',
-    isBangumi = false,
+    isBangumi: _isBangumi,
     isAggregate = false,
     origin = 'vod',
   }: VideoCardProps,
@@ -82,8 +81,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const [showMobileActions, setShowMobileActions] = useState(false);
   const [searchFavorited, setSearchFavorited] = useState<boolean | null>(null);
   const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(episodes);
-  const [dynamicSourceNames, setDynamicSourceNames] = useState<string[] | undefined>(source_names);
-  const [dynamicDoubanId, setDynamicDoubanId] = useState<number | undefined>(douban_id);
+  const [_dynamicSourceNames, setDynamicSourceNames] = useState<string[] | undefined>(source_names);
+  const [_dynamicDoubanId, setDynamicDoubanId] = useState<number | undefined>(douban_id);
 
   useEffect(() => setDynamicEpisodes(episodes), [episodes]);
   useEffect(() => setDynamicSourceNames(source_names), [source_names]);
@@ -113,7 +112,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       try {
         const fav = await isFavorited(actualSource, actualId);
         setFavorited(fav);
-      } catch {}
+      } catch (err) {
+        // ignore
+      }
     };
 
     fetchFavoriteStatus();
@@ -150,7 +151,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           });
           from === 'search' ? setSearchFavorited(true) : setFavorited(true);
         }
-      } catch {}
+      } catch (err) {
+        // ignore
+      }
     },
     [from, actualSource, actualId, actualTitle, source_name, actualYear, poster, actualEpisodes, favorited, searchFavorited]
   );
@@ -163,7 +166,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       try {
         await deletePlayRecord(actualSource, actualId);
         onDelete?.();
-      } catch {}
+      } catch (err) {
+        // ignore
+      }
     },
     [from, actualSource, actualId, onDelete]
   );
