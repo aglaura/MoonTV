@@ -5,7 +5,10 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
+import {
+  getDoubanCategories,
+  getDoubanRecommends,
+} from '@/lib/douban.client';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
 import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
@@ -13,24 +16,22 @@ import DoubanSelector from '@/components/DoubanSelector';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
+const noop = () => {}; // Fix for empty function ESLint error
+
 function DoubanPageClient() {
   const searchParams = useSearchParams();
-  const type = searchParams.get('type') || 'movie';
-
-  // States
   const [doubanData, setDoubanData] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectorsReady, setSelectorsReady] = useState(false);
-
-  // Ref for infinite scroll
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadingRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef<HTMLDivElement>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Selector states
+  const type = searchParams.get('type') || 'movie';
+
   const [primarySelection, setPrimarySelection] = useState<string>(() => {
     if (type === 'movie') return '热门';
     if (type === 'tv' || type === 'show') return '最近热门';
@@ -54,7 +55,6 @@ function DoubanPageClient() {
     sort: 'T',
   });
 
-  // Ref to store current parameters snapshot
   const currentParamsRef = useRef({
     type,
     primarySelection,
@@ -73,19 +73,17 @@ function DoubanPageClient() {
     };
   }, [type, primarySelection, secondarySelection, multiLevelValues, currentPage]);
 
-  // Mark selectors as ready after a short delay
   useEffect(() => {
     const timer = setTimeout(() => setSelectorsReady(true), 50);
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset selectorsReady when type changes
   useEffect(() => {
     setSelectorsReady(false);
     setLoading(true);
   }, [type]);
 
-  const skeletonData = Array.from({ length: 25 }, (_, i) => i);
+  const skeletonData = Array.from({ length: 25 }, (_, index) => index);
 
   const isSnapshotEqual = useCallback(
     (snapshot1: any, snapshot2: any) => JSON.stringify(snapshot1) === JSON.stringify(snapshot2),
@@ -102,7 +100,6 @@ function DoubanPageClient() {
     [type, primarySelection, secondarySelection]
   );
 
-  // Load initial data
   const loadInitialData = useCallback(async () => {
     const requestSnapshot = {
       type,
@@ -139,7 +136,8 @@ function DoubanPageClient() {
       }
 
       if (data.code === 200) {
-        if (isSnapshotEqual(requestSnapshot, currentParamsRef.current)) {
+        const currentSnapshot = { ...currentParamsRef.current };
+        if (isSnapshotEqual(requestSnapshot, currentSnapshot)) {
           setDoubanData(data.list);
           setHasMore(data.list.length !== 0);
           setLoading(false);
@@ -153,69 +151,66 @@ function DoubanPageClient() {
     }
   }, [type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
 
-  // Debounced initial load
   useEffect(() => {
     if (!selectorsReady) return;
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
 
     debounceTimeoutRef.current = setTimeout(() => loadInitialData(), 100);
-
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
   }, [selectorsReady, loadInitialData]);
 
-  // Load more data on pagination
   useEffect(() => {
-    if (currentPage === 0) return;
+    if (currentPage > 0) {
+      const fetchMoreData = async () => {
+        const requestSnapshot = {
+          type,
+          primarySelection,
+          secondarySelection,
+          multiLevelSelection: multiLevelValues,
+          currentPage,
+        };
 
-    const fetchMoreData = async () => {
-      const requestSnapshot = {
-        type,
-        primarySelection,
-        secondarySelection,
-        multiLevelSelection: multiLevelValues,
-        currentPage,
+        try {
+          setIsLoadingMore(true);
+          let data: DoubanResult;
+
+          if (primarySelection === '全部') {
+            data = await getDoubanRecommends({
+              kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
+              pageLimit: 25,
+              pageStart: currentPage * 25,
+              category: multiLevelValues.type || '',
+              format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
+              region: multiLevelValues.region || '',
+              year: multiLevelValues.year || '',
+              platform: multiLevelValues.platform || '',
+              sort: multiLevelValues.sort || '',
+              label: multiLevelValues.label || '',
+            });
+          } else {
+            data = await getDoubanCategories(getRequestParams(currentPage * 25));
+          }
+
+          if (data.code === 200) {
+            const currentSnapshot = { ...currentParamsRef.current };
+            if (isSnapshotEqual(requestSnapshot, currentSnapshot)) {
+              setDoubanData((prev) => [...prev, ...data.list]);
+              setHasMore(data.list.length !== 0);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsLoadingMore(false);
+        }
       };
 
-      try {
-        setIsLoadingMore(true);
-        let data: DoubanResult;
-
-        if (primarySelection === '全部') {
-          data = await getDoubanRecommends({
-            kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
-            pageLimit: 25,
-            pageStart: currentPage * 25,
-            category: multiLevelValues.type || '',
-            format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
-            region: multiLevelValues.region || '',
-            year: multiLevelValues.year || '',
-            platform: multiLevelValues.platform || '',
-            sort: multiLevelValues.sort || '',
-            label: multiLevelValues.label || '',
-          });
-        } else {
-          data = await getDoubanCategories(getRequestParams(currentPage * 25));
-        }
-
-        if (data.code === 200) {
-          if (isSnapshotEqual(requestSnapshot, currentParamsRef.current)) {
-            setDoubanData((prev) => [...prev, ...data.list]);
-            setHasMore(data.list.length !== 0);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    };
-
-    fetchMoreData();
+      fetchMoreData();
+    }
   }, [currentPage, type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
 
-  // Infinite scroll observer
   useEffect(() => {
     if (!hasMore || isLoadingMore || loading || !loadingRef.current) return;
 
@@ -236,12 +231,6 @@ function DoubanPageClient() {
     };
   }, [hasMore, isLoadingMore, loading]);
 
-  // Callback ref for TypeScript safety
-  const setLoadingRef = useCallback((el: HTMLDivElement | null) => {
-    loadingRef.current = el;
-  }, []);
-
-  // Selector handlers
   const handlePrimaryChange = useCallback((value: string) => {
     if (value !== primarySelection) {
       setLoading(true);
@@ -273,9 +262,15 @@ function DoubanPageClient() {
     setMultiLevelValues(values);
   }, []);
 
-  // Page info
-  const getPageTitle = () => type === 'movie' ? '电影' : type === 'tv' ? '电视剧' : type === 'anime' ? '动漫' : type === 'show' ? '综艺' : '自定义';
+  const getPageTitle = () => {
+    return type === 'movie' ? '电影' :
+      type === 'tv' ? '电视剧' :
+      type === 'anime' ? '动漫' :
+      type === 'show' ? '综艺' : '自定义';
+  };
+
   const getPageDescription = () => '来自豆瓣的精选内容';
+
   const getActivePath = () => {
     const params = new URLSearchParams();
     if (type) params.set('type', type);
@@ -304,7 +299,7 @@ function DoubanPageClient() {
               onPrimaryChange={handlePrimaryChange}
               onSecondaryChange={handleSecondaryChange}
               onMultiLevelChange={handleMultiLevelChange}
-              onWeekdayChange={() => {}}
+              onWeekdayChange={noop} // Fixed ESLint error
             />
           </div>
         </div>
@@ -314,24 +309,24 @@ function DoubanPageClient() {
             {loading || !selectorsReady
               ? skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
               : doubanData.map((item, index) => (
-                  <div key={`${item.title}-${index}`} className='w-full'>
-                    <VideoCard
-                      from='douban'
-                      title={item.title}
-                      poster={item.poster}
-                      douban_id={Number(item.id)}
-                      rate={item.rate}
-                      year={item.year}
-                      type={type === 'movie' ? 'movie' : ''}
-                      isBangumi={false}
-                    />
-                  </div>
-                ))}
+                <div key={`${item.title}-${index}`} className='w-full'>
+                  <VideoCard
+                    from='douban'
+                    title={item.title}
+                    poster={item.poster}
+                    douban_id={Number(item.id)}
+                    rate={item.rate}
+                    year={item.year}
+                    type={type === 'movie' ? 'movie' : ''}
+                    isBangumi={false}
+                  />
+                </div>
+              ))}
           </div>
 
           {hasMore && !loading && (
             <div
-              ref={setLoadingRef}
+              ref={loadingRef}
               className='flex justify-center mt-12 py-8'
             >
               {isLoadingMore && (
