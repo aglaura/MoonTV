@@ -6,6 +6,8 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
+import OpenCC from 'opencc-js';
+
 import {
   clearAllFavorites,
   getAllFavorites,
@@ -29,19 +31,9 @@ function HomeClient() {
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { announcement } = useSite();
-
   const [showAnnouncement, setShowAnnouncement] = useState(false);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && announcement) {
-      const hasSeenAnnouncement = localStorage.getItem('hasSeenAnnouncement');
-      if (hasSeenAnnouncement !== announcement) {
-        setShowAnnouncement(true);
-      } else {
-        setShowAnnouncement(Boolean(!hasSeenAnnouncement && announcement));
-      }
-    }
-  }, [announcement]);
+  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
   type FavoriteItem = {
     id: string;
@@ -55,34 +47,34 @@ function HomeClient() {
     origin?: 'vod' | 'live';
   };
 
-  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+  const converter = OpenCC.simplifiedToTraditional;
 
+  // Announcement handling
+  useEffect(() => {
+    if (!announcement) return;
+    const hasSeen = localStorage.getItem('hasSeenAnnouncement');
+    setShowAnnouncement(hasSeen !== announcement);
+  }, [announcement]);
+
+  // Fetch recommended data
   useEffect(() => {
     const fetchRecommendData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
+        const categories = [
+          { kind: 'movie', category: '熱門', type: '全部', setter: setHotMovies },
+          { kind: 'tv', category: 'tv', type: 'tv', setter: setHotTvShows },
+          { kind: 'tv', category: 'show', type: 'show', setter: setHotVarietyShows },
+        ];
 
-        const [moviesData, tvShowsData, varietyShowsData] = await Promise.all([
-          getDoubanCategories({
-            kind: 'movie',
-            category: '热门',
-            type: '全部',
-          }),
-          getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
-          getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
-        ]);
-
-        if (moviesData.code === 200) {
-          setHotMovies(moviesData.list);
-        }
-        if (tvShowsData.code === 200) {
-          setHotTvShows(tvShowsData.list);
-        }
-        if (varietyShowsData.code === 200) {
-          setHotVarietyShows(varietyShowsData.list);
-        }
-      } catch (error) {
-        console.error('获取推荐数据失败:', error);
+        await Promise.all(
+          categories.map(async ({ kind, category, type, setter }) => {
+            const data = await getDoubanCategories({ kind, category, type });
+            if (data.code === 200) setter(data.list);
+          })
+        );
+      } catch (err) {
+        console.error('獲取推薦數據失敗:', err);
       } finally {
         setLoading(false);
       }
@@ -91,19 +83,14 @@ function HomeClient() {
     fetchRecommendData();
   }, []);
 
+  // Update favorites
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
     const allPlayRecords = await getAllPlayRecords();
-
     const sorted = Object.entries(allFavorites)
       .sort(([, a], [, b]) => b.save_time - a.save_time)
       .map(([key, fav]) => {
-        const plusIndex = key.indexOf('+');
-        const source = key.slice(0, plusIndex);
-        const id = key.slice(plusIndex + 1);
-
+        const [source, id] = key.split('+');
         const playRecord = allPlayRecords[key];
-        const currentEpisode = playRecord?.index;
-
         return {
           id,
           source,
@@ -112,7 +99,7 @@ function HomeClient() {
           poster: fav.cover,
           episodes: fav.total_episodes,
           source_name: fav.source_name,
-          currentEpisode,
+          currentEpisode: playRecord?.index,
           search_title: fav?.search_title,
           origin: fav?.origin,
         } as FavoriteItem;
@@ -120,6 +107,7 @@ function HomeClient() {
     setFavoriteItems(sorted);
   };
 
+  // Load favorites when tab is active
   useEffect(() => {
     if (activeTab !== 'favorites') return;
 
@@ -145,14 +133,21 @@ function HomeClient() {
     localStorage.setItem('hasSeenAnnouncement', announcement);
   };
 
+  const LoadingCard = () => (
+    <div className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
+      <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
+    </div>
+  );
+
   return (
     <PageLayout>
       <div className="px-2 sm:px-10 py-4 sm:py-8 overflow-visible">
         <div className="mb-8 flex justify-center">
           <CapsuleSwitch
             options={[
-              { label: '首页', value: 'home' },
-              { label: '收藏夹', value: 'favorites' },
+              { label: '首頁', value: 'home' },
+              { label: '收藏夾', value: 'favorites' },
             ]}
             active={activeTab}
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
@@ -179,20 +174,21 @@ function HomeClient() {
                 )}
               </div>
               <div className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8">
-                {favoriteItems.map((item) => (
-                  <div key={item.id + item.source} className="w-full">
-                    <VideoCard
-                      query={item.search_title}
-                      {...item}
-                      from="favorite"
-                      type={item.episodes > 1 ? 'tv' : ''}
-                    />
-                  </div>
-                ))}
-                {favoriteItems.length === 0 && (
+                {favoriteItems.length === 0 ? (
                   <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
-                    暂无收藏内容
+                    暫無收藏內容
                   </div>
+                ) : (
+                  favoriteItems.map((item) => (
+                    <div key={item.id + item.source} className="w-full">
+                      <VideoCard
+                        query={item.search_title}
+                        {...item}
+                        from="favorite"
+                        type={item.episodes > 1 ? 'tv' : ''}
+                      />
+                    </div>
+                  ))
                 )}
               </div>
             </section>
@@ -200,11 +196,11 @@ function HomeClient() {
             <>
               <ContinueWatching />
 
-              {/* 热门电影 */}
+              {/* 熱門電影 */}
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                    热门电影
+                    熱門電影
                   </h2>
                   <Link
                     href="/douban?type=movie"
@@ -216,23 +212,12 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
-                          <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
-                          <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
-                        </div>
-                      ))
-                    : hotMovies.map((movie, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
+                    ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />)
+                    : hotMovies.map((movie) => (
+                        <div key={movie.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
                           <VideoCard
                             from="douban"
-                            title={movie.title}
+                            title={converter(movie.title)}
                             poster={movie.poster}
                             douban_id={Number(movie.id)}
                             rate={movie.rate}
@@ -244,11 +229,11 @@ function HomeClient() {
                 </ScrollableRow>
               </section>
 
-              {/* 热门剧集 */}
+              {/* 熱門劇集 */}
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                    热门剧集
+                    熱門劇集
                   </h2>
                   <Link
                     href="/douban?type=tv"
@@ -260,23 +245,12 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
-                          <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
-                          <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
-                        </div>
-                      ))
-                    : hotTvShows.map((show, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
+                    ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />)
+                    : hotTvShows.map((show) => (
+                        <div key={show.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
                           <VideoCard
                             from="douban"
-                            title={show.title}
+                            title={converter(show.title)}
                             poster={show.poster}
                             douban_id={Number(show.id)}
                             rate={show.rate}
@@ -287,11 +261,11 @@ function HomeClient() {
                 </ScrollableRow>
               </section>
 
-              {/* 热门综艺 */}
+              {/* 熱門綜藝 */}
               <section className="mb-8">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                    热门综艺
+                    熱門綜藝
                   </h2>
                   <Link
                     href="/douban?type=show"
@@ -303,23 +277,12 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
-                          <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800" />
-                          <div className="mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800" />
-                        </div>
-                      ))
-                    : hotVarietyShows.map((show, index) => (
-                        <div
-                          key={index}
-                          className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44"
-                        >
+                    ? Array.from({ length: 8 }).map((_, i) => <LoadingCard key={i} />)
+                    : hotVarietyShows.map((show) => (
+                        <div key={show.id} className="min-w-[96px] w-24 sm:min-w-[180px] sm:w-44">
                           <VideoCard
                             from="douban"
-                            title={show.title}
+                            title={converter(show.title)}
                             poster={show.poster}
                             douban_id={Number(show.id)}
                             rate={show.rate}
@@ -333,6 +296,8 @@ function HomeClient() {
           )}
         </div>
       </div>
+
+      {/* Announcement Modal */}
       {announcement && showAnnouncement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm dark:bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900">
@@ -343,14 +308,14 @@ function HomeClient() {
               <button
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white"
-                aria-label="关闭"
+                aria-label="關閉"
               />
             </div>
             <div className="mb-6">
               <div className="relative overflow-hidden rounded-lg mb-4 bg-green-50 dark:bg-green-900/20">
                 <div className="absolute inset-y-0 left-0 w-1.5 bg-green-500 dark:bg-green-400"></div>
                 <p className="ml-4 text-gray-600 dark:text-gray-300 leading-relaxed">
-                  {announcement}
+                  {converter(announcement)}
                 </p>
               </div>
             </div>
@@ -369,7 +334,7 @@ function HomeClient() {
 
 export default function Home() {
   return (
-    <Suspense>
+    <Suspense fallback={<div className="text-center py-8">載入中...</div>}>
       <HomeClient />
     </Suspense>
   );
