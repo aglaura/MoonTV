@@ -154,7 +154,7 @@ function setCorsHeaders(headers) {
 // 返回根目录的 HTML
 function getRootHtml() {
   return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
@@ -164,7 +164,7 @@ function getRootHtml() {
   <meta property="og:description" content="Proxy Everything with CF Workers.">
   <meta property="og:image" content="https://img.icons8.com/color/1000/kawaii-bread-1.png">
   <meta name="robots" content="index, follow">
-  <meta http-equiv="Content-Language" content="zh-CN">
+  <meta http-equiv="Content-Language" content="zh-TW">
   <meta name="copyright" content="Copyright © ymyuuu">
   <meta name="author" content="ymyuuu">
   <link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://img.icons8.com/color/1000/kawaii-bread-1.png">
@@ -215,10 +215,10 @@ function getRootHtml() {
                           <span class="card-title center-align"><i class="material-icons left">link</i>Proxy Everything</span>
                           <form id="urlForm" onsubmit="redirectToProxy(event)">
                               <div class="input-field">
-                                  <input type="text" id="targetUrl" placeholder="在此输入目标地址" required>
-                                  <label for="targetUrl">目标地址</label>
+                                  <input type="text" id="targetUrl" placeholder="在此輸入目標地址" required>
+                                  <label for="targetUrl">目標地址</label>
                               </div>
-                              <button type="submit" class="btn waves-effect waves-light teal darken-2 full-width">跳转</button>
+                              <button type="submit" class="btn waves-effect waves-light teal darken-2 full-width">跳轉</button>
                           </form>
                       </div>
                   </div>

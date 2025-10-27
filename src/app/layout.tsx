@@ -57,7 +57,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang='zh-CN' suppressHydrationWarning>
+    <html lang='zh-TW' suppressHydrationWarning>
       <head>
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}

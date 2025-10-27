@@ -48,7 +48,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
         const allRecords = await getAllPlayRecords();
         updatePlayRecords(allRecords);
       } catch (error) {
-        console.error('获取播放记录失败:', error);
+        console.error('獲取播放紀錄失敗:', error);
         setPlayRecords([]);
       } finally {
         setLoading(false);
@@ -89,7 +89,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-          继续观看
+          繼續觀看
         </h2>
         {!loading && playRecords.length > 0 && (
           <button

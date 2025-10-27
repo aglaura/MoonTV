@@ -194,7 +194,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         const fav = await isFavorited(actualSource, actualId);
         setFavorited(fav);
       } catch (err) {
-        throw new Error('检查收藏状态失败');
+        throw new Error('檢查收藏狀態失敗');
       }
     };
 
@@ -249,7 +249,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           }
         }
       } catch (err) {
-        throw new Error('切换收藏状态失败');
+        throw new Error('切換收藏狀態失敗');
       }
     },
     [
@@ -275,7 +275,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         await deletePlayRecord(actualSource, actualId);
         onDelete?.();
       } catch (err) {
-        throw new Error('删除播放记录失败');
+        throw new Error('刪除播放記錄失敗');
       }
     },
     [from, actualSource, actualId, onDelete]
@@ -426,7 +426,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     if (config.showPlayButton) {
       actions.push({
         id: 'play',
-        label: origin === 'live' ? '观看直播' : '播放',
+        label: origin === 'live' ? '觀看直播' : '播放',
         icon: <PlayCircleIcon size={20} />,
         onClick: handleClick,
         color: 'primary' as const,
@@ -435,7 +435,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       // 新标签页播放
       actions.push({
         id: 'play-new-tab',
-        label: origin === 'live' ? '新标签页观看' : '新标签页播放',
+        label: origin === 'live' ? '新分頁觀看' : '新分頁播放',
         icon: <ExternalLink size={20} />,
         onClick: handlePlayInNewTab,
         color: 'default' as const,
@@ -454,7 +454,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           // 已加载完成，显示实际的收藏状态
           actions.push({
             id: 'favorite',
-            label: currentFavorited ? '取消收藏' : '添加收藏',
+            label: currentFavorited ? '取消收藏' : '加入收藏',
             icon: currentFavorited ? (
               <Heart size={20} className="fill-red-600 stroke-red-600" />
             ) : (
@@ -473,7 +473,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           // 正在加载中，显示占位项
           actions.push({
             id: 'favorite-loading',
-            label: '收藏加载中...',
+            label: '收藏載入中...',
             icon: <Heart size={20} />,
             onClick: () => { }, // 加载中时不响应点击
             disabled: true,
@@ -483,7 +483,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
         // 非搜索结果：直接显示收藏选项
         actions.push({
           id: 'favorite',
-          label: currentFavorited ? '取消收藏' : '添加收藏',
+          label: currentFavorited ? '取消收藏' : '加入收藏',
           icon: currentFavorited ? (
             <Heart size={20} className="fill-red-600 stroke-red-600" />
           ) : (
@@ -505,7 +505,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     if (config.showCheckCircle && from === 'playrecord' && actualSource && actualId) {
       actions.push({
         id: 'delete',
-        label: '删除记录',
+        label: '刪除記錄',
         icon: <Trash2 size={20} />,
         onClick: () => {
           const mockEvent = {
@@ -522,7 +522,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     if (config.showDoubanLink && actualDoubanId && actualDoubanId !== 0) {
       actions.push({
         id: 'douban',
-        label: isBangumi ? 'Bangumi 详情' : '豆瓣详情',
+        label: isBangumi ? 'Bangumi 詳情' : '豆瓣詳情',
         icon: <Link size={20} />,
         onClick: () => {
           const url = isBangumi

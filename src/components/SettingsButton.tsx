@@ -143,12 +143,12 @@ export const SettingsButton: React.FC = () => {
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-3'>
             <h3 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-              本地设置
+              本地設定
             </h3>
             <button
               onClick={handleResetSettings}
               className='px-2 py-1 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 hover:border-red-300 dark:border-red-800 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors'
-              title='重置为默认设置'
+              title='重置為預設設定'
             >
               重置
             </button>
@@ -168,10 +168,10 @@ export const SettingsButton: React.FC = () => {
           <div className='flex items-center justify-between'>
             <div>
               <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                默认聚合搜索结果
+                預設聚合搜尋結果
               </h4>
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                搜索时默认按标题和年份聚合显示结果
+                搜尋時預設按標題與年份聚合顯示結果
               </p>
             </div>
             <label className='flex items-center cursor-pointer'>
@@ -192,10 +192,10 @@ export const SettingsButton: React.FC = () => {
           <div className='flex items-center justify-between'>
             <div>
               <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                启用优选和测速
+                啟用優選與測速
               </h4>
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                如出现播放器劫持问题可关闭
+                如出現播放器劫持問題可關閉
               </p>
             </div>
             <label className='flex items-center cursor-pointer'>
@@ -216,16 +216,16 @@ export const SettingsButton: React.FC = () => {
           <div className='space-y-3'>
             <div>
               <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                豆瓣数据代理
+                豆瓣數據代理
               </h4>
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                设置代理URL以绕过豆瓣访问限制，留空则使用服务端API
+                設定代理 URL 以繞過豆瓣訪問限制，留空則使用服務端 API
               </p>
             </div>
             <input
               type='text'
               className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-              placeholder='例如: https://proxy.example.com/fetch?url='
+              placeholder='例如：https://proxy.example.com/fetch?url='
               value={doubanProxyUrl}
               onChange={(e) => handleDoubanProxyUrlChange(e.target.value)}
             />
@@ -235,10 +235,10 @@ export const SettingsButton: React.FC = () => {
           <div className='flex items-center justify-between'>
             <div>
               <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                启用图片代理
+                啟用圖片代理
               </h4>
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                启用后，所有图片加载将通过代理服务器
+                啟用後，所有圖片載入將透過代理伺服器
               </p>
             </div>
             <label className='flex items-center cursor-pointer'>
@@ -259,10 +259,10 @@ export const SettingsButton: React.FC = () => {
           <div className='space-y-3'>
             <div>
               <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-                图片代理地址
+                圖片代理地址
               </h4>
               <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                仅在启用图片代理时生效
+                僅在啟用圖片代理時生效
               </p>
             </div>
             <input
@@ -272,7 +272,7 @@ export const SettingsButton: React.FC = () => {
                   ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400'
                   : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-600 cursor-not-allowed'
               }`}
-              placeholder='例如: https://imageproxy.example.com/?url='
+              placeholder='例如：https://imageproxy.example.com/?url='
               value={imageProxyUrl}
               onChange={(e) => handleImageProxyUrlChange(e.target.value)}
               disabled={!enableImageProxy}
@@ -283,7 +283,7 @@ export const SettingsButton: React.FC = () => {
         {/* 底部说明 */}
         <div className='mt-6 pt-4 border-t border-gray-200 dark:border-gray-700'>
           <p className='text-xs text-gray-500 dark:text-gray-400 text-center'>
-            这些设置保存在本地浏览器中
+            這些設定保存在本地瀏覽器中
           </p>
         </div>
       </div>
@@ -295,7 +295,7 @@ export const SettingsButton: React.FC = () => {
       <button
         onClick={handleSettingsClick}
         className='w-10 h-10 p-2 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200/50 dark:text-gray-300 dark:hover:bg-gray-700/50 transition-colors'
-        aria-label='Settings'
+        aria-label='設定'
       >
         <Settings className='w-full h-full' />
       </button>

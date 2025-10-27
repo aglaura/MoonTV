@@ -124,6 +124,7 @@ function DoubanPageClient() {
           pageLimit: 25,
           pageStart: 0,
           category: multiLevelValues.type || '',
+          // 豆瓣 API 僅接受簡體分類字樣，這裡保持簡體參數
           format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
           region: multiLevelValues.region || '',
           year: multiLevelValues.year || '',
@@ -143,7 +144,7 @@ function DoubanPageClient() {
           setLoading(false);
         }
       } else {
-        throw new Error(data.message || '获取数据失败');
+        throw new Error(data.message || '獲取資料失敗');
       }
     } catch (err) {
       console.error(err);
@@ -263,13 +264,13 @@ function DoubanPageClient() {
   }, []);
 
   const getPageTitle = () => {
-    return type === 'movie' ? '电影' :
-      type === 'tv' ? '电视剧' :
-      type === 'anime' ? '动漫' :
-      type === 'show' ? '综艺' : '自定义';
+    return type === 'movie' ? '電影' :
+      type === 'tv' ? '電視劇' :
+      type === 'anime' ? '動漫' :
+      type === 'show' ? '綜藝' : '自訂';
   };
 
-  const getPageDescription = () => '来自豆瓣的精选内容';
+  const getPageDescription = () => '來自豆瓣的精選內容';
 
   const getActivePath = () => {
     const params = new URLSearchParams();
@@ -332,18 +333,18 @@ function DoubanPageClient() {
               {isLoadingMore && (
                 <div className='flex items-center gap-2'>
                   <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
-                  <span className='text-gray-600'>加载中...</span>
+                  <span className='text-gray-600'>加載中...</span>
                 </div>
               )}
             </div>
           )}
 
           {!hasMore && doubanData.length > 0 && (
-            <div className='text-center text-gray-500 py-8'>已加载全部内容</div>
+            <div className='text-center text-gray-500 py-8'>已加載全部內容</div>
           )}
 
           {!loading && doubanData.length === 0 && (
-            <div className='text-center text-gray-500 py-8'>暂无相关内容</div>
+            <div className='text-center text-gray-500 py-8'>暫無相關內容</div>
           )}
         </div>
       </div>

@@ -191,7 +191,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    Home
+                    首頁
                   </span>
                 )}
               </Link>
@@ -212,7 +212,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    Search.....
+                    搜尋
                   </span>
                 )}
               </Link>

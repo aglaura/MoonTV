@@ -10,13 +10,13 @@ interface WeekdaySelectorProps {
 }
 
 const weekdays = [
-  { value: 'Mon', label: '周一', shortLabel: '周一' },
-  { value: 'Tue', label: '周二', shortLabel: '周二' },
-  { value: 'Wed', label: '周三', shortLabel: '周三' },
-  { value: 'Thu', label: '周四', shortLabel: '周四' },
-  { value: 'Fri', label: '周五', shortLabel: '周五' },
-  { value: 'Sat', label: '周六', shortLabel: '周六' },
-  { value: 'Sun', label: '周日', shortLabel: '周日' },
+  { value: 'Mon', label: '週一', shortLabel: '週一' },
+  { value: 'Tue', label: '週二', shortLabel: '週二' },
+  { value: 'Wed', label: '週三', shortLabel: '週三' },
+  { value: 'Thu', label: '週四', shortLabel: '週四' },
+  { value: 'Fri', label: '週五', shortLabel: '週五' },
+  { value: 'Sat', label: '週六', shortLabel: '週六' },
+  { value: 'Sun', label: '週日', shortLabel: '週日' },
 ];
 
 const WeekdaySelector: React.FC<WeekdaySelectorProps> = ({

@@ -122,7 +122,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       // 失败时保存错误状态
       setVideoInfoMap((prev) =>
         new Map(prev).set(sourceKey, {
-          quality: '错误',
+          quality: '錯誤',
           loadSpeed: '未知',
           pingTime: 0,
           hasError: true,
@@ -292,7 +292,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
               }
             `.trim()}
           >
-            选集
+            選集
           </div>
         )}
         <div
@@ -305,7 +305,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             }
           `.trim()}
         >
-          换源
+          換源
         </div>
       </div>
 
@@ -499,13 +499,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               const sourceKey = `${source.source}-${source.id}`;
                               const videoInfo = videoInfoMap.get(sourceKey);
 
-                              if (videoInfo && videoInfo.quality !== '未知') {
-                                if (videoInfo.hasError) {
-                                  return (
-                                    <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
-                                      检测失败
-                                    </div>
-                                  );
+                                if (videoInfo && videoInfo.quality !== '未知') {
+                                  if (videoInfo.hasError) {
+                                    return (
+                                      <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
+                                      檢測失敗
+                                      </div>
+                                    );
                                 } else {
                                   // 根据分辨率设置不同颜色：2K、4K为紫色，1080p、720p为绿色，其他为黄色
                                   const isUltraHigh = ['4K', '2K'].includes(
@@ -566,7 +566,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 } else {
                                   return (
                                     <div className='text-red-500/90 dark:text-red-400 font-medium text-xs'>
-                                      无测速数据
+                                      無測速數據
                                     </div>
                                   ); // 占位div
                                 }
@@ -588,7 +588,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     }}
                     className='w-full text-center text-xs text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors py-2'
                   >
-                    影片匹配有误？点击去搜索
+                    影片匹配有誤？點擊去搜尋
                   </button>
                 </div>
               </div>

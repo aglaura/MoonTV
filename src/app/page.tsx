@@ -73,6 +73,7 @@ function HomeClient() {
         setLoading(true);
 
         // 并行获取热门电影、热门剧集和热门综艺
+        // 豆瓣 API 只接受簡體分類標籤（例如 '热门'），所以相關參數保持簡體字
         const [moviesData, tvShowsData, varietyShowsData, bangumiCalendarData] =
           await Promise.all([
             getDoubanCategories({
@@ -99,7 +100,7 @@ function HomeClient() {
 
         setBangumiCalendarData(bangumiCalendarData);
       } catch (error) {
-        console.error('获取推荐数据失败:', error);
+        console.error('獲取推薦資料失敗:', error);
       } finally {
         setLoading(false);
       }
@@ -174,8 +175,8 @@ function HomeClient() {
         <div className='mb-8 flex justify-center'>
           <CapsuleSwitch
             options={[
-              { label: '首页', value: 'home' },
-              { label: '收藏夹', value: 'favorites' },
+              { label: '首頁', value: 'home' },
+              { label: '收藏夾', value: 'favorites' },
             ]}
             active={activeTab}
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
@@ -184,7 +185,7 @@ function HomeClient() {
 
         <div className='max-w-[95%] mx-auto'>
           {activeTab === 'favorites' ? (
-            // 收藏夹视图
+            // 收藏夾視圖
             <section className='mb-8'>
               <div className='mb-4 flex items-center justify-between'>
                 <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
@@ -215,22 +216,22 @@ function HomeClient() {
                 ))}
                 {favoriteItems.length === 0 && (
                   <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    暂无收藏内容
+                    暫無收藏內容
                   </div>
                 )}
               </div>
             </section>
           ) : (
-            // 首页视图
+            // 首頁視圖
             <>
               {/* 继续观看 */}
               <ContinueWatching />
 
-              {/* 热门电影 */}
+              {/* 熱門電影 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门电影
+                    熱門電影
                   </h2>
                   <Link
                     href='/douban?type=movie'
@@ -242,7 +243,7 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? // 加载状态显示灰色占位数据
+                    ? // 加載狀態顯示灰色占位數據
                     Array.from({ length: 8 }).map((_, index) => (
                       <div
                         key={index}
@@ -254,7 +255,7 @@ function HomeClient() {
                         <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                       </div>
                     ))
-                    : // 显示真实数据
+                    : // 顯示真實數據
                     hotMovies.map((movie, index) => (
                       <div
                         key={index}
@@ -274,11 +275,11 @@ function HomeClient() {
                 </ScrollableRow>
               </section>
 
-              {/* 热门剧集 */}
+              {/* 熱門劇集 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门剧集
+                    熱門劇集
                   </h2>
                   <Link
                     href='/douban?type=tv'
@@ -290,7 +291,7 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? // 加载状态显示灰色占位数据
+                    ? // 加載狀態顯示灰色占位數據
                     Array.from({ length: 8 }).map((_, index) => (
                       <div
                         key={index}
@@ -302,7 +303,7 @@ function HomeClient() {
                         <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                       </div>
                     ))
-                    : // 显示真实数据
+                    : // 顯示真實數據
                     hotTvShows.map((show, index) => (
                       <div
                         key={index}
@@ -337,7 +338,7 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? // 加载状态显示灰色占位数据
+                    ? // 加載狀態顯示灰色占位數據
                     Array.from({ length: 8 }).map((_, index) => (
                       <div
                         key={index}
@@ -349,9 +350,9 @@ function HomeClient() {
                         <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                       </div>
                     ))
-                    : // 展示当前日期的番剧
+                    : // 展示當前日期的番劇
                     (() => {
-                      // 获取当前日期对应的星期
+                      // 獲取當前日期對應的星期
                       const today = new Date();
                       const weekdays = [
                         'Sun',
@@ -364,7 +365,7 @@ function HomeClient() {
                       ];
                       const currentWeekday = weekdays[today.getDay()];
 
-                      // 找到当前星期对应的番剧数据
+                      // 找到當前星期對應的番劇數據
                       const todayAnimes =
                         bangumiCalendarData.find(
                           (item) => item.weekday.en === currentWeekday
@@ -396,11 +397,11 @@ function HomeClient() {
                 </ScrollableRow>
               </section>
 
-              {/* 热门综艺 */}
+              {/* 熱門綜藝 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    热门综艺
+                    熱門綜藝
                   </h2>
                   <Link
                     href='/douban?type=show'
@@ -412,7 +413,7 @@ function HomeClient() {
                 </div>
                 <ScrollableRow>
                   {loading
-                    ? // 加载状态显示灰色占位数据
+                    ? // 加載狀態顯示灰色占位數據
                     Array.from({ length: 8 }).map((_, index) => (
                       <div
                         key={index}
@@ -424,7 +425,7 @@ function HomeClient() {
                         <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                       </div>
                     ))
-                    : // 显示真实数据
+                    : // 顯示真實數據
                     hotVarietyShows.map((show, index) => (
                       <div
                         key={index}
@@ -451,36 +452,36 @@ function HomeClient() {
           className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm dark:bg-black/70 p-4 transition-opacity duration-300 ${showAnnouncement ? '' : 'opacity-0 pointer-events-none'
             }`}
           onTouchStart={(e) => {
-            // 如果点击的是背景区域，阻止触摸事件冒泡，防止背景滚动
+            // 如果點擊的是背景區域，阻止觸摸事件冒泡，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
             }
           }}
           onTouchMove={(e) => {
-            // 如果触摸的是背景区域，阻止触摸移动，防止背景滚动
+            // 如果觸摸的是背景區域，阻止觸摸移動，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
               e.stopPropagation();
             }
           }}
           onTouchEnd={(e) => {
-            // 如果触摸的是背景区域，阻止触摸结束事件，防止背景滚动
+            // 如果觸摸的是背景區域，阻止觸摸結束事件，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
             }
           }}
           style={{
-            touchAction: 'none', // 禁用所有触摸操作
+            touchAction: 'none', // 禁用所有觸摸操作
           }}
         >
           <div
             className='w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900 transform transition-all duration-300 hover:shadow-2xl'
             onTouchMove={(e) => {
-              // 允许公告内容区域正常滚动，阻止事件冒泡到外层
+              // 允許公告內容區域正常滾動，阻止事件冒泡到外層
               e.stopPropagation();
             }}
             style={{
-              touchAction: 'auto', // 允许内容区域的正常触摸操作
+              touchAction: 'auto', // 允許內容區域的正常觸摸操作
             }}
           >
             <div className='flex justify-between items-start mb-4'>
@@ -490,7 +491,7 @@ function HomeClient() {
               <button
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className='text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white transition-colors'
-                aria-label='关闭'
+                aria-label='關閉'
               ></button>
             </div>
             <div className='mb-6'>

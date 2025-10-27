@@ -42,14 +42,14 @@ function PlayPageClient() {
   const [loadingStage, setLoadingStage] = useState<
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
-  const [loadingMessage, setLoadingMessage] = useState('正在搜索播放源...');
+  const [loadingMessage, setLoadingMessage] = useState('正在搜尋播放源...');
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SearchResult | null>(null);
 
   // 收藏状态
   const [favorited, setFavorited] = useState(false);
 
-  // 去广告开关（从 localStorage 继承，默认 true）
+  // 去廣告开关（从 localStorage 继承，默认 true）
   const [blockAdEnabled, setBlockAdEnabled] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const v = localStorage.getItem('enable_blockad');
@@ -242,7 +242,7 @@ function PlayPageClient() {
     setPrecomputedVideoInfo(newVideoInfoMap);
 
     if (successfulResults.length === 0) {
-      console.warn('所有播放源测速都失败，使用第一个播放源');
+      console.warn('所有播放源測速都失敗，使用第一個播放源');
       return sources[0];
     }
 
@@ -250,7 +250,7 @@ function PlayPageClient() {
     const validSpeeds = successfulResults
       .map((result) => {
         const speedStr = result.testResult.loadSpeed;
-        if (speedStr === '未知' || speedStr === '测量中...') return 0;
+        if (speedStr === '未知' || speedStr === '測量中...') return 0;
 
         const match = speedStr.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
         if (!match) return 0;
@@ -285,7 +285,7 @@ function PlayPageClient() {
     // 按综合评分排序，选择最佳播放源
     resultsWithScore.sort((a, b) => b.score - a.score);
 
-    console.log('播放源评分排序结果:');
+    console.log('播放源評分排序結果:');
     resultsWithScore.forEach((result, index) => {
       console.log(
         `${index + 1}. ${
@@ -336,7 +336,7 @@ function PlayPageClient() {
     // 下载速度评分 (40% 权重) - 基于最大速度线性映射
     const speedScore = (() => {
       const speedStr = testResult.loadSpeed;
-      if (speedStr === '未知' || speedStr === '测量中...') return 30;
+      if (speedStr === '未知' || speedStr === '測量中...') return 30;
 
       // 解析速度值
       const match = speedStr.match(/^([\d.]+)\s*(KB\/s|MB\/s)$/);
@@ -408,7 +408,7 @@ function PlayPageClient() {
     }
   };
 
-  // 去广告相关函数
+  // 去廣告相关函数
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
 
@@ -474,13 +474,13 @@ function PlayPageClient() {
           `/api/detail?source=${source}&id=${id}`
         );
         if (!detailResponse.ok) {
-          throw new Error('获取视频详情失败');
+          throw new Error('獲取影片詳情失敗');
         }
         const detailData = (await detailResponse.json()) as SearchResult;
         setAvailableSources([detailData]);
         return [detailData];
       } catch (err) {
-        console.error('获取视频详情失败:', err);
+        console.error('獲取影片詳情失敗:', err);
         return [];
       } finally {
         setSourceSearchLoading(false);
@@ -493,7 +493,7 @@ function PlayPageClient() {
           `/api/search?q=${encodeURIComponent(query.trim())}`
         );
         if (!response.ok) {
-          throw new Error('搜索失败');
+          throw new Error('搜尋失敗');
         }
         const data = await response.json();
 
@@ -513,7 +513,7 @@ function PlayPageClient() {
         setAvailableSources(results);
         return results;
       } catch (err) {
-        setSourceSearchError(err instanceof Error ? err.message : '搜索失败');
+        setSourceSearchError(err instanceof Error ? err.message : '搜尋失敗');
         setAvailableSources([]);
         return [];
       } finally {
@@ -523,7 +523,7 @@ function PlayPageClient() {
 
     const initAll = async () => {
       if (!currentSource && !currentId && !videoTitle && !searchTitle) {
-        setError('缺少必要参数');
+        setError('缺少必要參數');
         setLoading(false);
         return;
       }
@@ -546,7 +546,7 @@ function PlayPageClient() {
         sourcesInfo = await fetchSourceDetail(currentSource, currentId);
       }
       if (sourcesInfo.length === 0) {
-        setError('未找到匹配结果');
+        setError('未找到匹配結果');
         setLoading(false);
         return;
       }
@@ -560,7 +560,7 @@ function PlayPageClient() {
         if (target) {
           detailData = target;
         } else {
-          setError('未找到匹配结果');
+          setError('未找到匹配結果');
           setLoading(false);
           return;
         }
@@ -572,7 +572,7 @@ function PlayPageClient() {
         optimizationEnabled
       ) {
         setLoadingStage('preferring');
-        setLoadingMessage('⚡ 正在优选最佳播放源...');
+        setLoadingMessage('⚡ 正在優選最佳播放源...');
 
         detailData = await preferBestSource(sourcesInfo);
       }
@@ -600,7 +600,7 @@ function PlayPageClient() {
       window.history.replaceState({}, '', newUrl.toString());
 
       setLoadingStage('ready');
-      setLoadingMessage('✨ 准备就绪，即将开始播放...');
+      setLoadingMessage('✨ 準備就緒，即將開始播放...');
 
       // 短暂延迟让用户看到完成状态
       setTimeout(() => {
@@ -635,7 +635,7 @@ function PlayPageClient() {
           resumeTimeRef.current = targetTime;
         }
       } catch (err) {
-        console.error('读取播放记录失败:', err);
+        console.error('讀取播放紀錄失敗:', err);
       }
     };
 
@@ -649,13 +649,13 @@ function PlayPageClient() {
     newTitle: string
   ) => {
     try {
-      // 显示换源加载状态
+      // 顯示换源加载状态
       setVideoLoadingStage('sourceChanging');
       setIsVideoLoading(true);
 
       // 记录当前播放进度（仅在同一集数切换时恢复）
       const currentPlayTime = artPlayerRef.current?.currentTime || 0;
-      console.log('换源前当前播放时间:', currentPlayTime);
+      console.log('換源前當前播放時間:', currentPlayTime);
 
       // 清除前一个历史记录
       if (currentSourceRef.current && currentIdRef.current) {
@@ -664,9 +664,9 @@ function PlayPageClient() {
             currentSourceRef.current,
             currentIdRef.current
           );
-          console.log('已清除前一个播放记录');
+          console.log('已清除前一個播放紀錄');
         } catch (err) {
-          console.error('清除播放记录失败:', err);
+          console.error('清除播放紀錄失敗:', err);
         }
       }
 
@@ -674,7 +674,7 @@ function PlayPageClient() {
         (source) => source.source === newSource && source.id === newId
       );
       if (!newDetail) {
-        setError('未找到匹配结果');
+        setError('未找到匹配結果');
         return;
       }
 
@@ -711,9 +711,9 @@ function PlayPageClient() {
       setDetail(newDetail);
       setCurrentEpisodeIndex(targetIndex);
     } catch (err) {
-      // 隐藏换源加载状态
+      // 隱藏换源加载状态
       setIsVideoLoading(false);
-      setError(err instanceof Error ? err.message : '换源失败');
+      setError(err instanceof Error ? err.message : '換源失敗');
     }
   };
 
@@ -889,14 +889,14 @@ function PlayPageClient() {
       });
 
       lastSaveTimeRef.current = Date.now();
-      console.log('播放进度已保存:', {
+      console.log('播放進度已保存:', {
         title: videoTitleRef.current,
         episode: currentEpisodeIndexRef.current + 1,
         year: detailRef.current?.year,
         progress: `${Math.floor(currentTime)}/${Math.floor(duration)}`,
       });
     } catch (err) {
-      console.error('保存播放进度失败:', err);
+      console.error('保存播放進度失敗:', err);
     }
   };
 
@@ -944,7 +944,7 @@ function PlayPageClient() {
         const fav = await isFavorited(currentSource, currentId);
         setFavorited(fav);
       } catch (err) {
-        console.error('检查收藏状态失败:', err);
+        console.error('檢查收藏狀態失敗:', err);
       }
     })();
   }, [currentSource, currentId]);
@@ -994,7 +994,7 @@ function PlayPageClient() {
         setFavorited(true);
       }
     } catch (err) {
-      console.error('切换收藏失败:', err);
+      console.error('切換收藏失敗:', err);
     }
   };
 
@@ -1022,7 +1022,7 @@ function PlayPageClient() {
     }
 
     if (!videoUrl) {
-      setError('视频地址无效');
+      setError('影片地址無效');
       return;
     }
     console.log(videoUrl);
@@ -1101,7 +1101,7 @@ function PlayPageClient() {
         customType: {
           m3u8: function (video: HTMLVideoElement, url: string) {
             if (!Hls) {
-              console.error('HLS.js 未加载');
+              console.error('HLS.js 未載入');
               return;
             }
 
@@ -1135,15 +1135,15 @@ function PlayPageClient() {
               if (data.fatal) {
                 switch (data.type) {
                   case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.log('网络错误，尝试恢复...');
+                    console.log('網路錯誤，嘗試恢復...');
                     hls.startLoad();
                     break;
                   case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log('媒体错误，尝试恢复...');
+                    console.log('媒體錯誤，嘗試恢復...');
                     hls.recoverMediaError();
                     break;
                   default:
-                    console.log('无法恢复的错误');
+                    console.log('無法恢復的錯誤');
                     hls.destroy();
                     break;
                 }
@@ -1157,9 +1157,9 @@ function PlayPageClient() {
         },
         settings: [
           {
-            html: '去广告',
+            html: '去廣告',
             icon: '<text x="50%" y="50%" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">AD</text>',
-            tooltip: blockAdEnabled ? '已开启' : '已关闭',
+            tooltip: blockAdEnabled ? '已開啟' : '已關閉',
             onClick() {
               const newVal = !blockAdEnabled;
               try {
@@ -1179,7 +1179,7 @@ function PlayPageClient() {
               } catch (_) {
                 // ignore
               }
-              return newVal ? '当前开启' : '当前关闭';
+              return newVal ? '當前開啟' : '當前關閉';
             },
           },
         ],
@@ -1217,9 +1217,9 @@ function PlayPageClient() {
               target = Math.max(0, duration - 5);
             }
             artPlayerRef.current.currentTime = target;
-            console.log('成功恢复播放进度到:', resumeTimeRef.current);
+            console.log('成功恢復播放進度到:', resumeTimeRef.current);
           } catch (err) {
-            console.warn('恢复播放进度失败:', err);
+            console.warn('恢復播放進度失敗:', err);
           }
         }
         resumeTimeRef.current = null;
@@ -1233,12 +1233,12 @@ function PlayPageClient() {
           artPlayerRef.current.notice.show = '';
         }, 0);
 
-        // 隐藏换源加载状态
+        // 隱藏换源加载状态
         setIsVideoLoading(false);
       });
 
       artPlayerRef.current.on('error', (err: any) => {
-        console.error('播放器错误:', err);
+        console.error('播放器錯誤:', err);
         if (artPlayerRef.current.currentTime > 0) {
           return;
         }
@@ -1277,8 +1277,8 @@ function PlayPageClient() {
         );
       }
     } catch (err) {
-      console.error('创建播放器失败:', err);
-      setError('播放器初始化失败');
+      console.error('建立播放器失敗:', err);
+      setError('播放器初始化失敗');
     }
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
@@ -1435,7 +1435,7 @@ function PlayPageClient() {
                 }
                 className='w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl'
               >
-                {videoTitle ? '🔍 返回搜索' : '← 返回上页'}
+                {videoTitle ? '🔍 返回搜尋' : '← 返回上頁'}
               </button>
 
               <button
@@ -1454,10 +1454,10 @@ function PlayPageClient() {
   return (
     <PageLayout activePath='/play'>
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
-        {/* 第一行：影片标题 */}
+        {/* 第一行：影片標題 */}
         <div className='py-1'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-            {videoTitle || '影片标题'}
+            {videoTitle || '影片標題'}
             {totalEpisodes > 1 && (
               <span className='text-gray-500 dark:text-gray-400'>
                 {` > 第 ${currentEpisodeIndex + 1} 集`}
@@ -1467,7 +1467,7 @@ function PlayPageClient() {
         </div>
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2'>
-          {/* 折叠控制 - 仅在 lg 及以上屏幕显示 */}
+          {/* 折叠控制 - 仅在 lg 及以上屏幕顯示 */}
           <div className='hidden lg:flex justify-end'>
             <button
               onClick={() =>
@@ -1475,7 +1475,7 @@ function PlayPageClient() {
               }
               className='group relative flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-200'
               title={
-                isEpisodeSelectorCollapsed ? '显示选集面板' : '隐藏选集面板'
+                isEpisodeSelectorCollapsed ? '顯示選集面板' : '隱藏選集面板'
               }
             >
               <svg
@@ -1494,7 +1494,7 @@ function PlayPageClient() {
                 />
               </svg>
               <span className='text-xs font-medium text-gray-600 dark:text-gray-300'>
-                {isEpisodeSelectorCollapsed ? '显示' : '隐藏'}
+                {isEpisodeSelectorCollapsed ? '顯示' : '隱藏'}
               </span>
 
               {/* 精致的状态指示点 */}
@@ -1557,8 +1557,8 @@ function PlayPageClient() {
                       <div className='space-y-2'>
                         <p className='text-xl font-semibold text-white animate-pulse'>
                           {videoLoadingStage === 'sourceChanging'
-                            ? '🔄 切换播放源...'
-                            : '🔄 视频加载中...'}
+                            ? '🔄 切換播放源...'
+                            : '🔄 影片載入中...'}
                         </p>
                       </div>
                     </div>
@@ -1567,7 +1567,7 @@ function PlayPageClient() {
               </div>
             </div>
 
-            {/* 选集和换源 - 在移动端始终显示，在 lg 及以上可折叠 */}
+            {/* 选集和换源 - 在移动端始终顯示，在 lg 及以上可折叠 */}
             <div
               className={`h-[300px] lg:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${
                 isEpisodeSelectorCollapsed
@@ -1599,7 +1599,7 @@ function PlayPageClient() {
             <div className='p-6 flex flex-col min-h-0'>
               {/* 标题 */}
               <h1 className='text-3xl font-bold mb-2 tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
-                {videoTitle || '影片标题'}
+                {videoTitle || '影片標題'}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

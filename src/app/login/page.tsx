@@ -49,13 +49,13 @@ function LoginPageClient() {
         const redirect = searchParams.get('redirect') || '/';
         router.replace(redirect);
       } else if (res.status === 401) {
-        setError('password error');
+        setError('密碼錯誤');
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? 'server error');
+        setError(data.error ?? '伺服器錯誤');
       }
     } catch (error) {
-      setError('network error, try again later');
+      setError('網路錯誤，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -79,10 +79,10 @@ function LoginPageClient() {
         router.replace(redirect);
       } else {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? 'server error');
+        setError(data.error ?? '伺服器錯誤');
       }
     } catch (error) {
-      setError('network error, try again later');
+      setError('網路錯誤，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -101,14 +101,14 @@ function LoginPageClient() {
           {shouldAskUsername && (
             <div>
               <label htmlFor='username' className='sr-only'>
-                User Name
+                使用者名稱
               </label>
               <input
                 id='username'
                 type='text'
                 autoComplete='username'
                 className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur'
-                placeholder='input user name'
+                placeholder='輸入使用者名稱'
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -117,14 +117,14 @@ function LoginPageClient() {
 
           <div>
             <label htmlFor='password' className='sr-only'>
-              Password
+              密碼
             </label>
             <input
               id='password'
               type='password'
               autoComplete='current-password'
               className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur'
-              placeholder='Input your password....'
+              placeholder='輸入密碼...'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -143,7 +143,7 @@ function LoginPageClient() {
                 disabled={!password || !username || loading}
                 className='flex-1 inline-flex justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
               >
-                {loading ? '注册中...' : '注册'}
+                {loading ? '註冊中...' : '註冊'}
               </button>
               <button
                 type='submit'
@@ -152,7 +152,7 @@ function LoginPageClient() {
                 }
                 className='flex-1 inline-flex justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-green-600 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? '登入中...' : '登入'}
               </button>
             </div>
           ) : (
@@ -163,7 +163,7 @@ function LoginPageClient() {
               }
               className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-green-600 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? '登入中...' : '登入'}
             </button>
           )}
         </form>
@@ -174,7 +174,7 @@ function LoginPageClient() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>載入中...</div>}>
       <LoginPageClient />
     </Suspense>
   );
