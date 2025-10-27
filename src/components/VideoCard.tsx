@@ -190,15 +190,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       : type;
     const englishTitleToShow = useMemo(() => {
       const trimmedEnglish = englishTitle?.trim();
-      if (!trimmedEnglish) {
-        return undefined;
-      }
-      const normalizedActual = actualTitle.trim().toLowerCase();
-      if (trimmedEnglish.toLowerCase() === normalizedActual) {
-        return undefined;
-      }
-      return trimmedEnglish;
-    }, [englishTitle, actualTitle]);
+      return trimmedEnglish && trimmedEnglish.length > 0
+        ? trimmedEnglish
+        : undefined;
+    }, [englishTitle]);
 
     const traditionalTitle = useMemo(
       () => convertToTraditional(actualTitle),
