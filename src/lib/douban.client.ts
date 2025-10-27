@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console,no-case-declarations */
 
-import { DoubanItem, DoubanResult } from './types';
+import { DoubanItem, DoubanResult, DoubanSubjectDetail } from './types';
 
 interface DoubanCategoriesParams {
   kind: 'tv' | 'movie';
@@ -368,6 +368,39 @@ export async function getDoubanRecommends(
       );
 
       return response.json();
+  }
+}
+
+const doubanSubjectCache = new Map<string, DoubanSubjectDetail | null>();
+
+export async function getDoubanSubjectDetail(
+  subjectId: number | string
+): Promise<DoubanSubjectDetail | null> {
+  const normalizedId = subjectId?.toString().trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  if (doubanSubjectCache.has(normalizedId)) {
+    return doubanSubjectCache.get(normalizedId) ?? null;
+  }
+
+  try {
+    const response = await fetch(
+      `/api/douban/subject?id=${encodeURIComponent(normalizedId)}`
+    );
+    if (!response.ok) {
+      doubanSubjectCache.set(normalizedId, null);
+      return null;
+    }
+
+    const detail = (await response.json()) as DoubanSubjectDetail;
+    doubanSubjectCache.set(normalizedId, detail);
+    return detail;
+  } catch (error) {
+    console.warn('获取豆瓣条目信息失败', error);
+    doubanSubjectCache.set(normalizedId, null);
+    return null;
   }
 }
 

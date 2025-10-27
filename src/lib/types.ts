@@ -91,3 +91,12 @@ export interface DoubanResult {
   message: string;
   list: DoubanItem[];
 }
+
+export interface DoubanSubjectDetail {
+  id: string;
+  title: string;
+  original_title?: string;
+  year?: string;
+  imdbId?: string;
+  imdbTitle?: string;
+}

@@ -21,6 +21,7 @@ import {
   saveFavorite,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { processImageUrl } from '@/lib/utils';
 import { useLongPress } from '@/components/useLongPress';
 
@@ -60,6 +61,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   {
     id,
     title = '',
+    title_en,
     query = '',
     poster = '',
     episodes,
@@ -85,6 +87,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const [isLoading, setIsLoading] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
   const [searchFavorited, setSearchFavorited] = useState<boolean | null>(null); // 搜索结果的收藏状态
+  const [englishTitle, setEnglishTitle] = useState<string | undefined>(
+    title_en?.trim() || undefined
+  );
 
   // 可外部修改的可控字段
   const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
@@ -115,6 +120,48 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     setDoubanId: (id?: number) => setDynamicDoubanId(id),
   }));
 
+  useEffect(() => {
+    if (title_en && title_en.trim() !== '') {
+      setEnglishTitle(title_en.trim());
+      return;
+    }
+    setEnglishTitle(undefined);
+  }, [title_en, douban_id]);
+
+  useEffect(() => {
+    if (
+      englishTitle !== undefined ||
+      !douban_id ||
+      Number.isNaN(Number(douban_id)) ||
+      douban_id === 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchEnglishTitle = async () => {
+      try {
+        const detail = await getDoubanSubjectDetail(douban_id);
+        const imdbEnglish = detail?.imdbTitle?.trim();
+        const original = detail?.original_title?.trim();
+        if (!cancelled) {
+          setEnglishTitle(imdbEnglish || original || '');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setEnglishTitle('');
+        }
+      }
+    };
+
+    fetchEnglishTitle();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [douban_id, englishTitle]);
+
   const actualTitle = title;
   const actualPoster = poster;
   const actualSource = source;
@@ -126,6 +173,17 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   const actualSearchType = isAggregate
     ? (actualEpisodes && actualEpisodes === 1 ? 'movie' : 'tv')
     : type;
+  const englishTitleToShow = useMemo(() => {
+    const trimmedEnglish = englishTitle?.trim();
+    if (!trimmedEnglish) {
+      return undefined;
+    }
+    const normalizedActual = actualTitle.trim().toLowerCase();
+    if (trimmedEnglish.toLowerCase() === normalizedActual) {
+      return undefined;
+    }
+    return trimmedEnglish;
+  }, [englishTitle, actualTitle]);
 
   // 获取收藏状态（搜索结果页面不检查）
   useEffect(() => {
@@ -981,6 +1039,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
               }}
             >
               {actualTitle}
+              {englishTitleToShow && (
+                <div className='mt-1 text-[11px] text-gray-200'>
+                  {englishTitleToShow}
+                </div>
+              )}
               <div
                 className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'
                 style={{
@@ -990,6 +1053,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 } as React.CSSProperties}
               ></div>
             </div>
+            {englishTitleToShow && (
+              <span
+                className='block text-xs text-gray-500 dark:text-gray-400 mt-0.5'
+                style={{
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                } as React.CSSProperties}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              >
+                {englishTitleToShow}
+              </span>
+            )}
           </div>
           {config.showSourceName && source_name && (
             <span
@@ -1030,7 +1109,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
       <MobileActionSheet
         isOpen={showMobileActions}
         onClose={() => setShowMobileActions(false)}
-        title={actualTitle}
+        title={
+          englishTitleToShow
+            ? `${actualTitle} · ${englishTitleToShow}`
+            : actualTitle
+        }
         poster={processImageUrl(actualPoster)}
         actions={mobileActions}
         sources={isAggregate && dynamicSourceNames ? Array.from(new Set(dynamicSourceNames)) : undefined}
