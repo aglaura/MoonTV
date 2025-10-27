@@ -230,9 +230,12 @@ async function initConfig() {
         }
       } else {
         // 数据库中没有配置，创建新的管理员配置
-        let allUsers = userNames.map((uname) => ({
+        let allUsers: {
+          username: string;
+          role: 'user' | 'admin' | 'owner';
+        }[] = userNames.map((uname) => ({
           username: uname,
-          role: configUserRoleMap.get(uname) ?? 'user',
+          role: (configUserRoleMap.get(uname) ?? 'user') as 'user' | 'admin',
         }));
         const ownerUser = process.env.USERNAME;
         if (ownerUser) {
@@ -405,10 +408,11 @@ export async function resetConfig() {
 
   // 从文件中获取源信息，用于补全源
   const apiSiteEntries = Object.entries(fileConfig.api_site);
-  let allUsers = userNames.map((uname) => ({
-    username: uname,
-    role: configUserRoleMap.get(uname) ?? 'user',
-  }));
+  let allUsers: { username: string; role: 'user' | 'admin' | 'owner' }[] =
+    userNames.map((uname) => ({
+      username: uname,
+      role: (configUserRoleMap.get(uname) ?? 'user') as 'user' | 'admin',
+    }));
   const ownerUser = process.env.USERNAME;
   if (ownerUser) {
     allUsers = allUsers.filter((u) => u.username !== ownerUser);

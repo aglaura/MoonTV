@@ -1,8 +1,44 @@
 /* eslint-disable no-console,@typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 
+import type { AdminConfig } from '@/lib/admin.types';
 import { getConfig } from '@/lib/config';
-import { db } from '@/lib/db';
+import { db, getStorage } from '@/lib/db';
+
+async function ensureAdminUser(
+  username: string,
+  config: AdminConfig
+): Promise<void> {
+  if (
+    !username ||
+    username === process.env.USERNAME ||
+    (process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage') === 'localstorage'
+  ) {
+    return;
+  }
+
+  let changed = false;
+  let user = config.UserConfig.Users.find((u) => u.username === username);
+
+  if (!user) {
+    user = {
+      username,
+      role: 'admin',
+    };
+    config.UserConfig.Users.push(user);
+    changed = true;
+  } else if (user.role !== 'owner' && user.role !== 'admin') {
+    user.role = 'admin';
+    changed = true;
+  }
+
+  if (changed) {
+    const storage = getStorage();
+    if (storage && typeof (storage as any).setAdminConfig === 'function') {
+      await (storage as any).setAdminConfig(config);
+    }
+  }
+}
 
 export const runtime = 'edge';
 
@@ -165,6 +201,8 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
+
+      await ensureAdminUser(username, config);
 
       // 验证成功，设置认证cookie
       const response = NextResponse.json({ ok: true });
