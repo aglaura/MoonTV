@@ -57,7 +57,7 @@
 | 语言      | TypeScript 4                                                                                          |
 | 播放器    | [ArtPlayer](https://github.com/zhw2590582/ArtPlayer) · [HLS.js](https://github.com/video-dev/hls.js/) |
 | 代码质量  | ESLint · Prettier · Jest                                                                              |
-| 部署      | Docker · Vercel · CloudFlare pages                                                                                 |
+| 部署      | Docker · Vercel · CloudFlare pages                                                                    |
 
 ## 部署
 
@@ -201,6 +201,17 @@ networks:
 ```json
 {
   "cache_time": 7200,
+  "users": [
+    {
+      "username": "media-admin",
+      "password": "MediaAdmin@123",
+      "role": "admin"
+    },
+    {
+      "username": "media-viewer",
+      "password": "MediaViewer@123"
+    }
+  ],
   "api_site": {
     "dyttzy": {
       "api": "http://caiji.dyttzyapi.com/api.php/provide/vod",
@@ -213,6 +224,7 @@ networks:
 ```
 
 - `cache_time`：接口缓存时间（秒）。
+- `users`：可选，用于预置登录账户（仅 Redis / D1 存储模式生效），字段包括 `username`、`password` 以及可选的 `role`（`user` 或 `admin`）。
 - `api_site`：你可以增删或替换任何资源站，字段说明：
   - `key`：唯一标识，保持小写字母/数字。
   - `api`：资源站提供的 `vod` JSON API 根地址。

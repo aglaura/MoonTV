@@ -9,10 +9,10 @@ import React, {
   useState,
 } from 'react';
 
+import { getDoubanSubjectDetail } from '@/lib/douban.client';
+import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
-import { convertToTraditional } from '@/lib/locale';
-import { getDoubanSubjectDetail } from '@/lib/douban.client';
 
 // 定义视频信息类型
 interface VideoInfo {
@@ -178,7 +178,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     }
     return true;
   });
-  const [doubanEnglishMap, setDoubanEnglishMap] = useState<Record<number, string>>({});
+  const [doubanEnglishMap, setDoubanEnglishMap] = useState<
+    Record<number, string>
+  >({});
   const doubanEnglishMapRef = useRef<Record<number, string>>({});
 
   // 当切换到换源tab并且有源数据时，异步获取视频信息 - 移除 attemptedSources 依赖避免循环触发
@@ -239,9 +241,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           pendingIds.map(async (id) => {
             try {
               const detail = await getDoubanSubjectDetail(id);
-              const title =
-                detail?.imdbTitle?.trim() || detail?.original_title?.trim() || '';
-              return { id, title };
+              const imdbTitle = detail?.imdbTitle?.trim();
+              const imdbId = detail?.imdbId?.trim();
+              const original = detail?.original_title?.trim();
+              const fallback = imdbId ? `IMDb: ${imdbId}` : original || '';
+              return { id, title: imdbTitle || fallback };
             } catch {
               return { id, title: '' };
             }
@@ -579,13 +583,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               const sourceKey = `${source.source}-${source.id}`;
                               const videoInfo = videoInfoMap.get(sourceKey);
 
-                                if (videoInfo && videoInfo.quality !== '未知') {
-                                  if (videoInfo.hasError) {
-                                    return (
-                                      <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
+                              if (videoInfo && videoInfo.quality !== '未知') {
+                                if (videoInfo.hasError) {
+                                  return (
+                                    <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
                                       檢測失敗
-                                      </div>
-                                    );
+                                    </div>
+                                  );
                                 } else {
                                   // 根据分辨率设置不同颜色：2K、4K为紫色，1080p、720p为绿色，其他为黄色
                                   const isUltraHigh = ['4K', '2K'].includes(

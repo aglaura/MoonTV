@@ -1,5 +1,16 @@
 {
   "cache_time": 7200,
+  "users": [
+    {
+      "username": "media-admin",
+      "password": "MediaAdmin@123",
+      "role": "admin"
+    },
+    {
+      "username": "media-viewer",
+      "password": "MediaViewer@123"
+    }
+  ],
   "api_site": {
     "dyttzy": {
       "api": "http://caiji.dyttzyapi.com/api.php/provide/vod",

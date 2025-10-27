@@ -18,10 +18,10 @@ import {
   savePlayRecord,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { getDoubanSubjectDetail } from '@/lib/douban.client';
+import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
-import { convertToTraditional } from '@/lib/locale';
-import { getDoubanSubjectDetail } from '@/lib/douban.client';
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
@@ -126,9 +126,11 @@ function PlayPageClient() {
       try {
         const data = await getDoubanSubjectDetail(doubanId);
         if (cancelled) return;
-        const english =
-          data?.imdbTitle?.trim() || data?.original_title?.trim() || undefined;
-        setImdbVideoTitle(english);
+        const imdbTitle = data?.imdbTitle?.trim();
+        const imdbId = data?.imdbId?.trim();
+        const original = data?.original_title?.trim();
+        const fallback = imdbId ? `IMDb: ${imdbId}` : original || undefined;
+        setImdbVideoTitle(imdbTitle || fallback);
       } catch {
         if (!cancelled) {
           setImdbVideoTitle(undefined);
@@ -196,9 +198,14 @@ function PlayPageClient() {
   const lastSaveTimeRef = useRef<number>(0);
 
   const artPlayerRef = useRef<any>(null);
-  const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(undefined);
-  const englishVideoTitle = imdbVideoTitle ?? detail?.original_title?.trim();
-  const displayVideoTitle = useMemo(() => convertToTraditional(videoTitle), [videoTitle]);
+  const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(
+    undefined
+  );
+  const englishVideoTitle = imdbVideoTitle ?? undefined;
+  const displayVideoTitle = useMemo(
+    () => convertToTraditional(videoTitle),
+    [videoTitle]
+  );
   const displayTitleText = displayVideoTitle || '影片標題';
   const displayTitleWithEnglish = englishVideoTitle
     ? `${displayTitleText} (${englishVideoTitle})`
@@ -1235,7 +1242,9 @@ function PlayPageClient() {
           },
         ],
       });
-      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${currentEpisodeIndex + 1}集`;
+      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
+        currentEpisodeIndex + 1
+      }集`;
 
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {

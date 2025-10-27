@@ -4,6 +4,7 @@ import { getStorage } from '@/lib/db';
 
 import { AdminConfig } from './admin.types';
 import runtimeConfig from './runtime';
+import { IStorage } from './types';
 
 export interface ApiSite {
   key: string;
@@ -17,6 +18,60 @@ interface ConfigFileStruct {
   api_site: {
     [key: string]: ApiSite;
   };
+  users?: ConfigFileUser[];
+}
+
+interface ConfigFileUser {
+  username: string;
+  password: string;
+  role?: 'user' | 'admin';
+}
+
+type NormalizedConfigUser = {
+  username: string;
+  password: string;
+  role: 'user' | 'admin';
+};
+
+function normalizeConfigUsers(
+  users?: ConfigFileUser[]
+): NormalizedConfigUser[] {
+  if (!users) {
+    return [];
+  }
+  const normalized: NormalizedConfigUser[] = [];
+  for (const user of users) {
+    const username = user?.username?.trim();
+    const password = user?.password;
+    if (!username || !password) {
+      continue;
+    }
+    normalized.push({
+      username,
+      password,
+      role: user.role === 'admin' ? 'admin' : 'user',
+    });
+  }
+  return normalized;
+}
+
+async function ensureConfigUsersRegistered(
+  storage: IStorage | null,
+  users: NormalizedConfigUser[]
+) {
+  if (!storage || users.length === 0) {
+    return;
+  }
+  for (const user of users) {
+    try {
+      const exists = await storage.checkUserExist(user.username);
+      if (!exists) {
+        await storage.registerUser(user.username, user.password);
+      }
+    } catch (error) {
+      console.error(`初始化配置用户失败 (${user.username}):`, error);
+    }
+  }
 }
 
 export const API_CONFIG = {
@@ -62,10 +117,19 @@ async function initConfig() {
     // 默认使用编译时生成的配置
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
   }
+
+  const configUsers = normalizeConfigUsers(fileConfig.users);
+  const configUserRoleMap = new Map(
+    configUsers.map((user) => [user.username, user.role])
+  );
+  const configUserNames = configUsers.map((user) => user.username);
+
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
   if (storageType !== 'localstorage') {
     // 数据库存储，读取并补全管理员配置
     const storage = getStorage();
+
+    await ensureConfigUsersRegistered(storage, configUsers);
 
     try {
       // 尝试从数据库获取管理员配置
@@ -83,6 +147,11 @@ async function initConfig() {
           console.error('获取用户列表失败:', e);
         }
       }
+      configUserNames.forEach((uname) => {
+        if (!userNames.includes(uname)) {
+          userNames.push(uname);
+        }
+      });
 
       // 从文件中获取源信息，用于补全源
       const apiSiteEntries = Object.entries(fileConfig.api_site);
@@ -113,15 +182,39 @@ async function initConfig() {
           }
         });
 
-        const existedUsers = new Set(
-          (adminConfig.UserConfig.Users || []).map((u) => u.username)
+        adminConfig.UserConfig.Users = (adminConfig.UserConfig.Users || []).map(
+          (user) => {
+            if (user.role === 'owner') {
+              return user;
+            }
+            const targetRole = configUserRoleMap.get(user.username);
+            return targetRole && user.role !== targetRole
+              ? { ...user, role: targetRole }
+              : user;
+          }
         );
+
+        const existedUsers = new Set(
+          adminConfig.UserConfig.Users.map((u) => u.username)
+        );
+
+        configUsers.forEach((cfg) => {
+          if (!existedUsers.has(cfg.username)) {
+            adminConfig!.UserConfig.Users.push({
+              username: cfg.username,
+              role: cfg.role,
+            });
+            existedUsers.add(cfg.username);
+          }
+        });
+
         userNames.forEach((uname) => {
           if (!existedUsers.has(uname)) {
             adminConfig!.UserConfig.Users.push({
               username: uname,
-              role: 'user',
+              role: configUserRoleMap.get(uname) ?? 'user',
             });
+            existedUsers.add(uname);
           }
         });
         // 站长
@@ -139,7 +232,7 @@ async function initConfig() {
         // 数据库中没有配置，创建新的管理员配置
         let allUsers = userNames.map((uname) => ({
           username: uname,
-          role: 'user',
+          role: configUserRoleMap.get(uname) ?? 'user',
         }));
         const ownerUser = process.env.USERNAME;
         if (ownerUser) {
@@ -296,11 +389,25 @@ export async function resetConfig() {
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
   }
 
+  const configUsers = normalizeConfigUsers(fileConfig.users);
+  const configUserRoleMap = new Map(
+    configUsers.map((user) => [user.username, user.role])
+  );
+  const configUserNames = configUsers.map((user) => user.username);
+
+  await ensureConfigUsersRegistered(storage, configUsers);
+
+  configUserNames.forEach((uname) => {
+    if (!userNames.includes(uname)) {
+      userNames.push(uname);
+    }
+  });
+
   // 从文件中获取源信息，用于补全源
   const apiSiteEntries = Object.entries(fileConfig.api_site);
   let allUsers = userNames.map((uname) => ({
     username: uname,
-    role: 'user',
+    role: configUserRoleMap.get(uname) ?? 'user',
   }));
   const ownerUser = process.env.USERNAME;
   if (ownerUser) {
