@@ -23,6 +23,7 @@ import {
 } from '@/lib/db.client';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { processImageUrl } from '@/lib/utils';
+import { convertToTraditional } from '@/lib/locale';
 import { useLongPress } from '@/components/useLongPress';
 
 import { ImagePlaceholder } from '@/components/ImagePlaceholder';
@@ -184,6 +185,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
     }
     return trimmedEnglish;
   }, [englishTitle, actualTitle]);
+
+  const traditionalTitle = useMemo(
+    () => convertToTraditional(actualTitle),
+    [actualTitle]
+  );
 
   // 获取收藏状态（搜索结果页面不检查）
   useEffect(() => {
@@ -607,7 +613,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
           {/* 图片 */}
           <Image
             src={processImageUrl(actualPoster)}
-            alt={actualTitle}
+            alt={traditionalTitle || actualTitle}
             fill
             className={origin === 'live' ? 'object-contain' : 'object-cover'}
             referrerPolicy='no-referrer'
@@ -1023,7 +1029,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 return false;
               }}
             >
-              {actualTitle}
+              {traditionalTitle || actualTitle}
+              {englishTitleToShow && (
+                <span className='ml-1 text-xs font-normal text-gray-500 dark:text-gray-400'>
+                  ({englishTitleToShow})
+                </span>
+              )}
             </span>
             {/* 自定义 tooltip */}
             <div
@@ -1038,7 +1049,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 return false;
               }}
             >
-              {actualTitle}
+              <div>{traditionalTitle || actualTitle}</div>
               {englishTitleToShow && (
                 <div className='mt-1 text-[11px] text-gray-200'>
                   {englishTitleToShow}
@@ -1053,22 +1064,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
                 } as React.CSSProperties}
               ></div>
             </div>
-            {englishTitleToShow && (
-              <span
-                className='block text-xs text-gray-500 dark:text-gray-400 mt-0.5'
-                style={{
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  return false;
-                }}
-              >
-                {englishTitleToShow}
-              </span>
-            )}
           </div>
           {config.showSourceName && source_name && (
             <span

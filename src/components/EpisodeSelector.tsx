@@ -11,6 +11,8 @@ import React, {
 
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import { convertToTraditional } from '@/lib/locale';
+import { getDoubanSubjectDetail } from '@/lib/douban.client';
 
 // 定义视频信息类型
 interface VideoInfo {
@@ -176,6 +178,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     }
     return true;
   });
+  const [doubanEnglishMap, setDoubanEnglishMap] = useState<Record<number, string>>({});
+  const doubanEnglishMapRef = useRef<Record<number, string>>({});
 
   // 当切换到换源tab并且有源数据时，异步获取视频信息 - 移除 attemptedSources 依赖避免循环触发
   useEffect(() => {
@@ -206,6 +210,66 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     fetchVideoInfosInBatches();
     // 依赖项保持与之前一致
   }, [activeTab, availableSources, getVideoInfo, optimizationEnabled]);
+
+  useEffect(() => {
+    doubanEnglishMapRef.current = doubanEnglishMap;
+  }, [doubanEnglishMap]);
+
+  useEffect(() => {
+    const existing = doubanEnglishMapRef.current;
+    const pendingIds = Array.from(
+      new Set(
+        availableSources
+          .map((source) => source.douban_id)
+          .filter(
+            (id): id is number =>
+              typeof id === 'number' && Number.isFinite(id) && !existing[id]
+          )
+      )
+    );
+    if (pendingIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchEnglishTitles = async () => {
+      try {
+        const results = await Promise.all(
+          pendingIds.map(async (id) => {
+            try {
+              const detail = await getDoubanSubjectDetail(id);
+              const title =
+                detail?.imdbTitle?.trim() || detail?.original_title?.trim() || '';
+              return { id, title };
+            } catch {
+              return { id, title: '' };
+            }
+          })
+        );
+
+        if (cancelled) return;
+
+        setDoubanEnglishMap((prev) => {
+          const next = { ...prev };
+          for (const { id, title } of results) {
+            if (title) {
+              next[id] = title;
+            }
+          }
+          return next;
+        });
+      } catch {
+        // ignore single fetch failures
+      }
+    };
+
+    fetchEnglishTitles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [availableSources]);
 
   // 升序分页标签
   const categoriesAsc = useMemo(() => {
@@ -448,6 +512,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     return 0;
                   })
                   .map((source, index) => {
+                    const displaySourceTitle =
+                      convertToTraditional(source.title) || source.title;
+                    const englishSourceTitle =
+                      (source.douban_id &&
+                        doubanEnglishMap[source.douban_id]) ||
+                      source.original_title?.trim();
                     const isCurrentSource =
                       source.source?.toString() === currentSource?.toString() &&
                       source.id?.toString() === currentId?.toString();
@@ -469,7 +539,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           {source.episodes && source.episodes.length > 0 && (
                             <img
                               src={processImageUrl(source.poster)}
-                              alt={source.title}
+                              alt={displaySourceTitle}
                               className='w-full h-full object-cover'
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
@@ -485,12 +555,22 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           <div className='flex items-start justify-between gap-3 h-6'>
                             <div className='flex-1 min-w-0 relative group/title'>
                               <h3 className='font-medium text-base truncate text-gray-900 dark:text-gray-100 leading-none'>
-                                {source.title}
+                                {displaySourceTitle}
+                                {englishSourceTitle && (
+                                  <span className='ml-1 text-xs text-gray-500 dark:text-gray-400'>
+                                    ({englishSourceTitle})
+                                  </span>
+                                )}
                               </h3>
                               {/* 标题级别的 tooltip - 第一个元素不显示 */}
                               {index !== 0 && (
                                 <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible group-hover/title:opacity-100 group-hover/title:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap z-[500] pointer-events-none'>
-                                  {source.title}
+                                  <div>{displaySourceTitle}</div>
+                                  {englishSourceTitle && (
+                                    <div className='mt-0.5 text-gray-300'>
+                                      {englishSourceTitle}
+                                    </div>
+                                  )}
                                   <div className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'></div>
                                 </div>
                               )}

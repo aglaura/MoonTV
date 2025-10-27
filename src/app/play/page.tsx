@@ -6,7 +6,7 @@ import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   deleteFavorite,
@@ -20,6 +20,8 @@ import {
 } from '@/lib/db.client';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import { convertToTraditional } from '@/lib/locale';
+import { getDoubanSubjectDetail } from '@/lib/douban.client';
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
@@ -111,6 +113,36 @@ function PlayPageClient() {
     videoYear,
   ]);
 
+  useEffect(() => {
+    const doubanId = detail?.douban_id;
+    if (!doubanId) {
+      setImdbVideoTitle(undefined);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchImdbTitle = async () => {
+      try {
+        const data = await getDoubanSubjectDetail(doubanId);
+        if (cancelled) return;
+        const english =
+          data?.imdbTitle?.trim() || data?.original_title?.trim() || undefined;
+        setImdbVideoTitle(english);
+      } catch {
+        if (!cancelled) {
+          setImdbVideoTitle(undefined);
+        }
+      }
+    };
+
+    fetchImdbTitle();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.douban_id]);
+
   // 视频播放地址
   const [videoUrl, setVideoUrl] = useState('');
 
@@ -164,6 +196,13 @@ function PlayPageClient() {
   const lastSaveTimeRef = useRef<number>(0);
 
   const artPlayerRef = useRef<any>(null);
+  const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(undefined);
+  const englishVideoTitle = imdbVideoTitle ?? detail?.original_title?.trim();
+  const displayVideoTitle = useMemo(() => convertToTraditional(videoTitle), [videoTitle]);
+  const displayTitleText = displayVideoTitle || '影片標題';
+  const displayTitleWithEnglish = englishVideoTitle
+    ? `${displayTitleText} (${englishVideoTitle})`
+    : displayTitleText;
   const artRef = useRef<HTMLDivElement | null>(null);
 
   // -----------------------------------------------------------------------------
@@ -1035,7 +1074,7 @@ function PlayPageClient() {
     // 非WebKit浏览器且播放器已存在，使用switch方法切换
     if (!isWebkit && artPlayerRef.current) {
       artPlayerRef.current.switch = videoUrl;
-      artPlayerRef.current.title = `${videoTitle} - 第${
+      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
         currentEpisodeIndex + 1
       }集`;
       artPlayerRef.current.poster = videoCover;
@@ -1196,6 +1235,7 @@ function PlayPageClient() {
           },
         ],
       });
+      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${currentEpisodeIndex + 1}集`;
 
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {
@@ -1281,6 +1321,15 @@ function PlayPageClient() {
       setError('播放器初始化失敗');
     }
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
+
+  useEffect(() => {
+    if (!artPlayerRef.current) {
+      return;
+    }
+    artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
+      currentEpisodeIndex + 1
+    }集`;
+  }, [displayTitleWithEnglish, currentEpisodeIndex]);
 
   // 当组件卸载时清理定时器
   useEffect(() => {
@@ -1457,7 +1506,12 @@ function PlayPageClient() {
         {/* 第一行：影片標題 */}
         <div className='py-1'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
-            {videoTitle || '影片標題'}
+            {displayTitleText}
+            {englishVideoTitle && (
+              <span className='ml-2 text-base text-gray-500 dark:text-gray-400 font-normal'>
+                ({englishVideoTitle})
+              </span>
+            )}
             {totalEpisodes > 1 && (
               <span className='text-gray-500 dark:text-gray-400'>
                 {` > 第 ${currentEpisodeIndex + 1} 集`}
@@ -1599,7 +1653,14 @@ function PlayPageClient() {
             <div className='p-6 flex flex-col min-h-0'>
               {/* 标题 */}
               <h1 className='text-3xl font-bold mb-2 tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
-                {videoTitle || '影片標題'}
+                <span>
+                  {displayTitleText}
+                  {englishVideoTitle && (
+                    <span className='ml-2 text-xl font-normal text-gray-500 dark:text-gray-400'>
+                      ({englishVideoTitle})
+                    </span>
+                  )}
+                </span>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1647,7 +1708,7 @@ function PlayPageClient() {
                 {videoCover ? (
                   <img
                     src={processImageUrl(videoCover)}
-                    alt={videoTitle}
+                    alt={displayTitleWithEnglish}
                     className='w-full h-full object-cover'
                   />
                 ) : (
