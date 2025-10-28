@@ -66,6 +66,11 @@ function HomeClient() {
   };
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     const fetchRecommendData = async () => {
@@ -171,20 +176,156 @@ function HomeClient() {
   return (
     <PageLayout>
       <div className='px-2 sm:px-10 py-4 sm:py-8 overflow-visible'>
-        {/* 顶部 Tab 切换 */}
-        <div className='mb-8 flex justify-center'>
-          <CapsuleSwitch
-            options={[
-              { label: '首頁', value: 'home' },
-              { label: '收藏夾', value: 'favorites' },
-            ]}
-            active={activeTab}
-            onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
-          />
-        </div>
+        <section className='mb-10'>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = searchQuery.trim();
+              if (!trimmed) {
+                setSearchResults([]);
+                setHasSearched(false);
+                setSearchError(null);
+                return;
+              }
 
-        <div className='max-w-[95%] mx-auto'>
-          {activeTab === 'favorites' ? (
+              const performSearch = async () => {
+                try {
+                  setSearching(true);
+                  setSearchError(null);
+                  const response = await fetch(
+                    `/api/search?q=${encodeURIComponent(trimmed)}`
+                  );
+                  if (!response.ok) {
+                    throw new Error(`搜尋失敗 (${response.status})`);
+                  }
+                  const data = (await response.json()) as {
+                    results?: SearchResult[];
+                  };
+                  setSearchResults(data.results ?? []);
+                  setHasSearched(true);
+                } catch (err) {
+                  setSearchError(
+                    err instanceof Error ? err.message : '搜尋失敗'
+                  );
+                  setSearchResults([]);
+                  setHasSearched(true);
+                } finally {
+                  setSearching(false);
+                }
+              };
+
+              void performSearch();
+            }}
+            className='max-w-3xl mx-auto'
+          >
+            <div className='relative shadow-lg rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/60 backdrop-blur'>
+              <input
+                type='text'
+                className='w-full py-4 px-6 pr-20 text-base sm:text-lg bg-transparent focus:outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400'
+                placeholder='輸入想看的影片、演員或關鍵字'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete='off'
+              />
+              <div className='absolute inset-y-0 right-0 flex items-center gap-2 pr-4'>
+                {searchQuery && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setHasSearched(false);
+                      setSearchError(null);
+                    }}
+                    className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors'
+                  >
+                    清除
+                  </button>
+                )}
+                <button
+                  type='submit'
+                  className='px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors'
+                  disabled={searching}
+                >
+                  搜尋
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className='mt-6'>
+            {searchError && (
+              <p className='text-sm text-red-600 dark:text-red-400 text-center'>
+                {searchError}
+              </p>
+            )}
+
+            {searching && (
+              <div className='mt-8 grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
+                {Array.from({ length: 8 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className='h-56 rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
+                  />
+                ))}
+              </div>
+            )}
+
+            {hasSearched && !searching && searchResults.length === 0 && !searchError && (
+              <p className='mt-8 text-center text-gray-500 dark:text-gray-400'>
+                找不到相關內容，試試其他關鍵字。
+              </p>
+            )}
+
+            {searchResults.length > 0 && (
+              <div className='mt-8'>
+                <div className='flex items-center justify-between mb-4'>
+                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                    搜尋結果
+                  </h2>
+                  <span className='text-sm text-gray-500 dark:text-gray-400'>
+                    共 {searchResults.length} 筆
+                  </span>
+                </div>
+                <div className='grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
+                  {searchResults.map((item, index) => (
+                    <VideoCard
+                      key={`${item.source}-${item.id}-${index}`}
+                      id={item.id}
+                      source={item.source}
+                      title={item.title}
+                      poster={item.poster}
+                      douban_id={item.douban_id}
+                      rate={item.rate}
+                      year={item.year}
+                      episodes={item.episodes?.length}
+                      source_name={item.source_name}
+                      query={item.title}
+                      from='search'
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {(!hasSearched || searchResults.length === 0) && (
+          <>
+            {/* 顶部 Tab 切换 */}
+            <div className='mb-8 flex justify-center'>
+              <CapsuleSwitch
+                options={[
+                  { label: '首頁', value: 'home' },
+                  { label: '收藏夾', value: 'favorites' },
+                ]}
+                active={activeTab}
+                onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
+              />
+            </div>
+
+            <div className='max-w-[95%] mx-auto'>
+              {activeTab === 'favorites' ? (
             // 收藏夾視圖
             <section className='mb-8'>
               <div className='mb-4 flex items-center justify-between'>
@@ -221,7 +362,7 @@ function HomeClient() {
                 )}
               </div>
             </section>
-          ) : (
+              ) : (
             // 首頁視圖
             <>
               {/* 继续观看 */}
@@ -444,8 +585,10 @@ function HomeClient() {
                 </ScrollableRow>
               </section>
             </>
-          )}
-        </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
       {announcement && showAnnouncement && (
         <div
