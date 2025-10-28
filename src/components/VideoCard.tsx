@@ -1275,7 +1275,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           onClose={() => setShowMobileActions(false)}
           title={
             englishTitleToShow
-              ? `${actualTitle} · ${englishTitleToShow}`
+              ? `${actualTitle} (${englishTitleToShow})`
               : actualTitle
           }
           poster={processImageUrl(actualPoster)}

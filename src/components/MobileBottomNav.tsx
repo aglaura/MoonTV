@@ -1,6 +1,6 @@
 'use client';
 
-import { Clover, Film, Home, Search, Tv } from 'lucide-react';
+import { Clover, Film, Home, Search, Sparkles, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -35,6 +35,11 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       label: '綜藝',
       href: '/douban?type=show',
     },
+    {
+      icon: Sparkles,
+      label: '動漫',
+      href: '/douban?type=anime',
+    },
   ];
 
   const isActive = (href: string) => {
@@ -64,7 +69,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
-            <li key={item.href} className='flex-shrink-0 w-1/5'>
+            <li key={item.href} className='flex-shrink-0 w-1/6'>
               <Link
                 href={item.href}
                 className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs'
