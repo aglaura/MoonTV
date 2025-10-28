@@ -62,7 +62,7 @@ function LoginPageClient() {
             normalizedUsers.map((entry: { username: string }) => entry.username)
           );
           const thumbnailMap: Record<string, string> = {};
-          normalizedUsers.forEach((entry) => {
+          normalizedUsers.forEach((entry: { username: string; avatar?: string }) => {
             if (entry.avatar) {
               thumbnailMap[entry.username] = entry.avatar;
             }

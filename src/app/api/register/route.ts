@@ -72,13 +72,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '当前未开放注册' }, { status: 400 });
     }
 
-    const { username, password } = await req.json();
+    const { username } = (await req.json()) as { username?: string };
 
     if (!username || typeof username !== 'string') {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
     }
-    if (!password || typeof password !== 'string') {
-      return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
+    const sharedPassword = process.env.PASSWORD;
+    if (!sharedPassword) {
+      return NextResponse.json(
+        { error: '服務器未設定 PASSWORD 環境變數' },
+        { status: 500 }
+      );
     }
 
     // 检查是否和管理员重复
@@ -93,7 +97,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: '用户已存在' }, { status: 400 });
       }
 
-      await db.registerUser(username, password);
+      await db.registerUser(username, sharedPassword);
 
       // 添加到配置中并保存
       config.UserConfig.Users.push({

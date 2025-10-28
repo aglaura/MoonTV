@@ -115,28 +115,29 @@ export async function POST(request: NextRequest) {
       // 保存后直接返回成功（走后面的统一保存逻辑）
     } else {
       switch (action) {
-        case 'add': {
-          if (targetEntry) {
-            return NextResponse.json({ error: '用户已存在' }, { status: 400 });
-          }
-          if (!targetPassword) {
-            return NextResponse.json(
-              { error: '缺少目标用户密码' },
-              { status: 400 }
-            );
-          }
-          if (!storage || typeof storage.registerUser !== 'function') {
-            return NextResponse.json(
-              { error: '存储未配置用户注册' },
-              { status: 500 }
-            );
-          }
-          await storage.registerUser(targetUsername!, targetPassword);
-          // 更新配置
-          adminConfig.UserConfig.Users.push({
-            username: targetUsername!,
-            role: 'user',
-          });
+      case 'add': {
+        if (targetEntry) {
+          return NextResponse.json({ error: '用户已存在' }, { status: 400 });
+        }
+        const sharedPassword = process.env.PASSWORD;
+        if (!sharedPassword) {
+          return NextResponse.json(
+            { error: '服務器未設定 PASSWORD 環境變數' },
+            { status: 500 }
+          );
+        }
+        if (!storage || typeof storage.registerUser !== 'function') {
+          return NextResponse.json(
+            { error: '存储未配置用户注册' },
+            { status: 500 }
+          );
+        }
+        await storage.registerUser(targetUsername!, sharedPassword);
+        // 更新配置
+        adminConfig.UserConfig.Users.push({
+          username: targetUsername!,
+          role: 'user',
+        });
           targetEntry =
             adminConfig.UserConfig.Users[
               adminConfig.UserConfig.Users.length - 1
@@ -231,18 +232,6 @@ export async function POST(request: NextRequest) {
               { status: 404 }
             );
           }
-          if (!targetPassword) {
-            return NextResponse.json({ error: '缺少新密码' }, { status: 400 });
-          }
-
-          // 权限检查：不允许修改站长密码
-          if (targetEntry.role === 'owner') {
-            return NextResponse.json(
-              { error: '无法修改站长密码' },
-              { status: 401 }
-            );
-          }
-
           if (
             isTargetAdmin &&
             operatorRole !== 'owner' &&
@@ -254,6 +243,14 @@ export async function POST(request: NextRequest) {
             );
           }
 
+          const sharedPassword = process.env.PASSWORD;
+          if (!sharedPassword) {
+            return NextResponse.json(
+              { error: '服務器未設定 PASSWORD 環境變數' },
+              { status: 500 }
+            );
+          }
+
           if (!storage || typeof storage.changePassword !== 'function') {
             return NextResponse.json(
               { error: '存储未配置密码修改功能' },
@@ -261,7 +258,7 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          await storage.changePassword(targetUsername!, targetPassword);
+          await storage.changePassword(targetUsername!, sharedPassword);
           break;
         }
         case 'deleteUser': {

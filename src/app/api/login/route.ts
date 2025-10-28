@@ -192,16 +192,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '用户被封禁' }, { status: 401 });
     }
 
-    // 校验用户密码
-    try {
-      const pass = await db.verifyUser(username, password);
-      if (!pass) {
-        return NextResponse.json(
-          { error: '用户名或密码错误' },
-          { status: 401 }
-        );
-      }
+    const sharedPassword = process.env.PASSWORD;
+    if (!sharedPassword) {
+      return NextResponse.json(
+        { error: '服務器未設定 PASSWORD 環境變數' },
+        { status: 500 }
+      );
+    }
 
+    if (password !== sharedPassword) {
+      return NextResponse.json(
+        { error: '用户名或密码错误' },
+        { status: 401 }
+      );
+    }
+
+    try {
       await ensureAdminUser(username, config);
 
       // 验证成功，设置认证cookie
