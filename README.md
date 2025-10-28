@@ -210,18 +210,15 @@ networks:
     {
       "username": "media-viewer",
       "password": "MediaViewer@123"
+    },
+    {
+      "username": "esmee",
+      "password": "Esmee@123",
+      "role": "admin"
     }
   ],
   "api_site": {
-    "dyttzy": {
-      "api": "http://caiji.dyttzyapi.com/api.php/provide/vod",
-      "name": "电影天堂资源",
-      "detail": "http://caiji.dyttzyapi.com"
-    }
-    // ...更多站点
-  }
-}
-```
+
 
 - `cache_time`：接口缓存时间（秒）。
 - `users`：可选，用于预置登录账户（仅 Redis / D1 存储模式生效），字段包括 `username`、`password` 以及可选的 `role`（`user` 或 `admin`）。
@@ -291,3 +288,4 @@ MoonTV 支持标准的苹果 CMS V10 API 格式。
 - [ArtPlayer](https://github.com/zhw2590582/ArtPlayer) — 提供强大的网页视频播放器。
 - [HLS.js](https://github.com/video-dev/hls.js) — 实现 HLS 流媒体在浏览器中的播放支持。
 - 感谢所有提供免费影视接口的站点。
+```

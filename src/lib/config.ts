@@ -33,6 +33,11 @@ type NormalizedConfigUser = {
   role: 'user' | 'admin';
 };
 
+type BasicConfigUser = {
+  username: string;
+  role: 'user' | 'admin';
+};
+
 function normalizeConfigUsers(
   users?: ConfigFileUser[]
 ): NormalizedConfigUser[] {
@@ -98,6 +103,66 @@ export const API_CONFIG = {
 let fileConfig: ConfigFileStruct;
 let cachedConfig: AdminConfig;
 
+function buildAdminConfigFromFile(
+  config: ConfigFileStruct,
+  users: BasicConfigUser[] = []
+): AdminConfig {
+  const uniqueUsers = new Map<string, BasicConfigUser['role']>();
+  users.forEach(({ username, role }) => {
+    const trimmed = username?.trim();
+    if (!trimmed) {
+      return;
+    }
+    if (!uniqueUsers.has(trimmed)) {
+      uniqueUsers.set(trimmed, role);
+    }
+  });
+
+  const orderedUsers: { username: string; role: 'user' | 'admin' | 'owner' }[] =
+    [];
+  uniqueUsers.forEach((role, username) => {
+    orderedUsers.push({ username, role });
+  });
+
+  const ownerUser = process.env.USERNAME?.trim();
+  if (ownerUser) {
+    const filtered = orderedUsers.filter((user) => user.username !== ownerUser);
+    orderedUsers.length = 0;
+    orderedUsers.push(...filtered);
+    orderedUsers.unshift({
+      username: ownerUser,
+      role: 'owner',
+    });
+  }
+
+  const apiSiteEntries = Object.entries(config?.api_site || {});
+
+  return {
+    SiteConfig: {
+      SiteName: process.env.SITE_NAME || 'MoonTV',
+      Announcement:
+        process.env.ANNOUNCEMENT ||
+        '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
+      SearchDownstreamMaxPage:
+        Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
+      SiteInterfaceCacheTime: config?.cache_time || 7200,
+      ImageProxy: process.env.NEXT_PUBLIC_IMAGE_PROXY || '',
+    },
+    UserConfig: {
+      AllowRegister: process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true',
+      Users: orderedUsers,
+    },
+    SourceConfig: apiSiteEntries.map(([key, site]) => ({
+      key,
+      name: site.name,
+      api: site.api,
+      detail: site.detail,
+      from: 'config',
+      disabled: false,
+    })),
+  };
+}
+
 async function initConfig() {
   if (cachedConfig) {
     return;
@@ -127,10 +192,16 @@ async function initConfig() {
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
   if (storageType !== 'localstorage') {
     // 数据库存储，读取并补全管理员配置
-    const storage = getStorage();
+    let storage: IStorage | null = null;
+    try {
+      storage = getStorage();
+    } catch (error) {
+      console.error('获取存储实例失败:', error);
+    }
 
     await ensureConfigUsersRegistered(storage, configUsers);
 
+    let userNames: string[] = [];
     try {
       // 尝试从数据库获取管理员配置
       let adminConfig: AdminConfig | null = null;
@@ -139,7 +210,6 @@ async function initConfig() {
       }
 
       // 获取所有用户名，用于补全 Users
-      let userNames: string[] = [];
       if (storage && typeof (storage as any).getAllUsers === 'function') {
         try {
           userNames = await (storage as any).getAllUsers();
@@ -281,32 +351,19 @@ async function initConfig() {
     } catch (err) {
       console.error('加载管理员配置失败:', err);
     }
+
+    if (!cachedConfig) {
+      const fallbackUsers: BasicConfigUser[] = Array.from(
+        new Set([...configUserNames, ...userNames])
+      ).map((username) => ({
+        username,
+        role: configUserRoleMap.get(username) ?? 'user',
+      }));
+      cachedConfig = buildAdminConfigFromFile(fileConfig, fallbackUsers);
+    }
   } else {
     // 本地存储直接使用文件配置
-    cachedConfig = {
-      SiteConfig: {
-        SiteName: process.env.SITE_NAME || 'MoonTV',
-        Announcement:
-          process.env.ANNOUNCEMENT ||
-          '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
-        SearchDownstreamMaxPage:
-          Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
-        SiteInterfaceCacheTime: fileConfig.cache_time || 7200,
-        ImageProxy: process.env.NEXT_PUBLIC_IMAGE_PROXY || '',
-      },
-      UserConfig: {
-        AllowRegister: process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true',
-        Users: [],
-      },
-      SourceConfig: Object.entries(fileConfig.api_site).map(([key, site]) => ({
-        key,
-        name: site.name,
-        api: site.api,
-        detail: site.detail,
-        from: 'config',
-        disabled: false,
-      })),
-    } as AdminConfig;
+    cachedConfig = buildAdminConfigFromFile(fileConfig);
   }
 }
 
@@ -317,7 +374,12 @@ export async function getConfig(): Promise<AdminConfig> {
     return cachedConfig;
   }
   // 非 docker 环境且 DB 存储，直接读 db 配置
-  const storage = getStorage();
+  let storage: IStorage | null = null;
+  try {
+    storage = getStorage();
+  } catch (error) {
+    console.error('获取存储实例失败:', error);
+  }
   let adminConfig: AdminConfig | null = null;
   if (storage && typeof (storage as any).getAdminConfig === 'function') {
     adminConfig = await (storage as any).getAdminConfig();

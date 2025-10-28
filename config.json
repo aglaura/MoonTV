@@ -9,6 +9,11 @@
     {
       "username": "media-viewer",
       "password": "MediaViewer@123"
+    },
+    {
+      "username": "esmee",
+      "password": "Esmee@123",
+      "role": "admin"
     }
   ],
   "api_site": {

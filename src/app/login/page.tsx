@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -15,6 +15,7 @@ function LoginPageClient() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<string[]>([]);
   const { siteName } = useSite();
 
   // 当 STORAGE_TYPE 不为空且不为 localstorage 时，要求输入用户名
@@ -27,6 +28,42 @@ function LoginPageClient() {
   const enableRegister =
     typeof window !== 'undefined' &&
     Boolean((window as any).RUNTIME_CONFIG?.ENABLE_REGISTER);
+
+  useEffect(() => {
+    if (!shouldAskUsername) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch('/api/users', { cache: 'no-store' });
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        if (!cancelled && Array.isArray(data?.users)) {
+          setAvailableUsers(
+            data.users
+              .map((user: { username?: string }) => user.username?.trim())
+              .filter((name: string | undefined): name is string =>
+                Boolean(name)
+              )
+          );
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('加载可用用户失败:', err);
+      }
+    };
+
+    fetchUsers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldAskUsername]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,12 +143,22 @@ function LoginPageClient() {
               <input
                 id='username'
                 type='text'
+                list={
+                  availableUsers.length > 0 ? 'login-user-options' : undefined
+                }
                 autoComplete='username'
                 className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur'
                 placeholder='輸入使用者名稱'
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
+              {availableUsers.length > 0 && (
+                <datalist id='login-user-options'>
+                  {availableUsers.map((user) => (
+                    <option key={user} value={user} />
+                  ))}
+                </datalist>
+              )}
             </div>
           )}
 
