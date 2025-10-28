@@ -14,8 +14,9 @@ function getBuildResponse() {
 
 // This is used during runtime
 export async function GET(request: NextRequest) {
-  // During build time on some platforms Next will collect data; return an empty 204 to avoid failures.
-  if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_BUILD_STEP === '1') {
+  // During build time on some platforms Next will collect data without cookies; return 204 to avoid failures.
+  // Vercel sets the `VERCEL` env var in its environment — use that as a hint.
+  if (!request.headers.get('cookie') && typeof process.env.VERCEL !== 'undefined') {
     return getBuildResponse();
   }
 
