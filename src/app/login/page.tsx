@@ -52,9 +52,7 @@ function LoginPageClient() {
             })
           );
           const normalizedUsers = normalizedUsersRaw.filter(
-            (
-              entry
-            ): entry is {
+            (entry: { username?: string; avatar?: string }): entry is {
               username: string;
               avatar?: string;
             } => Boolean(entry.username)
