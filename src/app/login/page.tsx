@@ -58,7 +58,9 @@ function LoginPageClient() {
             } => Boolean(entry.username)
           );
 
-          setAvailableUsers(normalizedUsers.map((entry) => entry.username));
+          setAvailableUsers(
+            normalizedUsers.map((entry: { username: string }) => entry.username)
+          );
           const thumbnailMap: Record<string, string> = {};
           normalizedUsers.forEach((entry) => {
             if (entry.avatar) {
