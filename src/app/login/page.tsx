@@ -16,6 +16,7 @@ function LoginPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
+  const [userThumbnails, setUserThumbnails] = useState<Record<string, string>>({});
   const { siteName } = useSite();
 
   // 当 STORAGE_TYPE 不为空且不为 localstorage 时，要求输入用户名
@@ -44,13 +45,24 @@ function LoginPageClient() {
         }
         const data = await response.json();
         if (!cancelled && Array.isArray(data?.users)) {
-          setAvailableUsers(
-            data.users
-              .map((user: { username?: string }) => user.username?.trim())
-              .filter((name: string | undefined): name is string =>
-                Boolean(name)
-              )
-          );
+          const normalizedUsers = data.users
+            .map((user: { username?: string; avatar?: string }) => ({
+              username: user.username?.trim(),
+              avatar: user.avatar?.trim(),
+            }))
+            .filter((entry) => Boolean(entry.username)) as Array<{
+              username: string;
+              avatar?: string;
+            }>;
+
+          setAvailableUsers(normalizedUsers.map((entry) => entry.username));
+          const thumbnailMap: Record<string, string> = {};
+          normalizedUsers.forEach((entry) => {
+            if (entry.avatar) {
+              thumbnailMap[entry.username] = entry.avatar;
+            }
+          });
+          setUserThumbnails(thumbnailMap);
         }
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -166,22 +178,35 @@ function LoginPageClient() {
                       <option key={user} value={user} />
                     ))}
                   </datalist>
-                  <div className='mt-3 flex flex-wrap gap-2'>
+                  <div className='mt-3 flex flex-wrap gap-3'>
                     {availableUsers.map((user) => {
                       const isActive =
                         user.toLowerCase() === username.toLowerCase();
+                      const thumbnail = userThumbnails[user];
                       return (
                         <button
                           type='button'
                           key={user}
                           onClick={() => setUsername(user)}
-                          className={`px-3 py-1.5 rounded-full text-xs sm:text-sm transition-colors ${
+                          className={`relative flex items-center gap-3 px-3 py-2 rounded-2xl text-xs sm:text-sm transition-colors border ${
                             isActive
-                              ? 'bg-green-600 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
+                              ? 'border-green-500 bg-green-500/10 text-green-600'
+                              : 'border-transparent bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
                           }`}
                           aria-pressed={isActive}
                         >
+                          <span className='block w-10 h-10 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-sm font-semibold text-green-600 dark:text-green-400 border border-green-500/30 shadow-inner'>
+                            {thumbnail ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={thumbnail}
+                                alt={user}
+                                className='w-full h-full object-cover'
+                              />
+                            ) : (
+                              user.charAt(0).toUpperCase()
+                            )}
+                          </span>
                           {user}
                         </button>
                       );
