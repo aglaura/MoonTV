@@ -148,20 +148,20 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const sanitizeEnglishTitle = useCallback(
       (value?: string | null, fallback?: string | null) => {
-        const primary = value?.trim();
-        if (primary && !ENGLISH_TITLE_PLACEHOLDERS.has(primary.toLowerCase())) {
-          return primary;
-        }
+        const normalize = (input?: string | null) => {
+          const trimmed = input?.trim();
+          if (!trimmed) return undefined;
+          const lowered = trimmed.toLowerCase();
+          if (
+            ENGLISH_TITLE_PLACEHOLDERS.has(lowered) ||
+            lowered.startsWith('imdbt:')
+          ) {
+            return undefined;
+          }
+          return trimmed;
+        };
 
-        const backup = fallback?.trim();
-        if (
-          backup &&
-          !ENGLISH_TITLE_PLACEHOLDERS.has(backup.toLowerCase())
-        ) {
-          return backup;
-        }
-
-        return undefined;
+        return normalize(value) ?? normalize(fallback);
       },
       []
     );
@@ -189,9 +189,33 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           const imdbEnglish = detail?.imdbTitle;
           const imdbId = detail?.imdbId;
           const original = detail?.original_title;
-          const fallback = imdbId ? `IMDb: ${imdbId}` : original;
+          const fallback = imdbId ? `IMDbT: ${imdbId}` : original;
           if (!cancelled) {
-            setEnglishTitle(sanitizeEnglishTitle(imdbEnglish, fallback));
+            const resolved = sanitizeEnglishTitle(imdbEnglish, fallback);
+            setEnglishTitle(resolved ?? fallback ?? undefined);
+
+            if (
+              imdbId &&
+              (!resolved || (resolved && resolved.startsWith('IMDbT:')))
+            ) {
+              try {
+                const response = await fetch(
+                  `/api/imdb?id=${encodeURIComponent(imdbId)}`,
+                  { cache: 'force-cache' }
+                );
+                if (response.ok) {
+                  const data = (await response.json()) as {
+                    title?: string;
+                  };
+                  const imdbScraped = sanitizeEnglishTitle(data.title);
+                  if (imdbScraped && !cancelled) {
+                    setEnglishTitle(imdbScraped);
+                  }
+                }
+              } catch (error) {
+                /* ignore imdb fetch errors */
+              }
+            }
           }
         } catch (error) {
           if (!cancelled) {
@@ -221,11 +245,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         : 'tv'
       : type;
     const englishTitleToShow = useMemo(() => {
+      const sanitized = sanitizeEnglishTitle(englishTitle);
+      if (sanitized) {
+        return sanitized;
+      }
       const trimmedEnglish = englishTitle?.trim();
       return trimmedEnglish && trimmedEnglish.length > 0
         ? trimmedEnglish
         : undefined;
-    }, [englishTitle]);
+    }, [englishTitle, sanitizeEnglishTitle]);
 
     const convertDisplayText = useCallback((value?: string) => {
       if (!value) return undefined;
