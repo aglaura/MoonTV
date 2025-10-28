@@ -7,7 +7,7 @@ const nextConfig = {
   },
 
   reactStrictMode: false,
-  swcMinify: true,
+  swcMinify: false,
   optimizeFonts: false,
 
   // Uncoment to add domain whitelist
@@ -67,7 +67,10 @@ const nextConfig = {
 
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
+  disable:
+    process.env.NODE_ENV === 'development' ||
+    process.env.NEXT_DISABLE_PWA === '1' ||
+    process.env.NEXT_DISABLE_PWA === 'true',
   register: true,
   skipWaiting: true,
 });
