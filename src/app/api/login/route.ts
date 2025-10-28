@@ -5,7 +5,7 @@ import type { AdminConfig } from '@/lib/admin.types';
 import { getConfig } from '@/lib/config';
 import { db, getStorage } from '@/lib/db';
 
-async function ensureAdminUser(
+export async function ensureAdminUser(
   username: string,
   config: AdminConfig
 ): Promise<void> {
@@ -78,7 +78,7 @@ async function generateSignature(
 }
 
 // 生成认证Cookie（带签名）
-async function generateAuthCookie(
+export async function generateAuthCookie(
   username?: string,
   password?: string,
   includePassword = false
@@ -152,44 +152,14 @@ export async function POST(req: NextRequest) {
       return response;
     }
 
-    // 数据库 / redis 模式——校验用户名并尝试连接数据库
-    const { username, password } = await req.json();
+    // 数据库 / redis 模式——共享密码，登录后再选择用户
+    const { username, password } = (await req.json()) as {
+      username?: string;
+      password?: string;
+    };
 
-    if (!username || typeof username !== 'string') {
-      return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
-    }
     if (!password || typeof password !== 'string') {
       return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
-    }
-
-    // 可能是站长，直接读环境变量
-    if (
-      username === process.env.USERNAME &&
-      password === process.env.PASSWORD
-    ) {
-      // 验证成功，设置认证cookie
-      const response = NextResponse.json({ ok: true });
-      const cookieValue = await generateAuthCookie(username, password, false); // 数据库模式不包含 password
-      const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 7天过期
-
-      response.cookies.set('auth', cookieValue, {
-        path: '/',
-        expires,
-        sameSite: 'lax', // 改为 lax 以支持 PWA
-        httpOnly: false, // PWA 需要客户端可访问
-        secure: false, // 根据协议自动设置
-      });
-
-      return response;
-    } else if (username === process.env.USERNAME) {
-      return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
-    }
-
-    const config = await getConfig();
-    const user = config.UserConfig.Users.find((u) => u.username === username);
-    if (user && user.banned) {
-      return NextResponse.json({ error: '用户被封禁' }, { status: 401 });
     }
 
     const sharedPassword = process.env.PASSWORD;
@@ -207,21 +177,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    try {
-      await ensureAdminUser(username, config);
-
-      // 验证成功，设置认证cookie
-      const response = NextResponse.json({ ok: true });
-      const cookieValue = await generateAuthCookie(username, password, false); // 数据库模式不包含 password
+    if (!username || typeof username !== 'string') {
+      const response = NextResponse.json({ ok: true, requiresSelection: true });
+      const cookieValue = await generateAuthCookie(undefined, password, true);
       const expires = new Date();
-      expires.setDate(expires.getDate() + 7); // 7天过期
+      expires.setDate(expires.getDate() + 7);
 
       response.cookies.set('auth', cookieValue, {
         path: '/',
         expires,
-        sameSite: 'lax', // 改为 lax 以支持 PWA
-        httpOnly: false, // PWA 需要客户端可访问
-        secure: false, // 根据协议自动设置
+        sameSite: 'lax',
+        httpOnly: false,
+        secure: false,
+      });
+
+      return response;
+    }
+
+    const config = await getConfig();
+    const targetUser = config.UserConfig.Users.find(
+      (u) => u.username === username
+    );
+    if (targetUser && targetUser.banned) {
+      return NextResponse.json({ error: '用户被封禁' }, { status: 401 });
+    }
+
+    try {
+      await ensureAdminUser(username, config);
+
+      const response = NextResponse.json({ ok: true });
+      const cookieValue = await generateAuthCookie(
+        username,
+        sharedPassword,
+        false
+      );
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 7);
+
+      response.cookies.set('auth', cookieValue, {
+        path: '/',
+        expires,
+        sameSite: 'lax',
+        httpOnly: false,
+        secure: false,
       });
 
       return response;
