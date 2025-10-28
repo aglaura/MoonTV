@@ -7,17 +7,11 @@ import { getConfig } from '@/lib/config';
 
 export const runtime = 'edge';
 
-// Helper used to respond during build-time collection. Keep it non-exported so Next.js types stay valid.
-function getBuildResponse() {
-  return new Response(null, { status: 204 });
-}
-
 // This is used during runtime
 export async function GET(request: NextRequest) {
-  // During build time on some platforms Next will collect data without cookies; return 204 to avoid failures.
-  // Vercel sets the `VERCEL` env var in its environment — use that as a hint.
+  // During build time on platforms like Vercel, return 204 for data collection calls
   if (!request.headers.get('cookie') && typeof process.env.VERCEL !== 'undefined') {
-    return getBuildResponse();
+    return new Response(null, { status: 204 });
   }
 
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
