@@ -7,16 +7,16 @@ import { getConfig } from '@/lib/config';
 
 export const runtime = 'edge';
 
-// This is used during build time
-export function GET_build() {
+// Helper used to respond during build-time collection. Keep it non-exported so Next.js types stay valid.
+function getBuildResponse() {
   return new Response(null, { status: 204 });
 }
 
 // This is used during runtime
 export async function GET(request: NextRequest) {
-  // During build time, return empty response
+  // During build time on some platforms Next will collect data; return an empty 204 to avoid failures.
   if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_BUILD_STEP === '1') {
-    return GET_build();
+    return getBuildResponse();
   }
 
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
