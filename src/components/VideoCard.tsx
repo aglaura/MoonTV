@@ -42,6 +42,7 @@ const ENGLISH_TITLE_PLACEHOLDERS = new Set(
     'na',
     'unknown',
     'none',
+    'not found',
     '-',
     '--',
     'null',
@@ -116,6 +117,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [englishTitle, setEnglishTitle] = useState<string | undefined>(
       undefined
     );
+    const [imdbIdState, setImdbIdState] = useState<string | undefined>(
+      undefined
+    );
 
     // 可外部修改的可控字段
     const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
@@ -146,30 +150,44 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       setDoubanId: (id?: number) => setDynamicDoubanId(id),
     }));
 
-    const sanitizeEnglishTitle = useCallback(
-      (value?: string | null, fallback?: string | null) => {
-        const normalize = (input?: string | null) => {
-          const trimmed = input?.trim();
-          if (!trimmed) return undefined;
-          const lowered = trimmed.toLowerCase();
-          if (
-            ENGLISH_TITLE_PLACEHOLDERS.has(lowered) ||
-            lowered.startsWith('imdbt:')
-          ) {
-            return undefined;
-          }
-          return trimmed;
-        };
+    const extractImdbId = useCallback((value?: string | null) => {
+      const match = value?.match(/tt\d{5,}/i);
+      return match ? match[0] : undefined;
+    }, []);
 
-        return normalize(value) ?? normalize(fallback);
-      },
-      []
-    );
+    const sanitizeEnglishTitle = useCallback((value?: string | null) => {
+      if (!value) {
+        return undefined;
+      }
+
+      let candidate = value.trim();
+      if (!candidate) {
+        return undefined;
+      }
+
+      candidate = candidate.replace(/\s*-\s*IMDb\s*$/i, '').trim();
+
+      const lowered = candidate.toLowerCase();
+      if (
+        ENGLISH_TITLE_PLACEHOLDERS.has(lowered) ||
+        lowered.startsWith('imdbt:') ||
+        /^tt\d{5,}$/i.test(candidate)
+      ) {
+        return undefined;
+      }
+
+      return candidate;
+    }, []);
 
     useEffect(() => {
       const sanitized = sanitizeEnglishTitle(title_en);
       setEnglishTitle(sanitized);
-    }, [sanitizeEnglishTitle, title_en, douban_id]);
+
+      const idFromTitle = extractImdbId(title_en);
+      if (idFromTitle) {
+        setImdbIdState((prev) => prev ?? idFromTitle);
+      }
+    }, [sanitizeEnglishTitle, extractImdbId, title_en, douban_id]);
 
     useEffect(() => {
       if (
@@ -189,15 +207,26 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           const imdbEnglish = detail?.imdbTitle;
           const imdbId = detail?.imdbId;
           const original = detail?.original_title;
-          const fallback = imdbId ? `IMDbT: ${imdbId}` : original;
-          if (!cancelled) {
-            const resolved = sanitizeEnglishTitle(imdbEnglish, fallback);
-            setEnglishTitle(resolved ?? fallback ?? undefined);
 
-            if (
-              imdbId &&
-              (!resolved || (resolved && resolved.startsWith('IMDbT:')))
-            ) {
+          if (imdbId) {
+            setImdbIdState((prev) => (prev ? prev : imdbId));
+          } else {
+            const extractedOriginalId = extractImdbId(original);
+            if (extractedOriginalId) {
+              setImdbIdState((prev) => (prev ? prev : extractedOriginalId));
+            }
+          }
+
+          const resolved = sanitizeEnglishTitle(imdbEnglish);
+
+          if (!cancelled) {
+            if (resolved) {
+              setEnglishTitle(resolved);
+            } else {
+              setEnglishTitle(undefined);
+            }
+
+            if (imdbId && !resolved) {
               try {
                 const response = await fetch(
                   `/api/imdb?id=${encodeURIComponent(imdbId)}`,
@@ -229,7 +258,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return () => {
         cancelled = true;
       };
-    }, [douban_id, englishTitle, sanitizeEnglishTitle]);
+    }, [douban_id, englishTitle, sanitizeEnglishTitle, extractImdbId]);
 
     const actualTitle = title;
     const actualPoster = poster;
@@ -249,11 +278,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       if (sanitized) {
         return sanitized;
       }
-      const trimmedEnglish = englishTitle?.trim();
-      return trimmedEnglish && trimmedEnglish.length > 0
-        ? trimmedEnglish
-        : undefined;
-    }, [englishTitle, sanitizeEnglishTitle]);
+      if (imdbIdState) {
+        return imdbIdState;
+      }
+      return 'Not Found';
+    }, [englishTitle, imdbIdState, sanitizeEnglishTitle]);
 
     const convertDisplayText = useCallback((value?: string) => {
       if (!value) return undefined;
