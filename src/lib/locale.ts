@@ -1,4 +1,4 @@
-import { OpenCC } from 'opencc-js';
+import { Converter } from 'opencc-js';
 
 let toTraditionalConverter: ((text: string) => string) | null = null;
 
@@ -13,7 +13,7 @@ export function convertToTraditional(text: string | undefined | null): string {
 
   try {
     if (!toTraditionalConverter) {
-      toTraditionalConverter = OpenCC.Converter({ from: 'cn', to: 'tw' });
+      toTraditionalConverter = Converter({ from: 'cn', to: 'tw' });
     }
     return toTraditionalConverter(text);
   } catch {
