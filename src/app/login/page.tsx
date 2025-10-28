@@ -65,6 +65,13 @@ function LoginPageClient() {
     };
   }, [shouldAskUsername]);
 
+  useEffect(() => {
+    if (!shouldAskUsername) return;
+    if (availableUsers.length === 0) return;
+    if (username && username.trim().length > 0) return;
+    setUsername(availableUsers[0]);
+  }, [availableUsers, shouldAskUsername, username]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -153,11 +160,34 @@ function LoginPageClient() {
                 onChange={(e) => setUsername(e.target.value)}
               />
               {availableUsers.length > 0 && (
-                <datalist id='login-user-options'>
-                  {availableUsers.map((user) => (
-                    <option key={user} value={user} />
-                  ))}
-                </datalist>
+                <>
+                  <datalist id='login-user-options'>
+                    {availableUsers.map((user) => (
+                      <option key={user} value={user} />
+                    ))}
+                  </datalist>
+                  <div className='mt-3 flex flex-wrap gap-2'>
+                    {availableUsers.map((user) => {
+                      const isActive =
+                        user.toLowerCase() === username.toLowerCase();
+                      return (
+                        <button
+                          type='button'
+                          key={user}
+                          onClick={() => setUsername(user)}
+                          className={`px-3 py-1.5 rounded-full text-xs sm:text-sm transition-colors ${
+                            isActive
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
+                          }`}
+                          aria-pressed={isActive}
+                        >
+                          {user}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
