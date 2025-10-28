@@ -8,6 +8,7 @@ const nextConfig = {
 
   reactStrictMode: false,
   swcMinify: true,
+  optimizeFonts: false,
 
   // Uncoment to add domain whitelist
   images: {
