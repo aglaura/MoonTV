@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { convertToSimplified } from '@/lib/locale';
 import { searchFromApi } from '@/lib/downstream';
 
 export const runtime = 'nodejs';
@@ -22,7 +23,10 @@ export async function GET(request: Request) {
   }
 
   const apiSites = await getAvailableApiSites();
-  const searchPromises = apiSites.map((site) => searchFromApi(site, query));
+  const simplifiedQuery = convertToSimplified(query) || query;
+  const searchPromises = apiSites.map((site) =>
+    searchFromApi(site, simplifiedQuery)
+  );
 
   try {
     const results = await Promise.all(searchPromises);

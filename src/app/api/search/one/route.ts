@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { convertToSimplified } from '@/lib/locale';
 import { searchFromApi } from '@/lib/downstream';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
   }
 
   const apiSites = await getAvailableApiSites();
+  const simplifiedQuery = convertToSimplified(query) || query;
 
   try {
     // 根据 resourceId 查找对应的 API 站点
@@ -38,8 +40,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const results = await searchFromApi(targetSite, query);
-    const result = results.filter((r) => r.title === query);
+    const results = await searchFromApi(targetSite, simplifiedQuery);
+    const result = results.filter((r) => r.title === simplifiedQuery);
     const cacheTime = await getCacheTime();
 
     if (result.length === 0) {
