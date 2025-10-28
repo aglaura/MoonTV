@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // OrionTV 兼容接口
 export async function GET(request: Request) {

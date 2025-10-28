@@ -90,7 +90,7 @@ async function fetchImdbTitle(imdbId: string): Promise<string | undefined> {
   }
 }
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
