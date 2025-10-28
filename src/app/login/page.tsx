@@ -45,15 +45,20 @@ function LoginPageClient() {
         }
         const data = await response.json();
         if (!cancelled && Array.isArray(data?.users)) {
-          const normalizedUsers = data.users
-            .map((user: { username?: string; avatar?: string }) => ({
+          const normalizedUsersRaw = data.users.map(
+            (user: { username?: string; avatar?: string }) => ({
               username: user.username?.trim(),
               avatar: user.avatar?.trim(),
-            }))
-            .filter((entry) => Boolean(entry.username)) as Array<{
+            })
+          );
+          const normalizedUsers = normalizedUsersRaw.filter(
+            (
+              entry
+            ): entry is {
               username: string;
               avatar?: string;
-            }>;
+            } => Boolean(entry.username)
+          );
 
           setAvailableUsers(normalizedUsers.map((entry) => entry.username));
           const thumbnailMap: Record<string, string> = {};
