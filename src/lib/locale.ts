@@ -1,4 +1,4 @@
-import OpenCC from 'opencc-js';
+import { OpenCC } from 'opencc-js';
 
 let toTraditionalConverter: ((text: string) => string) | null = null;
 
