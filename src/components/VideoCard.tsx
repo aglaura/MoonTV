@@ -36,6 +36,21 @@ import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import { useLongPress } from '@/components/useLongPress';
 
+const ENGLISH_TITLE_PLACEHOLDERS = new Set(
+  [
+    'n/a',
+    'na',
+    'unknown',
+    'none',
+    '-',
+    '--',
+    'null',
+    '暂无',
+    '暫無',
+    '無',
+  ].map((item) => item.toLowerCase())
+);
+
 export interface VideoCardProps {
   id?: string;
   source?: string;
@@ -99,7 +114,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       null
     ); // 搜索结果的收藏状态
     const [englishTitle, setEnglishTitle] = useState<string | undefined>(
-      title_en?.trim() || undefined
+      undefined
     );
 
     // 可外部修改的可控字段
@@ -131,13 +146,30 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       setDoubanId: (id?: number) => setDynamicDoubanId(id),
     }));
 
+    const sanitizeEnglishTitle = useCallback(
+      (value?: string | null, fallback?: string | null) => {
+        const primary = value?.trim();
+        if (primary && !ENGLISH_TITLE_PLACEHOLDERS.has(primary.toLowerCase())) {
+          return primary;
+        }
+
+        const backup = fallback?.trim();
+        if (
+          backup &&
+          !ENGLISH_TITLE_PLACEHOLDERS.has(backup.toLowerCase())
+        ) {
+          return backup;
+        }
+
+        return undefined;
+      },
+      []
+    );
+
     useEffect(() => {
-      if (title_en && title_en.trim() !== '') {
-        setEnglishTitle(title_en.trim());
-        return;
-      }
-      setEnglishTitle(undefined);
-    }, [title_en, douban_id]);
+      const sanitized = sanitizeEnglishTitle(title_en);
+      setEnglishTitle(sanitized);
+    }, [sanitizeEnglishTitle, title_en, douban_id]);
 
     useEffect(() => {
       if (
@@ -154,16 +186,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       const fetchEnglishTitle = async () => {
         try {
           const detail = await getDoubanSubjectDetail(douban_id);
-          const imdbEnglish = detail?.imdbTitle?.trim();
-          const imdbId = detail?.imdbId?.trim();
-          const original = detail?.original_title?.trim();
+          const imdbEnglish = detail?.imdbTitle;
+          const imdbId = detail?.imdbId;
+          const original = detail?.original_title;
           const fallback = imdbId ? `IMDb: ${imdbId}` : original;
           if (!cancelled) {
-            setEnglishTitle(imdbEnglish || fallback || '');
+            setEnglishTitle(sanitizeEnglishTitle(imdbEnglish, fallback));
           }
         } catch (error) {
           if (!cancelled) {
-            setEnglishTitle('');
+            setEnglishTitle(undefined);
           }
         }
       };
@@ -173,7 +205,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return () => {
         cancelled = true;
       };
-    }, [douban_id, englishTitle]);
+    }, [douban_id, englishTitle, sanitizeEnglishTitle]);
 
     const actualTitle = title;
     const actualPoster = poster;
@@ -1212,13 +1244,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                   e.preventDefault();
                   return false;
                 }}
+                title={
+                  englishTitleToShow
+                    ? `${traditionalTitle || actualTitle} (${englishTitleToShow})`
+                    : traditionalTitle || actualTitle
+                }
               >
                 {traditionalTitle || actualTitle}
-                {englishTitleToShow && (
-                  <span className='ml-1 text-xs font-normal text-gray-500 dark:text-gray-400'>
-                    ({englishTitleToShow})
-                  </span>
-                )}
               </span>
               {/* 自定义 tooltip */}
               <div
