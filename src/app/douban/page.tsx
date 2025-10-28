@@ -5,18 +5,18 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+import { BangumiCalendarData, GetBangumiCalendarData } from '@/lib/bangumi.client';
 import {
   getDoubanCategories,
   getDoubanRecommends,
 } from '@/lib/douban.client';
+import { convertToSimplified } from '@/lib/locale';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
 import DoubanCardSkeleton from '@/components/DoubanCardSkeleton';
 import DoubanSelector from '@/components/DoubanSelector';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
-
-const noop = () => {}; // Fix for empty function ESLint error
 
 function DoubanPageClient() {
   const searchParams = useSearchParams();
@@ -54,12 +54,15 @@ function DoubanPageClient() {
     label: 'all',
     sort: 'T',
   });
+  const [selectedWeekday, setSelectedWeekday] = useState<string>('');
+  const [bangumiCalendarData, setBangumiCalendarData] = useState<BangumiCalendarData[] | null>(null);
 
   const currentParamsRef = useRef({
     type,
     primarySelection,
     secondarySelection,
     multiLevelSelection: multiLevelValues,
+    selectedWeekday,
     currentPage: 0,
   });
 
@@ -69,9 +72,10 @@ function DoubanPageClient() {
       primarySelection,
       secondarySelection,
       multiLevelSelection: multiLevelValues,
+      selectedWeekday,
       currentPage,
     };
-  }, [type, primarySelection, secondarySelection, multiLevelValues, currentPage]);
+  }, [type, primarySelection, secondarySelection, multiLevelValues, selectedWeekday, currentPage]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSelectorsReady(true), 50);
@@ -81,6 +85,7 @@ function DoubanPageClient() {
   useEffect(() => {
     setSelectorsReady(false);
     setLoading(true);
+    setSelectedWeekday('');
   }, [type]);
 
   const skeletonData = Array.from({ length: 25 }, (_, index) => index);
@@ -100,12 +105,36 @@ function DoubanPageClient() {
     [type, primarySelection, secondarySelection]
   );
 
+  const normalizeOption = useCallback((value?: string) => {
+    if (!value || value === 'all' || value === '全部') {
+      return '';
+    }
+    return convertToSimplified(value);
+  }, []);
+
+  const normalizeSort = useCallback((value?: string) => {
+    if (!value || value === 'T') {
+      return '';
+    }
+    return value;
+  }, []);
+
+  const fetchBangumiCalendar = useCallback(async () => {
+    if (bangumiCalendarData) {
+      return bangumiCalendarData;
+    }
+    const calendar = await GetBangumiCalendarData();
+    setBangumiCalendarData(calendar);
+    return calendar;
+  }, [bangumiCalendarData]);
+
   const loadInitialData = useCallback(async () => {
     const requestSnapshot = {
       type,
       primarySelection,
       secondarySelection,
       multiLevelSelection: multiLevelValues,
+      selectedWeekday,
       currentPage: 0,
     };
 
@@ -116,31 +145,81 @@ function DoubanPageClient() {
       setHasMore(true);
       setIsLoadingMore(false);
 
-      let data: DoubanResult;
+      let data: DoubanResult | null = null;
 
-      if (primarySelection === '全部') {
+      if (type === 'anime' && primarySelection === '每日放送') {
+        if (!selectedWeekday) {
+          return;
+        }
+        const calendarData = await fetchBangumiCalendar();
+        const weekdayData = calendarData.find(
+          (item) => item.weekday.en === selectedWeekday
+        );
+        const list: DoubanItem[] = weekdayData
+          ? weekdayData.items.map((item) => ({
+            id: item.id?.toString() || '',
+            title: item.name_cn || item.name,
+            poster:
+              item.images?.large ||
+              item.images?.common ||
+              item.images?.medium ||
+              item.images?.small ||
+              item.images?.grid,
+            rate: item.rating?.score
+              ? item.rating.score.toFixed(1)
+              : '',
+            year: item.air_date?.split('-')?.[0] || '',
+          }))
+          : [];
+
+        data = {
+          code: 200,
+          message: 'success',
+          list,
+        };
+      } else if (type === 'anime') {
+        data = await getDoubanRecommends({
+          kind: primarySelection === '番剧' ? 'tv' : 'movie',
+          pageLimit: 25,
+          pageStart: 0,
+          category: '动画',
+          format: primarySelection === '番剧' ? '电视剧' : '',
+          region: normalizeOption(multiLevelValues.region),
+          year: normalizeOption(multiLevelValues.year),
+          platform: normalizeOption(multiLevelValues.platform),
+          sort: normalizeSort(multiLevelValues.sort),
+          label: normalizeOption(multiLevelValues.label),
+        });
+      } else if (primarySelection === '全部') {
         data = await getDoubanRecommends({
           kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
           pageLimit: 25,
           pageStart: 0,
-          category: multiLevelValues.type || '',
-          // 豆瓣 API 僅接受簡體分類字樣，這裡保持簡體參數
+          category: normalizeOption(multiLevelValues.type),
           format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
-          region: multiLevelValues.region || '',
-          year: multiLevelValues.year || '',
-          platform: multiLevelValues.platform || '',
-          sort: multiLevelValues.sort || '',
-          label: multiLevelValues.label || '',
+          region: normalizeOption(multiLevelValues.region),
+          year: normalizeOption(multiLevelValues.year),
+          platform: normalizeOption(multiLevelValues.platform),
+          sort: normalizeSort(multiLevelValues.sort),
+          label: normalizeOption(multiLevelValues.label),
         });
       } else {
         data = await getDoubanCategories(getRequestParams(0));
+      }
+
+      if (!data) {
+        return;
       }
 
       if (data.code === 200) {
         const currentSnapshot = { ...currentParamsRef.current };
         if (isSnapshotEqual(requestSnapshot, currentSnapshot)) {
           setDoubanData(data.list);
-          setHasMore(data.list.length !== 0);
+          if (type === 'anime' && primarySelection === '每日放送') {
+            setHasMore(false);
+          } else {
+            setHasMore(data.list.length !== 0);
+          }
           setLoading(false);
         }
       } else {
@@ -150,7 +229,18 @@ function DoubanPageClient() {
       console.error(err);
       setLoading(false);
     }
-  }, [type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
+  }, [
+    type,
+    primarySelection,
+    secondarySelection,
+    multiLevelValues,
+    selectedWeekday,
+    getRequestParams,
+    normalizeOption,
+    normalizeSort,
+    fetchBangumiCalendar,
+    isSnapshotEqual,
+  ]);
 
   useEffect(() => {
     if (!selectorsReady) return;
@@ -165,11 +255,16 @@ function DoubanPageClient() {
   useEffect(() => {
     if (currentPage > 0) {
       const fetchMoreData = async () => {
+        if (type === 'anime' && primarySelection === '每日放送') {
+          return;
+        }
+
         const requestSnapshot = {
           type,
           primarySelection,
           secondarySelection,
           multiLevelSelection: multiLevelValues,
+          selectedWeekday,
           currentPage,
         };
 
@@ -177,18 +272,31 @@ function DoubanPageClient() {
           setIsLoadingMore(true);
           let data: DoubanResult;
 
-          if (primarySelection === '全部') {
+          if (type === 'anime') {
+            data = await getDoubanRecommends({
+              kind: primarySelection === '番剧' ? 'tv' : 'movie',
+              pageLimit: 25,
+              pageStart: currentPage * 25,
+              category: '动画',
+              format: primarySelection === '番剧' ? '电视剧' : '',
+              region: normalizeOption(multiLevelValues.region),
+              year: normalizeOption(multiLevelValues.year),
+              platform: normalizeOption(multiLevelValues.platform),
+              sort: normalizeSort(multiLevelValues.sort),
+              label: normalizeOption(multiLevelValues.label),
+            });
+          } else if (primarySelection === '全部') {
             data = await getDoubanRecommends({
               kind: type === 'show' ? 'tv' : (type as 'tv' | 'movie'),
               pageLimit: 25,
               pageStart: currentPage * 25,
-              category: multiLevelValues.type || '',
+              category: normalizeOption(multiLevelValues.type),
               format: type === 'show' ? '综艺' : type === 'tv' ? '电视剧' : '',
-              region: multiLevelValues.region || '',
-              year: multiLevelValues.year || '',
-              platform: multiLevelValues.platform || '',
-              sort: multiLevelValues.sort || '',
-              label: multiLevelValues.label || '',
+              region: normalizeOption(multiLevelValues.region),
+              year: normalizeOption(multiLevelValues.year),
+              platform: normalizeOption(multiLevelValues.platform),
+              sort: normalizeSort(multiLevelValues.sort),
+              label: normalizeOption(multiLevelValues.label),
             });
           } else {
             data = await getDoubanCategories(getRequestParams(currentPage * 25));
@@ -210,7 +318,18 @@ function DoubanPageClient() {
 
       fetchMoreData();
     }
-  }, [currentPage, type, primarySelection, secondarySelection, multiLevelValues, getRequestParams, isSnapshotEqual]);
+  }, [
+    currentPage,
+    type,
+    primarySelection,
+    secondarySelection,
+    selectedWeekday,
+    multiLevelValues,
+    normalizeOption,
+    normalizeSort,
+    getRequestParams,
+    isSnapshotEqual,
+  ]);
 
   useEffect(() => {
     if (!hasMore || isLoadingMore || loading || !loadingRef.current) return;
@@ -240,6 +359,17 @@ function DoubanPageClient() {
       setHasMore(true);
       setIsLoadingMore(false);
       setPrimarySelection(value);
+      setMultiLevelValues({
+        type: 'all',
+        region: 'all',
+        year: 'all',
+        platform: 'all',
+        label: 'all',
+        sort: 'T',
+      });
+      if (value === '每日放送') {
+        setSelectedWeekday('');
+      }
     }
   }, [primarySelection]);
 
@@ -263,6 +393,18 @@ function DoubanPageClient() {
     setMultiLevelValues(values);
   }, []);
 
+  const handleWeekdayChange = useCallback((weekday: string) => {
+    if (weekday === selectedWeekday) {
+      return;
+    }
+    setSelectedWeekday(weekday);
+    setLoading(true);
+    setCurrentPage(0);
+    setDoubanData([]);
+    setHasMore(true);
+    setIsLoadingMore(false);
+  }, [selectedWeekday]);
+
   const getPageTitle = () => {
     return type === 'movie' ? '電影' :
       type === 'tv' ? '電視劇' :
@@ -270,7 +412,10 @@ function DoubanPageClient() {
       type === 'show' ? '綜藝' : '自訂';
   };
 
-  const getPageDescription = () => '來自豆瓣的精選內容';
+  const getPageDescription = () =>
+    type === 'anime' && primarySelection === '每日放送'
+      ? '來自 Bangumi 番組計劃的每日放送清單'
+      : '來自豆瓣的精選內容';
 
   const getActivePath = () => {
     const params = new URLSearchParams();
@@ -300,7 +445,7 @@ function DoubanPageClient() {
               onPrimaryChange={handlePrimaryChange}
               onSecondaryChange={handleSecondaryChange}
               onMultiLevelChange={handleMultiLevelChange}
-              onWeekdayChange={noop} // Fixed ESLint error
+              onWeekdayChange={handleWeekdayChange}
             />
           </div>
         </div>
@@ -319,7 +464,9 @@ function DoubanPageClient() {
                     rate={item.rate}
                     year={item.year}
                     type={type === 'movie' ? 'movie' : ''}
-                    isBangumi={false}
+                    isBangumi={
+                      type === 'anime' && primarySelection === '每日放送'
+                    }
                   />
                 </div>
               ))}
