@@ -195,6 +195,30 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         : undefined;
     }, [englishTitle]);
 
+    const convertDisplayText = useCallback((value?: string) => {
+      if (!value) return undefined;
+      const converted = convertToTraditional(value);
+      return converted || value;
+    }, []);
+
+    const traditionalSourceName = useMemo(
+      () => convertDisplayText(source_name),
+      [convertDisplayText, source_name]
+    );
+
+    const uniqueSourceNames = useMemo(() => {
+      if (!dynamicSourceNames) return undefined;
+      return Array.from(new Set(dynamicSourceNames));
+    }, [dynamicSourceNames]);
+
+    const displaySourceNames = useMemo(
+      () =>
+        uniqueSourceNames?.map(
+          (name) => convertDisplayText(name) ?? name
+        ),
+      [convertDisplayText, uniqueSourceNames]
+    );
+
     const traditionalTitle = useMemo(
       () => convertToTraditional(actualTitle),
       [actualTitle]
@@ -963,10 +987,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
             {/* 聚合播放源指示器 */}
             {isAggregate &&
-              dynamicSourceNames &&
-              dynamicSourceNames.length > 0 &&
+              uniqueSourceNames &&
+              uniqueSourceNames.length > 0 &&
               (() => {
-                const uniqueSources = Array.from(new Set(dynamicSourceNames));
+                const uniqueSources = uniqueSourceNames;
                 const sourceCount = uniqueSources.length;
 
                 return (
@@ -1025,7 +1049,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                         ];
 
                         // 按优先级排序播放源
-                        const sortedSources = uniqueSources.sort((a, b) => {
+                        const sortedSources = [...uniqueSources].sort((a, b) => {
                           const aIndex = prioritySources.indexOf(a);
                           const bIndex = prioritySources.indexOf(b);
                           if (aIndex !== -1 && bIndex !== -1)
@@ -1036,10 +1060,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                         });
 
                         const maxDisplayCount = 6; // 最多显示6个
-                        const displaySources = sortedSources.slice(
-                          0,
-                          maxDisplayCount
-                        );
+                        const displaySources = sortedSources
+                          .slice(0, maxDisplayCount)
+                          .map(
+                            (sourceItem) =>
+                              convertDisplayText(sourceItem) ?? sourceItem
+                          );
                         const hasMore = sortedSources.length > maxDisplayCount;
                         const remainingCount =
                           sortedSources.length - maxDisplayCount;
@@ -1262,7 +1288,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                       className='inline-block text-gray-500 dark:text-gray-400 mr-1.5'
                     />
                   )}
-                  {source_name}
+                  {traditionalSourceName ?? source_name}
                 </span>
               </span>
             )}
@@ -1281,12 +1307,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           poster={processImageUrl(actualPoster)}
           actions={mobileActions}
           sources={
-            isAggregate && dynamicSourceNames
-              ? Array.from(new Set(dynamicSourceNames))
-              : undefined
+            isAggregate && displaySourceNames ? displaySourceNames : undefined
           }
           isAggregate={isAggregate}
-          sourceName={source_name}
+          sourceName={traditionalSourceName ?? source_name}
           currentEpisode={currentEpisode}
           totalEpisodes={actualEpisodes}
           origin={origin}

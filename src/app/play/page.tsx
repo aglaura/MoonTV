@@ -1685,7 +1685,7 @@ function PlayPageClient() {
               <div className='flex flex-wrap items-center gap-3 text-base mb-4 opacity-80 flex-shrink-0'>
                 {detail?.class && (
                   <span className='text-green-600 font-semibold'>
-                    {detail.class}
+                    {convertToTraditional(detail.class) || detail.class}
                   </span>
                 )}
                 {(detail?.year || videoYear) && (
@@ -1693,10 +1693,16 @@ function PlayPageClient() {
                 )}
                 {detail?.source_name && (
                   <span className='border border-gray-500/60 px-2 py-[1px] rounded'>
-                    {detail.source_name}
+                    {convertToTraditional(detail.source_name) ||
+                      detail.source_name}
                   </span>
                 )}
-                {detail?.type_name && <span>{detail.type_name}</span>}
+                {detail?.type_name && (
+                  <span>
+                    {convertToTraditional(detail.type_name) ||
+                      detail.type_name}
+                  </span>
+                )}
               </div>
               {/* 剧情简介 */}
               {detail?.desc && (
@@ -1704,7 +1710,7 @@ function PlayPageClient() {
                   className='mt-0 text-base leading-relaxed opacity-90 overflow-y-auto pr-2 flex-1 min-h-0 scrollbar-hide'
                   style={{ whiteSpace: 'pre-line' }}
                 >
-                  {detail.desc}
+                  {convertToTraditional(detail.desc) || detail.desc}
                 </div>
               )}
             </div>
