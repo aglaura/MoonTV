@@ -69,6 +69,7 @@ export interface SearchResult {
   source: string;
   source_name: string;
   class?: string;
+  rate?: string;
   year: string;
   desc?: string;
   type_name?: string;

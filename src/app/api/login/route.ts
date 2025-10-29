@@ -1,105 +1,17 @@
 /* eslint-disable no-console,@typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
 
-import type { AdminConfig } from '@/lib/admin.types';
 import { getConfig } from '@/lib/config';
-import { db, getStorage } from '@/lib/db';
 
-export async function ensureAdminUser(
-  username: string,
-  config: AdminConfig
-): Promise<void> {
-  if (
-    !username ||
-    username === process.env.USERNAME ||
-    (process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage') === 'localstorage'
-  ) {
-    return;
-  }
-
-  let changed = false;
-  let user = config.UserConfig.Users.find((u) => u.username === username);
-
-  if (!user) {
-    user = {
-      username,
-      role: 'admin',
-    };
-    config.UserConfig.Users.push(user);
-    changed = true;
-  } else if (user.role !== 'owner' && user.role !== 'admin') {
-    user.role = 'admin';
-    changed = true;
-  }
-
-  if (changed) {
-    const storage = getStorage();
-    if (storage && typeof (storage as any).setAdminConfig === 'function') {
-      await (storage as any).setAdminConfig(config);
-    }
-  }
-}
+import { ensureAdminUser, generateAuthCookie } from './utils';
 
 export const runtime = 'nodejs';
-
-// 读取存储类型环境变量，默认 localstorage
 const STORAGE_TYPE =
   (process.env.NEXT_PUBLIC_STORAGE_TYPE as
     | 'localstorage'
     | 'redis'
     | 'd1'
     | undefined) || 'localstorage';
-
-// 生成签名
-async function generateSignature(
-  data: string,
-  secret: string
-): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(data);
-
-  // 导入密钥
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  // 生成签名
-  const signature = await crypto.subtle.sign('HMAC', key, messageData);
-
-  // 转换为十六进制字符串
-  return Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-// 生成认证Cookie（带签名）
-export async function generateAuthCookie(
-  username?: string,
-  password?: string,
-  includePassword = false
-): Promise<string> {
-  const authData: any = {};
-
-  // 只在需要时包含 password
-  if (includePassword && password) {
-    authData.password = password;
-  }
-
-  if (username && process.env.PASSWORD) {
-    authData.username = username;
-    // 使用密码作为密钥对用户名进行签名
-    const signature = await generateSignature(username, process.env.PASSWORD);
-    authData.signature = signature;
-    authData.timestamp = Date.now(); // 添加时间戳防重放攻击
-  }
-
-  return encodeURIComponent(JSON.stringify(authData));
-}
 
 export async function POST(req: NextRequest) {
   try {

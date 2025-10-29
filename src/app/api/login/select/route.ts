@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ensureAdminUser, generateAuthCookie } from '../route';
+import { ensureAdminUser, generateAuthCookie } from '../utils';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';

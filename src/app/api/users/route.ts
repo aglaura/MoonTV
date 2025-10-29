@@ -28,6 +28,14 @@ export async function GET() {
         role: user.role,
       })) ?? [];
 
+    const ownerUser = process.env.USERNAME?.trim();
+    if (
+      ownerUser &&
+      !users.some((user) => user.username === ownerUser)
+    ) {
+      users.unshift({ username: ownerUser, role: 'owner' });
+    }
+
     return NextResponse.json(
       { users },
       {

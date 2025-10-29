@@ -41,14 +41,8 @@ export async function POST(request: NextRequest) {
     }
     const username = authInfo.username;
 
-    const {
-      targetUsername, // 目标用户名
-      targetPassword, // 目标用户密码（仅在添加用户时需要）
-      allowRegister,
-      action,
-    } = body as {
+    const { targetUsername, allowRegister, action } = body as {
       targetUsername?: string;
-      targetPassword?: string;
       allowRegister?: boolean;
       action?: (typeof ACTIONS)[number];
     };
