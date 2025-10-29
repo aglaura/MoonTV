@@ -28,9 +28,16 @@ export async function middleware(request: NextRequest) {
     return handleAuthFailure(request, pathname);
   }
 
+  const hasValidSharedPassword =
+    typeof authInfo?.password === 'string' &&
+    sharedPasswords.includes(authInfo.password);
+
+  const isLoginPhaseEndpoint =
+    pathname.startsWith('/api/login') || pathname === '/api/users';
+
   // localstorage模式：在middleware中完成验证
   if (storageType === 'localstorage') {
-    if (!authInfo.password || !sharedPasswords.includes(authInfo.password)) {
+    if (!hasValidSharedPassword) {
       return handleAuthFailure(request, pathname);
     }
     return NextResponse.next();
@@ -39,6 +46,9 @@ export async function middleware(request: NextRequest) {
   // 其他模式：只验证签名
   // 检查是否有用户名（非localStorage模式下密码不存储在cookie中）
   if (!authInfo.username || !authInfo.signature) {
+    if (hasValidSharedPassword && isLoginPhaseEndpoint) {
+      return NextResponse.next();
+    }
     return handleAuthFailure(request, pathname);
   }
 
