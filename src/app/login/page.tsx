@@ -87,60 +87,6 @@ function LoginPageClient() {
     setUsername(availableUsers[0]);
   }, [availableUsers, requiresSelection, username]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (requiresSelection) return; // 二階段選擇由 avatar 按鈕處理
-    setError(null);
-
-    if (!password) return;
-
-    try {
-      setLoading(true);
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data.error ?? '伺服器錯誤');
-        return;
-      }
-
-        if (data?.requiresSelection && storageRequiresSelection) {
-          const redirectTarget = searchParams.get('redirect') || '/';
-          if (redirectTarget.startsWith('/admin')) {
-            setAutoSelectPending(true);
-          }
-          setRequiresSelection(true);
-          if (availableUsers.length === 0 && Array.isArray(data.users)) {
-            const normalized = (data.users as Array<{
-              username?: string;
-              avatar?: string;
-          }>).filter((entry) => entry?.username?.trim());
-          setAvailableUsers(normalized.map((entry) => entry.username!.trim()));
-          const map: Record<string, string> = {};
-          normalized.forEach((entry) => {
-            if (entry.avatar) {
-              map[entry.username!.trim()] = entry.avatar.trim();
-            }
-          });
-          setUserThumbnails(map);
-        }
-        return;
-      }
-
-      const redirect = searchParams.get('redirect') || '/';
-      router.replace(redirect);
-    } catch (err) {
-      setError('網路錯誤，請稍後再試');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleUserSelect = useCallback(
     async (user: string) => {
       setError(null);
