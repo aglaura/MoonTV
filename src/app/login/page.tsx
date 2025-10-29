@@ -4,6 +4,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -86,6 +87,68 @@ function LoginPageClient() {
     if (username && username.trim().length > 0) return;
     setUsername(availableUsers[0]);
   }, [availableUsers, requiresSelection, username]);
+
+  const handleSubmit = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+
+      if (!password) {
+        setError('請輸入共享密碼');
+        return;
+      }
+
+      setError(null);
+      setLoading(true);
+      setPendingUser(null);
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password }),
+        });
+
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          requiresSelection?: boolean;
+        };
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            setError('共享密碼錯誤');
+          } else {
+            setError(data.error ?? '登入失敗');
+          }
+          setRequiresSelection(false);
+          setAutoSelectPending(false);
+          return;
+        }
+
+        const redirectTarget = searchParams.get('redirect') || '/';
+        const requiresUserSelection = Boolean(data?.requiresSelection);
+
+        if (requiresUserSelection) {
+          setRequiresSelection(true);
+          if (!storageRequiresSelection) {
+            setStorageRequiresSelection(true);
+          }
+          setAutoSelectPending(redirectTarget.startsWith('/admin'));
+          return;
+        }
+
+        setRequiresSelection(false);
+        setAutoSelectPending(false);
+        router.replace(redirectTarget);
+      } catch (err) {
+        setError('網路錯誤，請稍後再試');
+        setRequiresSelection(false);
+        setAutoSelectPending(false);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [password, router, searchParams, storageRequiresSelection]
+  );
 
   const handleUserSelect = useCallback(
     async (user: string) => {
