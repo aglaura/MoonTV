@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -20,8 +20,10 @@ function LoginPageClient() {
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
   const [userThumbnails, setUserThumbnails] = useState<Record<string, string>>({});
   const [requiresSelection, setRequiresSelection] = useState(false);
-  const [storageRequiresSelection, setStorageRequiresSelection] = useState(false);
+  const [storageRequiresSelection, setStorageRequiresSelection] =
+    useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
+  const [autoSelectPending, setAutoSelectPending] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -107,12 +109,16 @@ function LoginPageClient() {
         return;
       }
 
-      if (data?.requiresSelection && storageRequiresSelection) {
-        setRequiresSelection(true);
-        if (availableUsers.length === 0 && Array.isArray(data.users)) {
-          const normalized = (data.users as Array<{
-            username?: string;
-            avatar?: string;
+        if (data?.requiresSelection && storageRequiresSelection) {
+          const redirectTarget = searchParams.get('redirect') || '/';
+          if (redirectTarget.startsWith('/admin')) {
+            setAutoSelectPending(true);
+          }
+          setRequiresSelection(true);
+          if (availableUsers.length === 0 && Array.isArray(data.users)) {
+            const normalized = (data.users as Array<{
+              username?: string;
+              avatar?: string;
           }>).filter((entry) => entry?.username?.trim());
           setAvailableUsers(normalized.map((entry) => entry.username!.trim()));
           const map: Record<string, string> = {};
@@ -135,33 +141,56 @@ function LoginPageClient() {
     }
   };
 
-  const handleUserSelect = async (user: string) => {
-    setError(null);
-    setPendingUser(user);
-    try {
-      setLoading(true);
-      const res = await fetch('/api/login/select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user }),
-      });
+  const handleUserSelect = useCallback(
+    async (user: string) => {
+      setError(null);
+      setPendingUser(user);
+      try {
+        setLoading(true);
+        const res = await fetch('/api/login/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user }),
+        });
 
-      const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        setError(data.error ?? '選擇使用者失敗');
-        return;
+        if (!res.ok) {
+          setError(data.error ?? '選擇使用者失敗');
+          return;
+        }
+
+        const redirect = searchParams.get('redirect') || '/';
+        router.replace(redirect);
+      } catch (err) {
+        setError('網路錯誤，請稍後再試');
+      } finally {
+        setLoading(false);
+        setPendingUser(null);
       }
+    },
+    [router, searchParams]
+  );
 
-      const redirect = searchParams.get('redirect') || '/';
-      router.replace(redirect);
-    } catch (err) {
-      setError('網路錯誤，請稍後再試');
-    } finally {
-      setLoading(false);
-      setPendingUser(null);
+  useEffect(() => {
+    if (
+      requiresSelection &&
+      autoSelectPending &&
+      availableUsers.length > 0 &&
+      !loading
+    ) {
+      const user = availableUsers[0];
+      setUsername(user);
+      void handleUserSelect(user);
+      setAutoSelectPending(false);
     }
-  };
+  }, [
+    requiresSelection,
+    autoSelectPending,
+    availableUsers,
+    loading,
+    handleUserSelect,
+  ]);
 
   return (
     <div className='relative min-h-screen flex items-center justify-center px-4 overflow-hidden'>
