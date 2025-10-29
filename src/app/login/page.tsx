@@ -238,9 +238,13 @@ function LoginPageClient() {
             <p className='text-sm text-gray-600 dark:text-gray-300'>
               選擇要登入的使用者
             </p>
-            <div className='grid grid-cols-2 sm:grid-cols-3 gap-4'>
+            <div
+              className='flex flex-col gap-3'
+              role='radiogroup'
+              aria-label='可登入的使用者'
+            >
               {availableUsers.length === 0 && (
-                <p className='col-span-full text-xs text-gray-500 dark:text-gray-400'>
+                <p className='text-xs text-gray-500 dark:text-gray-400'>
                   尚未設定其他使用者
                 </p>
               )}
@@ -253,9 +257,12 @@ function LoginPageClient() {
                     type='button'
                     onClick={() => handleUserSelect(user)}
                     disabled={loading}
-                    className='flex flex-col items-center gap-2 rounded-2xl border border-transparent bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700 px-4 py-4 transition-colors disabled:opacity-70'
-                  >
-                    <span className='block w-14 h-14 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-base font-semibold text-green-600 dark:text-green-400 border border-green-500/30 shadow-inner'>
+                    role='radio'
+                    aria-checked={pendingUser ? pendingUser === user : false}
+                    className='relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent bg-gray-100 text-gray-700 px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
+                    >
+                    <div className='flex items-center gap-4'>
+                      <span className='block w-14 h-14 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-lg font-semibold text-green-600 dark:text-green-400 border border-green-500/30 shadow-inner'>
                       {thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -267,9 +274,19 @@ function LoginPageClient() {
                         user.charAt(0).toUpperCase()
                       )}
                     </span>
-                    <span className='text-sm font-medium'>{user}</span>
+                      <span className='text-base font-semibold'>{user}</span>
+                    </div>
+                    <span
+                      className={`ml-auto flex h-6 w-6 items-center justify-center rounded-full border-2 ${
+                        pendingUser === user
+                          ? 'border-green-500 bg-green-500 text-white'
+                          : 'border-gray-400 text-transparent'
+                      }`}
+                    >
+                      ✓
+                    </span>
                     {isPending && (
-                      <span className='text-xs text-gray-500 dark:text-gray-300'>
+                      <span className='absolute inset-0 flex items-center justify-center rounded-3xl bg-black/10 dark:bg-black/20 text-xs text-white'>
                         登入中...
                       </span>
                     )}
