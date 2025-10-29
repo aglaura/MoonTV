@@ -1,5 +1,12 @@
-import { getStorage } from '@/lib/db';
 import { AdminConfig } from '@/lib/admin.types';
+import { getStorage } from '@/lib/db';
+
+interface AuthCookiePayload {
+  password?: string;
+  username?: string;
+  signature?: string;
+  timestamp?: number;
+}
 
 export async function ensureAdminUser(
   username: string | undefined,
@@ -29,9 +36,11 @@ export async function ensureAdminUser(
   }
 
   if (changed) {
-    const storage = getStorage();
-    if (storage && typeof (storage as any).setAdminConfig === 'function') {
-      await (storage as any).setAdminConfig(config);
+    const storage = getStorage() as {
+      setAdminConfig?: (cfg: AdminConfig) => Promise<void> | void;
+    };
+    if (typeof storage?.setAdminConfig === 'function') {
+      await storage.setAdminConfig(config);
     }
   }
 }
@@ -61,19 +70,21 @@ async function generateSignature(
 
 export async function generateAuthCookie(
   username?: string,
-  password?: string,
+  passwordOrSecret?: string,
   includePassword = false
 ): Promise<string> {
-  const authData: any = {};
+  const authData: AuthCookiePayload = {};
 
-  if (includePassword && password) {
-    authData.password = password;
+  if (includePassword && passwordOrSecret) {
+    authData.password = passwordOrSecret;
   }
 
-  if (username && process.env.PASSWORD) {
+  const signingSecret =
+    passwordOrSecret || process.env.PASSWORD || process.env.PASSWORD2;
+
+  if (username && signingSecret) {
     authData.username = username;
-    const signature = await generateSignature(username, process.env.PASSWORD);
-    authData.signature = signature;
+    authData.signature = await generateSignature(username, signingSecret);
     authData.timestamp = Date.now();
   }
 

@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getSharedPasswords } from '@/lib/sharedPasswords';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -13,9 +14,10 @@ export async function middleware(request: NextRequest) {
   }
 
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+  const sharedPasswords = getSharedPasswords();
 
   // 如果没有设置密码，直接放行
-  if (storageType === 'localstorage' && !process.env.PASSWORD) {
+  if (storageType === 'localstorage' && sharedPasswords.length === 0) {
     return NextResponse.next();
   }
 
@@ -28,7 +30,7 @@ export async function middleware(request: NextRequest) {
 
   // localstorage模式：在middleware中完成验证
   if (storageType === 'localstorage') {
-    if (!authInfo.password || authInfo.password !== process.env.PASSWORD) {
+    if (!authInfo.password || !sharedPasswords.includes(authInfo.password)) {
       return handleAuthFailure(request, pathname);
     }
     return NextResponse.next();
@@ -42,15 +44,15 @@ export async function middleware(request: NextRequest) {
 
   // 验证签名（如果存在）
   if (authInfo.signature) {
-    const isValidSignature = await verifySignature(
-      authInfo.username,
-      authInfo.signature,
-      process.env.PASSWORD || ''
-    );
-
-    // 签名验证通过即可
-    if (isValidSignature) {
-      return NextResponse.next();
+    for (const secret of sharedPasswords) {
+      const isValidSignature = await verifySignature(
+        authInfo.username,
+        authInfo.signature,
+        secret
+      );
+      if (isValidSignature) {
+        return NextResponse.next();
+      }
     }
   }
 

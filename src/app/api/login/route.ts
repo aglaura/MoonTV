@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getConfig } from '@/lib/config';
+import { getSharedPasswords } from '@/lib/sharedPasswords';
 
 import { ensureAdminUser, generateAuthCookie } from './utils';
 
@@ -15,12 +16,12 @@ const STORAGE_TYPE =
 
 export async function POST(req: NextRequest) {
   try {
+    const sharedPasswords = getSharedPasswords();
+
     // 本地 / localStorage 模式——仅校验固定密码
     if (STORAGE_TYPE === 'localstorage') {
-      const envPassword = process.env.PASSWORD;
-
-      // 未配置 PASSWORD 时直接放行
-      if (!envPassword) {
+      // 未配置任何共享密碼時直接放行
+      if (sharedPasswords.length === 0) {
         const response = NextResponse.json({ ok: true });
 
         // 清除可能存在的认证cookie
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
       }
 
-      if (password !== envPassword) {
+      if (!sharedPasswords.includes(password)) {
         return NextResponse.json(
           { ok: false, error: '密码错误' },
           { status: 401 }
@@ -74,15 +75,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
     }
 
-    const sharedPassword = process.env.PASSWORD;
-    if (!sharedPassword) {
+    if (sharedPasswords.length === 0) {
       return NextResponse.json(
         { error: '服務器未設定 PASSWORD 環境變數' },
         { status: 500 }
       );
     }
 
-    if (password !== sharedPassword) {
+    const matchedPassword = sharedPasswords.find((secret) => secret === password);
+
+    if (!matchedPassword) {
       return NextResponse.json(
         { error: '用户名或密码错误' },
         { status: 401 }
@@ -120,7 +122,7 @@ export async function POST(req: NextRequest) {
       const response = NextResponse.json({ ok: true });
       const cookieValue = await generateAuthCookie(
         username,
-        sharedPassword,
+        matchedPassword,
         false
       );
       const expires = new Date();

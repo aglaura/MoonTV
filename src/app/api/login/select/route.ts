@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { ensureAdminUser, generateAuthCookie } from '../utils';
-
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getConfig } from '@/lib/config';
+import { getSharedPasswords } from '@/lib/sharedPasswords';
+
+import { ensureAdminUser, generateAuthCookie } from '../utils';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +19,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sharedPassword = process.env.PASSWORD;
-    if (!sharedPassword) {
+    const sharedPasswords = getSharedPasswords();
+    if (sharedPasswords.length === 0) {
       return NextResponse.json(
         { error: '服務器未設定 PASSWORD 環境變數' },
         { status: 500 }
@@ -27,7 +28,11 @@ export async function POST(req: NextRequest) {
     }
 
     const authInfo = getAuthInfoFromCookie(req);
-    if (!authInfo?.password || authInfo.password !== sharedPassword) {
+    const matchedPassword =
+      authInfo?.password &&
+      sharedPasswords.find((secret) => secret === authInfo.password);
+
+    if (!matchedPassword) {
       return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
 
@@ -43,11 +48,7 @@ export async function POST(req: NextRequest) {
     await ensureAdminUser(username, config);
 
     const response = NextResponse.json({ ok: true });
-    const cookieValue = await generateAuthCookie(
-      username,
-      sharedPassword,
-      false
-    );
+    const cookieValue = await generateAuthCookie(username, matchedPassword, false);
     const expires = new Date();
     expires.setDate(expires.getDate() + 7);
 
