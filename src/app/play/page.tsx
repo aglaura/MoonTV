@@ -526,6 +526,7 @@ function PlayPageClient() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let firstSourceFound = false;
+      const allSources: SearchResult[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -535,19 +536,14 @@ function PlayPageClient() {
 
         const chunk = decoder.decode(value);
         const newSources: SearchResult[] = JSON.parse(chunk);
+        allSources.push(...newSources);
 
         setAvailableSources((prev) => [...prev, ...newSources]);
 
         if (!firstSourceFound && newSources.length > 0) {
           firstSourceFound = true;
-          let detailData = newSources[0];
+          const detailData = newSources[0];
 
-          if (optimizationEnabled) {
-            setLoadingStage('preferring');
-            setLoadingMessage('⚡ 正在優選最佳播放源...');
-            detailData = await preferBestSource(newSources);
-          }
-          
           setNeedPrefer(false);
           setCurrentSource(detailData.source);
           setCurrentId(detailData.id);
@@ -577,6 +573,13 @@ function PlayPageClient() {
       }
 
       setSourceSearchLoading(false);
+
+      if (optimizationEnabled && allSources.length > 1) {
+        const bestSource = await preferBestSource(allSources);
+        if (bestSource.source !== currentSourceRef.current || bestSource.id !== currentIdRef.current) {
+          handleSourceChange(bestSource.source, bestSource.id, bestSource.title);
+        }
+      }
     };
 
     const initAll = () => {
