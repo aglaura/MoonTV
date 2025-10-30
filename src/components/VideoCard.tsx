@@ -151,7 +151,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }));
 
     const extractImdbId = useCallback((value?: string | null) => {
-      const match = value?.match(/tt\d{5,}/i);
+      const match = value?.match(/(tt\d{5,}|imdbt\d+)/i);
       return match ? match[0] : undefined;
     }, []);
 
