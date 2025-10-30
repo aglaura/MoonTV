@@ -67,7 +67,6 @@ export async function GET(request: Request) {
       description: null
     });
   } catch (error) {
-    console.error('Error converting title:', error);
     // If there's an error, return the original title
     return NextResponse.json({ 
       title: title,
