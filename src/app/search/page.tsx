@@ -190,7 +190,7 @@ function HomeClient() {
               }
 
               // Check if the query looks like an English title (mostly ASCII characters)
-              const isLikelyEnglish = /^[\u0000-\u007F\s]+$/.test(trimmed);
+              const isLikelyEnglish = /^[\x01-\x7F\s]+$/.test(trimmed);
               
               if (isLikelyEnglish) {
                 try {
