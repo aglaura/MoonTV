@@ -528,9 +528,11 @@ function PlayPageClient() {
       let firstSourceFound = false;
       const allSources: SearchResult[] = [];
 
-      while (true) {
+      let keepReading = true;
+      while (keepReading) {
         const { done, value } = await reader.read();
         if (done) {
+          keepReading = false;
           break;
         }
 
