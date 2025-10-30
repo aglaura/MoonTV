@@ -37,12 +37,14 @@ async function fetchImdbIdFromDouban(
     }
 
     const html = await response.text();
-    const anchorMatch = html.match(/IMDb:\s*<a[^>]*>(tt\d+)<\/a>/i);
+    // Match standard IMDb IDs (tt\d+) or Douban's imdbt format (imdbt\d+)
+    const anchorMatch = html.match(/IMDb:\s*<a[^>]*>((?:tt|imdbt)\d+)<\/a>/i);
     if (anchorMatch?.[1]) {
       return anchorMatch[1];
     }
 
-    const textMatch = html.match(/IMDb:\s*(tt\d+)/i);
+    // Match standard IMDb IDs in plain text or Douban's imdbt format
+    const textMatch = html.match(/IMDb:\s*((?:tt|imdbt)\d+)/i);
     return textMatch?.[1];
   } catch {
     return undefined;
@@ -52,6 +54,11 @@ async function fetchImdbIdFromDouban(
 }
 
 async function fetchImdbTitle(imdbId: string): Promise<string | undefined> {
+  // If it's a Douban-specific imdbt ID, we can't fetch the title from IMDb
+  if (imdbId.startsWith('imdbt')) {
+    return undefined;
+  }
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
   const imdbUrl = `https://www.imdb.com/title/${imdbId}/`;
