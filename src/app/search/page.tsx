@@ -190,7 +190,17 @@ function HomeClient() {
               }
 
               // Check if the query looks like an English title (mostly ASCII characters)
-              const isLikelyEnglish = /^[\x01-\x7F\s]+$/.test(trimmed);
+              // Avoid control characters in regex to satisfy ESLint/no-control-regex.
+              const isLikelyEnglish = Array.from(trimmed).every((ch) => {
+                const code = ch.charCodeAt(0);
+                // treat printable ASCII (space .. DEL) and common whitespace as English
+                return (
+                  (code >= 32 && code <= 127) ||
+                  ch === '\n' ||
+                  ch === '\r' ||
+                  ch === '\t'
+                );
+              });
               
               if (isLikelyEnglish) {
                 try {
