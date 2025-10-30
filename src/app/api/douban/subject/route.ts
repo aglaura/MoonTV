@@ -45,7 +45,13 @@ async function fetchImdbIdFromDouban(
 
     // Match standard IMDb IDs in plain text or Douban's imdbt format
     const textMatch = html.match(/IMDb:\s*((?:tt|imdbt)\d+)/i);
-    return textMatch?.[1];
+    if (textMatch?.[1]) {
+      return textMatch[1];
+    }
+
+    // Fallback: sometimes Douban structures differ; try a generic search for an IMDb-like id
+    const genericMatch = html.match(/(tt\d{5,}|imdbt\d+)/i);
+    return genericMatch?.[1];
   } catch {
     return undefined;
   } finally {
