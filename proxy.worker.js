@@ -215,8 +215,8 @@ function getRootHtml() {
                           <span class="card-title center-align"><i class="material-icons left">link</i>Proxy Everything</span>
                           <form id="urlForm" onsubmit="redirectToProxy(event)">
                               <div class="input-field">
-                                  <input type="text" id="targetUrl" placeholder="在此輸入目標地址" required>
-                                  <label for="targetUrl">目標地址</label>
+                                  <input type="text" id="targetUrl" placeholder="在此輸入目標位址" required>
+                                  <label for="targetUrl">目標位址</label>
                               </div>
                               <button type="submit" class="btn waves-effect waves-light teal darken-2 full-width">跳轉</button>
                           </form>

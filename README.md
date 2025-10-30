@@ -4,7 +4,7 @@
   <img src="public/logo.png" alt="LibreTV Logo" width="120">
 </div>
 
-> 🎬 **MoonTV** 是一个开箱即用的、跨平台的影视聚合播放器。它基于 **Next.js 14** + **Tailwind&nbsp;CSS** + **TypeScript** 构建，支持多资源搜索、在线播放、收藏同步、播放记录、本地/云端存储，让你可以随时随地畅享海量免费影视内容。
+> 🎬 **MoonTV** 是一個開箱即用的、跨平台的影視聚合播放器。它基於 **Next.js 14** + **Tailwind&nbsp;CSS** + **TypeScript** 建構，支援多資源搜尋、線上播放、收藏同步、播放記錄、本地/雲端儲存，讓你可以隨時隨地暢享海量免費影視內容。
 
 <div align="center">
 
@@ -20,17 +20,17 @@
 
 ## ✨ 功能特性
 
-- 🔍 **多源聚合搜索**：内置数十个免费资源站点，一次搜索立刻返回全源结果。
-- 📄 **丰富详情页**：支持剧集列表、演员、年份、简介等完整信息展示。
-- ▶️ **流畅在线播放**：集成 HLS.js & ArtPlayer。
-- ❤️ **收藏 + 继续观看**：支持 Redis/D1 存储，多端同步进度。
-- 📱 **PWA**：离线缓存、安装到桌面/主屏，移动端原生体验。
-- 🌗 **响应式布局**：桌面侧边栏 + 移动底部导航，自适应各种屏幕尺寸。
-- 🚀 **极简部署**：一条 Docker 命令即可将完整服务跑起来，或免费部署到 Vercel 和 Cloudflare。
-- 👿 **智能去广告**：自动跳过视频中的切片广告（实验性）
+- 🔍 **多源聚合搜尋**：內建數十個免費資源站點，一次搜尋立刻返回全源結果。
+- 📄 **豐富詳情頁**：支援劇集列表、演員、年份、簡介等完整資訊展示。
+- ▶️ **流暢線上播放**：整合 HLS.js & ArtPlayer。
+- ❤️ **收藏 + 繼續觀看**：支援 Redis/D1 儲存，多端同步進度。
+- 📱 **PWA**：離線快取、安裝到桌面/主畫面，行動端原生體驗。
+- 🌗 **響應式佈局**：桌面側邊欄 + 行動裝置底部導覽，自適應各種螢幕尺寸。
+- 🚀 **極簡部署**：一條 Docker 命令即可將完整服務跑起來，或免費部署到 Vercel 和 Cloudflare。
+- 👿 **智慧去廣告**：自動跳過影片中的切片廣告（實驗性）
 
 <details>
-  <summary>点击查看项目截图</summary>
+  <summary>點擊檢視專案截圖</summary>
   <img src="public/screenshot.png" alt="项目截图" style="max-width:600px">
 </details>
 
@@ -53,64 +53,64 @@
 | 分类      | 主要依赖                                                                                              |
 | --------- | ----------------------------------------------------------------------------------------------------- |
 | 前端框架  | [Next.js 14](https://nextjs.org/) · App Router                                                        |
-| UI & 样式 | [Tailwind&nbsp;CSS 3](https://tailwindcss.com/)                                                       |
-| 语言      | TypeScript 4                                                                                          |
+| UI & 樣式 | [Tailwind&nbsp;CSS 3](https://tailwindcss.com/)                                                       |
+| 語言      | TypeScript 4                                                                                          |
 | 播放器    | [ArtPlayer](https://github.com/zhw2590582/ArtPlayer) · [HLS.js](https://github.com/video-dev/hls.js/) |
-| 代码质量  | ESLint · Prettier · Jest                                                                              |
+| 程式碼品質  | ESLint · Prettier · Jest                                                                              |
 | 部署      | Docker · Vercel · CloudFlare pages                                                                    |
 
 ## 部署
 
-本项目**支持 Vercel、Docker 和 Cloudflare** 部署。
+本项目**支援 Vercel、Docker 和 Cloudflare** 部署。
 
 ### Vercel 部署
 
-> 推荐使用，零运维成本，免费额度足够个人使用。
+> 推薦使用，零維運成本，免費額度足夠個人使用。
 
-1. **Fork** 本仓库到你的 GitHub 账户。
-2. 登陆 [Vercel](https://vercel.com/)，点击 **Add New → Project**，选择 Fork 后的仓库。
-3. （强烈建议）设置 PASSWORD 环境变量。
-4. 保持默认设置完成首次部署。
-5. 如需自定义 `config.json`，请直接修改 Fork 后仓库中该文件。
-6. 每次 Push 到 `main` 分支将自动触发重新构建。
+1. **Fork** 本倉庫到你的 GitHub 帳戶。
+2. 登入 Vercel，點選 **Add New → Project**，選擇 Fork 後的倉庫。
+3. （強烈建議）設定 PASSWORD 環境變數。
+4. 保持預設設定完成首次部署。
+5. 如需自訂 `config.json`，請直接修改 Fork 後倉庫中該檔案。
+6. 每次 Push 到 `main` 分支將自動觸發重新建構。
 
-部署完成后即可通过分配的域名访问，也可以绑定自定义域名。
+部署完成後即可透過分配的域名存取，也可以綁定自訂域名。
 
 ### Cloudflare 部署
 
-**Cloudflare Pages 的环境变量尽量设置为密钥而非文本**
+**Cloudflare Pages 的環境變數盡量設定為金鑰而非文字**
 
 #### 普通部署（localstorage）
 
-1. **Fork** 本仓库到你的 GitHub 账户。
-2. 登陆 [Cloudflare](https://cloudflare.com)，点击 **计算（Workers）-> Workers 和 Pages**，点击创建
-3. 选择 Pages，导入现有的 Git 存储库，选择 Fork 后的仓库
-4. 构建命令填写 **pnpm install --frozen-lockfile && pnpm run pages:build**，预设框架为无，构建输出目录为 `.vercel/output/static`
-5. 保持默认设置完成首次部署。进入设置，将兼容性标志设置为 `nodejs_compat`
-6. （强烈建议）首次部署完成后进入设置，新增 PASSWORD 密钥（变量和机密下），而后重试部署。
-7. 如需自定义 `config.json`，请直接修改 Fork 后仓库中该文件。
-8. 每次 Push 到 `main` 分支将自动触发重新构建。
+1. **Fork** 本倉庫到你的 GitHub 帳戶。
+2. 登入 Cloudflare，點選 **計算（Workers）-> Workers 和 Pages**，點選建立
+3. 選擇 Pages，匯入現有的 Git 存放庫，選擇 Fork 後的倉庫
+4. 建構命令填寫 **pnpm install --frozen-lockfile && pnpm run pages:build**，預設框架為無，建構輸出目錄為 `.vercel/output/static`
+5. 保持預設設定完成首次部署。進入設定，將相容性標誌設定為 `nodejs_compat`
+6. （強烈建議）首次部署完成後進入設定，新增 PASSWORD 金鑰（變數和機密下），而後重試部署。
+7. 如需自訂 `config.json`，請直接修改 Fork 後倉庫中該檔案。
+8. 每次 Push 到 `main` 分支將自動觸發重新建構。
 
 #### D1 支持
 
-1. 点击 **存储和数据库 -> D1 SQL 数据库**，创建一个新的数据库，名称随意
-2. 进入刚创建的数据库，点击左上角的 Explore Data，将[D1 初始化](D1初始化.md) 中的内容粘贴到 Query 窗口后点击 Run All，等待运行完成
-3. 返回你的 pages 项目，进入 **设置 -> 绑定**，添加绑定 D1 数据库，选择你刚创建的数据库，变量名称填 **DB**
-4. 设置环境变量 NEXT_PUBLIC_STORAGE_TYPE，值为 d1；设置 USERNAME 和 PASSWORD 作为站长账号
-5. 重试部署
+1. 點選 **儲存和資料庫 -> D1 SQL 資料庫**，建立一個新的資料庫，名稱隨意
+2. 進入剛建立的資料庫，點選左上角的 Explore Data，將D1 初始化 中的內容貼到 Query 視窗後點選 Run All，等待執行完成
+3. 返回你的 pages 專案，進入 **設定 -> 綁定**，新增綁定 D1 資料庫，選擇你剛建立的資料庫，變數名稱填 **DB**
+4. 設定環境變數 NEXT_PUBLIC_STORAGE_TYPE，值為 d1；設定 USERNAME 和 PASSWORD 作為站長帳號
+5. 重試部署
 
 ### Docker 部署
 
-> 适用于自建服务器 / NAS / 群晖等场景。
+> 適用於自建伺服器 / NAS / 群暉等場景。
 
 #### 1. 直接运行（最简单）
 
 ```bash
-# 拉取预构建镜像
+# 拉取預建構映像
 docker pull ghcr.io/senshinya/moontv:latest
 
-# 运行容器
-# -d: 后台运行  -p: 映射端口 3000 -> 3000
+# 執行容器
+# -d: 背景執行  -p: 映射埠 3000 -> 3000
 docker run -d --name moontv -p 3000:3000 ghcr.io/senshinya/moontv:latest
 ```
 
