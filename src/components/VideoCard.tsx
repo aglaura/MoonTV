@@ -281,7 +281,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       if (imdbIdState) {
         return imdbIdState;
       }
-      return 'Not Found';
+      return 'NA';
     }, [englishTitle, imdbIdState, sanitizeEnglishTitle]);
 
     const convertDisplayText = useCallback((value?: string) => {
@@ -1301,7 +1301,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                   return false;
                 }}
                 title={
-                  englishTitleToShow && englishTitleToShow !== 'Not Found'
+                  englishTitleToShow && englishTitleToShow !== 'NA'
                     ? `${
                         traditionalTitle || actualTitle
                       } (${englishTitleToShow})`
@@ -1309,26 +1309,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 }
               >
                 {traditionalTitle || actualTitle}
+                {englishTitleToShow && (
+                  <span className='text-xs font-medium text-gray-500 dark:text-gray-400 ml-1'>
+                    ({englishTitleToShow})
+                  </span>
+                )}
               </span>
-              {/* English title display */}
-              {englishTitleToShow && englishTitleToShow !== 'Not Found' && (
-                <span
-                  className='block text-xs font-medium truncate text-gray-500 dark:text-gray-400 mt-0.5'
-                  style={
-                    {
-                      WebkitUserSelect: 'none',
-                      userSelect: 'none',
-                      WebkitTouchCallout: 'none',
-                    } as React.CSSProperties
-                  }
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    return false;
-                  }}
-                >
-                  {englishTitleToShow}
-                </span>
-              )}
               {/* 自定义 tooltip */}
               <div
                 className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible peer-hover:opacity-100 peer-hover:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap pointer-events-none'
@@ -1345,7 +1331,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 }}
               >
                 <div>{traditionalTitle || actualTitle}</div>
-                {englishTitleToShow && englishTitleToShow !== 'Not Found' && (
+                {englishTitleToShow && englishTitleToShow !== 'NA' && (
                   <div className='mt-1 text-[11px] text-gray-200'>
                     {englishTitleToShow}
                   </div>
