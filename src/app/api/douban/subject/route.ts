@@ -27,7 +27,8 @@ async function fetchImdbIdFromDouban(
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         Referer: 'https://movie.douban.com/',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
     });
 
@@ -61,7 +62,8 @@ async function fetchImdbTitle(imdbId: string): Promise<string | undefined> {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       },
     });
 
@@ -144,7 +146,9 @@ export async function GET(request: Request) {
     const year =
       subject.year ||
       subject.pubdate?.match?.(/\d{4}/)?.[0] ||
-      subject.pub_dates?.find((item) => /\d{4}/.test(item))?.match(/\d{4}/)?.[0] ||
+      subject.pub_dates
+        ?.find((item) => /\d{4}/.test(item))
+        ?.match(/\d{4}/)?.[0] ||
       '';
 
     const [imdbId, imdbTitle] = await (async () => {

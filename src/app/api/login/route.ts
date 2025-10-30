@@ -82,13 +82,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const matchedPassword = sharedPasswords.find((secret) => secret === password);
+    const matchedPassword = sharedPasswords.find(
+      (secret) => secret === password
+    );
 
     if (!matchedPassword) {
-      return NextResponse.json(
-        { error: '用户名或密码错误' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
     }
 
     if (!username || typeof username !== 'string') {

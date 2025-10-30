@@ -76,7 +76,6 @@ function PlayPageClient() {
 
   // 搜索所需信息
   const [searchTitle] = useState(searchParams.get('stitle') || '');
-  const [searchType] = useState(searchParams.get('stype') || '');
 
   // 是否需要优选
   const [needPrefer, setNeedPrefer] = useState(
@@ -578,8 +577,15 @@ function PlayPageClient() {
 
       if (optimizationEnabled && allSources.length > 1) {
         const bestSource = await preferBestSource(allSources);
-        if (bestSource.source !== currentSourceRef.current || bestSource.id !== currentIdRef.current) {
-          handleSourceChange(bestSource.source, bestSource.id, bestSource.title);
+        if (
+          bestSource.source !== currentSourceRef.current ||
+          bestSource.id !== currentIdRef.current
+        ) {
+          handleSourceChange(
+            bestSource.source,
+            bestSource.id,
+            bestSource.title
+          );
         }
       }
     };
@@ -1646,8 +1652,7 @@ function PlayPageClient() {
                 )}
                 {detail?.type_name && (
                   <span>
-                    {convertToTraditional(detail.type_name) ||
-                      detail.type_name}
+                    {convertToTraditional(detail.type_name) || detail.type_name}
                   </span>
                 )}
               </div>

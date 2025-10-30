@@ -3,8 +3,8 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -19,7 +19,9 @@ function LoginPageClient() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
-  const [userThumbnails, setUserThumbnails] = useState<Record<string, string>>({});
+  const [userThumbnails, setUserThumbnails] = useState<Record<string, string>>(
+    {}
+  );
   const [requiresSelection, setRequiresSelection] = useState(false);
   const [storageRequiresSelection, setStorageRequiresSelection] =
     useState(false);
@@ -51,7 +53,10 @@ function LoginPageClient() {
             })
           );
           const normalizedUsers = normalizedUsersRaw.filter(
-            (entry: { username?: string; avatar?: string }): entry is {
+            (entry: {
+              username?: string;
+              avatar?: string;
+            }): entry is {
               username: string;
               avatar?: string;
             } => Boolean(entry.username)
@@ -71,7 +76,7 @@ function LoginPageClient() {
           setUserThumbnails(thumbnailMap);
         }
       } catch (err) {
-        console.warn('加载可用用户失败:', err);
+        // console.warn('加载可用用户失败:', err);
       }
     };
 
@@ -269,20 +274,20 @@ function LoginPageClient() {
                     role='radio'
                     aria-checked={pendingUser ? pendingUser === user : false}
                     className='relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent bg-gray-100 text-gray-700 px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
-                    >
+                  >
                     <div className='flex items-center gap-4'>
                       <span className='block w-14 h-14 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-lg font-semibold text-green-600 dark:text-green-400 border border-green-500/30 shadow-inner'>
-                      {thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={thumbnail}
-                          alt={user}
-                          className='w-full h-full object-cover'
-                        />
-                      ) : (
-                        user.charAt(0).toUpperCase()
-                      )}
-                    </span>
+                        {thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumbnail}
+                            alt={user}
+                            className='w-full h-full object-cover'
+                          />
+                        ) : (
+                          user.charAt(0).toUpperCase()
+                        )}
+                      </span>
                       <span className='text-base font-semibold'>{user}</span>
                     </div>
                     <span

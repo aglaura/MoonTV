@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
-import { convertToSimplified } from '@/lib/locale';
 import { searchFromApi } from '@/lib/downstream';
+import { convertToSimplified } from '@/lib/locale';
 
 export const runtime = 'nodejs';
 

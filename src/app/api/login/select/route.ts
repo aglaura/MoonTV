@@ -13,10 +13,7 @@ export async function POST(req: NextRequest) {
     const { username } = (await req.json()) as { username?: string };
 
     if (!username || typeof username !== 'string') {
-      return NextResponse.json(
-        { error: '缺少使用者名稱' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '缺少使用者名稱' }, { status: 400 });
     }
 
     const sharedPasswords = getSharedPasswords();
@@ -48,7 +45,11 @@ export async function POST(req: NextRequest) {
     await ensureAdminUser(username, config);
 
     const response = NextResponse.json({ ok: true });
-    const cookieValue = await generateAuthCookie(username, matchedPassword, false);
+    const cookieValue = await generateAuthCookie(
+      username,
+      matchedPassword,
+      false
+    );
     const expires = new Date();
     expires.setDate(expires.getDate() + 7);
 

@@ -301,10 +301,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }, [dynamicSourceNames]);
 
     const displaySourceNames = useMemo(
-      () =>
-        uniqueSourceNames?.map(
-          (name) => convertDisplayText(name) ?? name
-        ),
+      () => uniqueSourceNames?.map((name) => convertDisplayText(name) ?? name),
       [convertDisplayText, uniqueSourceNames]
     );
 
@@ -1138,15 +1135,17 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                         ];
 
                         // 按优先级排序播放源
-                        const sortedSources = [...uniqueSources].sort((a, b) => {
-                          const aIndex = prioritySources.indexOf(a);
-                          const bIndex = prioritySources.indexOf(b);
-                          if (aIndex !== -1 && bIndex !== -1)
-                            return aIndex - bIndex;
-                          if (aIndex !== -1) return -1;
-                          if (bIndex !== -1) return 1;
-                          return a.localeCompare(b);
-                        });
+                        const sortedSources = [...uniqueSources].sort(
+                          (a, b) => {
+                            const aIndex = prioritySources.indexOf(a);
+                            const bIndex = prioritySources.indexOf(b);
+                            if (aIndex !== -1 && bIndex !== -1)
+                              return aIndex - bIndex;
+                            if (aIndex !== -1) return -1;
+                            if (bIndex !== -1) return 1;
+                            return a.localeCompare(b);
+                          }
+                        );
 
                         const maxDisplayCount = 6; // 最多显示6个
                         const displaySources = sortedSources
@@ -1303,7 +1302,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 }}
                 title={
                   englishTitleToShow
-                    ? `${traditionalTitle || actualTitle} (${englishTitleToShow})`
+                    ? `${
+                        traditionalTitle || actualTitle
+                      } (${englishTitleToShow})`
                     : traditionalTitle || actualTitle
                 }
               >

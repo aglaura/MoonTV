@@ -5,11 +5,11 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
-import { BangumiCalendarData, GetBangumiCalendarData } from '@/lib/bangumi.client';
 import {
-  getDoubanCategories,
-  getDoubanRecommends,
-} from '@/lib/douban.client';
+  BangumiCalendarData,
+  GetBangumiCalendarData,
+} from '@/lib/bangumi.client';
+import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
 import { convertToSimplified } from '@/lib/locale';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
@@ -46,7 +46,9 @@ function DoubanPageClient() {
     return '全部';
   });
 
-  const [multiLevelValues, setMultiLevelValues] = useState<Record<string, string>>({
+  const [multiLevelValues, setMultiLevelValues] = useState<
+    Record<string, string>
+  >({
     type: 'all',
     region: 'all',
     year: 'all',
@@ -55,7 +57,9 @@ function DoubanPageClient() {
     sort: 'T',
   });
   const [selectedWeekday, setSelectedWeekday] = useState<string>('');
-  const [bangumiCalendarData, setBangumiCalendarData] = useState<BangumiCalendarData[] | null>(null);
+  const [bangumiCalendarData, setBangumiCalendarData] = useState<
+    BangumiCalendarData[] | null
+  >(null);
 
   const currentParamsRef = useRef({
     type,
@@ -75,7 +79,14 @@ function DoubanPageClient() {
       selectedWeekday,
       currentPage,
     };
-  }, [type, primarySelection, secondarySelection, multiLevelValues, selectedWeekday, currentPage]);
+  }, [
+    type,
+    primarySelection,
+    secondarySelection,
+    multiLevelValues,
+    selectedWeekday,
+    currentPage,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(() => setSelectorsReady(true), 50);
@@ -91,16 +102,29 @@ function DoubanPageClient() {
   const skeletonData = Array.from({ length: 25 }, (_, index) => index);
 
   const isSnapshotEqual = useCallback(
-    (snapshot1: any, snapshot2: any) => JSON.stringify(snapshot1) === JSON.stringify(snapshot2),
+    (snapshot1: any, snapshot2: any) =>
+      JSON.stringify(snapshot1) === JSON.stringify(snapshot2),
     []
   );
 
   const getRequestParams = useCallback(
     (pageStart: number) => {
       if (type === 'tv' || type === 'show') {
-        return { kind: 'tv' as const, category: type, type: secondarySelection, pageLimit: 25, pageStart };
+        return {
+          kind: 'tv' as const,
+          category: type,
+          type: secondarySelection,
+          pageLimit: 25,
+          pageStart,
+        };
       }
-      return { kind: type as 'tv' | 'movie', category: primarySelection, type: secondarySelection, pageLimit: 25, pageStart };
+      return {
+        kind: type as 'tv' | 'movie',
+        category: primarySelection,
+        type: secondarySelection,
+        pageLimit: 25,
+        pageStart,
+      };
     },
     [type, primarySelection, secondarySelection]
   );
@@ -157,19 +181,17 @@ function DoubanPageClient() {
         );
         const list: DoubanItem[] = weekdayData
           ? weekdayData.items.map((item) => ({
-            id: item.id?.toString() || '',
-            title: item.name_cn || item.name,
-            poster:
-              item.images?.large ||
-              item.images?.common ||
-              item.images?.medium ||
-              item.images?.small ||
-              item.images?.grid,
-            rate: item.rating?.score
-              ? item.rating.score.toFixed(1)
-              : '',
-            year: item.air_date?.split('-')?.[0] || '',
-          }))
+              id: item.id?.toString() || '',
+              title: item.name_cn || item.name,
+              poster:
+                item.images?.large ||
+                item.images?.common ||
+                item.images?.medium ||
+                item.images?.small ||
+                item.images?.grid,
+              rate: item.rating?.score ? item.rating.score.toFixed(1) : '',
+              year: item.air_date?.split('-')?.[0] || '',
+            }))
           : [];
 
         data = {
@@ -299,7 +321,9 @@ function DoubanPageClient() {
               label: normalizeOption(multiLevelValues.label),
             });
           } else {
-            data = await getDoubanCategories(getRequestParams(currentPage * 25));
+            data = await getDoubanCategories(
+              getRequestParams(currentPage * 25)
+            );
           }
 
           if (data.code === 200) {
@@ -351,65 +375,82 @@ function DoubanPageClient() {
     };
   }, [hasMore, isLoadingMore, loading]);
 
-  const handlePrimaryChange = useCallback((value: string) => {
-    if (value !== primarySelection) {
-      setLoading(true);
-      setCurrentPage(0);
-      setDoubanData([]);
-      setHasMore(true);
-      setIsLoadingMore(false);
-      setPrimarySelection(value);
-      setMultiLevelValues({
-        type: 'all',
-        region: 'all',
-        year: 'all',
-        platform: 'all',
-        label: 'all',
-        sort: 'T',
-      });
-      if (value === '每日放送') {
-        setSelectedWeekday('');
+  const handlePrimaryChange = useCallback(
+    (value: string) => {
+      if (value !== primarySelection) {
+        setLoading(true);
+        setCurrentPage(0);
+        setDoubanData([]);
+        setHasMore(true);
+        setIsLoadingMore(false);
+        setPrimarySelection(value);
+        setMultiLevelValues({
+          type: 'all',
+          region: 'all',
+          year: 'all',
+          platform: 'all',
+          label: 'all',
+          sort: 'T',
+        });
+        if (value === '每日放送') {
+          setSelectedWeekday('');
+        }
       }
-    }
-  }, [primarySelection]);
+    },
+    [primarySelection]
+  );
 
-  const handleSecondaryChange = useCallback((value: string) => {
-    if (value !== secondarySelection) {
+  const handleSecondaryChange = useCallback(
+    (value: string) => {
+      if (value !== secondarySelection) {
+        setLoading(true);
+        setCurrentPage(0);
+        setDoubanData([]);
+        setHasMore(true);
+        setIsLoadingMore(false);
+        setSecondarySelection(value);
+      }
+    },
+    [secondarySelection]
+  );
+
+  const handleMultiLevelChange = useCallback(
+    (values: Record<string, string>) => {
       setLoading(true);
       setCurrentPage(0);
       setDoubanData([]);
       setHasMore(true);
       setIsLoadingMore(false);
-      setSecondarySelection(value);
-    }
-  }, [secondarySelection]);
+      setMultiLevelValues(values);
+    },
+    []
+  );
 
-  const handleMultiLevelChange = useCallback((values: Record<string, string>) => {
-    setLoading(true);
-    setCurrentPage(0);
-    setDoubanData([]);
-    setHasMore(true);
-    setIsLoadingMore(false);
-    setMultiLevelValues(values);
-  }, []);
-
-  const handleWeekdayChange = useCallback((weekday: string) => {
-    if (weekday === selectedWeekday) {
-      return;
-    }
-    setSelectedWeekday(weekday);
-    setLoading(true);
-    setCurrentPage(0);
-    setDoubanData([]);
-    setHasMore(true);
-    setIsLoadingMore(false);
-  }, [selectedWeekday]);
+  const handleWeekdayChange = useCallback(
+    (weekday: string) => {
+      if (weekday === selectedWeekday) {
+        return;
+      }
+      setSelectedWeekday(weekday);
+      setLoading(true);
+      setCurrentPage(0);
+      setDoubanData([]);
+      setHasMore(true);
+      setIsLoadingMore(false);
+    },
+    [selectedWeekday]
+  );
 
   const getPageTitle = () => {
-    return type === 'movie' ? '電影' :
-      type === 'tv' ? '電視劇' :
-      type === 'anime' ? '動漫' :
-      type === 'show' ? '綜藝' : '自訂';
+    return type === 'movie'
+      ? '電影'
+      : type === 'tv'
+      ? '電視劇'
+      : type === 'anime'
+      ? '動漫'
+      : type === 'show'
+      ? '綜藝'
+      : '自訂';
   };
 
   const getPageDescription = () =>
@@ -455,28 +496,25 @@ function DoubanPageClient() {
             {loading || !selectorsReady
               ? skeletonData.map((index) => <DoubanCardSkeleton key={index} />)
               : doubanData.map((item, index) => (
-                <div key={`${item.title}-${index}`} className='w-full'>
-                  <VideoCard
-                    from='douban'
-                    title={item.title}
-                    poster={item.poster}
-                    douban_id={Number(item.id)}
-                    rate={item.rate}
-                    year={item.year}
-                    type={type === 'movie' ? 'movie' : ''}
-                    isBangumi={
-                      type === 'anime' && primarySelection === '每日放送'
-                    }
-                  />
-                </div>
-              ))}
+                  <div key={`${item.title}-${index}`} className='w-full'>
+                    <VideoCard
+                      from='douban'
+                      title={item.title}
+                      poster={item.poster}
+                      douban_id={Number(item.id)}
+                      rate={item.rate}
+                      year={item.year}
+                      type={type === 'movie' ? 'movie' : ''}
+                      isBangumi={
+                        type === 'anime' && primarySelection === '每日放送'
+                      }
+                    />
+                  </div>
+                ))}
           </div>
 
           {hasMore && !loading && (
-            <div
-              ref={loadingRef}
-              className='flex justify-center mt-12 py-8'
-            >
+            <div ref={loadingRef} className='flex justify-center mt-12 py-8'>
               {isLoadingMore && (
                 <div className='flex items-center gap-2'>
                   <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>

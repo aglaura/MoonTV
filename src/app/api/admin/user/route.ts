@@ -109,29 +109,29 @@ export async function POST(request: NextRequest) {
       // 保存后直接返回成功（走后面的统一保存逻辑）
     } else {
       switch (action) {
-      case 'add': {
-        if (targetEntry) {
-          return NextResponse.json({ error: '用户已存在' }, { status: 400 });
-        }
-        const sharedPassword = process.env.PASSWORD;
-        if (!sharedPassword) {
-          return NextResponse.json(
-            { error: '服務器未設定 PASSWORD 環境變數' },
-            { status: 500 }
-          );
-        }
-        if (!storage || typeof storage.registerUser !== 'function') {
-          return NextResponse.json(
-            { error: '存储未配置用户注册' },
-            { status: 500 }
-          );
-        }
-        await storage.registerUser(targetUsername!, sharedPassword);
-        // 更新配置
-        adminConfig.UserConfig.Users.push({
-          username: targetUsername!,
-          role: 'user',
-        });
+        case 'add': {
+          if (targetEntry) {
+            return NextResponse.json({ error: '用户已存在' }, { status: 400 });
+          }
+          const sharedPassword = process.env.PASSWORD;
+          if (!sharedPassword) {
+            return NextResponse.json(
+              { error: '服務器未設定 PASSWORD 環境變數' },
+              { status: 500 }
+            );
+          }
+          if (!storage || typeof storage.registerUser !== 'function') {
+            return NextResponse.json(
+              { error: '存储未配置用户注册' },
+              { status: 500 }
+            );
+          }
+          await storage.registerUser(targetUsername!, sharedPassword);
+          // 更新配置
+          adminConfig.UserConfig.Users.push({
+            username: targetUsername!,
+            role: 'user',
+          });
           targetEntry =
             adminConfig.UserConfig.Users[
               adminConfig.UserConfig.Users.length - 1

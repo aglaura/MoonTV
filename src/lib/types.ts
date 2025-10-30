@@ -2,34 +2,38 @@ import { AdminConfig } from './admin.types';
 
 // 播放紀錄資料結構
 export interface PlayRecord {
-  title: string;             // 中文片名
-  source_name: string;       // 來源名稱
-  cover: string;             // 海報
-  year: string;              // 年份
-  index: number;             // 第幾集
-  total_episodes: number;    // 總集數
-  play_time: number;         // 播放進度（秒）
-  total_time: number;        // 總長度（秒）
-  save_time: number;         // 記錄保存時間（時間戳）
-  search_title: string;      // 搜尋時使用的標題
+  title: string; // 中文片名
+  source_name: string; // 來源名稱
+  cover: string; // 海報
+  year: string; // 年份
+  index: number; // 第幾集
+  total_episodes: number; // 總集數
+  play_time: number; // 播放進度（秒）
+  total_time: number; // 總長度（秒）
+  save_time: number; // 記錄保存時間（時間戳）
+  search_title: string; // 搜尋時使用的標題
 }
 
 // 收藏資料結構
 export interface Favorite {
-  source_name: string;       // 來源名稱
-  total_episodes: number;    // 總集數
-  title: string;             // 中文片名
-  year: string;              // 年份
-  cover: string;             // 海報
-  save_time: number;         // 記錄保存時間（時間戳）
-  search_title: string;      // 搜尋時使用的標題
+  source_name: string; // 來源名稱
+  total_episodes: number; // 總集數
+  title: string; // 中文片名
+  year: string; // 年份
+  cover: string; // 海報
+  save_time: number; // 記錄保存時間（時間戳）
+  search_title: string; // 搜尋時使用的標題
 }
 
 // 存儲介面
 export interface IStorage {
   // 播放紀錄相關
   getPlayRecord(userName: string, key: string): Promise<PlayRecord | null>;
-  setPlayRecord(userName: string, key: string, record: PlayRecord): Promise<void>;
+  setPlayRecord(
+    userName: string,
+    key: string,
+    record: PlayRecord
+  ): Promise<void>;
   getAllPlayRecords(userName: string): Promise<{ [key: string]: PlayRecord }>;
   deletePlayRecord(userName: string, key: string): Promise<void>;
 
@@ -62,8 +66,8 @@ export interface IStorage {
 // 搜尋結果資料結構
 export interface SearchResult {
   id: string;
-  title: string;             // 中文片名
-  original_title?: string;   // 英文片名（可選）
+  title: string; // 中文片名
+  original_title?: string; // 英文片名（可選）
   poster: string;
   episodes: string[];
   source: string;
@@ -79,8 +83,8 @@ export interface SearchResult {
 // 豆瓣資料結構
 export interface DoubanItem {
   id: string;
-  title: string;             // 中文片名
-  original_title?: string;   // 英文片名（可選）
+  title: string; // 中文片名
+  original_title?: string; // 英文片名（可選）
   poster: string;
   rate: string;
   year: string;

@@ -43,9 +43,7 @@ export function convertToTraditional(text: string | undefined | null): string {
  * Convert Traditional Chinese text to Simplified Chinese before sending requests to Douban.
  * Falls back to the original text if conversion fails or the input is empty.
  */
-export function convertToSimplified(
-  text: string | undefined | null
-): string {
+export function convertToSimplified(text: string | undefined | null): string {
   if (!text) {
     return '';
   }

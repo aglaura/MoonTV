@@ -10,7 +10,10 @@ export const runtime = 'nodejs';
 // This is used during runtime
 export async function GET(request: NextRequest) {
   // During build time on platforms like Vercel, return 204 for data collection calls
-  if (!request.headers.get('cookie') && typeof process.env.VERCEL !== 'undefined') {
+  if (
+    !request.headers.get('cookie') &&
+    typeof process.env.VERCEL !== 'undefined'
+  ) {
     return new Response(null, { status: 204 });
   }
 

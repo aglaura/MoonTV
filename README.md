@@ -50,14 +50,14 @@
 
 ## 技术栈
 
-| 分类      | 主要依赖                                                                                              |
-| --------- | ----------------------------------------------------------------------------------------------------- |
-| 前端框架  | [Next.js 14](https://nextjs.org/) · App Router                                                        |
-| UI & 樣式 | [Tailwind&nbsp;CSS 3](https://tailwindcss.com/)                                                       |
-| 語言      | TypeScript 4                                                                                          |
-| 播放器    | [ArtPlayer](https://github.com/zhw2590582/ArtPlayer) · [HLS.js](https://github.com/video-dev/hls.js/) |
-| 程式碼品質  | ESLint · Prettier · Jest                                                                              |
-| 部署      | Docker · Vercel · CloudFlare pages                                                                    |
+| 分类       | 主要依赖                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------- |
+| 前端框架   | [Next.js 14](https://nextjs.org/) · App Router                                                        |
+| UI & 樣式  | [Tailwind&nbsp;CSS 3](https://tailwindcss.com/)                                                       |
+| 語言       | TypeScript 4                                                                                          |
+| 播放器     | [ArtPlayer](https://github.com/zhw2590582/ArtPlayer) · [HLS.js](https://github.com/video-dev/hls.js/) |
+| 程式碼品質 | ESLint · Prettier · Jest                                                                              |
+| 部署       | Docker · Vercel · CloudFlare pages                                                                    |
 
 ## 部署
 
@@ -94,7 +94,7 @@
 #### D1 支持
 
 1. 點選 **儲存和資料庫 -> D1 SQL 資料庫**，建立一個新的資料庫，名稱隨意
-2. 進入剛建立的資料庫，點選左上角的 Explore Data，將D1 初始化 中的內容貼到 Query 視窗後點選 Run All，等待執行完成
+2. 進入剛建立的資料庫，點選左上角的 Explore Data，將 D1 初始化 中的內容貼到 Query 視窗後點選 Run All，等待執行完成
 3. 返回你的 pages 專案，進入 **設定 -> 綁定**，新增綁定 D1 資料庫，選擇你剛建立的資料庫，變數名稱填 **DB**
 4. 設定環境變數 NEXT_PUBLIC_STORAGE_TYPE，值為 d1；設定 USERNAME 和 PASSWORD 作為站長帳號
 5. 重試部署
