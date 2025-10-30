@@ -178,14 +178,36 @@ function HomeClient() {
       <div className='px-2 sm:px-10 py-4 sm:py-8 overflow-visible'>
         <section className='mb-10'>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              const trimmed = searchQuery.trim();
+              let trimmed = searchQuery.trim();
               if (!trimmed) {
                 setSearchResults([]);
                 setHasSearched(false);
                 setSearchError(null);
                 return;
+              }
+
+              // Check if the query looks like an English title (mostly ASCII characters)
+              const isLikelyEnglish = /^[\x00-\x7F\s]+$/.test(trimmed);
+              
+              if (isLikelyEnglish) {
+                try {
+                  // Try to convert English title to Chinese using Wikipedia
+                  const response = await fetch(
+                    `/api/title-convert?title=${encodeURIComponent(trimmed)}`
+                  );
+                  if (response.ok) {
+                    const data = await response.json();
+                    if (data.title) {
+                      // Use the Chinese title for search
+                      trimmed = data.title;
+                    }
+                  }
+                } catch (error) {
+                  // If conversion fails, continue with original English title
+                  console.warn('Failed to convert English title to Chinese:', error);
+                }
               }
 
               const performSearch = async () => {
