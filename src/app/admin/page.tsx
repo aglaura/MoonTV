@@ -35,6 +35,7 @@ import Swal from 'sweetalert2';
 
 import { AdminConfig, AdminConfigResult } from '@/lib/admin.types';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { parseSpeedToKBps } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 
@@ -50,6 +51,42 @@ const showSuccess = (message: string) =>
     timer: 2000,
     showConfirmButton: false,
   });
+
+const getQualityScoreFromLabel = (
+  quality?: string,
+  fallbackRank?: number
+): number => {
+  const normalized = (quality || '').toLowerCase();
+  if (normalized.includes('4k') || normalized.includes('2160')) return 100;
+  if (normalized.includes('2k') || normalized.includes('1440')) return 85;
+  if (normalized.includes('1080')) return 75;
+  if (normalized.includes('720')) return 60;
+  if (normalized.includes('480')) return 40;
+  if (normalized.includes('sd')) return 20;
+
+  switch (fallbackRank) {
+    case 4:
+      return 100;
+    case 3:
+      return 85;
+    case 2:
+      return 75;
+    case 1:
+      return 60;
+    default:
+      return 0;
+  }
+};
+
+const toDisplayScore = (score: number | undefined): string => {
+  if (!Number.isFinite(score) || score === undefined) {
+    return '—';
+  }
+  if (Math.abs(score - Math.round(score)) < 0.05) {
+    return Math.round(score).toString();
+  }
+  return score.toFixed(1);
+};
 
 // 新增站點配置类型
 interface SiteConfig {
@@ -82,6 +119,7 @@ interface SourceValuationRow {
   speedValue?: number;
   sampleCount?: number;
   updated_at?: number;
+  score?: number;
 }
 
 // 可折叠标签组件
@@ -1014,7 +1052,87 @@ const SourceValuationTable = () => {
           key,
         });
       });
-      setValuations(Array.from(dedup.values()));
+      const dedupedRows = Array.from(dedup.values()).map((item) => {
+        const normalizedSpeed =
+          typeof item.speedValue === 'number' && item.speedValue > 0
+            ? item.speedValue
+            : parseSpeedToKBps(item.loadSpeed);
+        return {
+          ...item,
+          speedValue: normalizedSpeed,
+        };
+      });
+
+      if (dedupedRows.length === 0) {
+        setValuations([]);
+        return;
+      }
+
+      const speedValues = dedupedRows
+        .map((item) => item.speedValue ?? 0)
+        .filter((value) => value > 0);
+      const maxSpeed = speedValues.length > 0 ? Math.max(...speedValues) : 0;
+
+      const pingValues = dedupedRows
+        .map((item) =>
+          typeof item.pingTime === 'number' && item.pingTime > 0
+            ? item.pingTime
+            : null
+        )
+        .filter((value): value is number => value !== null);
+      const minPing =
+        pingValues.length > 0 ? Math.min(...pingValues) : Number.NaN;
+      const maxPing =
+        pingValues.length > 0 ? Math.max(...pingValues) : Number.NaN;
+
+      const rowsWithScores = dedupedRows
+        .map((item) => {
+          const qualityScore = getQualityScoreFromLabel(
+            item.quality,
+            item.qualityRank
+          );
+
+          const speedScore =
+            maxSpeed > 0 && (item.speedValue ?? 0) > 0
+              ? Math.min(100, Math.max(0, ((item.speedValue ?? 0) / maxSpeed) * 100))
+              : 0;
+
+          let pingScore = 0;
+          if (
+            typeof item.pingTime === 'number' &&
+            item.pingTime > 0 &&
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing - minPing !== 0
+          ) {
+            pingScore = Math.min(
+              100,
+              Math.max(
+                0,
+                ((maxPing - item.pingTime) / (maxPing - minPing)) * 100
+              )
+            );
+          } else if (
+            typeof item.pingTime === 'number' &&
+            item.pingTime > 0 &&
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing === minPing
+          ) {
+            pingScore = 100;
+          }
+
+          const score =
+            qualityScore * 0.4 + speedScore * 0.4 + pingScore * 0.2;
+
+          return {
+            ...item,
+            score: Number.isFinite(score) ? Number(score.toFixed(1)) : undefined,
+          };
+        })
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+      setValuations(rowsWithScores);
     } catch (err) {
       const message = err instanceof Error ? err.message : '載入失敗';
       console.error('Failed to load source valuations:', err);
@@ -1067,6 +1185,9 @@ const SourceValuationTable = () => {
                   Quality
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Score
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                   Speed
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
@@ -1091,11 +1212,9 @@ const SourceValuationTable = () => {
                   </td>
                   <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                     {item.quality}
-                    {item.qualityRank ? (
-                      <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                        Rank {item.qualityRank}
-                      </span>
-                    ) : null}
+                  </td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {toDisplayScore(item.score)} 分
                   </td>
                   <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                     {item.loadSpeed}
