@@ -29,6 +29,16 @@ export interface Favorite {
   search_title: string; // 搜尋時使用的標題
 }
 
+export interface SourceValuation {
+  key: string;
+  source: string;
+  id: string;
+  quality: string;
+  loadSpeed: string;
+  pingTime: number;
+  updated_at: number;
+}
+
 // 存儲介面
 export interface IStorage {
   // 播放紀錄相關
@@ -65,6 +75,13 @@ export interface IStorage {
   // 管理員設定
   getAdminConfig(): Promise<AdminConfig | null>;
   setAdminConfig(config: AdminConfig): Promise<void>;
+
+  // 播放源評估
+  getSourceValuation?(key: string): Promise<SourceValuation | null>;
+  setSourceValuation?(valuation: SourceValuation): Promise<void>;
+  getSourceValuations?(
+    keys: string[]
+  ): Promise<Record<string, SourceValuation>>;
 }
 
 // 搜尋結果資料結構

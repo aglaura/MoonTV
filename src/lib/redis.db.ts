@@ -3,7 +3,7 @@
 import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -151,6 +151,43 @@ export class RedisStorage implements IStorage {
 
   async deleteFavorite(userName: string, key: string): Promise<void> {
     await withRetry(() => this.client.del(this.favKey(userName, key)));
+  }
+
+  // ---------- 播放源評估 ----------
+  private valuationKey(key: string) {
+    return `sourceval:${key}`;
+  }
+
+  async setSourceValuation(valuation: SourceValuation): Promise<void> {
+    await withRetry(() =>
+      this.client.set(
+        this.valuationKey(valuation.key),
+        JSON.stringify(valuation)
+      )
+    );
+  }
+
+  async getSourceValuation(key: string): Promise<SourceValuation | null> {
+    const val = await withRetry(() =>
+      this.client.get(this.valuationKey(key))
+    );
+    return val ? (JSON.parse(val) as SourceValuation) : null;
+  }
+
+  async getSourceValuations(
+    keys: string[]
+  ): Promise<Record<string, SourceValuation>> {
+    const result: Record<string, SourceValuation> = {};
+    if (keys.length === 0) return result;
+    const redisKeys = keys.map((key) => this.valuationKey(key));
+    const values = await withRetry(() => this.client.mGet(redisKeys));
+    keys.forEach((key, idx) => {
+      const raw = values[idx];
+      if (raw) {
+        result[key] = JSON.parse(raw) as SourceValuation;
+      }
+    });
+    return result;
   }
 
   // ---------- 用户注册 / 登录 ----------

@@ -178,6 +178,72 @@ function PlayPageClient() {
     Map<string, { quality: string; loadSpeed: string; pingTime: number }>
   >(new Map());
 
+  type SourceValuationPayload = {
+    key: string;
+    source: string;
+    id: string;
+    quality: string;
+    loadSpeed: string;
+    pingTime: number;
+    updated_at: number;
+  };
+
+  const persistSourceValuations = useCallback(
+    async (entries: SourceValuationPayload[]) => {
+      if (!entries.length) return;
+      try {
+        await fetch('/api/source/valuation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valuations: entries }),
+        });
+      } catch (error) {
+        console.warn('Failed to persist source valuations:', error);
+      }
+    },
+    []
+  );
+
+  const fetchStoredValuations = useCallback(
+    async (sources: SearchResult[]) => {
+      if (!sources || sources.length === 0) return;
+      const keys = Array.from(
+        new Set(
+          sources.map((source) => `${source.source}-${source.id}`)
+        )
+      );
+      if (keys.length === 0) return;
+      try {
+        const resp = await fetch(
+          `/api/source/valuation?keys=${encodeURIComponent(keys.join(','))}`
+        );
+        if (!resp.ok) {
+          return;
+        }
+        const data = (await resp.json()) as Record<
+          string,
+          SourceValuationPayload
+        >;
+        if (!data) return;
+
+        setPrecomputedVideoInfo((prev) => {
+          const next = new Map(prev);
+          Object.entries(data).forEach(([key, value]) => {
+            next.set(key, {
+              quality: value.quality,
+              loadSpeed: value.loadSpeed,
+              pingTime: value.pingTime,
+            });
+          });
+          return next;
+        });
+      } catch (error) {
+        console.warn('Failed to load stored source valuations:', error);
+      }
+    },
+    []
+  );
+
   // 折叠状态（仅在 lg 及以上屏幕有效）
   const [isEpisodeSelectorCollapsed, setIsEpisodeSelectorCollapsed] =
     useState(false);
@@ -286,6 +352,17 @@ function PlayPageClient() {
     }>;
 
     setPrecomputedVideoInfo(newVideoInfoMap);
+
+    const valuationsToPersist = successfulResults.map((result) => ({
+      key: `${result.source.source}-${result.source.id}`,
+      source: result.source.source,
+      id: result.source.id,
+      quality: result.testResult.quality,
+      loadSpeed: result.testResult.loadSpeed,
+      pingTime: result.testResult.pingTime,
+      updated_at: Date.now(),
+    }));
+    void persistSourceValuations(valuationsToPersist);
 
     if (successfulResults.length === 0) {
       console.warn('所有播放源測速都失敗，使用第一個播放源');
@@ -593,6 +670,7 @@ function PlayPageClient() {
       }
 
       setSourceSearchLoading(false);
+      fetchStoredValuations(allSources);
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {

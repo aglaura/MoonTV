@@ -1,7 +1,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -44,12 +44,30 @@ function getD1Database(): D1Database {
 
 export class D1Storage implements IStorage {
   private db: D1Database | null = null;
+  private valuationTableInitialized = false;
 
   private async getDatabase(): Promise<D1Database> {
     if (!this.db) {
       this.db = getD1Database();
     }
     return this.db;
+  }
+
+  private async ensureValuationTable(): Promise<void> {
+    if (this.valuationTableInitialized) return;
+    const db = await this.getDatabase();
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS source_valuations (
+        key TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        quality TEXT,
+        load_speed TEXT,
+        ping_time INTEGER,
+        updated_at INTEGER
+      )
+    `);
+    this.valuationTableInitialized = true;
   }
 
   // 播放记录相关
@@ -472,5 +490,81 @@ export class D1Storage implements IStorage {
       console.error('Failed to set admin config:', err);
       throw err;
     }
+  }
+
+  // 播放源評估
+  async setSourceValuation(valuation: SourceValuation): Promise<void> {
+    try {
+      await this.ensureValuationTable();
+      const db = await this.getDatabase();
+      await db
+        .prepare(
+          `
+          INSERT OR REPLACE INTO source_valuations
+          (key, source, source_id, quality, load_speed, ping_time, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+        )
+        .bind(
+          valuation.key,
+          valuation.source,
+          valuation.id,
+          valuation.quality,
+          valuation.loadSpeed,
+          valuation.pingTime,
+          valuation.updated_at
+        )
+        .run();
+    } catch (err) {
+      console.error('Failed to set source valuation:', err);
+      throw err;
+    }
+  }
+
+  async getSourceValuation(key: string): Promise<SourceValuation | null> {
+    try {
+      await this.ensureValuationTable();
+      const db = await this.getDatabase();
+      const row = await db
+        .prepare(
+          `
+          SELECT key, source, source_id, quality, load_speed, ping_time, updated_at
+          FROM source_valuations WHERE key = ?
+        `
+        )
+        .bind(key)
+        .first<any>();
+
+      if (!row) return null;
+
+      return {
+        key: row.key,
+        source: row.source,
+        id: row.source_id,
+        quality: row.quality,
+        loadSpeed: row.load_speed,
+        pingTime: row.ping_time,
+        updated_at: row.updated_at,
+      };
+    } catch (err) {
+      console.error('Failed to get source valuation:', err);
+      throw err;
+    }
+  }
+
+  async getSourceValuations(
+    keys: string[]
+  ): Promise<Record<string, SourceValuation>> {
+    const result: Record<string, SourceValuation> = {};
+    if (keys.length === 0) return result;
+
+    for (const key of keys) {
+      const valuation = await this.getSourceValuation(key);
+      if (valuation) {
+        result[key] = valuation;
+      }
+    }
+
+    return result;
   }
 }

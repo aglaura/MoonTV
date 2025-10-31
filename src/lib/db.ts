@@ -3,7 +3,7 @@
 import { AdminConfig } from './admin.types';
 import { D1Storage } from './d1.db';
 import { RedisStorage } from './redis.db';
-import { Favorite, IStorage, PlayRecord } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
 
 // storage type 常量: 'localstorage' | 'redis' | 'd1'，默认 'localstorage'
 const STORAGE_TYPE =
@@ -176,6 +176,59 @@ export class DbManager {
     if (typeof (this.storage as any).setAdminConfig === 'function') {
       await (this.storage as any).setAdminConfig(config);
     }
+  }
+
+  // ---------- 播放源評估 ----------
+  async saveSourceValuations(
+    valuations: SourceValuation[]
+  ): Promise<void> {
+    if (
+      !this.storage ||
+      typeof this.storage.setSourceValuation !== 'function'
+    ) {
+      return;
+    }
+
+    for (const valuation of valuations) {
+      try {
+        await this.storage.setSourceValuation(valuation);
+      } catch (error) {
+        console.error('Failed to save source valuation:', error);
+      }
+    }
+  }
+
+  async getSourceValuations(
+    keys: string[]
+  ): Promise<Record<string, SourceValuation>> {
+    const result: Record<string, SourceValuation> = {};
+    if (!this.storage || keys.length === 0) {
+      return result;
+    }
+
+    if (typeof this.storage.getSourceValuations === 'function') {
+      try {
+        return await this.storage.getSourceValuations(keys);
+      } catch (error) {
+        console.error('Failed to get source valuations:', error);
+        return result;
+      }
+    }
+
+    if (typeof this.storage.getSourceValuation === 'function') {
+      for (const key of keys) {
+        try {
+          const valuation = await this.storage.getSourceValuation(key);
+          if (valuation) {
+            result[key] = valuation;
+          }
+        } catch (error) {
+          console.error('Failed to get source valuation:', error);
+        }
+      }
+    }
+
+    return result;
   }
 }
 
