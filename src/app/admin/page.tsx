@@ -30,7 +30,7 @@ import {
   Video,
 } from 'lucide-react';
 import { GripVertical } from 'lucide-react';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 
 import { AdminConfig, AdminConfigResult } from '@/lib/admin.types';
@@ -1027,10 +1027,18 @@ const VideoSourceConfig = ({
   );
 };
 
-const SourceValuationTable = () => {
+const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] }) => {
   const [valuations, setValuations] = useState<SourceValuationRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sourceNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (sourceConfig ?? []).forEach((source) => {
+      if (!source?.key) return;
+      map.set(source.key.trim(), source.name?.trim() || source.key.trim());
+    });
+    return map;
+  }, [sourceConfig]);
 
   const fetchValuations = useCallback(async () => {
     try {
@@ -1202,41 +1210,49 @@ const SourceValuationTable = () => {
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-              {valuations.map((item) => (
-                <tr key={item.key} className='hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors'>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {item.source || item.key}
-                  </td>
-                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
-                    {item.key}
-                  </td>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {item.quality}
-                  </td>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {toDisplayScore(item.score)} 分
-                  </td>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {item.loadSpeed}
-                    {item.speedValue ? (
-                      <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                        {item.speedValue} KB/s
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {item.pingTime ?? '—'}
-                  </td>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                    {item.sampleCount ?? 0}
-                  </td>
-                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
-                    {item.updated_at
-                      ? new Date(item.updated_at).toLocaleString()
-                      : '—'}
-                  </td>
-                </tr>
-              ))}
+              {valuations.map((item) => {
+                const trimmedSource = (item.source || '').trim();
+                const displayName =
+                  sourceNameMap.get(item.key) ??
+                  sourceNameMap.get(trimmedSource) ??
+                  item.source ??
+                  item.key;
+                return (
+                  <tr key={item.key} className='hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors'>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {displayName}
+                    </td>
+                    <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
+                      {item.key}
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {item.quality}
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {toDisplayScore(item.score)} 分
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {item.loadSpeed}
+                      {item.speedValue ? (
+                        <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
+                          {item.speedValue} KB/s
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {item.pingTime ?? '—'}
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      {item.sampleCount ?? 0}
+                    </td>
+                    <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
+                      {item.updated_at
+                        ? new Date(item.updated_at).toLocaleString()
+                        : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1636,7 +1652,7 @@ function AdminPageClient() {
               isExpanded={expandedTabs.sourceValuations}
               onToggle={() => toggleTab('sourceValuations')}
             >
-              <SourceValuationTable />
+              <SourceValuationTable sourceConfig={config?.SourceConfig} />
             </CollapsibleTab>
           </div>
         </div>
