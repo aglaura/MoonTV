@@ -568,11 +568,12 @@ function PlayPageClient() {
 
       setSourceSearchLoading(false);
 
-      if (optimizationEnabled && allSources.length > 1) {
+      if (allSources.length > 1) {
         const bestSource = await preferBestSource(allSources);
         if (
-          bestSource.source !== currentSourceRef.current ||
-          bestSource.id !== currentIdRef.current
+          optimizationEnabled &&
+          (bestSource.source !== currentSourceRef.current ||
+            bestSource.id !== currentIdRef.current)
         ) {
           handleSourceChange(
             bestSource.source,
