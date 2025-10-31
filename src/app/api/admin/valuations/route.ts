@@ -7,7 +7,16 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const valuations = await db.getAllSourceValuations();
-    return NextResponse.json({ items: valuations });
+    const dedup = new Map<string, typeof valuations[number]>();
+    valuations.forEach((entry) => {
+      const key = (entry.source || entry.key || '').trim();
+      if (!key) return;
+      dedup.set(key, {
+        ...entry,
+        key,
+      });
+    });
+    return NextResponse.json({ items: Array.from(dedup.values()) });
   } catch (error) {
     console.error('Failed to load source valuations:', error);
     return NextResponse.json(

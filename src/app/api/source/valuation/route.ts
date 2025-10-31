@@ -23,24 +23,30 @@ export async function POST(request: Request) {
       .filter(
         (item) =>
           typeof item?.key === 'string' &&
-          typeof item?.source === 'string' &&
-          typeof item?.id === 'string'
+          typeof item?.source === 'string'
       )
-      .map((item) => ({
-        key: item.key,
-        source: item.source,
-        id: item.id,
-        quality: item.quality ?? '',
-        loadSpeed: item.loadSpeed ?? '',
-        pingTime: Number.isFinite(item.pingTime) ? item.pingTime : 0,
-        qualityRank: getQualityRank(item.quality),
-        speedValue: parseSpeedToKBps(item.loadSpeed),
-        sampleCount:
-          typeof item.sampleCount === 'number' && item.sampleCount > 0
-            ? Math.round(item.sampleCount)
-            : 1,
-        updated_at: item.updated_at ?? Date.now(),
-      }));
+      .map((item) => {
+        const trimmedKey = item.key.trim();
+        const trimmedSource = item.source.trim();
+        const trimmedId =
+          typeof item.id === 'string' ? item.id.trim() : '';
+
+        return {
+          key: trimmedKey,
+          source: trimmedSource,
+          ...(trimmedId ? { id: trimmedId } : {}),
+          quality: item.quality ?? '',
+          loadSpeed: item.loadSpeed ?? '',
+          pingTime: Number.isFinite(item.pingTime) ? item.pingTime : 0,
+          qualityRank: getQualityRank(item.quality),
+          speedValue: parseSpeedToKBps(item.loadSpeed),
+          sampleCount:
+            typeof item.sampleCount === 'number' && item.sampleCount > 0
+              ? Math.round(item.sampleCount)
+              : 1,
+          updated_at: item.updated_at ?? Date.now(),
+        };
+      });
 
     if (sanitized.length === 0) {
       return NextResponse.json({ ok: true });

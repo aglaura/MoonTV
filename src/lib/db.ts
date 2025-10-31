@@ -273,7 +273,6 @@ export class DbManager {
         const payload: SourceValuation = {
           key: valuation.key,
           source: valuation.source,
-          id: valuation.id,
           quality: qualityLabel,
           loadSpeed: formattedSpeed,
           pingTime:

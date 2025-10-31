@@ -74,7 +74,7 @@ interface DataSource {
 interface SourceValuationRow {
   key: string;
   source: string;
-  id: string;
+  id?: string;
   quality: string;
   loadSpeed: string;
   pingTime: number;
@@ -1004,7 +1004,17 @@ const SourceValuationTable = () => {
         throw new Error(data.error || `載入失敗: ${response.status}`);
       }
       const data = (await response.json()) as { items?: SourceValuationRow[] };
-      setValuations(data.items ?? []);
+      const rows = data.items ?? [];
+      const dedup = new Map<string, SourceValuationRow>();
+      rows.forEach((item) => {
+        const key = (item.source || item.key || '').trim();
+        if (!key) return;
+        dedup.set(key, {
+          ...item,
+          key,
+        });
+      });
+      setValuations(Array.from(dedup.values()));
     } catch (err) {
       const message = err instanceof Error ? err.message : '載入失敗';
       console.error('Failed to load source valuations:', err);
@@ -1074,7 +1084,7 @@ const SourceValuationTable = () => {
               {valuations.map((item) => (
                 <tr key={item.key} className='hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors'>
                   <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>{item.source}</td>
-                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>{item.id}</td>
+                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>{item.id ?? '—'}</td>
                   <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                     {item.quality}
                     {item.qualityRank ? (

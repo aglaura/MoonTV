@@ -200,7 +200,7 @@ function PlayPageClient() {
   type SourceValuationPayload = {
     key: string;
     source: string;
-    id: string;
+    id?: string;
     quality: string;
     loadSpeed: string;
     pingTime: number;
@@ -226,14 +226,16 @@ function PlayPageClient() {
     []
   );
 
+  const getValuationKey = useCallback((source: string) => source.trim(), []);
+
   const fetchStoredValuations = useCallback(
     async (sources: SearchResult[]) => {
       if (!sources || sources.length === 0) return;
-      const keys = Array.from(
-        new Set(
-          sources.map((source) => `${source.source}-${source.id}`)
-        )
-      );
+      const keySet = new Set<string>();
+      sources.forEach((source) => {
+        keySet.add(getValuationKey(source.source));
+      });
+      const keys = Array.from(keySet);
       if (keys.length === 0) return;
       try {
         const resp = await fetch(
@@ -245,7 +247,7 @@ function PlayPageClient() {
         const payload = await resp.json();
         if (!payload) return;
 
-        const items: SourceValuationPayload[] = Array.isArray(payload?.items)
+        const rawItems: SourceValuationPayload[] = Array.isArray(payload?.items)
           ? payload.items
           : Array.isArray(payload)
           ? (payload as SourceValuationPayload[])
@@ -255,12 +257,20 @@ function PlayPageClient() {
                 {}
             );
 
-        if (!items.length) return;
+        if (!rawItems.length) return;
+
+        const deduped = new Map<string, SourceValuationPayload>();
+        rawItems.forEach((value) => {
+          const key = getValuationKey(value.source);
+          deduped.set(key, {
+            ...value,
+            key,
+          });
+        });
 
         setPrecomputedVideoInfo((prev) => {
           const next = new Map(prev);
-          items.forEach((value) => {
-            const key = value.key || `${value.source}-${value.id}`;
+          deduped.forEach((value, key) => {
             next.set(key, {
               quality: value.quality,
               loadSpeed: value.loadSpeed,
@@ -270,7 +280,7 @@ function PlayPageClient() {
               speedValue:
                 value.speedValue ?? parseSpeedToKBps(value.loadSpeed),
               sampleCount:
-                'sampleCount' in value && typeof value.sampleCount === 'number'
+                typeof value.sampleCount === 'number'
                   ? value.sampleCount || 1
                   : 1,
               hasError: false,
@@ -282,7 +292,7 @@ function PlayPageClient() {
         console.warn('Failed to load stored source valuations:', error);
       }
     },
-    []
+    [getValuationKey]
   );
 
   useEffect(() => {
@@ -383,7 +393,7 @@ function PlayPageClient() {
     >();
     allResults.forEach((result, index) => {
       const source = sources[index];
-      const sourceKey = `${source.source}-${source.id}`;
+      const sourceKey = getValuationKey(source.source);
 
       if (result && result.testResult) {
         const { quality, loadSpeed, pingTime } = result.testResult;
@@ -416,7 +426,7 @@ function PlayPageClient() {
 
     const aggregatedEntries: SourceValuationPayload[] = successfulResults.map(
       (result) => {
-        const sourceKey = `${result.source.source}-${result.source.id}`;
+        const sourceKey = getValuationKey(result.source.source);
         const measurementRank = getQualityRank(result.testResult.quality);
         const measurementSpeedValue = parseSpeedToKBps(
           result.testResult.loadSpeed
@@ -475,7 +485,6 @@ function PlayPageClient() {
         return {
           key: sourceKey,
           source: result.source.source,
-          id: result.source.id,
           quality: qualityLabel,
           loadSpeed: formattedSpeed,
           pingTime:
@@ -493,7 +502,12 @@ function PlayPageClient() {
       }
     );
 
+    const aggregatedEntryMap = new Map<string, SourceValuationPayload>();
     aggregatedEntries.forEach((entry) => {
+      aggregatedEntryMap.set(entry.key, entry);
+    });
+
+    aggregatedEntryMap.forEach((entry) => {
       newVideoInfoMap.set(entry.key, {
         quality: entry.quality,
         loadSpeed: entry.loadSpeed,
@@ -507,7 +521,7 @@ function PlayPageClient() {
 
     setPrecomputedVideoInfo(newVideoInfoMap);
 
-    const meaningfulAggregatedEntries = aggregatedEntries.filter(
+    const meaningfulAggregatedEntries = Array.from(aggregatedEntryMap.values()).filter(
       (entry) =>
         (entry.qualityRank ?? 0) > 0 ||
         (entry.speedValue ?? 0) > 0 ||
@@ -580,22 +594,23 @@ function PlayPageClient() {
       if (!sources || sources.length === 0) return null;
 
       const enriched = sources.map((source) => {
-      const key = `${source.source}-${source.id}`;
-      const info = precomputedVideoInfoRef.current.get(key);
-      const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
-      const speedValue = info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
-      const pingTime =
-        typeof info?.pingTime === 'number' && info.pingTime > 0
-          ? info.pingTime
-          : Number.MAX_SAFE_INTEGER;
-      const sampleCount = info?.sampleCount ?? 0;
-      const hasInfo =
-        sampleCount > 0 && (qualityRank > 0 || speedValue > 0);
-      return {
-        source,
-        qualityRank,
-        speedValue,
-        pingTime,
+        const key = getValuationKey(source.source);
+        const info = precomputedVideoInfoRef.current.get(key);
+        const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
+        const speedValue =
+          info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
+        const pingTime =
+          typeof info?.pingTime === 'number' && info.pingTime > 0
+            ? info.pingTime
+            : Number.MAX_SAFE_INTEGER;
+        const sampleCount = info?.sampleCount ?? 0;
+        const hasInfo =
+          sampleCount > 0 && (qualityRank > 0 || speedValue > 0);
+        return {
+          source,
+          qualityRank,
+          speedValue,
+          pingTime,
           hasInfo,
         };
       });
@@ -897,11 +912,10 @@ function PlayPageClient() {
 
         newSources.forEach((source) => {
           if (!source.episodes || source.episodes.length === 0) {
-            const key = `${source.source}-${source.id}`;
+            const key = getValuationKey(source.source);
             penaltyEntries.push({
               key,
               source: source.source,
-              id: source.id,
               quality: '未知',
               loadSpeed: '未知',
               pingTime: Number.MAX_SAFE_INTEGER,
@@ -1054,7 +1068,7 @@ function PlayPageClient() {
         return;
       }
 
-      failedSourcesRef.current.delete(`${newSource}-${newId}`);
+      failedSourcesRef.current.delete(getValuationKey(newSource));
 
       // 尝试跳转到当前正在播放的集数
       let targetIndex = currentEpisodeIndex;
@@ -1096,10 +1110,9 @@ function PlayPageClient() {
   };
 
   const trySwitchToNextSource = useCallback((): boolean => {
-    const currentKey =
-      currentSourceRef.current && currentIdRef.current
-        ? `${currentSourceRef.current}-${currentIdRef.current}`
-        : null;
+    const currentKey = currentSourceRef.current
+      ? getValuationKey(currentSourceRef.current)
+      : null;
 
     if (currentKey) {
       failedSourcesRef.current.add(currentKey);
@@ -1113,7 +1126,7 @@ function PlayPageClient() {
       ) {
         return false;
       }
-      const key = `${source.source}-${source.id}`;
+      const key = getValuationKey(source.source);
       if (failedSourcesRef.current.has(key)) return false;
       return currentEpisodeIndexRef.current < source.episodes.length;
     });
@@ -1126,7 +1139,7 @@ function PlayPageClient() {
 
     setError('當前播放來源不可用，請手動選擇其他來源');
     return false;
-  }, [handleSourceChange]);
+  }, [getValuationKey, handleSourceChange]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyboardShortcuts);

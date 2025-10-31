@@ -32,7 +32,7 @@ export interface Favorite {
 export interface SourceValuation {
   key: string;
   source: string;
-  id: string;
+  id?: string;
   quality: string;
   loadSpeed: string;
   pingTime: number;

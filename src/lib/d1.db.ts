@@ -530,7 +530,7 @@ export class D1Storage implements IStorage {
         .bind(
           valuation.key,
           valuation.source,
-          valuation.id,
+          valuation.id ?? '',
           valuation.quality,
           valuation.loadSpeed,
           valuation.pingTime,
@@ -550,7 +550,7 @@ export class D1Storage implements IStorage {
     try {
       await this.ensureValuationTable();
       const db = await this.getDatabase();
-      const row = await db
+      const row: any = await db
         .prepare(
           `
           SELECT key, source, source_id, quality, load_speed, ping_time, quality_rank, speed_value, sample_count, updated_at
@@ -562,10 +562,11 @@ export class D1Storage implements IStorage {
 
       if (!row) return null;
 
+      const rowKey = (row.key || row.source || '').trim();
       return {
-        key: row.key,
+        key: rowKey,
         source: row.source,
-        id: row.source_id,
+        ...(row.source_id ? { id: row.source_id } : {}),
         quality: row.quality,
         loadSpeed: row.load_speed,
         pingTime: row.ping_time,
@@ -611,9 +612,9 @@ export class D1Storage implements IStorage {
       .all<any>();
 
     return rows.results.map((row: any) => ({
-      key: row.key,
+      key: (row.key || row.source || '').trim(),
       source: row.source,
-      id: row.source_id,
+      ...(row.source_id ? { id: row.source_id } : {}),
       quality: row.quality,
       loadSpeed: row.load_speed,
       pingTime: row.ping_time,

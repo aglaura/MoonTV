@@ -181,6 +181,7 @@ export class RedisStorage implements IStorage {
     const parsed = JSON.parse(val) as SourceValuation;
     return {
       ...parsed,
+      key: (parsed.key || key).trim(),
       qualityRank:
         parsed.qualityRank ?? getQualityRank(parsed.quality),
       speedValue:
@@ -202,6 +203,7 @@ export class RedisStorage implements IStorage {
         const parsed = JSON.parse(raw) as SourceValuation;
         result[key] = {
           ...parsed,
+          key,
           qualityRank:
             parsed.qualityRank ?? getQualityRank(parsed.quality),
           speedValue:
@@ -225,6 +227,7 @@ export class RedisStorage implements IStorage {
       const parsed = JSON.parse(raw) as SourceValuation;
       result.push({
         ...parsed,
+        key: (parsed.key || redisKey.replace('sourceval:', '')).trim(),
         qualityRank:
           parsed.qualityRank ?? getQualityRank(parsed.quality),
         speedValue:
