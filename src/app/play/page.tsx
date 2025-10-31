@@ -299,41 +299,6 @@ function PlayPageClient() {
     'initing' | 'sourceChanging'
   >('initing');
 
-  // Function to increment sampleCount when a video starts playing successfully
-  const incrementSourceSampleCount = useCallback((source: string, id: string) => {
-    const sourceKey = `${source}-${id}`;
-    
-    setPrecomputedVideoInfo((prev) => {
-      const currentInfo = prev.get(sourceKey);
-      if (!currentInfo) return prev;
-      
-      const next = new Map(prev);
-      next.set(sourceKey, {
-        ...currentInfo,
-        sampleCount: (currentInfo.sampleCount ?? 0) + 1,
-      });
-      
-      // Persist the updated sample count to the backend
-      const entry: SourceValuationPayload = {
-        key: sourceKey,
-        source: source,
-        id: id,
-        quality: currentInfo.quality,
-        loadSpeed: currentInfo.loadSpeed,
-        pingTime: currentInfo.pingTime,
-        qualityRank: currentInfo.qualityRank,
-        speedValue: currentInfo.speedValue,
-        sampleCount: (currentInfo.sampleCount ?? 0) + 1,
-        updated_at: Date.now(),
-      };
-      
-      // Persist the updated valuation
-      void persistSourceValuations([entry]);
-      
-      return next;
-    });
-  }, [persistSourceValuations]);
-
   // 播放进度保存相关
   const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
