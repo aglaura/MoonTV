@@ -1061,6 +1061,9 @@ const SourceValuationTable = () => {
                   Source
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Key
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                   Quality
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
@@ -1080,7 +1083,12 @@ const SourceValuationTable = () => {
             <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
               {valuations.map((item) => (
                 <tr key={item.key} className='hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors'>
-                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>{item.source}</td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {item.source || item.key}
+                  </td>
+                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
+                    {item.key}
+                  </td>
                   <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                     {item.quality}
                     {item.qualityRank ? (
