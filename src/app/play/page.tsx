@@ -810,6 +810,7 @@ function PlayPageClient() {
       let playbackInitialized = false;
       const allSources: SearchResult[] = [];
       let pendingFirstSource: SearchResult | undefined;
+      const penaltyEntries: SourceValuationPayload[] = [];
 
       const initializePlayback = (detailData: SearchResult) => {
         if (playbackInitialized) return;
@@ -870,6 +871,43 @@ function PlayPageClient() {
             pendingFirstSource =
               selectBestSourceByValuation(allSources) ?? allSources[0];
           }
+        }
+
+        newSources.forEach((source) => {
+          if (!source.episodes || source.episodes.length === 0) {
+            const key = `${source.source}-${source.id}`;
+            penaltyEntries.push({
+              key,
+              source: source.source,
+              id: source.id,
+              quality: '未知',
+              loadSpeed: '未知',
+              pingTime: Number.MAX_SAFE_INTEGER,
+              qualityRank: -1,
+              speedValue: 0,
+              sampleCount: 1,
+              updated_at: Date.now(),
+            });
+          }
+        });
+
+        if (penaltyEntries.length) {
+          setPrecomputedVideoInfo((prev) => {
+            const next = new Map(prev);
+            penaltyEntries.forEach((entry) => {
+              next.set(entry.key, {
+                quality: entry.quality,
+                loadSpeed: entry.loadSpeed,
+                pingTime: entry.pingTime,
+                qualityRank: entry.qualityRank,
+                speedValue: entry.speedValue,
+                sampleCount: entry.sampleCount,
+                hasError: true,
+              });
+            });
+            return next;
+          });
+          penaltyEntries.length = 0;
         }
       }
 
