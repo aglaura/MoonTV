@@ -146,7 +146,7 @@ export async function searchFromApi(
             const pageController = new AbortController();
             const pageTimeoutId = setTimeout(
               () => pageController.abort(),
-              8000
+              2000
             );
 
             const pageResponse = await fetch(pageUrl, {
