@@ -130,9 +130,11 @@ function PlayPageClient() {
         const original = data?.original_title?.trim();
         const fallback = imdbId ? `IMDb: ${imdbId}` : original || undefined;
         setImdbVideoTitle(imdbTitle || fallback);
+        setImdbVideoId(imdbId || undefined);
       } catch {
         if (!cancelled) {
           setImdbVideoTitle(undefined);
+          setImdbVideoId(undefined);
         }
       }
     };
@@ -887,6 +889,9 @@ function PlayPageClient() {
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
         save_time: Date.now(),
+          imdbId: imdbVideoId,
+          imdbTitle: imdbVideoTitle,
+          douban_id: detailRef.current?.douban_id,
         search_title: searchTitle,
       });
 
