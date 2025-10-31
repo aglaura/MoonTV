@@ -12,6 +12,10 @@ export interface PlayRecord {
   total_time: number; // 總長度（秒）
   save_time: number; // 記錄保存時間（時間戳）
   search_title: string; // 搜尋時使用的標題
+  // Optional metadata for English/IMDb and Douban linkage
+  imdbId?: string; // IMDb id like 'tt1234567' or douban-specific 'imdbt...'
+  imdbTitle?: string; // Scraped English title from IMDb
+  douban_id?: number; // Douban subject id if available
 }
 
 // 收藏資料結構

@@ -200,6 +200,9 @@ function PlayPageClient() {
   const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(
     undefined
   );
+  const [imdbVideoId, setImdbVideoId] = useState<string | undefined>(
+    undefined
+  );
   const englishVideoTitle = imdbVideoTitle ?? undefined;
   const displayVideoTitle = useMemo(
     () => convertToTraditional(videoTitle),
