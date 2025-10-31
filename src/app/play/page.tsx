@@ -206,6 +206,7 @@ function PlayPageClient() {
     pingTime: number;
     qualityRank?: number;
     speedValue?: number;
+    sampleCount?: number;
     updated_at: number;
   };
 
@@ -268,7 +269,10 @@ function PlayPageClient() {
                 value.qualityRank ?? getQualityRank(value.quality),
               speedValue:
                 value.speedValue ?? parseSpeedToKBps(value.loadSpeed),
-              sampleCount: value.sampleCount ?? 1,
+              sampleCount:
+                'sampleCount' in value && typeof value.sampleCount === 'number'
+                  ? value.sampleCount || 1
+                  : 1,
               hasError: false,
             });
           });
