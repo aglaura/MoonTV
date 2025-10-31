@@ -160,11 +160,10 @@ function PlayPageClient() {
   const resumeTimeRef = useRef<number | null>(null);
   // 上次使用的音量，默认 0.7
   const lastVolumeRef = useRef<number>(0.7);
-  const availableSourcesRef = useRef<SearchResult[]>([]);
-  const failedSourcesRef = useRef<Set<string>>(new Set());
-
   // 换源相关状态
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
+  const availableSourcesRef = useRef<SearchResult[]>([]);
+  const failedSourcesRef = useRef<Set<string>>(new Set());
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
     null
