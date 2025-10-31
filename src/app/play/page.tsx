@@ -180,22 +180,164 @@ function PlayPageClient() {
   // 优选和测速开关
   const [optimizationEnabled] = useState<boolean>(false);
 
+  type PrecomputedVideoInfoEntry = {
+    quality: string;
+    loadSpeed: string;
+    pingTime: number;
+    qualityRank?: number;
+    speedValue?: number;
+    sampleCount?: number;
+    hasError?: boolean;
+  };
+
   // 保存优选时的测速结果，避免EpisodeSelector重复测速
   const [precomputedVideoInfo, setPrecomputedVideoInfo] = useState<
-    Map<
-      string,
-      {
-        quality: string;
-        loadSpeed: string;
-        pingTime: number;
-        qualityRank?: number;
-        speedValue?: number;
-        sampleCount?: number;
-        hasError?: boolean;
-      }
-    >
+    Map<string, PrecomputedVideoInfoEntry>
   >(new Map());
-  const precomputedVideoInfoRef = useRef(precomputedVideoInfo);
+  const precomputedVideoInfoRef =
+    useRef<Map<string, PrecomputedVideoInfoEntry>>(precomputedVideoInfo);
+
+  const getValuationKey = useCallback((source: string) => source.trim(), []);
+
+  const qualityRankToScore = (rank?: number): number => {
+    switch (rank) {
+      case 4:
+        return 100;
+      case 3:
+        return 85;
+      case 2:
+        return 75;
+      case 1:
+        return 60;
+      default:
+        return 0;
+    }
+  };
+
+  const sortSourcesByValuation = useCallback(
+    (
+      sources: SearchResult[],
+      infoOverride?: Map<string, PrecomputedVideoInfoEntry>
+    ): SearchResult[] => {
+      if (!sources || sources.length <= 1) {
+        return sources;
+      }
+
+      const infoMap =
+        infoOverride && infoOverride.size > 0
+          ? infoOverride
+          : precomputedVideoInfoRef.current;
+      if (!infoMap || infoMap.size === 0) {
+        return sources;
+      }
+
+      const metrics = sources.map((source, index) => {
+        const key = getValuationKey(source.source);
+        const info = infoMap.get(key);
+        const qualityRank =
+          info?.qualityRank ??
+          (info?.quality ? getQualityRank(info.quality) : 0);
+        const speedValue =
+          info?.speedValue ??
+          (info?.loadSpeed ? parseSpeedToKBps(info.loadSpeed) : 0);
+        const pingTime =
+          typeof info?.pingTime === 'number' && info.pingTime > 0
+            ? info.pingTime
+            : Number.MAX_SAFE_INTEGER;
+        const hasInfo = Boolean(info) && (qualityRank > 0 || speedValue > 0);
+
+        return {
+          source,
+          key,
+          index,
+          qualityRank,
+          speedValue,
+          pingTime,
+          hasInfo,
+        };
+      });
+
+      if (!metrics.some((metric) => metric.hasInfo)) {
+        return sources;
+      }
+
+      const speedValues = metrics
+        .map((metric) => metric.speedValue)
+        .filter((value) => value && value > 0);
+      const maxSpeed =
+        speedValues.length > 0 ? Math.max(...speedValues) : 0;
+
+      const pingValues = metrics
+        .map((metric) => metric.pingTime)
+        .filter((value) => value < Number.MAX_SAFE_INTEGER);
+      const minPing =
+        pingValues.length > 0 ? Math.min(...pingValues) : Number.NaN;
+      const maxPing =
+        pingValues.length > 0 ? Math.max(...pingValues) : Number.NaN;
+
+      const scored = metrics.map((metric) => {
+        const qualityScore = qualityRankToScore(metric.qualityRank);
+
+        const speedScore =
+          maxSpeed > 0 && metric.speedValue > 0
+            ? Math.min(
+                100,
+                Math.max(0, (metric.speedValue / maxSpeed) * 100)
+              )
+            : 0;
+
+        let pingScore = 0;
+        if (metric.pingTime < Number.MAX_SAFE_INTEGER) {
+          if (
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing > minPing
+          ) {
+            pingScore = Math.min(
+              100,
+              Math.max(
+                0,
+                ((maxPing - metric.pingTime) / (maxPing - minPing)) * 100
+              )
+            );
+          } else if (
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing === minPing
+          ) {
+            pingScore = 100;
+          }
+        }
+
+        const score =
+          qualityScore * 0.4 + speedScore * 0.4 + pingScore * 0.2;
+
+        return {
+          ...metric,
+          score: Number.isFinite(score) ? score : 0,
+        };
+      });
+
+      scored.sort((a, b) => {
+        if ((b.score ?? 0) !== (a.score ?? 0)) {
+          return (b.score ?? 0) - (a.score ?? 0);
+        }
+        if ((b.qualityRank ?? 0) !== (a.qualityRank ?? 0)) {
+          return (b.qualityRank ?? 0) - (a.qualityRank ?? 0);
+        }
+        if ((b.speedValue ?? 0) !== (a.speedValue ?? 0)) {
+          return (b.speedValue ?? 0) - (a.speedValue ?? 0);
+        }
+        if (a.pingTime !== b.pingTime) {
+          return a.pingTime - b.pingTime;
+        }
+        return a.index - b.index;
+      });
+
+      return scored.map((entry) => entry.source);
+    },
+    [getValuationKey]
+  );
 
   type SourceValuationPayload = {
     key: string;
@@ -225,8 +367,6 @@ function PlayPageClient() {
     },
     []
   );
-
-  const getValuationKey = useCallback((source: string) => source.trim(), []);
 
   const fetchStoredValuations = useCallback(
     async (sources: SearchResult[]) => {
@@ -268,6 +408,8 @@ function PlayPageClient() {
           });
         });
 
+        let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null =
+          null;
         setPrecomputedVideoInfo((prev) => {
           const next = new Map(prev);
           deduped.forEach((value, key) => {
@@ -286,13 +428,22 @@ function PlayPageClient() {
               hasError: false,
             });
           });
+          updatedInfoMap = next;
           return next;
         });
+        if (updatedInfoMap) {
+          precomputedVideoInfoRef.current = updatedInfoMap;
+          setAvailableSources((prev) => {
+            const sorted = sortSourcesByValuation(prev, updatedInfoMap!);
+            availableSourcesRef.current = sorted;
+            return sorted;
+          });
+        }
       } catch (error) {
         console.warn('Failed to load stored source valuations:', error);
       }
     },
-    [getValuationKey]
+    [getValuationKey, sortSourcesByValuation]
   );
 
   useEffect(() => {
@@ -519,7 +670,17 @@ function PlayPageClient() {
       });
     });
 
-    setPrecomputedVideoInfo(newVideoInfoMap);
+    const updatedInfoMap = new Map(precomputedVideoInfoRef.current);
+    newVideoInfoMap.forEach((value, key) => {
+      updatedInfoMap.set(key, value);
+    });
+    setPrecomputedVideoInfo(updatedInfoMap);
+    precomputedVideoInfoRef.current = updatedInfoMap;
+    setAvailableSources((prev) => {
+      const sorted = sortSourcesByValuation(prev, updatedInfoMap);
+      availableSourcesRef.current = sorted;
+      return sorted;
+    });
 
     const meaningfulAggregatedEntries = Array.from(aggregatedEntryMap.values()).filter(
       (entry) =>
@@ -893,9 +1054,10 @@ function PlayPageClient() {
         allSources.push(...newSources);
 
         setAvailableSources((prev) => {
-          const updated = [...prev, ...newSources];
-          availableSourcesRef.current = updated;
-          return updated;
+          const merged = [...prev, ...newSources];
+          const sorted = sortSourcesByValuation(merged);
+          availableSourcesRef.current = sorted;
+          return sorted;
         });
 
         const totalSources = allSources.length;
@@ -928,6 +1090,8 @@ function PlayPageClient() {
         });
 
         if (penaltyEntries.length) {
+          let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null =
+            null;
           setPrecomputedVideoInfo((prev) => {
             const next = new Map(prev);
             penaltyEntries.forEach((entry) => {
@@ -941,9 +1105,18 @@ function PlayPageClient() {
                 hasError: true,
               });
             });
+            updatedInfoMap = next;
             return next;
           });
           penaltyEntries.length = 0;
+          if (updatedInfoMap) {
+            precomputedVideoInfoRef.current = updatedInfoMap;
+            setAvailableSources((prev) => {
+              const sorted = sortSourcesByValuation(prev, updatedInfoMap!);
+              availableSourcesRef.current = sorted;
+              return sorted;
+            });
+          }
         }
       }
 
