@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { convertToSimplified } from '@/lib/locale';
+import { convertResultsArray } from '@/lib/responseTrad';
 
 export const runtime = 'nodejs';
 
@@ -33,8 +34,11 @@ export async function GET(request: Request) {
     const flattenedResults = results.flat();
     const cacheTime = await getCacheTime();
 
+    // Convert Chinese fields to Traditional
+    const transformed = convertResultsArray(flattenedResults);
+
     return NextResponse.json(
-      { results: flattenedResults },
+      { results: transformed },
       {
         headers: {
           'Cache-Control': `public, max-age=${cacheTime}`,

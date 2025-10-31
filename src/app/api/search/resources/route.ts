@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { convertApiSiteToTraditional } from '@/lib/responseTrad';
 
 export const runtime = 'nodejs';
 
@@ -10,7 +11,10 @@ export async function GET() {
     const apiSites = await getAvailableApiSites();
     const cacheTime = await getCacheTime();
 
-    return NextResponse.json(apiSites, {
+    // Convert any Chinese text to Traditional Chinese for OrionTV clients
+    const transformed = apiSites.map((s) => convertApiSiteToTraditional(s));
+
+    return NextResponse.json(transformed, {
       headers: {
         'Cache-Control': `public, max-age=${cacheTime}`,
       },

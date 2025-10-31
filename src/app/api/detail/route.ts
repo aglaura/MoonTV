@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { getDetailFromApi } from '@/lib/downstream';
+import { convertSearchResultToTraditional } from '@/lib/responseTrad';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +30,9 @@ export async function GET(request: Request) {
     const result = await getDetailFromApi(apiSite, id);
     const cacheTime = await getCacheTime();
 
-    return NextResponse.json(result, {
+    const transformed = convertSearchResultToTraditional(result);
+
+    return NextResponse.json(transformed, {
       headers: {
         'Cache-Control': `public, max-age=${cacheTime}`,
       },

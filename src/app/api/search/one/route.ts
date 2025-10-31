@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { convertToSimplified } from '@/lib/locale';
+import { convertResultsArray } from '@/lib/responseTrad';
 
 export const runtime = 'nodejs';
 
@@ -53,8 +54,9 @@ export async function GET(request: Request) {
         { status: 404 }
       );
     } else {
+      const transformed = convertResultsArray(result);
       return NextResponse.json(
-        { results: result },
+        { results: transformed },
         {
           headers: {
             'Cache-Control': `public, max-age=${cacheTime}`,

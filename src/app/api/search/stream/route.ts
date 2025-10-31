@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { getAvailableApiSites } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
 import { convertToSimplified } from '@/lib/locale';
+import { convertResultsArray } from '@/lib/responseTrad';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
         try {
           const results = await searchFromApi(site, simplifiedQuery);
           if (results.length > 0) {
-            controller.enqueue(JSON.stringify(results));
+            const transformed = convertResultsArray(results);
+            controller.enqueue(JSON.stringify(transformed));
           }
         } catch (error) {
           // Ignore individual search errors
