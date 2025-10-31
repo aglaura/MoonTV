@@ -233,7 +233,11 @@ function PlayPageClient() {
       if (!sources || sources.length === 0) return;
       const keySet = new Set<string>();
       sources.forEach((source) => {
-        keySet.add(getValuationKey(source.source));
+        const aggregatedKey = getValuationKey(source.source);
+        keySet.add(aggregatedKey);
+        if (source.id) {
+          keySet.add(`${source.source}-${source.id}`);
+        }
       });
       const keys = Array.from(keySet);
       if (keys.length === 0) return;
