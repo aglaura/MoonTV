@@ -265,7 +265,7 @@ export async function getDetailFromApi(
     if (playSources.length > 0) {
       const mainSource = playSources[0];
       // 先尝试直接从主分片提取 m3u8 链接
-      let found = extractM3u8LinksFromText(mainSource);
+      const found = extractM3u8LinksFromText(mainSource);
       if (found.length === 0) {
         // 如果没有直接发现链接，拆分 # 再试
         const episodeList = mainSource.split('#');
