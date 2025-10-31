@@ -165,19 +165,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   }, [precomputedVideoInfo]);
 
   // 读取本地“优选和测速”开关，默认开启
-  const [optimizationEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('enableOptimization');
-      if (saved !== null) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-    return true;
-  });
+  const [optimizationEnabled] = useState<boolean>(false);
   const [doubanEnglishMap, setDoubanEnglishMap] = useState<
     Record<number, string>
   >({});
