@@ -1190,9 +1190,6 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                   Key
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                  Quality
-                </th>
-                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                   Score
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
@@ -1224,9 +1221,6 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                     </td>
                     <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
                       {item.key}
-                    </td>
-                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                      {item.quality}
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {toDisplayScore(item.score)} 分
