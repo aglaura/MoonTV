@@ -219,8 +219,7 @@ export async function searchFromApi(
   }
 }
 
-// 匹配 m3u8 链接的正则
-const M3U8_PATTERN = /(https?:\/\/[^"'\s]+?\.m3u8)/g;
+// Legacy pattern kept for compatibility (unused) — removed in favor of extractor
 
 export async function getDetailFromApi(
   apiSite: ApiSite,

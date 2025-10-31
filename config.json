@@ -197,6 +197,10 @@
     "okzy": {
       "api": "https://api.okzy.org/api.php/provide/vod/from/okm3u8/at/xml",
       "name": "OK资源"
+    },
+    "gamer": {
+      "api": "https://ani.gamer.com.tw/",
+      "name": "OK资源"
     }
   }
 }
