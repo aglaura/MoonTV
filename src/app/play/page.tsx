@@ -981,7 +981,6 @@ function PlayPageClient() {
       const decoder = new TextDecoder();
       let playbackInitialized = false;
       const allSources: SearchResult[] = [];
-      let pendingFirstSource: SearchResult | undefined;
       const penaltyEntries: SourceValuationPayload[] = [];
 
       const initializePlayback = (detailData: SearchResult) => {
@@ -1061,15 +1060,10 @@ function PlayPageClient() {
         });
 
         const totalSources = allSources.length;
-        if (!playbackInitialized) {
-          if (totalSources >= 2) {
-            const bestInitial =
-              selectBestSourceByValuation(allSources) ?? allSources[0];
-            initializePlayback(bestInitial);
-          } else if (totalSources === 1 && !pendingFirstSource) {
-            pendingFirstSource =
-              selectBestSourceByValuation(allSources) ?? allSources[0];
-          }
+        if (!playbackInitialized && totalSources >= 1) {
+          const bestInitial =
+            selectBestSourceByValuation(allSources) ?? allSources[0];
+          initializePlayback(bestInitial);
         }
 
         newSources.forEach((source) => {
@@ -1126,9 +1120,7 @@ function PlayPageClient() {
       if (!playbackInitialized) {
         if (allSources.length > 0) {
           const bestInitial =
-            selectBestSourceByValuation(allSources) ??
-            pendingFirstSource ??
-            allSources[0];
+            selectBestSourceByValuation(allSources) ?? allSources[0];
           initializePlayback(bestInitial);
         } else {
           setLoadingStage('searching');
