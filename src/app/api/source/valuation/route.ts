@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     }
 
     const valuations = await db.getSourceValuations(keys);
-    const items = Object.values(valuations).map((item) => {
+    const normalizedItems = Object.values(valuations).map((item) => {
       const qualityRank = item.qualityRank ?? getQualityRank(item.quality);
       const speedValue = item.speedValue ?? parseSpeedToKBps(item.loadSpeed);
       const sampleCount =
@@ -97,12 +97,28 @@ export async function GET(request: Request) {
       };
     });
 
-    items.sort((a, b) => {
-      if (b.qualityRank !== a.qualityRank) {
-        return b.qualityRank - a.qualityRank;
+    const items: SourceValuation[] = [];
+    normalizedItems.forEach((item) => {
+      const trimmedKey = (item.key || item.source || '').trim();
+      if (!trimmedKey) {
+        return;
       }
-      if (b.speedValue !== a.speedValue) {
-        return b.speedValue - a.speedValue;
+      items.push({
+        ...item,
+        key: trimmedKey,
+      });
+    });
+
+    items.sort((a, b) => {
+      const qualityRankB = b.qualityRank ?? 0;
+      const qualityRankA = a.qualityRank ?? 0;
+      if (qualityRankB !== qualityRankA) {
+        return qualityRankB - qualityRankA;
+      }
+      const speedValueB = b.speedValue ?? 0;
+      const speedValueA = a.speedValue ?? 0;
+      if (speedValueB !== speedValueA) {
+        return speedValueB - speedValueA;
       }
       return (a.pingTime ?? Number.MAX_SAFE_INTEGER) -
         (b.pingTime ?? Number.MAX_SAFE_INTEGER);

@@ -515,6 +515,13 @@ export class D1Storage implements IStorage {
     try {
       await this.ensureValuationTable();
       const db = await this.getDatabase();
+      const trimmedKey = valuation.key.trim();
+      if (!trimmedKey) return;
+      const trimmedSource = valuation.source.trim();
+      const storedSourceId =
+        typeof valuation.id === 'string' && valuation.id.trim().length > 0
+          ? valuation.id.trim()
+          : trimmedKey;
       const qualityRank =
         valuation.qualityRank ?? getQualityRank(valuation.quality);
       const speedValue =
@@ -528,9 +535,9 @@ export class D1Storage implements IStorage {
         `
         )
         .bind(
-          valuation.key,
-          valuation.source,
-          valuation.id ?? '',
+          trimmedKey,
+          trimmedSource,
+          storedSourceId,
           valuation.quality,
           valuation.loadSpeed,
           valuation.pingTime,
@@ -566,7 +573,9 @@ export class D1Storage implements IStorage {
       return {
         key: rowKey,
         source: row.source,
-        ...(row.source_id ? { id: row.source_id } : {}),
+        ...(row.source_id && row.source_id !== rowKey
+          ? { id: row.source_id }
+          : {}),
         quality: row.quality,
         loadSpeed: row.load_speed,
         pingTime: row.ping_time,
@@ -611,17 +620,22 @@ export class D1Storage implements IStorage {
       )
       .all<any>();
 
-    return rows.results.map((row: any) => ({
-      key: (row.key || row.source || '').trim(),
-      source: row.source,
-      ...(row.source_id ? { id: row.source_id } : {}),
-      quality: row.quality,
-      loadSpeed: row.load_speed,
-      pingTime: row.ping_time,
-      qualityRank: row.quality_rank ?? 0,
-      speedValue: row.speed_value ?? 0,
-      sampleCount: row.sample_count ?? 0,
-      updated_at: row.updated_at,
-    }));
+    return rows.results.map((row: any) => {
+      const rowKey = (row.key || row.source || '').trim();
+      return {
+        key: rowKey,
+        source: row.source,
+        ...(row.source_id && row.source_id !== rowKey
+          ? { id: row.source_id }
+          : {}),
+        quality: row.quality,
+        loadSpeed: row.load_speed,
+        pingTime: row.ping_time,
+        qualityRank: row.quality_rank ?? 0,
+        speedValue: row.speed_value ?? 0,
+        sampleCount: row.sample_count ?? 0,
+        updated_at: row.updated_at,
+      };
+    });
   }
 }

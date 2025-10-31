@@ -160,8 +160,11 @@ export class RedisStorage implements IStorage {
   }
 
   async setSourceValuation(valuation: SourceValuation): Promise<void> {
+    const key = valuation.key.trim();
+    if (!key) return;
     const payload = {
       ...valuation,
+      key,
       qualityRank:
         valuation.qualityRank ?? getQualityRank(valuation.quality),
       speedValue:
@@ -169,7 +172,7 @@ export class RedisStorage implements IStorage {
       sampleCount: valuation.sampleCount ?? 1,
     };
     await withRetry(() =>
-      this.client.set(this.valuationKey(valuation.key), JSON.stringify(payload))
+      this.client.set(this.valuationKey(key), JSON.stringify(payload))
     );
   }
 

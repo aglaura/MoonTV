@@ -197,10 +197,16 @@ export class DbManager {
 
     for (const valuation of valuations) {
       try {
+        const trimmedKey = valuation.key.trim();
+        if (!trimmedKey) {
+          continue;
+        }
+        const trimmedSource = valuation.source.trim();
+
         let existing: SourceValuation | null = null;
         if (typeof this.storage.getSourceValuation === 'function') {
           try {
-            existing = await this.storage.getSourceValuation(valuation.key);
+            existing = await this.storage.getSourceValuation(trimmedKey);
           } catch (error) {
             console.warn('Failed to fetch existing valuation:', error);
           }
@@ -271,8 +277,8 @@ export class DbManager {
         }
 
         const payload: SourceValuation = {
-          key: valuation.key,
-          source: valuation.source,
+          key: trimmedKey,
+          source: trimmedSource,
           quality: qualityLabel,
           loadSpeed: formattedSpeed,
           pingTime:
@@ -303,18 +309,28 @@ export class DbManager {
     if (typeof this.storage.getSourceValuations === 'function') {
       try {
         const fetched = await this.storage.getSourceValuations(keys);
-        Object.keys(fetched).forEach((key) => {
-          const entry = fetched[key];
+        const normalized: Record<string, SourceValuation> = {};
+        Object.keys(fetched).forEach((initialKey) => {
+          const entry = fetched[initialKey];
           if (!entry) return;
-          entry.qualityRank =
-            entry.qualityRank ?? getQualityRank(entry.quality);
-          entry.speedValue =
-            entry.speedValue ?? parseSpeedToKBps(entry.loadSpeed);
-          entry.sampleCount =
-            entry.sampleCount ??
-            (entry.qualityRank || entry.speedValue ? 1 : 0);
+          const trimmedKey = (entry.key || initialKey || '').trim();
+          if (!trimmedKey) {
+            return;
+          }
+          const normalizedEntry: SourceValuation = {
+            ...entry,
+            key: trimmedKey,
+            qualityRank:
+              entry.qualityRank ?? getQualityRank(entry.quality),
+            speedValue:
+              entry.speedValue ?? parseSpeedToKBps(entry.loadSpeed),
+            sampleCount:
+              entry.sampleCount ??
+              (entry.qualityRank || entry.speedValue ? 1 : 0),
+          };
+          normalized[trimmedKey] = normalizedEntry;
         });
-        return fetched;
+        return normalized;
       } catch (error) {
         console.error('Failed to get source valuations:', error);
         return result;
@@ -324,8 +340,13 @@ export class DbManager {
     if (typeof this.storage.getSourceValuation === 'function') {
       for (const key of keys) {
         try {
-          const valuation = await this.storage.getSourceValuation(key);
+          const valuation: SourceValuation | null =
+            await this.storage.getSourceValuation(key);
           if (valuation) {
+            const trimmedKey = (valuation.key || key || '').trim();
+            if (!trimmedKey) {
+              continue;
+            }
             valuation.qualityRank =
               valuation.qualityRank ?? getQualityRank(valuation.quality);
             valuation.speedValue =
@@ -333,7 +354,8 @@ export class DbManager {
             valuation.sampleCount =
               valuation.sampleCount ??
               (valuation.qualityRank || valuation.speedValue ? 1 : 0);
-            result[key] = valuation;
+            valuation.key = trimmedKey;
+            result[trimmedKey] = valuation;
           }
         } catch (error) {
           console.error('Failed to get source valuation:', error);
