@@ -57,7 +57,8 @@ interface SiteConfig {
 interface DataSource {
   name: string;
   key: string;
-  api: string;
+  api?: string;
+  m3u8?: string;
   detail?: string;
   disabled?: boolean;
   from: 'config' | 'custom';
@@ -616,6 +617,7 @@ const VideoSourceConfig = ({
     name: '',
     key: '',
     api: '',
+    m3u8: '',
     detail: '',
     disabled: false,
     from: 'config',
@@ -683,12 +685,15 @@ const VideoSourceConfig = ({
   };
 
   const handleAddSource = () => {
-    if (!newSource.name || !newSource.key || !newSource.api) return;
+    const apiValue = newSource.api?.trim();
+    const m3u8Value = newSource.m3u8?.trim();
+    if (!newSource.name || !newSource.key || (!apiValue && !m3u8Value)) return;
     callSourceApi({
       action: 'add',
       key: newSource.key,
       name: newSource.name,
-      api: newSource.api,
+      api: apiValue,
+      m3u8: m3u8Value,
       detail: newSource.detail,
     })
       .then(() => {
@@ -696,6 +701,7 @@ const VideoSourceConfig = ({
           name: '',
           key: '',
           api: '',
+          m3u8: '',
           detail: '',
           disabled: false,
           from: 'custom',
@@ -761,7 +767,13 @@ const VideoSourceConfig = ({
           className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-[12rem] truncate'
           title={source.api}
         >
-          {source.api}
+          {source.api || '-'}
+        </td>
+        <td
+          className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-[12rem] truncate'
+          title={source.m3u8}
+        >
+          {source.m3u8 || '-'}
         </td>
         <td
           className='px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-[8rem] truncate'
@@ -850,10 +862,19 @@ const VideoSourceConfig = ({
             />
             <input
               type='text'
-              placeholder='API 地址'
+              placeholder='API 地址（選填）'
               value={newSource.api}
               onChange={(e) =>
                 setNewSource((prev) => ({ ...prev, api: e.target.value }))
+              }
+              className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+            />
+            <input
+              type='text'
+              placeholder='M3U8 地址（選填）'
+              value={newSource.m3u8}
+              onChange={(e) =>
+                setNewSource((prev) => ({ ...prev, m3u8: e.target.value }))
               }
               className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
             />
@@ -870,7 +891,11 @@ const VideoSourceConfig = ({
           <div className='flex justify-end'>
             <button
               onClick={handleAddSource}
-              disabled={!newSource.name || !newSource.key || !newSource.api}
+              disabled={
+                !newSource.name ||
+                !newSource.key ||
+                (!newSource.api?.trim() && !newSource.m3u8?.trim())
+              }
               className='w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors'
             >
               新增
@@ -893,6 +918,9 @@ const VideoSourceConfig = ({
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                 API 地址
+              </th>
+              <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                M3U8 地址
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                 Detail 地址

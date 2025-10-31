@@ -51,6 +51,10 @@ export async function searchFromApi(
   query: string
 ): Promise<SearchResult[]> {
   try {
+    if (!apiSite.api) {
+      console.warn(`Source ${apiSite.name} 缺少 API 地址，已跳過搜尋`);
+      return [];
+    }
     const apiBaseUrl = apiSite.api;
     const apiUrl =
       apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(query);
@@ -227,6 +231,10 @@ export async function getDetailFromApi(
 ): Promise<SearchResult> {
   if (apiSite.detail) {
     return handleSpecialSourceDetail(id, apiSite);
+  }
+
+  if (!apiSite.api) {
+    throw new Error('該來源不支援 API 詳情');
   }
 
   const detailUrl = `${apiSite.api}${API_CONFIG.detail.path}${id}`;

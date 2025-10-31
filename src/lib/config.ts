@@ -8,8 +8,9 @@ import { IStorage } from './types';
 
 export interface ApiSite {
   key: string;
-  api: string;
   name: string;
+  api?: string;
+  m3u8?: string;
   detail?: string;
 }
 
@@ -156,6 +157,7 @@ function buildAdminConfigFromFile(
       key,
       name: site.name,
       api: site.api,
+      m3u8: site.m3u8,
       detail: site.detail,
       from: 'config',
       disabled: false,
@@ -237,6 +239,7 @@ async function initConfig() {
               key,
               name: site.name,
               api: site.api,
+              m3u8: site.m3u8,
               detail: site.detail,
               from: 'config',
               disabled: false,
@@ -247,9 +250,16 @@ async function initConfig() {
         // 检查现有源是否在 fileConfig.api_site 中，如果不在则标记为 custom
         const apiSiteKeys = new Set(apiSiteEntries.map(([key]) => key));
         adminConfig.SourceConfig.forEach((source) => {
-          if (!apiSiteKeys.has(source.key)) {
+          const site = fileConfig.api_site[source.key];
+          if (!site) {
             source.from = 'custom';
+            return;
           }
+          source.from = 'config';
+          source.name = site.name;
+          source.api = site.api;
+          source.m3u8 = site.m3u8;
+          source.detail = site.detail;
         });
 
         adminConfig.UserConfig.Users = (adminConfig.UserConfig.Users || []).map(
@@ -334,6 +344,7 @@ async function initConfig() {
             key,
             name: site.name,
             api: site.api,
+            m3u8: site.m3u8,
             detail: site.detail,
             from: 'config',
             disabled: false,
@@ -405,6 +416,7 @@ export async function getConfig(): Promise<AdminConfig> {
           key,
           name: site.name,
           api: site.api,
+          m3u8: site.m3u8,
           detail: site.detail,
           from: 'config',
           disabled: false,
@@ -412,10 +424,17 @@ export async function getConfig(): Promise<AdminConfig> {
       }
     });
 
-    // 检查现有源是否在 fileConfig.api_site 中，如果不在则标记为 custom
-    const apiSiteKeys = new Set(apiSiteEntries.map(([key]) => key));
+    // 同步配置中的源信息，如果不存在则标记为 custom
+    const apiSiteMap = new Map(apiSiteEntries);
     adminConfig.SourceConfig.forEach((source) => {
-      if (!apiSiteKeys.has(source.key)) {
+      const site = apiSiteMap.get(source.key);
+      if (site) {
+        source.from = 'config';
+        source.name = site.name;
+        source.api = site.api;
+        source.m3u8 = site.m3u8;
+        source.detail = site.detail;
+      } else if (source.from !== 'custom') {
         source.from = 'custom';
       }
     });
@@ -527,10 +546,13 @@ export async function getCacheTime(): Promise<number> {
 
 export async function getAvailableApiSites(): Promise<ApiSite[]> {
   const config = await getConfig();
-  return config.SourceConfig.filter((s) => !s.disabled).map((s) => ({
+  return config.SourceConfig.filter(
+    (s) => !s.disabled && !!s.api
+  ).map((s) => ({
     key: s.key,
     name: s.name,
-    api: s.api,
+    api: s.api!,
+    m3u8: s.m3u8,
     detail: s.detail,
   }));
 }

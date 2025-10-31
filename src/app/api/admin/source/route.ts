@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'add': {
-        const { key, name, api, detail } = body as {
+        const { key, name, api, m3u8, detail } = body as {
           key?: string;
           name?: string;
           api?: string;
+          m3u8?: string;
           detail?: string;
         };
-        if (!key || !name || !api) {
+        if (!key || !name || (!api && !m3u8)) {
           return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
         }
         if (adminConfig.SourceConfig.some((s) => s.key === key)) {
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
           key,
           name,
           api,
+          m3u8,
           detail,
           from: 'custom',
           disabled: false,
