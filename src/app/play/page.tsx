@@ -1591,8 +1591,6 @@ function PlayPageClient() {
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {
         setError(null);
-        // Increment sample count when video starts playing successfully
-        incrementSourceSampleCount(currentSourceRef.current, currentIdRef.current);
       });
 
       artPlayerRef.current.on('video:volumechange', () => {
