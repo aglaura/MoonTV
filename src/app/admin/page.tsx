@@ -21,7 +21,14 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { ChevronDown, ChevronUp, Settings, Users, Video } from 'lucide-react';
+import {
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  Users,
+  Video,
+} from 'lucide-react';
 import { GripVertical } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
@@ -62,6 +69,19 @@ interface DataSource {
   detail?: string;
   disabled?: boolean;
   from: 'config' | 'custom';
+}
+
+interface SourceValuationRow {
+  key: string;
+  source: string;
+  id: string;
+  quality: string;
+  loadSpeed: string;
+  pingTime: number;
+  qualityRank?: number;
+  speedValue?: number;
+  sampleCount?: number;
+  updated_at?: number;
 }
 
 // 可折叠标签组件
@@ -969,6 +989,133 @@ const VideoSourceConfig = ({
   );
 };
 
+const SourceValuationTable = () => {
+  const [valuations, setValuations] = useState<SourceValuationRow[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchValuations = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetch('/api/admin/valuations');
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `載入失敗: ${response.status}`);
+      }
+      const data = (await response.json()) as { items?: SourceValuationRow[] };
+      setValuations(data.items ?? []);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '載入失敗';
+      console.error('Failed to load source valuations:', err);
+      setError(message);
+      showError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchValuations();
+  }, [fetchValuations]);
+
+  return (
+    <div className='space-y-4'>
+      <div className='flex items-center justify-between'>
+        <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+          播放源評估 (依品質、速度、延遲排序)
+        </h4>
+        <button
+          onClick={fetchValuations}
+          className='px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
+          disabled={isLoading}
+        >
+          {isLoading ? '刷新中…' : '重新整理'}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className='text-sm text-gray-500 dark:text-gray-400'>
+          讀取中…
+        </div>
+      ) : valuations.length === 0 ? (
+        <div className='text-sm text-gray-500 dark:text-gray-400'>
+          尚無測速紀錄。
+        </div>
+      ) : (
+        <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto'>
+          <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm'>
+            <thead className='bg-gray-50 dark:bg-gray-900'>
+              <tr>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Source
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  ID
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Quality
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Speed
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Ping (ms)
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Samples
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  Updated
+                </th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+              {valuations.map((item) => (
+                <tr key={item.key} className='hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors'>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>{item.source}</td>
+                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>{item.id}</td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {item.quality}
+                    {item.qualityRank ? (
+                      <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
+                        Rank {item.qualityRank}
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {item.loadSpeed}
+                    {item.speedValue ? (
+                      <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
+                        {item.speedValue} KB/s
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {item.pingTime ?? '—'}
+                  </td>
+                  <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                    {item.sampleCount ?? 0}
+                  </td>
+                  <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
+                    {item.updated_at
+                      ? new Date(item.updated_at).toLocaleString()
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {error && (
+        <div className='text-xs text-red-500'>{error}</div>
+      )}
+    </div>
+  );
+};
+
 // 新增站點配置组件
 const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
   const [siteSettings, setSiteSettings] = useState<SiteConfig>({
@@ -1186,6 +1333,7 @@ function AdminPageClient() {
   const [expandedTabs, setExpandedTabs] = useState<{ [key: string]: boolean }>({
     userConfig: false,
     videoSource: false,
+    sourceValuations: false,
     siteConfig: false,
   });
 
@@ -1342,6 +1490,20 @@ function AdminPageClient() {
               onToggle={() => toggleTab('videoSource')}
             >
               <VideoSourceConfig config={config} refreshConfig={fetchConfig} />
+            </CollapsibleTab>
+
+            <CollapsibleTab
+              title='播放源評估資料'
+              icon={
+                <BarChart3
+                  size={20}
+                  className='text-gray-600 dark:text-gray-400'
+                />
+              }
+              isExpanded={expandedTabs.sourceValuations}
+              onToggle={() => toggleTab('sourceValuations')}
+            >
+              <SourceValuationTable />
             </CollapsibleTab>
           </div>
         </div>

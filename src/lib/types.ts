@@ -85,6 +85,7 @@ export interface IStorage {
   getSourceValuations?(
     keys: string[]
   ): Promise<Record<string, SourceValuation>>;
+  getAllSourceValuations?(): Promise<SourceValuation[]>;
 }
 
 // 搜尋結果資料結構

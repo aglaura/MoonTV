@@ -344,6 +344,29 @@ export class DbManager {
 
     return result;
   }
+
+  async getAllSourceValuations(): Promise<SourceValuation[]> {
+    if (
+      !this.storage ||
+      typeof this.storage.getAllSourceValuations !== 'function'
+    ) {
+      return [];
+    }
+    try {
+      const entries = await this.storage.getAllSourceValuations();
+      return entries.map((entry) => ({
+        ...entry,
+        qualityRank: entry.qualityRank ?? getQualityRank(entry.quality),
+        speedValue: entry.speedValue ?? parseSpeedToKBps(entry.loadSpeed),
+        sampleCount:
+          entry.sampleCount ??
+          (entry.qualityRank || entry.speedValue ? 1 : 0),
+      }));
+    } catch (error) {
+      console.error('Failed to get all source valuations:', error);
+      return [];
+    }
+  }
 }
 
 // 导出默认实例

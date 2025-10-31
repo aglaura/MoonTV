@@ -595,4 +595,32 @@ export class D1Storage implements IStorage {
 
     return result;
   }
+
+  async getAllSourceValuations(): Promise<SourceValuation[]> {
+    await this.ensureValuationTable();
+    const db = await this.getDatabase();
+    const rows = await db
+      .prepare(
+        `
+        SELECT key, source, source_id, quality, load_speed, ping_time,
+               quality_rank, speed_value, sample_count, updated_at
+        FROM source_valuations
+        ORDER BY quality_rank DESC, speed_value DESC, ping_time ASC
+      `
+      )
+      .all<any>();
+
+    return rows.results.map((row: any) => ({
+      key: row.key,
+      source: row.source,
+      id: row.source_id,
+      quality: row.quality,
+      loadSpeed: row.load_speed,
+      pingTime: row.ping_time,
+      qualityRank: row.quality_rank ?? 0,
+      speedValue: row.speed_value ?? 0,
+      sampleCount: row.sample_count ?? 0,
+      updated_at: row.updated_at,
+    }));
+  }
 }

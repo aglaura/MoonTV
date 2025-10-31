@@ -213,6 +213,38 @@ export class RedisStorage implements IStorage {
     return result;
   }
 
+  async getAllSourceValuations(): Promise<SourceValuation[]> {
+    const pattern = 'sourceval:*';
+    const keys: string[] = await withRetry(() => this.client.keys(pattern));
+    if (keys.length === 0) return [];
+    const values = await withRetry(() => this.client.mGet(keys));
+    const result: SourceValuation[] = [];
+    keys.forEach((redisKey: string, idx: number) => {
+      const raw = values[idx];
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as SourceValuation;
+      result.push({
+        ...parsed,
+        qualityRank:
+          parsed.qualityRank ?? getQualityRank(parsed.quality),
+        speedValue:
+          parsed.speedValue ?? parseSpeedToKBps(parsed.loadSpeed),
+        sampleCount: parsed.sampleCount ?? 1,
+      });
+    });
+    result.sort((a, b) => {
+      if ((b.qualityRank ?? 0) !== (a.qualityRank ?? 0)) {
+        return (b.qualityRank ?? 0) - (a.qualityRank ?? 0);
+      }
+      if ((b.speedValue ?? 0) !== (a.speedValue ?? 0)) {
+        return (b.speedValue ?? 0) - (a.speedValue ?? 0);
+      }
+      return (a.pingTime ?? Number.MAX_SAFE_INTEGER) -
+        (b.pingTime ?? Number.MAX_SAFE_INTEGER);
+    });
+    return result;
+  }
+
   // ---------- 用户注册 / 登录 ----------
   private userPwdKey(user: string) {
     return `u:${user}:pwd`;
