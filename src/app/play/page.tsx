@@ -190,6 +190,7 @@ function PlayPageClient() {
         pingTime: number;
         qualityRank?: number;
         speedValue?: number;
+        sampleCount?: number;
         hasError?: boolean;
       }
     >
