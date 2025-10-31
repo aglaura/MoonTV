@@ -1,13 +1,12 @@
 import { convertToTraditional } from './locale';
 
-type ConvertibleStringMap = {
-  [key: string]: unknown;
+type ConvertibleStringFields = {
   name?: string;
   detail?: string;
   title?: string;
   desc?: string;
   source_name?: string;
-  'class'?: string;
+  class?: string;
   type_name?: string;
 };
 
@@ -18,7 +17,7 @@ function tryConvert<T>(value: T): T {
   return value;
 }
 
-export function convertApiSiteToTraditional<T extends ConvertibleStringMap>(
+export function convertApiSiteToTraditional<T extends ConvertibleStringFields>(
   site: T,
 ): T {
   return {
@@ -29,19 +28,19 @@ export function convertApiSiteToTraditional<T extends ConvertibleStringMap>(
 }
 
 export function convertSearchResultToTraditional<
-  T extends ConvertibleStringMap,
+  T extends ConvertibleStringFields,
 >(result: T): T {
   return {
     ...result,
     title: tryConvert(result.title),
     desc: tryConvert(result.desc),
     source_name: tryConvert(result.source_name),
-    'class': tryConvert(result.class),
+    class: tryConvert(result.class),
     type_name: tryConvert(result.type_name),
   } as T;
 }
 
-export function convertResultsArray<T extends ConvertibleStringMap>(
+export function convertResultsArray<T extends ConvertibleStringFields>(
   arr: T[],
 ): T[] {
   return arr.map((r) => convertSearchResultToTraditional(r));
