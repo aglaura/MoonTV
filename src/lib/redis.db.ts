@@ -166,6 +166,7 @@ export class RedisStorage implements IStorage {
         valuation.qualityRank ?? getQualityRank(valuation.quality),
       speedValue:
         valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed),
+      sampleCount: valuation.sampleCount ?? 1,
     };
     await withRetry(() =>
       this.client.set(this.valuationKey(valuation.key), JSON.stringify(payload))
@@ -184,6 +185,7 @@ export class RedisStorage implements IStorage {
         parsed.qualityRank ?? getQualityRank(parsed.quality),
       speedValue:
         parsed.speedValue ?? parseSpeedToKBps(parsed.loadSpeed),
+      sampleCount: parsed.sampleCount ?? 1,
     };
   }
 
@@ -204,6 +206,7 @@ export class RedisStorage implements IStorage {
             parsed.qualityRank ?? getQualityRank(parsed.quality),
           speedValue:
             parsed.speedValue ?? parseSpeedToKBps(parsed.loadSpeed),
+          sampleCount: parsed.sampleCount ?? 1,
         };
       }
     });

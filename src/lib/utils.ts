@@ -242,3 +242,31 @@ export function parseSpeedToKBps(value?: string | null): number {
   }
   return Math.round(numeric);
 }
+
+const QUALITY_CANONICAL_LABELS: Array<{ rank: number; label: string }> = [
+  { rank: 6, label: '4K' },
+  { rank: 5, label: '2K' },
+  { rank: 4, label: '1080p' },
+  { rank: 3, label: '720p' },
+  { rank: 2, label: '480p' },
+  { rank: 1, label: 'SD' },
+];
+
+export function getQualityLabelFromRank(
+  rank: number,
+  fallback = '未知'
+): string {
+  if (!Number.isFinite(rank) || rank <= 0) return fallback;
+  const matchEntry = QUALITY_CANONICAL_LABELS.find(
+    (entry) => rank >= entry.rank
+  );
+  return matchEntry ? matchEntry.label : fallback;
+}
+
+export function formatSpeedFromKBps(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '未知';
+  if (value >= 1024) {
+    return `${(value / 1024).toFixed(1)} MB/s`;
+  }
+  return `${value.toFixed(1)} KB/s`;
+}

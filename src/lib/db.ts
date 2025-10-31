@@ -4,7 +4,12 @@ import { AdminConfig } from './admin.types';
 import { D1Storage } from './d1.db';
 import { RedisStorage } from './redis.db';
 import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
-import { getQualityRank, parseSpeedToKBps } from './utils';
+import {
+  formatSpeedFromKBps,
+  getQualityLabelFromRank,
+  getQualityRank,
+  parseSpeedToKBps,
+} from './utils';
 
 // storage type 常量: 'localstorage' | 'redis' | 'd1'，默认 'localstorage'
 const STORAGE_TYPE =
@@ -192,13 +197,95 @@ export class DbManager {
 
     for (const valuation of valuations) {
       try {
+        let existing: SourceValuation | null = null;
+        if (typeof this.storage.getSourceValuation === 'function') {
+          try {
+            existing = await this.storage.getSourceValuation(valuation.key);
+          } catch (error) {
+            console.warn('Failed to fetch existing valuation:', error);
+          }
+        }
+
+        const previousCount = existing?.sampleCount ?? 0;
+
+        const measurementQualityRank =
+          valuation.qualityRank ?? getQualityRank(valuation.quality);
+        const measurementSpeedValue =
+          valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
+        const measurementPingTime = Number.isFinite(valuation.pingTime)
+          ? valuation.pingTime
+          : 0;
+
+        const existingQualityRank =
+          existing?.qualityRank ?? getQualityRank(existing?.quality);
+        const existingSpeedValue =
+          existing?.speedValue ?? parseSpeedToKBps(existing?.loadSpeed);
+        const existingPingTime = Number.isFinite(existing?.pingTime)
+          ? existing!.pingTime
+          : 0;
+
+        const hasQuality = measurementQualityRank > 0;
+        const hasSpeed = measurementSpeedValue > 0;
+        const hasPing = measurementPingTime > 0;
+        const increment = hasQuality || hasSpeed || hasPing ? 1 : 0;
+        const combinedCount = previousCount + increment;
+
+        const blendedQualityRank = hasQuality
+          ? previousCount > 0
+            ? (existingQualityRank * previousCount + measurementQualityRank) /
+              (previousCount + 1)
+            : measurementQualityRank
+          : existingQualityRank;
+
+        const blendedSpeedValue = hasSpeed
+          ? previousCount > 0
+            ? (existingSpeedValue * previousCount + measurementSpeedValue) /
+              (previousCount + 1)
+            : measurementSpeedValue
+          : existingSpeedValue;
+
+        const blendedPingTime = hasPing
+          ? previousCount > 0
+            ? (existingPingTime * previousCount + measurementPingTime) /
+              (previousCount + 1)
+            : measurementPingTime
+          : existingPingTime;
+
+        const roundedQualityRank = Math.max(0, Math.round(blendedQualityRank));
+        const qualityLabel = getQualityLabelFromRank(
+          roundedQualityRank,
+          existing?.quality ?? valuation.quality ?? '未知'
+        );
+
+        const formattedSpeed =
+          blendedSpeedValue > 0
+            ? formatSpeedFromKBps(blendedSpeedValue)
+            : existing?.loadSpeed ?? valuation.loadSpeed ?? '未知';
+
+        const aggregateCount = Math.max(
+          combinedCount,
+          increment > 0 ? combinedCount : previousCount
+        );
+        if (aggregateCount === 0) {
+          continue;
+        }
+
         const payload: SourceValuation = {
-          ...valuation,
-          qualityRank:
-            valuation.qualityRank ?? getQualityRank(valuation.quality),
-          speedValue:
-            valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed),
+          key: valuation.key,
+          source: valuation.source,
+          id: valuation.id,
+          quality: qualityLabel,
+          loadSpeed: formattedSpeed,
+          pingTime:
+            blendedPingTime > 0 || previousCount > 0
+              ? Math.round(blendedPingTime)
+              : measurementPingTime,
+          qualityRank: roundedQualityRank,
+          speedValue: Math.round(blendedSpeedValue),
+          sampleCount: aggregateCount,
+          updated_at: Date.now(),
         };
+
         await this.storage.setSourceValuation(payload);
       } catch (error) {
         console.error('Failed to save source valuation:', error);
@@ -224,6 +311,9 @@ export class DbManager {
             entry.qualityRank ?? getQualityRank(entry.quality);
           entry.speedValue =
             entry.speedValue ?? parseSpeedToKBps(entry.loadSpeed);
+          entry.sampleCount =
+            entry.sampleCount ??
+            (entry.qualityRank || entry.speedValue ? 1 : 0);
         });
         return fetched;
       } catch (error) {
@@ -241,6 +331,9 @@ export class DbManager {
               valuation.qualityRank ?? getQualityRank(valuation.quality);
             valuation.speedValue =
               valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
+            valuation.sampleCount =
+              valuation.sampleCount ??
+              (valuation.qualityRank || valuation.speedValue ? 1 : 0);
             result[key] = valuation;
           }
         } catch (error) {

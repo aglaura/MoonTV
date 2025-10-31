@@ -22,6 +22,8 @@ import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import {
+  formatSpeedFromKBps,
+  getQualityLabelFromRank,
   getQualityRank,
   getVideoResolutionFromM3u8,
   parseSpeedToKBps,
@@ -265,6 +267,8 @@ function PlayPageClient() {
                 value.qualityRank ?? getQualityRank(value.quality),
               speedValue:
                 value.speedValue ?? parseSpeedToKBps(value.loadSpeed),
+              sampleCount: value.sampleCount ?? 1,
+              hasError: false,
             });
           });
           return next;
@@ -381,6 +385,7 @@ function PlayPageClient() {
           pingTime,
           qualityRank: getQualityRank(quality),
           speedValue: parseSpeedToKBps(loadSpeed),
+          sampleCount: 1,
         });
       } else {
         newVideoInfoMap.set(sourceKey, {
@@ -389,6 +394,7 @@ function PlayPageClient() {
           pingTime: 0,
           qualityRank: 0,
           speedValue: 0,
+          sampleCount: 0,
           hasError: true,
         });
       }
@@ -400,19 +406,119 @@ function PlayPageClient() {
       testResult: { quality: string; loadSpeed: string; pingTime: number };
     }>;
 
+    const aggregatedEntries: SourceValuationPayload[] = successfulResults.map(
+      (result) => {
+        const sourceKey = `${result.source.source}-${result.source.id}`;
+        const measurementRank = getQualityRank(result.testResult.quality);
+        const measurementSpeedValue = parseSpeedToKBps(
+          result.testResult.loadSpeed
+        );
+        const measurementPing = Number.isFinite(result.testResult.pingTime)
+          ? result.testResult.pingTime
+          : 0;
+
+        const previous = precomputedVideoInfoRef.current.get(sourceKey);
+        const previousCount = previous?.sampleCount ?? 0;
+        const previousRank = previous
+          ? previous.qualityRank ?? getQualityRank(previous.quality)
+          : 0;
+        const previousSpeed = previous
+          ? previous.speedValue ?? parseSpeedToKBps(previous.loadSpeed)
+          : 0;
+        const previousPing = previous?.pingTime ?? 0;
+
+        const hasQuality = measurementRank > 0;
+        const hasSpeed = measurementSpeedValue > 0;
+        const hasPing = measurementPing > 0;
+        const increment = hasQuality || hasSpeed || hasPing ? 1 : 0;
+        const combinedCount = previousCount + increment;
+
+        const blendedQualityRank = hasQuality
+          ? previousCount > 0
+            ? (previousRank * previousCount + measurementRank) /
+              (previousCount + 1)
+            : measurementRank
+          : previousRank;
+
+        const blendedSpeedValue = hasSpeed
+          ? previousCount > 0
+            ? (previousSpeed * previousCount + measurementSpeedValue) /
+              (previousCount + 1)
+            : measurementSpeedValue
+          : previousSpeed;
+
+        const blendedPingTime = hasPing
+          ? previousCount > 0
+            ? (previousPing * previousCount + measurementPing) /
+              (previousCount + 1)
+            : measurementPing
+          : previousPing;
+
+        const roundedRank = Math.max(0, Math.round(blendedQualityRank));
+        const qualityLabel = getQualityLabelFromRank(
+          roundedRank,
+          previous?.quality ?? result.testResult.quality
+        );
+        const formattedSpeed =
+          blendedSpeedValue > 0
+            ? formatSpeedFromKBps(blendedSpeedValue)
+            : previous?.loadSpeed ?? result.testResult.loadSpeed;
+
+        return {
+          key: sourceKey,
+          source: result.source.source,
+          id: result.source.id,
+          quality: qualityLabel,
+          loadSpeed: formattedSpeed,
+          pingTime:
+            blendedPingTime > 0 || previousCount > 0
+              ? Math.round(blendedPingTime)
+              : measurementPing,
+          qualityRank: roundedRank,
+          speedValue: Math.round(blendedSpeedValue),
+          sampleCount: Math.max(
+            combinedCount,
+            increment > 0 ? combinedCount : previousCount
+          ),
+          updated_at: Date.now(),
+        };
+      }
+    );
+
+    aggregatedEntries.forEach((entry) => {
+      newVideoInfoMap.set(entry.key, {
+        quality: entry.quality,
+        loadSpeed: entry.loadSpeed,
+        pingTime: entry.pingTime,
+        qualityRank: entry.qualityRank,
+        speedValue: entry.speedValue,
+        sampleCount: entry.sampleCount,
+        hasError: false,
+      });
+    });
+
     setPrecomputedVideoInfo(newVideoInfoMap);
 
-    const valuationsToPersist = successfulResults.map((result) => ({
-      key: `${result.source.source}-${result.source.id}`,
-      source: result.source.source,
-      id: result.source.id,
-      quality: result.testResult.quality,
-      loadSpeed: result.testResult.loadSpeed,
-      pingTime: result.testResult.pingTime,
-      qualityRank: getQualityRank(result.testResult.quality),
-      speedValue: parseSpeedToKBps(result.testResult.loadSpeed),
-      updated_at: Date.now(),
-    }));
+    const meaningfulMeasurementEntries = successfulResults
+      .map((result) => ({
+        key: `${result.source.source}-${result.source.id}`,
+        source: result.source.source,
+        id: result.source.id,
+        quality: result.testResult.quality,
+        loadSpeed: result.testResult.loadSpeed,
+        pingTime: result.testResult.pingTime,
+        qualityRank: getQualityRank(result.testResult.quality),
+        speedValue: parseSpeedToKBps(result.testResult.loadSpeed),
+        sampleCount: 1,
+        updated_at: Date.now(),
+      }))
+      .filter(
+        (entry) => entry.qualityRank > 0 || entry.speedValue > 0 || entry.pingTime > 0
+      );
+
+    if (meaningfulMeasurementEntries.length > 0) {
+      void persistSourceValuations(meaningfulMeasurementEntries);
+    }
     void persistSourceValuations(valuationsToPersist);
 
     if (successfulResults.length === 0) {
@@ -478,21 +584,22 @@ function PlayPageClient() {
       if (!sources || sources.length === 0) return null;
 
       const enriched = sources.map((source) => {
-        const key = `${source.source}-${source.id}`;
-        const info = precomputedVideoInfoRef.current.get(key);
-        const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
-        const speedValue = info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
-        const pingTime =
-          typeof info?.pingTime === 'number'
-            ? info.pingTime
-            : Number.MAX_SAFE_INTEGER;
-        const hasInfo =
-          info !== undefined && (qualityRank > 0 || speedValue > 0);
-        return {
-          source,
-          qualityRank,
-          speedValue,
-          pingTime,
+      const key = `${source.source}-${source.id}`;
+      const info = precomputedVideoInfoRef.current.get(key);
+      const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
+      const speedValue = info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
+      const pingTime =
+        typeof info?.pingTime === 'number' && info.pingTime > 0
+          ? info.pingTime
+          : Number.MAX_SAFE_INTEGER;
+      const sampleCount = info?.sampleCount ?? 0;
+      const hasInfo =
+        sampleCount > 0 && (qualityRank > 0 || speedValue > 0);
+      return {
+        source,
+        qualityRank,
+        speedValue,
+        pingTime,
           hasInfo,
         };
       });

@@ -38,6 +38,7 @@ export interface SourceValuation {
   pingTime: number;
   qualityRank?: number;
   speedValue?: number;
+  sampleCount?: number;
   updated_at: number;
 }
 

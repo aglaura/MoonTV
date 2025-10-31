@@ -35,6 +35,10 @@ export async function POST(request: Request) {
         pingTime: Number.isFinite(item.pingTime) ? item.pingTime : 0,
         qualityRank: getQualityRank(item.quality),
         speedValue: parseSpeedToKBps(item.loadSpeed),
+        sampleCount:
+          typeof item.sampleCount === 'number' && item.sampleCount > 0
+            ? Math.round(item.sampleCount)
+            : 1,
         updated_at: item.updated_at ?? Date.now(),
       }));
 
@@ -75,10 +79,15 @@ export async function GET(request: Request) {
     const items = Object.values(valuations).map((item) => {
       const qualityRank = item.qualityRank ?? getQualityRank(item.quality);
       const speedValue = item.speedValue ?? parseSpeedToKBps(item.loadSpeed);
+      const sampleCount =
+        typeof item.sampleCount === 'number' && item.sampleCount > 0
+          ? Math.round(item.sampleCount)
+          : 1;
       return {
         ...item,
         qualityRank,
         speedValue,
+        sampleCount,
       };
     });
 
