@@ -7,7 +7,7 @@ function extractM3u8LinksFromText(text?: string): string[] {
   if (!text) return [];
 
   // Unescape common escapes that appear in some upstream payloads
-  let s = text.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
+    const s = text.replace(/\\u0026/g, '&').replace(/\\\//g, '/');
 
   const patterns: RegExp[] = [
     // match $http...m3u8 (common packing style)
@@ -25,7 +25,7 @@ function extractM3u8LinksFromText(text?: string): string[] {
       const candidate = (m[1] || m[0] || '').trim();
       if (!candidate) continue;
       // Strip surrounding punctuation or trailing parentheses
-      const cleaned = candidate.replace(/^\$+/, '').replace(/[\)\]\}\.,;]+$/g, '');
+      const cleaned = candidate.replace(/^\$+/, '').replace(/[)\]}.;,]+$/g, '');
       links.add(cleaned);
     }
   }
