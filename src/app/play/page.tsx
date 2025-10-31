@@ -95,6 +95,11 @@ function PlayPageClient() {
   const detailRef = useRef<SearchResult | null>(detail);
   const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
 
+  // 视频播放地址
+  const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
+  const availableSourcesRef = useRef<SearchResult[]>([]);
+  const failedSourcesRef = useRef<Set<string>>(new Set());
+
   // 同步最新值到 refs
   useEffect(() => {
     currentSourceRef.current = currentSource;
@@ -149,11 +154,6 @@ function PlayPageClient() {
       cancelled = true;
     };
   }, [detail?.douban_id]);
-
-  // 视频播放地址
-  const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
-  const availableSourcesRef = useRef<SearchResult[]>([]);
-  const failedSourcesRef = useRef<Set<string>>(new Set());
 
   // 视频播放地址
   const [videoUrl, setVideoUrl] = useState('');
@@ -1304,7 +1304,7 @@ function PlayPageClient() {
           artPlayerRef.current.notice.show = '';
         }, 0);
 
-        // 隱藏换源加载状态
+        // 隐藏换源加载状态
         setIsVideoLoading(false);
       });
 
