@@ -21,7 +21,12 @@ import {
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
-import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import {
+  getQualityRank,
+  getVideoResolutionFromM3u8,
+  parseSpeedToKBps,
+  processImageUrl,
+} from '@/lib/utils';
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
@@ -175,8 +180,19 @@ function PlayPageClient() {
 
   // 保存优选时的测速结果，避免EpisodeSelector重复测速
   const [precomputedVideoInfo, setPrecomputedVideoInfo] = useState<
-    Map<string, { quality: string; loadSpeed: string; pingTime: number }>
+    Map<
+      string,
+      {
+        quality: string;
+        loadSpeed: string;
+        pingTime: number;
+        qualityRank?: number;
+        speedValue?: number;
+        hasError?: boolean;
+      }
+    >
   >(new Map());
+  const precomputedVideoInfoRef = useRef(precomputedVideoInfo);
 
   type SourceValuationPayload = {
     key: string;
@@ -185,6 +201,8 @@ function PlayPageClient() {
     quality: string;
     loadSpeed: string;
     pingTime: number;
+    qualityRank?: number;
+    speedValue?: number;
     updated_at: number;
   };
 
@@ -220,15 +238,25 @@ function PlayPageClient() {
         if (!resp.ok) {
           return;
         }
-        const data = (await resp.json()) as Record<
-          string,
-          SourceValuationPayload
-        >;
-        if (!data) return;
+        const payload = await resp.json();
+        if (!payload) return;
+
+        const items: SourceValuationPayload[] = Array.isArray(payload?.items)
+          ? payload.items
+          : Array.isArray(payload)
+          ? (payload as SourceValuationPayload[])
+          : Object.values(
+              (payload.lookup as Record<string, SourceValuationPayload>) ||
+                payload ||
+                {}
+            );
+
+        if (!items.length) return;
 
         setPrecomputedVideoInfo((prev) => {
           const next = new Map(prev);
-          Object.entries(data).forEach(([key, value]) => {
+          items.forEach((value) => {
+            const key = value.key || `${value.source}-${value.id}`;
             next.set(key, {
               quality: value.quality,
               loadSpeed: value.loadSpeed,
@@ -243,6 +271,10 @@ function PlayPageClient() {
     },
     []
   );
+
+  useEffect(() => {
+    precomputedVideoInfoRef.current = precomputedVideoInfo;
+  }, [precomputedVideoInfo]);
 
   // 折叠状态（仅在 lg 及以上屏幕有效）
   const [isEpisodeSelectorCollapsed, setIsEpisodeSelectorCollapsed] =
@@ -360,6 +392,8 @@ function PlayPageClient() {
       quality: result.testResult.quality,
       loadSpeed: result.testResult.loadSpeed,
       pingTime: result.testResult.pingTime,
+      qualityRank: getQualityRank(result.testResult.quality),
+      speedValue: parseSpeedToKBps(result.testResult.loadSpeed),
       updated_at: Date.now(),
     }));
     void persistSourceValuations(valuationsToPersist);

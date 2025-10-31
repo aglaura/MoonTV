@@ -4,6 +4,7 @@ import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
 import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { getQualityRank, parseSpeedToKBps } from './utils';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -159,11 +160,15 @@ export class RedisStorage implements IStorage {
   }
 
   async setSourceValuation(valuation: SourceValuation): Promise<void> {
+    const payload = {
+      ...valuation,
+      qualityRank:
+        valuation.qualityRank ?? getQualityRank(valuation.quality),
+      speedValue:
+        valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed),
+    };
     await withRetry(() =>
-      this.client.set(
-        this.valuationKey(valuation.key),
-        JSON.stringify(valuation)
-      )
+      this.client.set(this.valuationKey(valuation.key), JSON.stringify(payload))
     );
   }
 
@@ -171,7 +176,15 @@ export class RedisStorage implements IStorage {
     const val = await withRetry(() =>
       this.client.get(this.valuationKey(key))
     );
-    return val ? (JSON.parse(val) as SourceValuation) : null;
+    if (!val) return null;
+    const parsed = JSON.parse(val) as SourceValuation;
+    return {
+      ...parsed,
+      qualityRank:
+        parsed.qualityRank ?? getQualityRank(parsed.quality),
+      speedValue:
+        parsed.speedValue ?? parseSpeedToKBps(parsed.loadSpeed),
+    };
   }
 
   async getSourceValuations(
@@ -184,7 +197,14 @@ export class RedisStorage implements IStorage {
     keys.forEach((key, idx) => {
       const raw = values[idx];
       if (raw) {
-        result[key] = JSON.parse(raw) as SourceValuation;
+        const parsed = JSON.parse(raw) as SourceValuation;
+        result[key] = {
+          ...parsed,
+          qualityRank:
+            parsed.qualityRank ?? getQualityRank(parsed.quality),
+          speedValue:
+            parsed.speedValue ?? parseSpeedToKBps(parsed.loadSpeed),
+        };
       }
     });
     return result;

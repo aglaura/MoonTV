@@ -207,3 +207,38 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
     );
   }
 }
+
+const QUALITY_ORDER = new Map<string, number>([
+  ['4k', 6],
+  ['2160p', 6],
+  ['2k', 5],
+  ['1440p', 5],
+  ['1080p', 4],
+  ['1080', 4],
+  ['720p', 3],
+  ['720', 3],
+  ['480p', 2],
+  ['480', 2],
+  ['sd', 1],
+]);
+
+export function getQualityRank(label?: string | null): number {
+  if (!label) return 0;
+  const normalized = label.toLowerCase().trim();
+  return QUALITY_ORDER.get(normalized) ?? 0;
+}
+
+export function parseSpeedToKBps(value?: string | null): number {
+  if (!value) return 0;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '未知' || trimmed === '測量中...') return 0;
+  const match = trimmed.match(/^([\d.]+)\s*(kb\/s|mb\/s)$/i);
+  if (!match) return 0;
+  const numeric = parseFloat(match[1]);
+  if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+  const unit = match[2].toLowerCase();
+  if (unit === 'mb/s') {
+    return Math.round(numeric * 1024);
+  }
+  return Math.round(numeric);
+}

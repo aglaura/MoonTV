@@ -36,6 +36,8 @@ export interface SourceValuation {
   quality: string;
   loadSpeed: string;
   pingTime: number;
+  qualityRank?: number;
+  speedValue?: number;
   updated_at: number;
 }
 

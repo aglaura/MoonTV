@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { db } from '@/lib/db';
 import { SourceValuation } from '@/lib/types';
+import { getQualityRank, parseSpeedToKBps } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
         quality: item.quality ?? '',
         loadSpeed: item.loadSpeed ?? '',
         pingTime: Number.isFinite(item.pingTime) ? item.pingTime : 0,
+        qualityRank: getQualityRank(item.quality),
+        speedValue: parseSpeedToKBps(item.loadSpeed),
         updated_at: item.updated_at ?? Date.now(),
       }));
 
@@ -69,7 +72,33 @@ export async function GET(request: Request) {
     }
 
     const valuations = await db.getSourceValuations(keys);
-    return NextResponse.json(valuations);
+    const items = Object.values(valuations).map((item) => {
+      const qualityRank = item.qualityRank ?? getQualityRank(item.quality);
+      const speedValue = item.speedValue ?? parseSpeedToKBps(item.loadSpeed);
+      return {
+        ...item,
+        qualityRank,
+        speedValue,
+      };
+    });
+
+    items.sort((a, b) => {
+      if (b.qualityRank !== a.qualityRank) {
+        return b.qualityRank - a.qualityRank;
+      }
+      if (b.speedValue !== a.speedValue) {
+        return b.speedValue - a.speedValue;
+      }
+      return (a.pingTime ?? Number.MAX_SAFE_INTEGER) -
+        (b.pingTime ?? Number.MAX_SAFE_INTEGER);
+    });
+
+    const lookup: Record<string, SourceValuation> = {};
+    items.forEach((item) => {
+      lookup[item.key] = item;
+    });
+
+    return NextResponse.json({ items, lookup });
   } catch (error) {
     console.error('Failed to fetch source valuations:', error);
     return NextResponse.json(

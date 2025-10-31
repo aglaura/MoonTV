@@ -2,6 +2,7 @@
 
 import { AdminConfig } from './admin.types';
 import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { getQualityRank, parseSpeedToKBps } from './utils';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -64,9 +65,24 @@ export class D1Storage implements IStorage {
         quality TEXT,
         load_speed TEXT,
         ping_time INTEGER,
+        quality_rank INTEGER DEFAULT 0,
+        speed_value INTEGER DEFAULT 0,
         updated_at INTEGER
       )
     `);
+    const alterStatements = [
+      'ALTER TABLE source_valuations ADD COLUMN quality_rank INTEGER DEFAULT 0',
+      'ALTER TABLE source_valuations ADD COLUMN speed_value INTEGER DEFAULT 0',
+    ];
+    for (const stmt of alterStatements) {
+      try {
+        await db.exec(stmt);
+      } catch (error: any) {
+        if (!error?.message?.includes('duplicate column name')) {
+          console.error('Failed to alter source_valuations table:', error);
+        }
+      }
+    }
     this.valuationTableInitialized = true;
   }
 
@@ -497,12 +513,16 @@ export class D1Storage implements IStorage {
     try {
       await this.ensureValuationTable();
       const db = await this.getDatabase();
+      const qualityRank =
+        valuation.qualityRank ?? getQualityRank(valuation.quality);
+      const speedValue =
+        valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
       await db
         .prepare(
           `
           INSERT OR REPLACE INTO source_valuations
-          (key, source, source_id, quality, load_speed, ping_time, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          (key, source, source_id, quality, load_speed, ping_time, quality_rank, speed_value, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
         )
         .bind(
@@ -512,6 +532,8 @@ export class D1Storage implements IStorage {
           valuation.quality,
           valuation.loadSpeed,
           valuation.pingTime,
+          qualityRank,
+          speedValue,
           valuation.updated_at
         )
         .run();
@@ -528,7 +550,7 @@ export class D1Storage implements IStorage {
       const row = await db
         .prepare(
           `
-          SELECT key, source, source_id, quality, load_speed, ping_time, updated_at
+          SELECT key, source, source_id, quality, load_speed, ping_time, quality_rank, speed_value, updated_at
           FROM source_valuations WHERE key = ?
         `
         )
@@ -544,6 +566,8 @@ export class D1Storage implements IStorage {
         quality: row.quality,
         loadSpeed: row.load_speed,
         pingTime: row.ping_time,
+        qualityRank: row.quality_rank ?? 0,
+        speedValue: row.speed_value ?? 0,
         updated_at: row.updated_at,
       };
     } catch (err) {

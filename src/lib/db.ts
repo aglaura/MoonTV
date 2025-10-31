@@ -4,6 +4,7 @@ import { AdminConfig } from './admin.types';
 import { D1Storage } from './d1.db';
 import { RedisStorage } from './redis.db';
 import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { getQualityRank, parseSpeedToKBps } from './utils';
 
 // storage type 常量: 'localstorage' | 'redis' | 'd1'，默认 'localstorage'
 const STORAGE_TYPE =
@@ -191,7 +192,14 @@ export class DbManager {
 
     for (const valuation of valuations) {
       try {
-        await this.storage.setSourceValuation(valuation);
+        const payload: SourceValuation = {
+          ...valuation,
+          qualityRank:
+            valuation.qualityRank ?? getQualityRank(valuation.quality),
+          speedValue:
+            valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed),
+        };
+        await this.storage.setSourceValuation(payload);
       } catch (error) {
         console.error('Failed to save source valuation:', error);
       }
@@ -208,7 +216,16 @@ export class DbManager {
 
     if (typeof this.storage.getSourceValuations === 'function') {
       try {
-        return await this.storage.getSourceValuations(keys);
+        const fetched = await this.storage.getSourceValuations(keys);
+        Object.keys(fetched).forEach((key) => {
+          const entry = fetched[key];
+          if (!entry) return;
+          entry.qualityRank =
+            entry.qualityRank ?? getQualityRank(entry.quality);
+          entry.speedValue =
+            entry.speedValue ?? parseSpeedToKBps(entry.loadSpeed);
+        });
+        return fetched;
       } catch (error) {
         console.error('Failed to get source valuations:', error);
         return result;
@@ -220,6 +237,10 @@ export class DbManager {
         try {
           const valuation = await this.storage.getSourceValuation(key);
           if (valuation) {
+            valuation.qualityRank =
+              valuation.qualityRank ?? getQualityRank(valuation.quality);
+            valuation.speedValue =
+              valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
             result[key] = valuation;
           }
         } catch (error) {
