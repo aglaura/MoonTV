@@ -375,6 +375,9 @@ function PlayPageClient() {
         quality: string;
         loadSpeed: string;
         pingTime: number;
+        qualityRank?: number;
+        speedValue?: number;
+        sampleCount?: number;
         hasError?: boolean;
       }
     >();
@@ -524,7 +527,6 @@ function PlayPageClient() {
     if (meaningfulMeasurementEntries.length > 0) {
       void persistSourceValuations(meaningfulMeasurementEntries);
     }
-    void persistSourceValuations(valuationsToPersist);
 
     if (successfulResults.length === 0) {
       console.warn('所有播放源測速都失敗，使用第一個播放源');
