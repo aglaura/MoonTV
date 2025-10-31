@@ -529,8 +529,40 @@ function PlayPageClient() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let firstSourceFound = false;
+      let playbackInitialized = false;
       const allSources: SearchResult[] = [];
+      let pendingFirstSource: SearchResult | undefined;
+
+      const initializePlayback = (detailData: SearchResult) => {
+        if (playbackInitialized) return;
+        playbackInitialized = true;
+
+        setNeedPrefer(false);
+        setCurrentSource(detailData.source);
+        setCurrentId(detailData.id);
+        setVideoYear(detailData.year);
+        setVideoTitle(detailData.title || videoTitleRef.current);
+        setVideoCover(detailData.poster);
+        setDetail(detailData);
+        if (currentEpisodeIndex >= detailData.episodes.length) {
+          setCurrentEpisodeIndex(0);
+        }
+
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('source', detailData.source);
+        newUrl.searchParams.set('id', detailData.id);
+        newUrl.searchParams.set('year', detailData.year);
+        newUrl.searchParams.set('title', detailData.title);
+        newUrl.searchParams.delete('prefer');
+        window.history.replaceState({}, '', newUrl.toString());
+
+        setLoadingStage('ready');
+        setLoadingMessage('✨ 準備就緒，即將開始播放...');
+
+        setTimeout(() => {
+          setLoading(false);
+        }, 1000);
+      };
 
       let keepReading = true;
       while (keepReading) {
@@ -550,39 +582,28 @@ function PlayPageClient() {
           return updated;
         });
 
-        if (!firstSourceFound && newSources.length > 0) {
-          firstSourceFound = true;
-          const detailData = newSources[0];
-
-          setNeedPrefer(false);
-          setCurrentSource(detailData.source);
-          setCurrentId(detailData.id);
-          setVideoYear(detailData.year);
-          setVideoTitle(detailData.title || videoTitleRef.current);
-          setVideoCover(detailData.poster);
-          setDetail(detailData);
-          if (currentEpisodeIndex >= detailData.episodes.length) {
-            setCurrentEpisodeIndex(0);
+        const totalSources = allSources.length;
+        if (!playbackInitialized) {
+          if (totalSources >= 2) {
+            initializePlayback(allSources[0]);
+          } else if (totalSources === 1 && !pendingFirstSource) {
+            pendingFirstSource = allSources[0];
           }
-
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('source', detailData.source);
-          newUrl.searchParams.set('id', detailData.id);
-          newUrl.searchParams.set('year', detailData.year);
-          newUrl.searchParams.set('title', detailData.title);
-          newUrl.searchParams.delete('prefer');
-          window.history.replaceState({}, '', newUrl.toString());
-
-          setLoadingStage('ready');
-          setLoadingMessage('✨ 準備就緒，即將開始播放...');
-
-          setTimeout(() => {
-            setLoading(false);
-          }, 1000);
         }
       }
 
       setSourceSearchLoading(false);
+
+      if (!playbackInitialized) {
+        if (allSources.length > 0) {
+          initializePlayback(pendingFirstSource ?? allSources[0]);
+        } else {
+          setLoadingStage('searching');
+          setLoadingMessage('未找到可用的播放來源');
+          setError('未找到可用的播放來源');
+          setLoading(false);
+        }
+      }
 
       if (allSources.length > 1) {
         const bestSource = await preferBestSource(allSources);
