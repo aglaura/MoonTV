@@ -1309,7 +1309,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 }
               >
                 {traditionalTitle || actualTitle}
-                {englishTitleToShow && (
+                {englishTitleToShow && englishTitleToShow !== 'NA' && (
                   <span className='text-xs font-medium text-gray-500 dark:text-gray-400 ml-1'>
                     ({englishTitleToShow})
                   </span>
