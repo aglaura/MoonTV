@@ -847,8 +847,34 @@ function PlayPageClient() {
           break;
         }
 
-        const chunk = decoder.decode(value);
-        const newSources: SearchResult[] = JSON.parse(chunk);
+        const chunk = decoder.decode(value).trim();
+        if (!chunk) {
+          continue;
+        }
+
+        const payloads = chunk
+          .split(/\n+/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const parsedSources: SearchResult[] = [];
+        for (const payload of payloads) {
+          try {
+            const entries = JSON.parse(payload);
+            if (Array.isArray(entries)) {
+              parsedSources.push(...entries);
+            } else if (entries && typeof entries === 'object') {
+              parsedSources.push(entries as SearchResult);
+            }
+          } catch (error) {
+            console.warn('Failed to parse stream chunk:', error);
+          }
+        }
+
+        if (!parsedSources.length) {
+          continue;
+        }
+        const newSources: SearchResult[] = parsedSources;
         allSources.push(...newSources);
 
         setAvailableSources((prev) => {
