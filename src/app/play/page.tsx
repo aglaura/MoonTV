@@ -6,7 +6,7 @@ import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   deleteFavorite,
@@ -113,6 +113,10 @@ function PlayPageClient() {
   ]);
 
   useEffect(() => {
+    availableSourcesRef.current = availableSources;
+  }, [availableSources]);
+
+  useEffect(() => {
     const doubanId = detail?.douban_id;
     if (!doubanId) {
       setImdbVideoTitle(undefined);
@@ -156,6 +160,8 @@ function PlayPageClient() {
   const resumeTimeRef = useRef<number | null>(null);
   // 上次使用的音量，默认 0.7
   const lastVolumeRef = useRef<number>(0.7);
+  const availableSourcesRef = useRef<SearchResult[]>([]);
+  const failedSourcesRef = useRef<Set<string>>(new Set());
 
   // 换源相关状态
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
@@ -507,6 +513,10 @@ function PlayPageClient() {
   useEffect(() => {
     const streamSourcesData = async (query: string) => {
       setSourceSearchLoading(true);
+      setSourceSearchError(null);
+      failedSourcesRef.current.clear();
+      availableSourcesRef.current = [];
+      setAvailableSources([]);
       const response = await fetch(
         `/api/search/stream?q=${encodeURIComponent(query.trim())}`
       );
@@ -534,7 +544,11 @@ function PlayPageClient() {
         const newSources: SearchResult[] = JSON.parse(chunk);
         allSources.push(...newSources);
 
-        setAvailableSources((prev) => [...prev, ...newSources]);
+        setAvailableSources((prev) => {
+          const updated = [...prev, ...newSources];
+          availableSourcesRef.current = updated;
+          return updated;
+        });
 
         if (!firstSourceFound && newSources.length > 0) {
           firstSourceFound = true;
@@ -673,6 +687,8 @@ function PlayPageClient() {
         return;
       }
 
+      failedSourcesRef.current.delete(`${newSource}-${newId}`);
+
       // 尝试跳转到当前正在播放的集数
       let targetIndex = currentEpisodeIndex;
 
@@ -711,6 +727,39 @@ function PlayPageClient() {
       setError(err instanceof Error ? err.message : '換源失敗');
     }
   };
+
+  const trySwitchToNextSource = useCallback((): boolean => {
+    const currentKey =
+      currentSourceRef.current && currentIdRef.current
+        ? `${currentSourceRef.current}-${currentIdRef.current}`
+        : null;
+
+    if (currentKey) {
+      failedSourcesRef.current.add(currentKey);
+    }
+
+    const nextSource = availableSourcesRef.current.find((source) => {
+      if (!source.episodes || source.episodes.length === 0) return false;
+      if (
+        source.source === currentSourceRef.current &&
+        source.id === currentIdRef.current
+      ) {
+        return false;
+      }
+      const key = `${source.source}-${source.id}`;
+      if (failedSourcesRef.current.has(key)) return false;
+      return currentEpisodeIndexRef.current < source.episodes.length;
+    });
+
+    if (nextSource) {
+      setError('當前播放來源不可用，自動切換其他來源…');
+      handleSourceChange(nextSource.source, nextSource.id, nextSource.title);
+      return true;
+    }
+
+    setError('當前播放來源不可用，請手動選擇其他來源');
+    return false;
+  }, [handleSourceChange]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -1243,6 +1292,10 @@ function PlayPageClient() {
         if (artPlayerRef.current.currentTime > 0) {
           return;
         }
+        const switched = trySwitchToNextSource();
+        if (!switched) {
+          setIsVideoLoading(false);
+        }
       });
 
       // 监听视频播放结束事件，自动播放下一集
@@ -1281,7 +1334,7 @@ function PlayPageClient() {
       console.error('建立播放器失敗:', err);
       setError('播放器初始化失敗');
     }
-  }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
+  }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled, trySwitchToNextSource]);
 
   useEffect(() => {
     if (!artPlayerRef.current) {
