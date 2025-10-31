@@ -261,6 +261,10 @@ function PlayPageClient() {
               quality: value.quality,
               loadSpeed: value.loadSpeed,
               pingTime: value.pingTime,
+              qualityRank:
+                value.qualityRank ?? getQualityRank(value.quality),
+              speedValue:
+                value.speedValue ?? parseSpeedToKBps(value.loadSpeed),
             });
           });
           return next;
@@ -369,12 +373,25 @@ function PlayPageClient() {
       const source = sources[index];
       const sourceKey = `${source.source}-${source.id}`;
 
-      newVideoInfoMap.set(sourceKey, result?.testResult ?? {
-        quality: '未知',
-        loadSpeed: '未知',
-        pingTime: 0,
-        hasError: true,
-      });
+      if (result && result.testResult) {
+        const { quality, loadSpeed, pingTime } = result.testResult;
+        newVideoInfoMap.set(sourceKey, {
+          quality,
+          loadSpeed,
+          pingTime,
+          qualityRank: getQualityRank(quality),
+          speedValue: parseSpeedToKBps(loadSpeed),
+        });
+      } else {
+        newVideoInfoMap.set(sourceKey, {
+          quality: '未知',
+          loadSpeed: '未知',
+          pingTime: 0,
+          qualityRank: 0,
+          speedValue: 0,
+          hasError: true,
+        });
+      }
     });
 
     // 过滤出成功的结果用于优选计算
@@ -455,6 +472,49 @@ function PlayPageClient() {
 
     return resultsWithScore[0].source;
   };
+
+  const selectBestSourceByValuation = useCallback(
+    (sources: SearchResult[]): SearchResult | null => {
+      if (!sources || sources.length === 0) return null;
+
+      const enriched = sources.map((source) => {
+        const key = `${source.source}-${source.id}`;
+        const info = precomputedVideoInfoRef.current.get(key);
+        const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
+        const speedValue = info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
+        const pingTime =
+          typeof info?.pingTime === 'number'
+            ? info.pingTime
+            : Number.MAX_SAFE_INTEGER;
+        const hasInfo =
+          info !== undefined && (qualityRank > 0 || speedValue > 0);
+        return {
+          source,
+          qualityRank,
+          speedValue,
+          pingTime,
+          hasInfo,
+        };
+      });
+
+      const candidates = enriched.some((item) => item.hasInfo)
+        ? enriched.filter((item) => item.hasInfo)
+        : enriched;
+
+      candidates.sort((a, b) => {
+        if (b.qualityRank !== a.qualityRank) {
+          return b.qualityRank - a.qualityRank;
+        }
+        if (b.speedValue !== a.speedValue) {
+          return b.speedValue - a.speedValue;
+        }
+        return a.pingTime - b.pingTime;
+      });
+
+      return candidates[0]?.source ?? sources[0];
+    },
+    []
+  );
 
   // 计算播放源综合评分
   const calculateSourceScore = (
@@ -696,9 +756,12 @@ function PlayPageClient() {
         const totalSources = allSources.length;
         if (!playbackInitialized) {
           if (totalSources >= 2) {
-            initializePlayback(allSources[0]);
+            const bestInitial =
+              selectBestSourceByValuation(allSources) ?? allSources[0];
+            initializePlayback(bestInitial);
           } else if (totalSources === 1 && !pendingFirstSource) {
-            pendingFirstSource = allSources[0];
+            pendingFirstSource =
+              selectBestSourceByValuation(allSources) ?? allSources[0];
           }
         }
       }
@@ -708,7 +771,11 @@ function PlayPageClient() {
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
-          initializePlayback(pendingFirstSource ?? allSources[0]);
+          const bestInitial =
+            selectBestSourceByValuation(allSources) ??
+            pendingFirstSource ??
+            allSources[0];
+          initializePlayback(bestInitial);
         } else {
           setLoadingStage('searching');
           setLoadingMessage('未找到可用的播放來源');
