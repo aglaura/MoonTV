@@ -507,25 +507,14 @@ function PlayPageClient() {
 
     setPrecomputedVideoInfo(newVideoInfoMap);
 
-    const meaningfulMeasurementEntries = successfulResults
-      .map((result) => ({
-        key: `${result.source.source}-${result.source.id}`,
-        source: result.source.source,
-        id: result.source.id,
-        quality: result.testResult.quality,
-        loadSpeed: result.testResult.loadSpeed,
-        pingTime: result.testResult.pingTime,
-        qualityRank: getQualityRank(result.testResult.quality),
-        speedValue: parseSpeedToKBps(result.testResult.loadSpeed),
-        sampleCount: 1,
-        updated_at: Date.now(),
-      }))
-      .filter(
-        (entry) => entry.qualityRank > 0 || entry.speedValue > 0 || entry.pingTime > 0
-      );
-
-    if (meaningfulMeasurementEntries.length > 0) {
-      void persistSourceValuations(meaningfulMeasurementEntries);
+    const meaningfulAggregatedEntries = aggregatedEntries.filter(
+      (entry) =>
+        (entry.qualityRank ?? 0) > 0 ||
+        (entry.speedValue ?? 0) > 0 ||
+        (entry.pingTime ?? 0) > 0
+    );
+    if (meaningfulAggregatedEntries.length > 0) {
+      void persistSourceValuations(meaningfulAggregatedEntries);
     }
 
     if (successfulResults.length === 0) {
