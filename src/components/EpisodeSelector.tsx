@@ -165,7 +165,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   }, [precomputedVideoInfo]);
 
   // 读取本地“优选和测速”开关，默认开启
-  const [optimizationEnabled] = useState<boolean>(false);
+  const optimizationEnabled = false;
   const [doubanEnglishMap, setDoubanEnglishMap] = useState<
     Record<number, string>
   >({});
@@ -174,11 +174,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   // 当切换到换源tab并且有源数据时，异步获取视频信息 - 移除 attemptedSources 依赖避免循环触发
   useEffect(() => {
     const fetchVideoInfosInBatches = async () => {
-      if (
-        !optimizationEnabled || // 若关闭测速则直接退出
-        activeTab !== 'sources' ||
-        availableSources.length === 0
-      )
+      if (activeTab !== 'sources' || availableSources.length === 0)
         return;
 
       // 筛选出尚未测速的播放源
@@ -199,7 +195,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
 
     fetchVideoInfosInBatches();
     // 依赖项保持与之前一致
-  }, [activeTab, availableSources, getVideoInfo, optimizationEnabled]);
+  }, [activeTab, availableSources, getVideoInfo]);
 
   useEffect(() => {
     doubanEnglishMapRef.current = doubanEnglishMap;

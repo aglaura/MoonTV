@@ -265,10 +265,12 @@ function PlayPageClient() {
       const source = sources[index];
       const sourceKey = `${source.source}-${source.id}`;
 
-      if (result) {
-        // 成功的结果
-        newVideoInfoMap.set(sourceKey, result.testResult);
-      }
+      newVideoInfoMap.set(sourceKey, result?.testResult ?? {
+        quality: '未知',
+        loadSpeed: '未知',
+        pingTime: 0,
+        hasError: true,
+      });
     });
 
     // 过滤出成功的结果用于优选计算
