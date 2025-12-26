@@ -1,16 +1,26 @@
 /* eslint-disable no-console */
 
+import createIntlMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getSharedPasswords } from '@/lib/sharedPasswords';
 
+const LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
+const intlMiddleware = createIntlMiddleware({
+  locales: LOCALES as unknown as string[],
+  defaultLocale: 'zh-Hant',
+  localePrefix: 'never',
+});
+
 export async function middleware(request: NextRequest) {
+  // First run locale detection (no prefix)
+  const intlResponse = intlMiddleware(request);
   const { pathname } = request.nextUrl;
 
   // 跳过不需要认证的路径
   if (shouldSkipAuth(pathname)) {
-    return NextResponse.next();
+    return intlResponse;
   }
 
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
@@ -18,7 +28,7 @@ export async function middleware(request: NextRequest) {
 
   // 如果没有设置密码，直接放行
   if (storageType === 'localstorage' && sharedPasswords.length === 0) {
-    return NextResponse.next();
+    return intlResponse;
   }
 
   // 从cookie获取认证信息
@@ -47,7 +57,7 @@ export async function middleware(request: NextRequest) {
   // 检查是否有用户名（非localStorage模式下密码不存储在cookie中）
   if (!authInfo.username || !authInfo.signature) {
     if (hasValidSharedPassword && isLoginPhaseEndpoint) {
-      return NextResponse.next();
+      return intlResponse;
     }
     return handleAuthFailure(request, pathname);
   }
@@ -61,7 +71,7 @@ export async function middleware(request: NextRequest) {
         secret
       );
       if (isValidSignature) {
-        return NextResponse.next();
+        return intlResponse;
       }
     }
   }
@@ -128,6 +138,7 @@ function handleAuthFailure(
 
 // 判断是否需要跳过认证的路径
 function shouldSkipAuth(pathname: string): boolean {
+  const basePath = stripLocale(pathname);
   const skipPaths = [
     '/_next',
     '/favicon.ico',
@@ -138,7 +149,16 @@ function shouldSkipAuth(pathname: string): boolean {
     '/screenshot.png',
   ];
 
-  return skipPaths.some((path) => pathname.startsWith(path));
+  return skipPaths.some((path) => basePath.startsWith(path));
+}
+
+function stripLocale(pathname: string): string {
+  const segments = pathname.split('/');
+  const first = segments[1];
+  if (LOCALES.includes(first as (typeof LOCALES)[number])) {
+    return '/' + segments.slice(2).join('/');
+  }
+  return pathname;
 }
 
 // 配置middleware匹配规则

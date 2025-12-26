@@ -1,0 +1,15 @@
+{
+  "Nav": {
+    "home": "Home",
+    "movies": "Movies",
+    "tv": "TV Shows",
+    "variety": "Variety Show",
+    "anime": "Anime"
+  },
+  "Common": {
+    "search": "Search",
+    "login": "Login",
+    "logout": "Logout",
+    "settings": "Settings"
+  }
+}

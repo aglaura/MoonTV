@@ -1,0 +1,15 @@
+{
+  "Nav": {
+    "home": "首頁",
+    "movies": "電影",
+    "tv": "電視劇",
+    "variety": "綜藝",
+    "anime": "動漫"
+  },
+  "Common": {
+    "search": "搜尋",
+    "login": "登入",
+    "logout": "登出",
+    "settings": "設定"
+  }
+}

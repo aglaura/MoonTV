@@ -4,6 +4,8 @@ import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 import { getConfig } from '@/lib/config';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
@@ -32,6 +34,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   let siteName = process.env.SITE_NAME || 'MoonTV';
   let announcement =
     process.env.ANNOUNCEMENT ||
@@ -54,7 +59,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang='zh-TW' suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
@@ -71,9 +76,11 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SiteProvider siteName={siteName} announcement={announcement}>
-            {children}
-          </SiteProvider>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <SiteProvider siteName={siteName} announcement={announcement}>
+              {children}
+            </SiteProvider>
+          </NextIntlClientProvider>
         </ThemeProvider>
       </body>
     </html>

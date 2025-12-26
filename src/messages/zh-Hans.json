@@ -1,0 +1,15 @@
+{
+  "Nav": {
+    "home": "首页",
+    "movies": "电影",
+    "tv": "电视剧",
+    "variety": "综艺",
+    "anime": "动漫"
+  },
+  "Common": {
+    "search": "搜索",
+    "login": "登录",
+    "logout": "退出登录",
+    "settings": "设置"
+  }
+}
