@@ -2,7 +2,7 @@
 
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import { Listbox, Transition } from '@headlessui/react';
-import { CheckIcon, ChevronUpDownIcon } from 'lucide-react';
+import { CheckIcon, ChevronsUpDown } from 'lucide-react';
 import { Fragment } from 'react';
 
 const languageOptions = [
@@ -41,7 +41,7 @@ export default function LanguageSelector() {
           <Listbox.Button className="relative w-full cursor-default rounded-md bg-white dark:bg-gray-800 py-2 pl-3 pr-10 text-left shadow-sm border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
             <span className="block truncate">{currentLanguage.label}</span>
             <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-              <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+              <ChevronsUpDown className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </span>
           </Listbox.Button>
           <Transition
