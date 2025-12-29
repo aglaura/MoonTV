@@ -1387,6 +1387,19 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 </span>
               </span>
             )}
+            {displaySourceNames && displaySourceNames.length > 0 && (
+              <div className='mt-1 flex flex-wrap justify-center gap-1'>
+                {displaySourceNames.map((name, idx) => (
+                  <span
+                    key={`${name}-${idx}`}
+                    className='px-2 py-0.5 rounded-full bg-gray-100 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                    title={name}
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
