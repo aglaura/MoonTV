@@ -1,4 +1,4 @@
-?import './globals.css';
+import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
 import type { Metadata, Viewport } from 'next';
