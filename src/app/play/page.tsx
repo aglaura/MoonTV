@@ -341,6 +341,54 @@ function PlayPageClient() {
     [getValuationKey]
   );
 
+  const determineMajorityEpisodeCount = useCallback(
+    (sources: SearchResult[]): number | null => {
+      const counts = new Map<number, number>();
+      sources.forEach((source) => {
+        const len = source.episodes?.length || 0;
+        if (len > 0) {
+          counts.set(len, (counts.get(len) || 0) + 1);
+        }
+      });
+      if (!counts.size) return null;
+      let majorityLen = 0;
+      let majorityFreq = 0;
+      counts.forEach((freq, len) => {
+        if (freq > majorityFreq || (freq === majorityFreq && len > majorityLen)) {
+          majorityFreq = freq;
+          majorityLen = len;
+        }
+      });
+      return majorityLen || null;
+    },
+    []
+  );
+
+  const verifyAndSortSources = useCallback(
+    (
+      sources: SearchResult[],
+      infoOverride?: Map<string, PrecomputedVideoInfoEntry>
+    ): SearchResult[] => {
+      const valid = (sources || []).filter(
+        (s) =>
+          Array.isArray(s.episodes) &&
+          s.episodes.length > 0 &&
+          currentEpisodeIndexRef.current < s.episodes.length
+      );
+
+      const majority = determineMajorityEpisodeCount(valid);
+      majorityEpisodeCountRef.current = majority;
+
+      const filtered =
+        majority != null
+          ? valid.filter((s) => (s.episodes?.length || 0) === majority)
+          : valid;
+
+      return sortSourcesByValuation(filtered, infoOverride);
+    },
+    [determineMajorityEpisodeCount, sortSourcesByValuation]
+  );
+
   type SourceValuationPayload = {
     key: string;
     source: string;
@@ -436,7 +484,7 @@ function PlayPageClient() {
         if (updatedInfoMap) {
           precomputedVideoInfoRef.current = updatedInfoMap;
           setAvailableSources((prev) => {
-            const sorted = sortSourcesByValuation(prev, updatedInfoMap!);
+            const sorted = verifyAndSortSources(prev, updatedInfoMap!);
             availableSourcesRef.current = sorted;
             return sorted;
           });
@@ -445,7 +493,7 @@ function PlayPageClient() {
         console.warn('Failed to load stored source valuations:', error);
       }
     },
-    [getValuationKey, sortSourcesByValuation]
+    [getValuationKey, sortSourcesByValuation, verifyAndSortSources]
   );
 
   useEffect(() => {
@@ -679,7 +727,7 @@ function PlayPageClient() {
     setPrecomputedVideoInfo(updatedInfoMap);
     precomputedVideoInfoRef.current = updatedInfoMap;
     setAvailableSources((prev) => {
-      const sorted = sortSourcesByValuation(prev, updatedInfoMap);
+      const sorted = verifyAndSortSources(prev, updatedInfoMap);
       availableSourcesRef.current = sorted;
       return sorted;
     });
@@ -1056,7 +1104,7 @@ function PlayPageClient() {
 
         setAvailableSources((prev) => {
           const merged = [...prev, ...newSources];
-          const sorted = sortSourcesByValuation(merged);
+          const sorted = verifyAndSortSources(merged);
           availableSourcesRef.current = sorted;
           return sorted;
         });
@@ -1108,7 +1156,7 @@ function PlayPageClient() {
           if (updatedInfoMap) {
             precomputedVideoInfoRef.current = updatedInfoMap;
             setAvailableSources((prev) => {
-              const sorted = sortSourcesByValuation(prev, updatedInfoMap!);
+              const sorted = verifyAndSortSources(prev, updatedInfoMap!);
               availableSourcesRef.current = sorted;
               return sorted;
             });
@@ -1466,13 +1514,9 @@ function PlayPageClient() {
     }
 
     try {
-      // Store full verified list in DB (no length cap).
-      const sourceList = buildVerifiedSourceList();
-
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
         source_name: detailRef.current?.source_name || '',
-        source_list: sourceList,
         year: detailRef.current?.year,
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
@@ -1582,13 +1626,10 @@ function PlayPageClient() {
         await deleteFavorite(currentSourceRef.current, currentIdRef.current);
         setFavorited(false);
       } else {
-        // Store full verified list in DB (no length cap).
-        const sourceList = buildVerifiedSourceList();
         // 如果未收藏，添加收藏
         await saveFavorite(currentSourceRef.current, currentIdRef.current, {
           title: videoTitleRef.current,
           source_name: detailRef.current?.source_name || '',
-          source_list: sourceList,
           year: detailRef.current?.year,
           cover: detailRef.current?.poster || '',
           total_episodes:
