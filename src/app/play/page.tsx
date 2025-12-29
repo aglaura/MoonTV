@@ -1465,9 +1465,18 @@ function PlayPageClient() {
     }
 
     try {
+      const sourceList = Array.from(
+        new Set(
+          (availableSourcesRef.current || [])
+            .map((s) => s.source_name)
+            .filter((name): name is string => !!name)
+        )
+      );
+
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
         source_name: detailRef.current?.source_name || '',
+        source_list: sourceList,
         year: detailRef.current?.year,
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
@@ -1574,10 +1583,18 @@ function PlayPageClient() {
         await deleteFavorite(currentSourceRef.current, currentIdRef.current);
         setFavorited(false);
       } else {
+        const sourceList = Array.from(
+          new Set(
+            (availableSourcesRef.current || [])
+              .map((s) => s.source_name)
+              .filter((name): name is string => !!name)
+          )
+        );
         // 如果未收藏，添加收藏
         await saveFavorite(currentSourceRef.current, currentIdRef.current, {
           title: videoTitleRef.current,
           source_name: detailRef.current?.source_name || '',
+          source_list: sourceList,
           year: detailRef.current?.year,
           cover: detailRef.current?.poster || '',
           total_episodes: detailRef.current?.episodes.length || 1,

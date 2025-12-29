@@ -4,6 +4,7 @@ import { AdminConfig } from './admin.types';
 export interface PlayRecord {
   title: string; // 中文片名
   source_name: string; // 來源名稱
+  source_list?: string[]; // 可用來源列表
   cover: string; // 海報
   year: string; // 年份
   index: number; // 第幾集
@@ -21,6 +22,7 @@ export interface PlayRecord {
 // 收藏資料結構
 export interface Favorite {
   source_name: string; // 來源名稱
+  source_list?: string[]; // 可用來源列表
   total_episodes: number; // 總集數
   title: string; // 中文片名
   year: string; // 年份
