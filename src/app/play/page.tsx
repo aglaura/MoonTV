@@ -108,9 +108,10 @@ function PlayPageClient() {
   const failedSourcesRef = useRef<Set<string>>(new Set());
 
   /**
-   * Build a verified, trimmed, deduplicated, and sorted source list (max 10).
+   * Build a verified, trimmed, deduplicated, and sorted source list.
+   * @param limit Optional max length (omit to keep all).
    */
-  const buildVerifiedSourceList = useCallback((): string[] => {
+  const buildVerifiedSourceList = useCallback((limit?: number): string[] => {
     // Determine current episode index (default to 0)
     const episodeIndex = currentEpisodeIndexRef.current ?? 0;
 
@@ -165,7 +166,8 @@ function PlayPageClient() {
       a.localeCompare(b, undefined, { sensitivity: 'base' })
     );
 
-    return sorted.slice(0, 10);
+    const result = sorted;
+    return typeof limit === 'number' ? result.slice(0, limit) : result;
   }, []);
 
   // 同步最新值到 refs
@@ -1526,6 +1528,7 @@ function PlayPageClient() {
     }
 
     try {
+      // Store full verified list in DB (no length cap).
       const sourceList = buildVerifiedSourceList();
 
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
@@ -1638,6 +1641,7 @@ function PlayPageClient() {
         await deleteFavorite(currentSourceRef.current, currentIdRef.current);
         setFavorited(false);
       } else {
+        // Store full verified list in DB (no length cap).
         const sourceList = buildVerifiedSourceList();
         // 如果未收藏，添加收藏
         await saveFavorite(currentSourceRef.current, currentIdRef.current, {
