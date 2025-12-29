@@ -1,6 +1,6 @@
-import { getAuthInfoFromCookie } from '@/lib/auth';
-import { getUserLanguage, setUserLanguage, type Locale } from '@/lib/userLanguage';
 import { NextRequest, NextResponse } from 'next/server';
+import { setUserLanguage, getUserLanguage, type Locale } from '@/lib/userLanguage';
+import { getAuthInfoFromCookie } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,12 +25,13 @@ export async function POST(request: NextRequest) {
     // Set user's language preference in Redis
     await setUserLanguage(authInfo.username, locale as Locale);
 
-    return NextResponse.json({
-      message: 'Language preference updated successfully'
+    return NextResponse.json({ 
+      message: 'Language preference updated successfully' 
     });
   } catch (error) {
+    console.error('Error changing language:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error' }, 
       { status: 500 }
     );
   }
@@ -50,8 +51,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ locale });
   } catch (error) {
+    console.error('Error getting language:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error' }, 
       { status: 500 }
     );
   }

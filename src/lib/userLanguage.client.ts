@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
 
+// Define TypeScript interfaces for better type safety
+interface LanguageResponse {
+  locale: string;
+}
+
+interface ErrorData {
+  error?: string;
+}
+
 // Client-side hook for managing user language preferences
 export function useUserLanguage() {
   const [userLocale, setUserLocale] = useState<string | null>(null);
@@ -11,13 +20,16 @@ export function useUserLanguage() {
     const loadUserLanguage = async () => {
       try {
         setLoading(true);
+        
+        // Use a named variable for the URL for better readability
         const response = await fetch('/api/change-language');
+        
         if (!response.ok) {
           throw new Error('Failed to load user language preference');
         }
         
-        const { locale } = await response.json();
-        setUserLocale(locale);
+        const data: LanguageResponse = await response.json();
+        setUserLocale(data.locale);
       } catch (err) {
         console.error('Error loading user language:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -33,6 +45,7 @@ export function useUserLanguage() {
   const changeLanguage = async (locale: string) => {
     try {
       setError(null);
+      
       const response = await fetch('/api/change-language', {
         method: 'POST',
         headers: {
@@ -42,12 +55,15 @@ export function useUserLanguage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData: ErrorData = await response.json();
         throw new Error(errorData.error || 'Failed to change language');
       }
 
       // Update local state
       setUserLocale(locale);
+      
+      // Persist the language preference locally
+      localStorage.setItem('userLocale', locale);
       
       // Reload the page to apply the new locale
       // This is needed because next-intl uses server-side locale detection
@@ -58,6 +74,14 @@ export function useUserLanguage() {
       throw err;
     }
   };
+
+  // Check localStorage for a saved preference on initial load
+  useEffect(() => {
+    const savedLocale = localStorage.getItem('userLocale');
+    if (savedLocale) {
+      setUserLocale(savedLocale);
+    }
+  }, []);
 
   return {
     userLocale,

@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 // Define supported locales
 const SUPPORTED_LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
 export type Locale = typeof SUPPORTED_LOCALES[number];
-const DEFAULT_LOCALE: Locale = 'en'; // Changed to English as default
+const DEFAULT_LOCALE: Locale = 'en';
 
 // Use Redis for storing user language preferences
 const redis = process.env.REDIS_URL ? new Redis({
@@ -50,6 +50,7 @@ export async function getUserPreferredLocale(request: NextRequest): Promise<Loca
     }
     return DEFAULT_LOCALE;
   } catch (error) {
+    console.error('Error retrieving user language from Redis:', error);
     return DEFAULT_LOCALE;
   }
 }
