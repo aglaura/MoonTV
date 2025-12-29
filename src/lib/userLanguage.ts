@@ -5,12 +5,22 @@ const SUPPORTED_LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
 export type Locale = typeof SUPPORTED_LOCALES[number];
 const DEFAULT_LOCALE: Locale = 'en'; // Changed to English as default
 
-// Use Redis for storing user language preferences
-// If not available, fallback to environment-based default
-const redis = process.env.REDIS_URL ? new Redis({
-  url: process.env.REDIS_URL,
-  token: process.env.REDIS_TOKEN || '',
-}) : null;
+// Use Redis for storing user language preferences when config is valid
+// If not available or invalid, fallback to environment-based default
+const REDIS_URL = process.env.REDIS_URL;
+const REDIS_TOKEN = process.env.REDIS_TOKEN;
+const canUseRedis =
+  typeof REDIS_URL === 'string' &&
+  REDIS_URL.startsWith('https://') &&
+  typeof REDIS_TOKEN === 'string' &&
+  REDIS_TOKEN.length > 0;
+
+const redis = canUseRedis
+  ? new Redis({
+      url: REDIS_URL,
+      token: REDIS_TOKEN,
+    })
+  : null;
 
 /**
  * Get user's preferred language from Redis
