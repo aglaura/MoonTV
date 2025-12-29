@@ -105,6 +105,11 @@ export interface SearchResult {
   desc?: string;
   type_name?: string;
   douban_id?: number;
+  // Optional metrics populated when valuations are available
+  quality?: string;
+  loadSpeed?: string;
+  speedValue?: number;
+  pingTime?: number;
 }
 
 // 豆瓣資料結構

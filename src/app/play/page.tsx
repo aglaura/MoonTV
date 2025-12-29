@@ -384,9 +384,26 @@ function PlayPageClient() {
           ? valid.filter((s) => (s.episodes?.length || 0) === majority)
           : valid;
 
-      return sortSourcesByValuation(filtered, infoOverride);
+      const sorted = sortSourcesByValuation(filtered, infoOverride);
+      const infoMap =
+        infoOverride && infoOverride.size > 0
+          ? infoOverride
+          : precomputedVideoInfoRef.current;
+
+      return sorted.map((s) => {
+        const info = infoMap.get(getValuationKey(s.source));
+        return info
+          ? {
+              ...s,
+              quality: info.quality,
+              loadSpeed: info.loadSpeed,
+              speedValue: info.speedValue,
+              pingTime: info.pingTime,
+            }
+          : s;
+      });
     },
-    [determineMajorityEpisodeCount, sortSourcesByValuation]
+    [determineMajorityEpisodeCount, sortSourcesByValuation, getValuationKey]
   );
 
   type SourceValuationPayload = {
