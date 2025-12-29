@@ -107,6 +107,31 @@ function PlayPageClient() {
   const availableSourcesRef = useRef<SearchResult[]>([]);
   const failedSourcesRef = useRef<Set<string>>(new Set());
 
+  /**
+   * Build a verified, trimmed, deduplicated, and sorted source list (max 10).
+   */
+  const buildVerifiedSourceList = useCallback((): string[] => {
+    const names =
+      availableSourcesRef.current
+        ?.map((s) => (s.source_name || '').trim())
+        .filter((name) => name.length > 0) || [];
+
+    // Deduplicate case-insensitively while preserving first-seen casing.
+    const seen = new Map<string, string>();
+    names.forEach((name) => {
+      const key = name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.set(key, name);
+      }
+    });
+
+    const sorted = Array.from(seen.values()).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+
+    return sorted.slice(0, 10);
+  }, []);
+
   // 同步最新值到 refs
   useEffect(() => {
     currentSourceRef.current = currentSource;
@@ -1465,13 +1490,7 @@ function PlayPageClient() {
     }
 
     try {
-      const sourceList = Array.from(
-        new Set(
-          (availableSourcesRef.current || [])
-            .map((s) => s.source_name)
-            .filter((name): name is string => !!name)
-        )
-      );
+      const sourceList = buildVerifiedSourceList();
 
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
@@ -1583,13 +1602,7 @@ function PlayPageClient() {
         await deleteFavorite(currentSourceRef.current, currentIdRef.current);
         setFavorited(false);
       } else {
-        const sourceList = Array.from(
-          new Set(
-            (availableSourcesRef.current || [])
-              .map((s) => s.source_name)
-              .filter((name): name is string => !!name)
-          )
-        );
+        const sourceList = buildVerifiedSourceList();
         // 如果未收藏，添加收藏
         await saveFavorite(currentSourceRef.current, currentIdRef.current, {
           title: videoTitleRef.current,
