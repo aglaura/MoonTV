@@ -1698,7 +1698,7 @@ function PlayPageClient() {
       currentEpisodeIndex >= detail.episodes.length ||
       currentEpisodeIndex < 0
     ) {
-      setError(`选集索引无效，当前共 ${totalEpisodes} 集`);
+      setError(`選集索引無效，目前共 ${totalEpisodes} 集`);
       return;
     }
 
@@ -2135,7 +2135,7 @@ function PlayPageClient() {
             {/* 错误信息 */}
             <div className='space-y-4 mb-8'>
               <h2 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>
-                哎呀，出现了一些问题
+                哎呀，出現了一些問題
               </h2>
               <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4'>
                 <p className='text-red-600 dark:text-red-400 font-medium'>
@@ -2143,7 +2143,7 @@ function PlayPageClient() {
                 </p>
               </div>
               <p className='text-sm text-gray-500 dark:text-gray-400'>
-                请检查网络连接或尝试刷新页面
+                請檢查網路連線或嘗試重新整理頁面
               </p>
             </div>
 
