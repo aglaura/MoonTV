@@ -5,7 +5,7 @@ import type { Metadata, Viewport } from 'next';
 
 import { getConfig } from '@/lib/config';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { getLocale, getMessages, setRequestLocale } from 'next-intl/server';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
@@ -35,7 +35,13 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Get the locale from the request
   const locale = await getLocale();
+  
+  // Set the locale for static rendering
+  setRequestLocale(locale);
+  
+  // Get messages for the locale
   const messages = await getMessages();
 
   let siteName = process.env.SITE_NAME || 'MoonTV';

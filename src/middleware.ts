@@ -1,14 +1,15 @@
 /* eslint-disable no-console */
 
-import { getAuthInfoFromCookie } from '@/lib/auth';
-import { getSharedPasswords } from '@/lib/sharedPasswords';
 import createIntlMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getSharedPasswords } from '@/lib/sharedPasswords';
 
 const LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
 const intlMiddleware = createIntlMiddleware({
   locales: LOCALES as unknown as string[],
-  defaultLocale: 'en', // Changed to English as default
+  defaultLocale: 'en', // English as default
   localePrefix: 'never',
 });
 
@@ -65,6 +66,44 @@ export async function middleware(request: NextRequest) {
   // If user is authenticated, we'll handle language preference in the layout or page components
   // since middleware runs at the edge and can't efficiently query user-specific data from Redis
   return intlResponse;
+}
+
+// 验证签名
+async function verifySignature(
+  data: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(data);
+
+  try {
+    // 导入密钥
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    // 将十六进制字符串转换为Uint8Array
+    const signatureBuffer = new Uint8Array(
+      signature.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+    );
+
+    // 验证签名
+    return await crypto.subtle.verify(
+      'HMAC',
+      key,
+      signatureBuffer,
+      messageData
+    );
+  } catch (error) {
+    console.error('签名验证失败:', error);
+    return false;
+  }
 }
 
 // 处理认证失败的情况
