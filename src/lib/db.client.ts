@@ -20,6 +20,7 @@ import { getAuthInfoFromBrowserCookie } from './auth';
 export interface PlayRecord {
   title: string;
   source_name: string;
+  source_list?: string[];
   year: string;
   cover: string;
   index: number; // 第几集
@@ -38,6 +39,7 @@ export interface PlayRecord {
 export interface Favorite {
   title: string;
   source_name: string;
+  source_list?: string[];
   year: string;
   cover: string;
   total_episodes: number;
