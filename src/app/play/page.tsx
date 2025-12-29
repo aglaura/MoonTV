@@ -170,6 +170,7 @@ function PlayPageClient() {
 
   // 用于记录是否需要在播放器 ready 后跳转到指定进度
   const resumeTimeRef = useRef<number | null>(null);
+  const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // 上次使用的音量，默认 0.7
   const lastVolumeRef = useRef<number>(0.7);
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
@@ -1803,6 +1804,10 @@ function PlayPageClient() {
 
       // 监听视频可播放事件，这时恢复播放进度更可靠
       artPlayerRef.current.on('video:canplay', () => {
+        if (loadTimeoutRef.current) {
+          clearTimeout(loadTimeoutRef.current);
+          loadTimeoutRef.current = null;
+        }
         // 若存在需要恢复的播放进度，则跳转
         if (resumeTimeRef.current && resumeTimeRef.current > 0) {
           try {
@@ -1834,6 +1839,10 @@ function PlayPageClient() {
 
       artPlayerRef.current.on('error', (err: any) => {
         console.error('播放器錯誤:', err);
+        if (loadTimeoutRef.current) {
+          clearTimeout(loadTimeoutRef.current);
+          loadTimeoutRef.current = null;
+        }
         if (artPlayerRef.current.currentTime > 0) {
           return;
         }
@@ -1875,6 +1884,23 @@ function PlayPageClient() {
           videoUrl
         );
       }
+
+      // Fallback timeout: if the video doesn't become playable in 3s, switch source
+      if (loadTimeoutRef.current) {
+        clearTimeout(loadTimeoutRef.current);
+      }
+      loadTimeoutRef.current = setTimeout(() => {
+        if (
+          artPlayerRef.current &&
+          Math.max(artPlayerRef.current.currentTime || 0, 0) <= 0
+        ) {
+          setError('來源響應超時，自動切換其他來源…');
+          const switched = trySwitchToNextSource();
+          if (!switched) {
+            setIsVideoLoading(false);
+          }
+        }
+      }, 3000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
       setError('播放器初始化失敗');
