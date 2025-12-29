@@ -101,6 +101,7 @@ function PlayPageClient() {
   const videoYearRef = useRef(videoYear);
   const detailRef = useRef<SearchResult | null>(detail);
   const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
+  const majorityEpisodeCountRef = useRef<number | null>(null);
 
   // 视频播放地址
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
@@ -135,6 +136,7 @@ function PlayPageClient() {
         majorityCount = count;
       }
     });
+    majorityEpisodeCountRef.current = majorityCount;
 
     // Keep sources that both have the requested episode index AND match the majority episode count (when known).
     const filtered = sources.filter((s) => {
@@ -1538,7 +1540,10 @@ function PlayPageClient() {
         year: detailRef.current?.year,
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
-        total_episodes: detailRef.current?.episodes.length || 1,
+        total_episodes:
+          majorityEpisodeCountRef.current ??
+          detailRef.current?.episodes.length ||
+          1,
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
         save_time: Date.now(),
@@ -1650,7 +1655,10 @@ function PlayPageClient() {
           source_list: sourceList,
           year: detailRef.current?.year,
           cover: detailRef.current?.poster || '',
-          total_episodes: detailRef.current?.episodes.length || 1,
+          total_episodes:
+            majorityEpisodeCountRef.current ??
+            detailRef.current?.episodes.length ||
+            1,
           save_time: Date.now(),
           search_title: searchTitle,
         });
