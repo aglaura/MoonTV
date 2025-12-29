@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 /* eslint-disable @typescript-eslint/no-var-requires */
+const withNextIntl = require('next-intl/plugin')();
 const nextConfig = {
   output: 'standalone',
   eslint: {
@@ -70,7 +71,7 @@ if (
   process.env.NEXT_DISABLE_PWA === '1' ||
   process.env.NEXT_DISABLE_PWA === 'true'
 ) {
-  module.exports = nextConfig;
+  module.exports = withNextIntl(nextConfig);
 } else {
   const withPWA = require('next-pwa')({
     dest: 'public',
@@ -78,5 +79,5 @@ if (
     register: true,
     skipWaiting: true,
   });
-  module.exports = withPWA(nextConfig);
+  module.exports = withPWA(withNextIntl(nextConfig));
 }
