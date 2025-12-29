@@ -1,10 +1,9 @@
 /* eslint-disable no-console */
 
-import createIntlMiddleware from 'next-intl/middleware';
-import { NextRequest, NextResponse } from 'next/server';
-
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getSharedPasswords } from '@/lib/sharedPasswords';
+import createIntlMiddleware from 'next-intl/middleware';
+import { NextRequest, NextResponse } from 'next/server';
 
 const LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
 const intlMiddleware = createIntlMiddleware({
