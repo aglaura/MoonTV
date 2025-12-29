@@ -32,6 +32,7 @@ import {
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
+import { useUserLanguage } from '@/lib/userLanguage.client';
 
 // 扩展 HTMLVideoElement 类型以支持 hls 属性
 declare global {
@@ -41,6 +42,32 @@ declare global {
 }
 
 function PlayPageClient() {
+  const { userLocale } = useUserLanguage();
+
+  const localeTexts: Record<string, Record<string, string>> = {
+    en: {
+      timeoutSwitch: 'Source timed out, switching to another source…',
+    },
+    'zh-Hans': {
+      timeoutSwitch: '来源响应超时，自动切换其他来源…',
+    },
+    'zh-Hant': {
+      timeoutSwitch: '來源響應超時，自動切換其他來源…',
+    },
+  };
+
+  const t = useCallback(
+    (key: string) => {
+      const locale = userLocale || 'en';
+      return (
+        localeTexts[locale]?.[key] ??
+        localeTexts['en']?.[key] ??
+        key
+      );
+    },
+    [userLocale]
+  );
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -2013,7 +2040,7 @@ function PlayPageClient() {
           artPlayerRef.current &&
           Math.max(artPlayerRef.current.currentTime || 0, 0) <= 0
         ) {
-          setError('來源響應超時，自動切換其他來源…');
+          setError(t('timeoutSwitch'));
           const switched = trySwitchToNextSource();
           if (!switched) {
             setIsVideoLoading(false);
