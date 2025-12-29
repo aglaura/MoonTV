@@ -56,7 +56,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Failed to persist source valuations:', error);
     return NextResponse.json(
       { error: 'Failed to persist source valuations' },
       { status: 500 }
@@ -131,7 +130,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ items, lookup });
   } catch (error) {
-    console.error('Failed to fetch source valuations:', error);
     return NextResponse.json(
       { error: 'Failed to fetch source valuations' },
       { status: 500 }
