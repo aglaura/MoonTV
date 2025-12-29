@@ -1541,9 +1541,9 @@ function PlayPageClient() {
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes:
-          majorityEpisodeCountRef.current ??
-          detailRef.current?.episodes.length ||
-          1,
+          (majorityEpisodeCountRef.current ??
+            detailRef.current?.episodes.length ||
+            1),
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
         save_time: Date.now(),
@@ -1656,9 +1656,9 @@ function PlayPageClient() {
           year: detailRef.current?.year,
           cover: detailRef.current?.poster || '',
           total_episodes:
-            majorityEpisodeCountRef.current ??
-            detailRef.current?.episodes.length ||
-            1,
+            (majorityEpisodeCountRef.current ??
+              detailRef.current?.episodes.length ||
+              1),
           save_time: Date.now(),
           search_title: searchTitle,
         });
@@ -1963,7 +1963,7 @@ function PlayPageClient() {
         );
       }
 
-      // Fallback timeout: if the video doesn't become playable in 3s, switch source
+      // Fallback timeout: if the video doesn't become playable in 6s, switch source
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
       }
@@ -1978,7 +1978,7 @@ function PlayPageClient() {
             setIsVideoLoading(false);
           }
         }
-      }, 3000);
+      }, 6000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
       setError('播放器初始化失敗');
