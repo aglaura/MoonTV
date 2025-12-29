@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+?import { NextRequest, NextResponse } from 'next/server';
 import { setUserLanguage, getUserLanguage, type Locale } from '@/lib/userLanguage';
 import { getAuthInfoFromCookie } from '@/lib/auth';
 
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
       message: 'Language preference updated successfully' 
     });
   } catch (error) {
-    console.error('Error changing language:', error);
     return NextResponse.json(
       { error: 'Internal server error' }, 
       { status: 500 }
@@ -51,7 +50,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ locale });
   } catch (error) {
-    console.error('Error getting language:', error);
     return NextResponse.json(
       { error: 'Internal server error' }, 
       { status: 500 }

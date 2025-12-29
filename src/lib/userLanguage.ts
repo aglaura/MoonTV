@@ -1,3 +1,4 @@
+import { kv } from '@vercel/kv';
 import { Redis } from '@upstash/redis';
 
 // Define supported locales
@@ -28,7 +29,7 @@ export async function getUserLanguage(userId: string): Promise<Locale> {
       return storedLocale as Locale;
     }
     return DEFAULT_LOCALE;
-  } catch (error) {
+  } catch {
     return DEFAULT_LOCALE;
   }
 }
@@ -50,8 +51,7 @@ export async function setUserLanguage(userId: string, locale: Locale): Promise<v
   try {
     // Store the user's language preference with a 1-year expiration
     await redis.setex(`user:lang:${userId}`, 365 * 24 * 60 * 60, locale);
-  } catch (error) {
-    // ignore persistence failures
+  } catch {
   }
 }
 

@@ -31,7 +31,6 @@ export function useUserLanguage() {
         const data: LanguageResponse = await response.json();
         setUserLocale(data.locale);
       } catch (err) {
-        console.error('Error loading user language:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
@@ -69,7 +68,6 @@ export function useUserLanguage() {
       // This is needed because next-intl uses server-side locale detection
       window.location.reload();
     } catch (err) {
-      console.error('Error changing language:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
       throw err;
     }
