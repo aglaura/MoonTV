@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
-import { NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
+import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getSharedPasswords } from '@/lib/sharedPasswords';
@@ -147,7 +147,6 @@ function shouldSkipAuth(pathname: string): boolean {
     '/icons/',
     '/logo.png',
     '/screenshot.png',
-    '/login',
   ];
 
   return skipPaths.some((path) => basePath.startsWith(path));
@@ -165,6 +164,6 @@ function stripLocale(pathname: string): string {
 // 配置middleware匹配规则
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/login|api/register|api/logout|api/cron|api/server-config).*)',
+    '/((?!_next/static|_next/image|favicon.ico|login|api/login|api/register|api/logout|api/cron|api/server-config).*)',
   ],
 };

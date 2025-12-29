@@ -7,10 +7,10 @@ const DEFAULT_LOCALE = 'zh-Hant';
 export default getRequestConfig(async ({locale}) => {
   const resolvedLocale = SUPPORTED.includes(locale) ? locale : DEFAULT_LOCALE;
 
+  // Load messages for the resolved locale
+  const messages = (await import(`./src/messages/${resolvedLocale}.json`)).default;
+  
   return {
-    locales: SUPPORTED,
-    defaultLocale: DEFAULT_LOCALE,
-    locale: resolvedLocale,
-    messages: (await import(`./src/messages/${resolvedLocale}.json`)).default
+    messages
   };
 });
