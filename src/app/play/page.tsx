@@ -538,6 +538,7 @@ function PlayPageClient() {
   const [imdbVideoId, setImdbVideoId] = useState<string | undefined>(
     undefined
   );
+  const [clientInfo, setClientInfo] = useState<string>('');
   const englishVideoTitle = imdbVideoTitle ?? undefined;
   const displayVideoTitle = useMemo(
     () => convertToTraditional(videoTitle),
@@ -1379,6 +1380,30 @@ function PlayPageClient() {
     return () => {
       document.removeEventListener('keydown', handleKeyboardShortcuts);
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined') return;
+    const ua = navigator.userAgent.toLowerCase();
+
+    const os = (() => {
+      if (/windows nt/.test(ua)) return 'Windows';
+      if (/mac os x/.test(ua)) return 'macOS';
+      if (/android/.test(ua)) return 'Android';
+      if (/(iphone|ipad|ipod)/.test(ua)) return 'iOS';
+      if (/linux/.test(ua)) return 'Linux';
+      return 'Unknown OS';
+    })();
+
+    const browser = (() => {
+      if (/edg\//.test(ua)) return 'Edge';
+      if (/chrome\//.test(ua) && !/edg\//.test(ua)) return 'Chrome';
+      if (/firefox\//.test(ua)) return 'Firefox';
+      if (/safari\//.test(ua) && !/chrome\//.test(ua)) return 'Safari';
+      return 'Unknown Browser';
+    })();
+
+    setClientInfo(`${browser} • ${os}`);
   }, []);
 
   // 自动错误恢复：出现错误时尝试切换下一可用源
@@ -2244,15 +2269,20 @@ function PlayPageClient() {
           >
             {/* 播放器 */}
             <div
-              className={`h-full transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
-                isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-3'
-              }`}
-            >
-              <div className='relative w-full h-[300px] lg:h-full'>
-                <div
-                  ref={artRef}
-                  className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
-                ></div>
+            className={`h-full transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
+              isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-3'
+            }`}
+          >
+            <div className='relative w-full h-[300px] lg:h-full'>
+              {clientInfo && (
+                <div className='absolute top-2 left-2 z-[501] px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
+                  {clientInfo}
+                </div>
+              )}
+              <div
+                ref={artRef}
+                className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
+              ></div>
 
                 {/* 换源加载蒙层 */}
                 {isVideoLoading && (
