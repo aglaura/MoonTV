@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 
 import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+import LanguageSelector from '@/components/LanguageSelector';
 import { getConfig } from '@/lib/config';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
-import LanguageSelector from '@/components/LanguageSelector';
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {

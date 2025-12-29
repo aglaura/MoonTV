@@ -50,7 +50,6 @@ export async function getUserPreferredLocale(request: NextRequest): Promise<Loca
     }
     return DEFAULT_LOCALE;
   } catch (error) {
-    console.error('Error retrieving user language from Redis:', error);
     return DEFAULT_LOCALE;
   }
 }
