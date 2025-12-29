@@ -248,7 +248,6 @@ async function initConfig() {
         });
 
         // 检查现有源是否在 fileConfig.api_site 中，如果不在则标记为 custom
-        const apiSiteKeys = new Set(apiSiteEntries.map(([key]) => key));
         adminConfig.SourceConfig.forEach((source) => {
           const site = fileConfig.api_site[source.key];
           if (!site) {

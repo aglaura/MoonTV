@@ -1,20 +1,42 @@
 // Minimal server-only request config for next-intl
 import { getRequestConfig } from 'next-intl/server';
 
-// Use the new requestLocale/setRequestLocale API so pages can be rendered statically.
-export default getRequestConfig(async ({ requestLocale, setRequestLocale }) => {
-  // `requestLocale` is an async getter that returns the resolved locale for the request
-  const locale = await requestLocale();
-  // debug: print types to help trace runtime errors during prerender
-  try {
-    // eslint-disable-next-line no-console
-    console.debug('[i18n] requestLocale type:', typeof requestLocale, 'setRequestLocale type:', typeof setRequestLocale, 'resolved locale:', locale);
-  } catch (e) {}
+// Force locales for specific routes/sources:
+// - any `/douban` page or requests with `source=douban` -> zh-CN
+// - any `/imdb` page or requests with `source=imdb` -> en
+export default getRequestConfig(async ({ requestLocale, setRequestLocale, request }) => {
+  // default to whatever the runtime resolves
+  let resolved = await (typeof requestLocale === 'function' ? requestLocale() : undefined);
 
-  if (locale && typeof setRequestLocale === 'function') setRequestLocale(locale);
+  try {
+    // determine from request path / query when available
+    if (request && request.url) {
+      const url = new URL(request.url);
+      const pathname = url.pathname || '';
+      const srcParam = (url.searchParams.get('source') || url.searchParams.get('from') || '').toLowerCase();
+
+      if (pathname.startsWith('/douban') || srcParam.includes('douban')) {
+        resolved = 'zh-CN';
+      } else if (pathname.startsWith('/imdb') || srcParam.includes('imdb')) {
+        resolved = 'en';
+      }
+    }
+  } catch (e) {
+    // ignore URL parsing failures and fall back to runtime locale
+    void e;
+  }
+
+  if (resolved && typeof setRequestLocale === 'function') {
+    try {
+      setRequestLocale(resolved);
+    } catch (e) {
+      // noop if runtime doesn't allow setting
+    }
+  }
 
   // messages are stored under `src/messages/<locale>.json`
+  const localeToLoad = resolved ?? 'en';
   return {
-    messages: (await import(`../messages/${locale ?? 'en'}.json`)).default,
+    messages: (await import(`../messages/${localeToLoad}.json`)).default,
   };
 });

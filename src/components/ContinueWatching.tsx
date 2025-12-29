@@ -73,18 +73,6 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     return null;
   }
 
-  // 计算播放进度百分比
-  const getProgress = (record: PlayRecord) => {
-    if (record.total_time === 0) return 0;
-    return (record.play_time / record.total_time) * 100;
-  };
-
-  // 从 key 中解析 source 和 id
-  const parseKey = (key: string) => {
-    const [source, id] = key.split('+');
-    return { source, id };
-  };
-
   return (
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
@@ -120,7 +108,6 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
             ))
           : // 显示真实数据
             playRecords.map((record) => {
-              const { source, id } = parseKey(record.key);
               return (
                 <div
                   key={record.key}

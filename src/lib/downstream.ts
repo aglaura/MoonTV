@@ -52,7 +52,6 @@ export async function searchFromApi(
 ): Promise<SearchResult[]> {
   try {
     if (!apiSite.api) {
-      console.warn(`Source ${apiSite.name} 缺少 API 地址，已跳過搜尋`);
       return [];
     }
     const apiBaseUrl = apiSite.api;

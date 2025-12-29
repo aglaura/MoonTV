@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 
-import createIntlMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
 import { getSharedPasswords } from '@/lib/sharedPasswords';
