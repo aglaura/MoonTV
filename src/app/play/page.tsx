@@ -1130,7 +1130,8 @@ function PlayPageClient() {
         });
 
         const totalSources = allSources.length;
-        if (!playbackInitialized && totalSources >= 1) {
+        // 只有在找到至少 4 個來源後才開始播放，否則繼續等待更多來源
+        if (!playbackInitialized && totalSources >= 4) {
           const bestInitial =
             selectBestSourceByValuation(allSources) ?? allSources[0];
           initializePlayback(bestInitial);
@@ -1189,6 +1190,7 @@ function PlayPageClient() {
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
+          // 讀取完成但來源少於 4 個時，使用現有最佳來源開始播放
           const bestInitial =
             selectBestSourceByValuation(allSources) ?? allSources[0];
           initializePlayback(bestInitial);
