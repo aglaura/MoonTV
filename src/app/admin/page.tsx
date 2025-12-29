@@ -2,6 +2,9 @@
 
 'use client';
 
+// Force dynamic rendering to avoid next-intl static prerender issues
+export const dynamic = 'force-dynamic';
+
 import {
   closestCenter,
   DndContext,
