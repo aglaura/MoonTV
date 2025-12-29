@@ -13,7 +13,7 @@ import { ThemeProvider } from '../components/ThemeProvider';
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
-  let siteName = process.env.SITE_NAME || 'MoonTV';
+  let siteName = process.env.SITE_NAME || 'EssaouiraTV';
   if (process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1') {
     const config = await getConfig();
     siteName = config.SiteConfig.SiteName;
@@ -46,7 +46,7 @@ export default async function RootLayout({
   // }
   const messages = await getMessages();
 
-  let siteName = process.env.SITE_NAME || 'MoonTV';
+  let siteName = process.env.SITE_NAME || 'EssaouiraTV';
   let announcement =
     process.env.ANNOUNCEMENT ||
     '本網站僅提供影視資訊搜尋服務，所有內容均來自第三方網站。本站不存儲任何影片資源，亦不對任何內容的準確性、合法性或完整性負責。';
