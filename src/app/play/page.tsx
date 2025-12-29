@@ -111,9 +111,45 @@ function PlayPageClient() {
    * Build a verified, trimmed, deduplicated, and sorted source list (max 10).
    */
   const buildVerifiedSourceList = useCallback((): string[] => {
+    // Determine current episode index (default to 0)
+    const episodeIndex = currentEpisodeIndexRef.current ?? 0;
+
+    const sources = availableSourcesRef.current || [];
+
+    // Vote for the most common total episode count across sources that expose episodes.
+    const epCountMap = new Map<number, number>();
+    sources.forEach((s) => {
+      if (Array.isArray(s.episodes)) {
+        const count = s.episodes.length;
+        epCountMap.set(count, (epCountMap.get(count) || 0) + 1);
+      }
+    });
+
+    // Determine majority episode count; if none, skip strict filtering.
+    let majorityCount: number | null = null;
+    let majorityVotes = 0;
+    epCountMap.forEach((votes, count) => {
+      if (votes > majorityVotes) {
+        majorityVotes = votes;
+        majorityCount = count;
+      }
+    });
+
+    // Keep sources that both have the requested episode index AND match the majority episode count (when known).
+    const filtered = sources.filter((s) => {
+      const hasEpisode =
+        !Array.isArray(s.episodes) || s.episodes.length > episodeIndex;
+      if (!hasEpisode) return false;
+
+      if (majorityCount === null) return true; // no data to verify
+
+      if (!Array.isArray(s.episodes)) return false; // cannot verify, drop
+      return s.episodes.length === majorityCount;
+    });
+
     const names =
-      availableSourcesRef.current
-        ?.map((s) => (s.source_name || '').trim())
+      filtered
+        .map((s) => (s.source_name || '').trim())
         .filter((name) => name.length > 0) || [];
 
     // Deduplicate case-insensitively while preserving first-seen casing.
