@@ -35,7 +35,15 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const locale = await getLocale();
+  // Default to server-side detected locale
+  let locale = await getLocale();
+
+  // Optionally fetch user-specific language preference (e.g., from session or DB)
+  // Example:
+  // const userLang = await getUserLanguagePreference();
+  // if (userLang) {
+  //   locale = userLang;
+  // }
   const messages = await getMessages();
 
   let siteName = process.env.SITE_NAME || 'MoonTV';
