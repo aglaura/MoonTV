@@ -1521,9 +1521,9 @@ function PlayPageClient() {
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes:
-          (majorityEpisodeCountRef.current ??
-            detailRef.current?.episodes.length ||
-            1),
+          majorityEpisodeCountRef.current ??
+          detailRef.current?.episodes.length ??
+          1,
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
         save_time: Date.now(),
@@ -1633,9 +1633,9 @@ function PlayPageClient() {
           year: detailRef.current?.year,
           cover: detailRef.current?.poster || '',
           total_episodes:
-            (majorityEpisodeCountRef.current ??
-              detailRef.current?.episodes.length ||
-              1),
+            majorityEpisodeCountRef.current ??
+            detailRef.current?.episodes.length ??
+            1,
           save_time: Date.now(),
           search_title: searchTitle,
         });
