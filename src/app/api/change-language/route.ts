@@ -1,6 +1,6 @@
-?import { NextRequest, NextResponse } from 'next/server';
-import { setUserLanguage, getUserLanguage, type Locale } from '@/lib/userLanguage';
 import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getUserLanguage, setUserLanguage, type Locale } from '@/lib/userLanguage';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
