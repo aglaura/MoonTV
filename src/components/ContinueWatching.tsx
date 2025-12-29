@@ -127,22 +127,15 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                   className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
                 >
                   <VideoCard
-                    id={id}
+                    // Render like a normal aggregated card; let /play find the best source
                     title={record.title}
                     poster={record.cover}
                     year={record.year}
-                    source={source}
-                    source_name={record.source_name}
-                    progress={getProgress(record)}
                     episodes={record.total_episodes}
                     currentEpisode={record.index}
-                    query={record.search_title}
-                    from='playrecord'
-                    onDelete={() =>
-                      setPlayRecords((prev) =>
-                        prev.filter((r) => r.key !== record.key)
-                      )
-                    }
+                    query={record.search_title || record.title}
+                    from='search'
+                    isAggregate={true}
                     type={record.total_episodes > 1 ? 'tv' : ''}
                   />
                 </div>

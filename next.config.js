@@ -5,11 +5,6 @@ const nextConfig = {
   eslint: {
     dirs: ['src'],
   },
-  i18n: {
-    locales: ['en', 'zh-Hans', 'zh-Hant'],
-    defaultLocale: 'zh-Hant',
-    localeDetection: true,
-  },
 
   reactStrictMode: false,
   swcMinify: false,
