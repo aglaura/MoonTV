@@ -36,6 +36,7 @@ function HomeClient() {
     BangumiCalendarData[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const { announcement } = useSite();
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
@@ -71,6 +72,7 @@ function HomeClient() {
     const fetchRecommendData = async () => {
       try {
         setLoading(true);
+        setError(false);
 
         // 并行获取热门电影、热门剧集和热门综艺
         // 豆瓣 API 只接受簡體分類標籤（例如 '热门'），所以相關參數保持簡體字
@@ -86,21 +88,28 @@ function HomeClient() {
             GetBangumiCalendarData(),
           ]);
 
-        if (moviesData.code === 200) {
+        if (moviesData?.code === 200) {
           setHotMovies(moviesData.list);
+        } else {
+          console.warn('获取热门电影数据失败:', moviesData?.message);
         }
 
-        if (tvShowsData.code === 200) {
+        if (tvShowsData?.code === 200) {
           setHotTvShows(tvShowsData.list);
+        } else {
+          console.warn('获取热门剧集数据失败:', tvShowsData?.message);
         }
 
-        if (varietyShowsData.code === 200) {
+        if (varietyShowsData?.code === 200) {
           setHotVarietyShows(varietyShowsData.list);
+        } else {
+          console.warn('获取热门综艺数据失败:', varietyShowsData?.message);
         }
 
         setBangumiCalendarData(bangumiCalendarData);
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -227,6 +236,14 @@ function HomeClient() {
               {/* 继续观看 */}
               <ContinueWatching />
 
+              {/* 错误提示 */}
+              {error && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                  <p className="font-bold">⚠️ 数据加载异常</p>
+                  <p>无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。</p>
+                </div>
+              )}
+
               {/* 熱門電影 */}
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
@@ -255,6 +272,11 @@ function HomeClient() {
                           <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                         </div>
                       ))
+                    : error || hotMovies.length === 0
+                    ? // 显示空状态或错误状态
+                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
+                        {error ? '数据加载失败' : '暂无数据'}
+                      </div>
                     : // 顯示真實數據
                       hotMovies.map((movie, index) => (
                         <div
@@ -303,6 +325,11 @@ function HomeClient() {
                           <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                         </div>
                       ))
+                    : error || hotTvShows.length === 0
+                    ? // 显示空状态或错误状态
+                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
+                        {error ? '数据加载失败' : '暂无数据'}
+                      </div>
                     : // 顯示真實數據
                       hotTvShows.map((show, index) => (
                         <div
@@ -371,28 +398,33 @@ function HomeClient() {
                             (item) => item.weekday.en === currentWeekday
                           )?.items || [];
 
-                        return todayAnimes.map((anime, index) => (
-                          <div
-                            key={`${anime.id}-${index}`}
-                            className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                          >
-                            <VideoCard
-                              from='douban'
-                              title={anime.name_cn || anime.name}
-                              poster={
-                                anime.images.large ||
-                                anime.images.common ||
-                                anime.images.medium ||
-                                anime.images.small ||
-                                anime.images.grid
-                              }
-                              douban_id={anime.id}
-                              rate={anime.rating?.score?.toFixed(1) || ''}
-                              year={anime.air_date?.split('-')?.[0] || ''}
-                              isBangumi={true}
-                            />
-                          </div>
-                        ));
+                        return todayAnimes.length === 0
+                          ? // 显示空状态
+                            <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
+                              暂无番剧数据
+                            </div>
+                          : todayAnimes.map((anime, index) => (
+                              <div
+                                key={`${anime.id}-${index}`}
+                                className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
+                              >
+                                <VideoCard
+                                  from='douban'
+                                  title={anime.name_cn || anime.name}
+                                  poster={
+                                    anime.images.large ||
+                                    anime.images.common ||
+                                    anime.images.medium ||
+                                    anime.images.small ||
+                                    anime.images.grid
+                                  }
+                                  douban_id={anime.id}
+                                  rate={anime.rating?.score?.toFixed(1) || ''}
+                                  year={anime.air_date?.split('-')?.[0] || ''}
+                                  isBangumi={true}
+                                />
+                              </div>
+                            ));
                       })()}
                 </ScrollableRow>
               </section>
@@ -425,6 +457,11 @@ function HomeClient() {
                           <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
                         </div>
                       ))
+                    : error || hotVarietyShows.length === 0
+                    ? // 显示空状态或错误状态
+                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
+                        {error ? '数据加载失败' : '暂无数据'}
+                      </div>
                     : // 顯示真實數據
                       hotVarietyShows.map((show, index) => (
                         <div
