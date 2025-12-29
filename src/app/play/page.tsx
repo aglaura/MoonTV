@@ -175,6 +175,7 @@ function PlayPageClient() {
   // 上次使用的音量，默认 0.7
   const lastVolumeRef = useRef<number>(0.7);
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
+  const hasStartedRef = useRef<boolean>(false);
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
     null
   );
@@ -1203,6 +1204,7 @@ function PlayPageClient() {
         const bestSource = await preferBestSource(allSources);
         if (
           optimizationEnabled &&
+          !hasStartedRef.current &&
           (bestSource.source !== currentSourceRef.current ||
             bestSource.id !== currentIdRef.current)
         ) {
@@ -1276,6 +1278,7 @@ function PlayPageClient() {
       // 顯示换源加载状态
       setVideoLoadingStage('sourceChanging');
       setIsVideoLoading(true);
+      hasStartedRef.current = false;
 
       // 记录当前播放进度（仅在同一集数切换时恢复）
       const currentPlayTime = artPlayerRef.current?.currentTime || 0;
@@ -1917,6 +1920,7 @@ function PlayPageClient() {
 
       // 监听视频可播放事件，这时恢复播放进度更可靠
       artPlayerRef.current.on('video:canplay', () => {
+        hasStartedRef.current = true;
         if (loadTimeoutRef.current) {
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
