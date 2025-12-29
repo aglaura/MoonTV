@@ -9,7 +9,7 @@ import { getSharedPasswords } from '@/lib/sharedPasswords';
 const LOCALES = ['en', 'zh-Hans', 'zh-Hant'] as const;
 const intlMiddleware = createIntlMiddleware({
   locales: LOCALES as unknown as string[],
-  defaultLocale: 'zh-Hant',
+  defaultLocale: 'en', // Changed to English as default
   localePrefix: 'never',
 });
 

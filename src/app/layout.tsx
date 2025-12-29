@@ -9,6 +9,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
+import LanguageSelector from '@/components/LanguageSelector';
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
@@ -78,7 +79,17 @@ export default async function RootLayout({
         >
           <NextIntlClientProvider locale={locale} messages={messages}>
             <SiteProvider siteName={siteName} announcement={announcement}>
-              {children}
+              {/* Header with language selector */}
+              <header className="sticky top-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+                <div className="container mx-auto px-4 py-3 flex justify-end">
+                  <div className="flex items-center space-x-4">
+                    <LanguageSelector />
+                  </div>
+                </div>
+              </header>
+              <main>
+                {children}
+              </main>
             </SiteProvider>
           </NextIntlClientProvider>
         </ThemeProvider>

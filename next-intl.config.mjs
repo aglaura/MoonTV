@@ -1,7 +1,7 @@
 import {getRequestConfig} from 'next-intl/server';
 
 const SUPPORTED = ['en', 'zh-Hans', 'zh-Hant'];
-const DEFAULT_LOCALE = 'zh-Hant';
+const DEFAULT_LOCALE = 'en'; // Changed to English as default
 
 // Central next-intl config for Next.js app router
 export default getRequestConfig(async ({locale}) => {
