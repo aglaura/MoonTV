@@ -548,6 +548,7 @@ function PlayPageClient() {
     ? `${displayTitleText} (${englishVideoTitle})`
     : displayTitleText;
   const artRef = useRef<HTMLDivElement | null>(null);
+  const autoErrorRecoveryRef = useRef(false);
 
   // -----------------------------------------------------------------------------
   // 工具函数（Utils）
@@ -1379,6 +1380,21 @@ function PlayPageClient() {
       document.removeEventListener('keydown', handleKeyboardShortcuts);
     };
   }, []);
+
+  // 自动错误恢复：出现错误时尝试切换下一可用源
+  useEffect(() => {
+    if (error && !autoErrorRecoveryRef.current) {
+      autoErrorRecoveryRef.current = true;
+      const switched = trySwitchToNextSource();
+      if (switched) {
+        setError(null);
+        setLoading(true);
+      }
+    }
+    if (!error) {
+      autoErrorRecoveryRef.current = false;
+    }
+  }, [error, trySwitchToNextSource]);
 
   // ---------------------------------------------------------------------------
   // 集数切换
