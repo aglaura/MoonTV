@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 /* eslint-disable @typescript-eslint/no-var-requires */
-// Explicitly point next-intl to the config file so it is always found in build
-const withNextIntl = require('next-intl/plugin')('./next-intl.config.js');
-
 const nextConfig = {
   output: 'standalone',
   eslint: {
@@ -73,7 +70,7 @@ if (
   process.env.NEXT_DISABLE_PWA === '1' ||
   process.env.NEXT_DISABLE_PWA === 'true'
 ) {
-  module.exports = withNextIntl(nextConfig);
+  module.exports = nextConfig;
 } else {
   const withPWA = require('next-pwa')({
     dest: 'public',
@@ -81,5 +78,5 @@ if (
     register: true,
     skipWaiting: true,
   });
-  module.exports = withPWA(withNextIntl(nextConfig));
+  module.exports = withPWA(nextConfig);
 }

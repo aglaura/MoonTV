@@ -3,13 +3,11 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 
 import type { Metadata, Viewport } from 'next';
 
+import LanguageSelector from '@/components/LanguageSelector';
 import { getConfig } from '@/lib/config';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages, setRequestLocale } from 'next-intl/server';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
-import LanguageSelector from '@/components/LanguageSelector';
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,15 +33,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Get the locale from the request
-  const locale = await getLocale();
-  
-  // Set the locale for static rendering
-  setRequestLocale(locale);
-  
-  // Get messages for the locale
-  const messages = await getMessages();
-
   let siteName = process.env.SITE_NAME || 'MoonTV';
   let announcement =
     process.env.ANNOUNCEMENT ||
@@ -66,7 +55,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning>
       <head>
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
@@ -83,21 +72,19 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <NextIntlClientProvider locale={locale} messages={messages}>
-            <SiteProvider siteName={siteName} announcement={announcement}>
-              {/* Header with language selector */}
-              <header className="sticky top-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-                <div className="container mx-auto px-4 py-3 flex justify-end">
-                  <div className="flex items-center space-x-4">
-                    <LanguageSelector />
-                  </div>
+          <SiteProvider siteName={siteName} announcement={announcement}>
+            {/* Header with language selector */}
+            <header className="sticky top-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+              <div className="container mx-auto px-4 py-3 flex justify-end">
+                <div className="flex items-center space-x-4">
+                  <LanguageSelector />
                 </div>
-              </header>
-              <main>
-                {children}
-              </main>
-            </SiteProvider>
-          </NextIntlClientProvider>
+              </div>
+            </header>
+            <main>
+              {children}
+            </main>
+          </SiteProvider>
         </ThemeProvider>
       </body>
     </html>
