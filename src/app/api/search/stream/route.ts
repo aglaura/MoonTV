@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
       let emptyCount = 0;
       let failedCount = 0;
 
-      // Fire provider searches in parallel (order comes from SourceConfig).
-      const searchPromises = apiSites.map(async (site) => {
+      // Fire provider searches sequentially in valuation order (already sorted in getAvailableApiSites).
+      for (const site of apiSites) {
         try {
           const { results, failed } = await searchWithRetry(
             site,
@@ -75,9 +75,8 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           failedCount += 1;
         }
-      });
+      }
 
-      await Promise.all(searchPromises);
       controller.enqueue(
         JSON.stringify({
           __meta: true,
