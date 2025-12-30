@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       const apiSites = await getAvailableApiSites();
       const simplifiedQuery = convertToSimplified(query) || query;
 
+      // Fire provider searches in parallel (order comes from SourceConfig).
       const searchPromises = apiSites.map(async (site) => {
         try {
           const results = await searchFromApi(site, simplifiedQuery);

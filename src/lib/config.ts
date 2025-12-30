@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-console, @typescript-eslint/no-non-null-assertion */
 
-import { getStorage } from '@/lib/db';
+import { db, getStorage } from '@/lib/db';
 
 import { AdminConfig } from './admin.types';
 import runtimeConfig from './runtime';
 import { IStorage } from './types';
+import { getQualityRank, parseSpeedToKBps } from './utils';
+import { getQualityRank, parseSpeedToKBps } from './utils';
 
 export interface ApiSite {
   key: string;
@@ -103,6 +105,8 @@ export const API_CONFIG = {
 // 在模块加载时根据环境决定配置来源
 let fileConfig: ConfigFileStruct;
 let cachedConfig: AdminConfig;
+let sortedApiSitesCache: ApiSite[] | null = null;
+let apiSiteOrderInitialized = false;
 
 function buildAdminConfigFromFile(
   config: ConfigFileStruct,
@@ -543,9 +547,59 @@ export async function getCacheTime(): Promise<number> {
   return config.SiteConfig.SiteInterfaceCacheTime || 7200;
 }
 
+async function sortApiSitesByValuations(base: ApiSite[]): Promise<ApiSite[]> {
+  if (!base || base.length === 0) return [];
+  try {
+    const valuations = await db.getAllSourceValuations();
+    if (!valuations || valuations.length === 0) {
+      return base;
+    }
+    const valMap = new Map<
+      string,
+      { qualityRank: number; speedValue: number; pingTime: number }
+    >();
+    valuations.forEach((v: any) => {
+      const key = (v.key || v.source || '').trim();
+      if (!key) return;
+      const qualityRank = v.qualityRank ?? getQualityRank(v.quality);
+      const speedValue = v.speedValue ?? parseSpeedToKBps(v.loadSpeed);
+      const pingTime = Number.isFinite(v.pingTime)
+        ? v.pingTime
+        : Number.MAX_SAFE_INTEGER;
+      valMap.set(key, { qualityRank, speedValue, pingTime });
+    });
+
+    const scored = base.map((site, index) => {
+      const val =
+        valMap.get(site.key) ||
+        valMap.get(site.name) ||
+        (site.api ? valMap.get(site.api) : undefined);
+      return {
+        site,
+        qualityRank: val?.qualityRank ?? 0,
+        speedValue: val?.speedValue ?? 0,
+        pingTime: val?.pingTime ?? Number.MAX_SAFE_INTEGER,
+        index,
+      };
+    });
+
+    scored.sort((a, b) => {
+      if (b.qualityRank !== a.qualityRank) return b.qualityRank - a.qualityRank;
+      if (b.speedValue !== a.speedValue) return b.speedValue - a.speedValue;
+      if (a.pingTime !== b.pingTime) return a.pingTime - b.pingTime;
+      return a.index - b.index;
+    });
+
+    return scored.map((s) => s.site);
+  } catch (error) {
+    console.warn('Failed to sort API sites by valuations:', error);
+    return base;
+  }
+}
+
 export async function getAvailableApiSites(): Promise<ApiSite[]> {
   const config = await getConfig();
-  return config.SourceConfig.filter(
+  const base = config.SourceConfig.filter(
     (s) => !s.disabled && !!s.api
   ).map((s) => ({
     key: s.key,
@@ -554,4 +608,15 @@ export async function getAvailableApiSites(): Promise<ApiSite[]> {
     m3u8: s.m3u8,
     detail: s.detail,
   }));
+
+  if (sortedApiSitesCache) {
+    return sortedApiSitesCache;
+  }
+
+  if (!apiSiteOrderInitialized) {
+    apiSiteOrderInitialized = true;
+    sortedApiSitesCache = await sortApiSitesByValuations(base);
+  }
+
+  return sortedApiSitesCache || base;
 }
