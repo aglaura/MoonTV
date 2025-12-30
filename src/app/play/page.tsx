@@ -409,7 +409,10 @@ function PlayPageClient() {
 
       const filtered =
         majority != null
-          ? valid.filter((s) => (s.episodes?.length || 0) === majority)
+          ? valid.filter((s) => {
+              const len = s.episodes?.length || 0;
+              return Math.abs(len - majority) <= 2;
+            })
           : valid;
 
       const sorted = sortSourcesByValuation(filtered, infoOverride);
