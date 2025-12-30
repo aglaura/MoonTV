@@ -134,6 +134,7 @@ function PlayPageClient() {
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
   const availableSourcesRef = useRef<SearchResult[]>([]);
   const failedSourcesRef = useRef<Set<string>>(new Set());
+  const [providerCount, setProviderCount] = useState(0);
 
   // 同步最新值到 refs
   useEffect(() => {
@@ -1228,6 +1229,12 @@ function PlayPageClient() {
         availableSourcesRef.current = finalSorted;
         return finalSorted;
       });
+
+      // 记录已搜索的提供者数量（按源标识去重）
+      const uniqueProviders = new Set(
+        allSources.map((s) => (s.source_name || s.source || '').toString())
+      );
+      setProviderCount(uniqueProviders.size);
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
@@ -2390,6 +2397,7 @@ function PlayPageClient() {
                 sourceSearchLoading={sourceSearchLoading}
                 sourceSearchError={sourceSearchError}
                 precomputedVideoInfo={precomputedVideoInfo}
+                providerCount={providerCount}
               />
             </div>
           </div>
