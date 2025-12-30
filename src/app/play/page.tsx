@@ -1159,14 +1159,6 @@ function PlayPageClient() {
           return sorted;
         });
 
-        const totalSources = allSources.length;
-        // 只有在找到至少 4 個來源後才開始播放，否則繼續等待更多來源
-        if (!playbackInitialized && totalSources >= 4) {
-          const bestInitial =
-            selectBestSourceByValuation(allSources) ?? allSources[0];
-          initializePlayback(bestInitial);
-        }
-
         newSources.forEach((source) => {
           if (!source.episodes || source.episodes.length === 0) {
             const key = getValuationKey(source.source);
@@ -1217,10 +1209,15 @@ function PlayPageClient() {
 
       setSourceSearchLoading(false);
       fetchStoredValuations(allSources);
+      // 确保搜索完成后使用最终排序结果
+      setAvailableSources(() => {
+        const finalSorted = verifyAndSortSources(allSources);
+        availableSourcesRef.current = finalSorted;
+        return finalSorted;
+      });
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
-          // 讀取完成但來源少於 4 個時，使用現有最佳來源開始播放
           const bestInitial =
             selectBestSourceByValuation(allSources) ?? allSources[0];
           initializePlayback(bestInitial);
