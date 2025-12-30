@@ -1159,30 +1159,76 @@ function PlayPageClient() {
   };
 
   const videoClickHandlerRef = useRef<((ev: Event) => void) | null>(null);
+  const videoDblClickHandlerRef = useRef<((ev: MouseEvent) => void) | null>(
+    null
+  );
+  const singleTapTimerRef = useRef<number | null>(null);
 
-  const removeVideoClickHandler = () => {
-    if (artPlayerRef.current?.video && videoClickHandlerRef.current) {
-      (artPlayerRef.current.video as HTMLVideoElement).removeEventListener(
-        'click',
-        videoClickHandlerRef.current
-      );
+  const removeVideoHandlers = () => {
+    if (singleTapTimerRef.current) {
+      clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = null;
+    }
+    if (artPlayerRef.current?.video) {
+      const v = artPlayerRef.current.video as HTMLVideoElement;
+      if (videoClickHandlerRef.current) {
+        v.removeEventListener('click', videoClickHandlerRef.current);
+      }
+      if (videoDblClickHandlerRef.current) {
+        v.removeEventListener('dblclick', videoDblClickHandlerRef.current);
+      }
     }
     videoClickHandlerRef.current = null;
+    videoDblClickHandlerRef.current = null;
   };
 
   const attachVideoToggleHandler = (video: HTMLVideoElement) => {
-    removeVideoClickHandler();
+    removeVideoHandlers();
     const handler = () => {
-      const player = artPlayerRef.current;
-      if (!player) return;
-      if (player.paused) {
-        player.play();
-      } else {
-        player.pause();
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
       }
+      singleTapTimerRef.current = window.setTimeout(() => {
+        const player = artPlayerRef.current;
+        if (!player) return;
+        if (player.paused) {
+          player.play();
+        } else {
+          player.pause();
+        }
+        singleTapTimerRef.current = null;
+      }, 220);
     };
     videoClickHandlerRef.current = handler;
     video.addEventListener('click', handler);
+
+    const dblHandler = (ev: MouseEvent) => {
+      ev.preventDefault();
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = null;
+      }
+      const player = artPlayerRef.current;
+      if (!player) return;
+      const rect = video.getBoundingClientRect();
+      const midX = rect.left + rect.width / 2;
+      const seekForward = ev.clientX >= midX;
+      const delta = seekForward ? 10 : -10;
+      const nextTime = Math.max(
+        0,
+        Math.min(
+          (player.duration || 0) - 0.1,
+          (player.currentTime || 0) + delta
+        )
+      );
+      player.currentTime = nextTime;
+      player.notice?.show?.(
+        `${seekForward ? '快進' : '快退'} 10 秒至 ${Math.floor(nextTime)}s`
+      );
+    };
+    videoDblClickHandlerRef.current = dblHandler;
+    video.addEventListener('dblclick', dblHandler);
   };
 
   // 去廣告相关函数
@@ -2046,7 +2092,7 @@ function PlayPageClient() {
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
       }
-      removeVideoClickHandler();
+      removeVideoHandlers();
       // 销毁播放器实例
       artPlayerRef.current.destroy();
       artPlayerRef.current = null;
