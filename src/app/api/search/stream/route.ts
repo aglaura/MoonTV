@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 
 import { ApiSite, getAvailableApiSites } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
+import { SearchResult } from '@/lib/types';
 import { convertToSimplified } from '@/lib/locale';
 import { convertResultsArray } from '@/lib/responseTrad';
 
@@ -12,21 +13,28 @@ async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function searchWithRetry(site: ApiSite, query: string) {
+async function searchWithRetry(
+  site: ApiSite,
+  query: string
+): Promise<{ results: SearchResult[]; failed: boolean }> {
+  let lastError: unknown = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const results = await searchFromApi(site, query);
       if (results.length > 0) {
-        return results;
+        return { results, failed: false };
       }
     } catch (error) {
-      // Ignore and retry
+      lastError = error;
     }
     if (attempt < MAX_ATTEMPTS) {
       await delay(RETRY_DELAY_MS);
     }
   }
-  return [];
+  if (lastError) {
+    return { results: [], failed: true };
+  }
+  return { results: [], failed: false };
 }
 
 export const runtime = 'nodejs';
@@ -44,21 +52,42 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       const apiSites = await getAvailableApiSites();
       const simplifiedQuery = convertToSimplified(query) || query;
+      let foundCount = 0;
+      let emptyCount = 0;
+      let failedCount = 0;
 
       // Fire provider searches in parallel (order comes from SourceConfig).
       const searchPromises = apiSites.map(async (site) => {
         try {
-          const results = await searchWithRetry(site, simplifiedQuery);
+          const { results, failed } = await searchWithRetry(
+            site,
+            simplifiedQuery
+          );
           if (results.length > 0) {
             const transformed = convertResultsArray(results);
             controller.enqueue(JSON.stringify(transformed));
+            foundCount += 1;
+          } else if (failed) {
+            failedCount += 1;
+          } else {
+            emptyCount += 1;
           }
         } catch (error) {
-          // Ignore individual search errors
+          failedCount += 1;
         }
       });
 
       await Promise.all(searchPromises);
+      controller.enqueue(
+        JSON.stringify({
+          __meta: true,
+          searched: apiSites.length,
+          found: foundCount,
+          notFound: emptyCount + failedCount,
+          empty: emptyCount,
+          failed: failedCount,
+        })
+      );
       controller.close();
     },
   });

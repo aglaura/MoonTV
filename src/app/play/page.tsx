@@ -133,6 +133,13 @@ function PlayPageClient() {
   // 视频播放地址
   const [availableSources, setAvailableSources] = useState<SearchResult[]>([]);
   const availableSourcesRef = useRef<SearchResult[]>([]);
+  const [searchStats, setSearchStats] = useState({
+    total: 0,
+    found: 0,
+    notFound: 0,
+    empty: 0,
+    failed: 0,
+  });
   const failedSourcesRef = useRef<Set<string>>(new Set());
   const [providerCount, setProviderCount] = useState(0);
 
@@ -1153,6 +1160,16 @@ function PlayPageClient() {
             if (Array.isArray(entries)) {
               parsedSources.push(...entries);
             } else if (entries && typeof entries === 'object') {
+              if (entries.__meta) {
+                setSearchStats({
+                  total: entries.searched ?? 0,
+                  found: entries.found ?? 0,
+                  notFound: entries.notFound ?? 0,
+                  empty: entries.empty ?? 0,
+                  failed: entries.failed ?? 0,
+                });
+                continue;
+              }
               parsedSources.push(entries as SearchResult);
             }
           } catch (error) {
@@ -2398,6 +2415,7 @@ function PlayPageClient() {
                 sourceSearchError={sourceSearchError}
                 precomputedVideoInfo={precomputedVideoInfo}
                 providerCount={providerCount}
+                searchStats={searchStats}
               />
             </div>
           </div>

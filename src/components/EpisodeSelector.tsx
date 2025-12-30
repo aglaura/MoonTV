@@ -44,6 +44,14 @@ interface EpisodeSelectorProps {
   precomputedVideoInfo?: Map<string, VideoInfo>;
   /** 已搜索的提供者数量 */
   providerCount?: number;
+  /** 搜索统计 */
+  searchStats?: {
+    total: number;
+    found: number;
+    notFound: number;
+    empty?: number;
+    failed?: number;
+  };
 }
 
 /**
@@ -63,6 +71,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   sourceSearchError = null,
   precomputedVideoInfo,
   providerCount = 0,
+  searchStats = { total: 0, found: 0, notFound: 0 },
 }) => {
   const router = useRouter();
   const pageCount = Math.ceil(totalEpisodes / episodesPerPage);
@@ -489,7 +498,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             availableSources.length > 0 && (
               <div className='flex-1 overflow-y-auto space-y-2 pb-20'>
                 <div className='text-xs text-gray-600 dark:text-gray-300 mb-2 px-1'>
-                  已搜尋 {providerCount} 個來源提供者
+                  已搜尋 {providerCount || searchStats.total} 個來源提供者 ·
+                  找到 {searchStats.found} 個 · 未找到 {searchStats.notFound} 個
                 </div>
                 {availableSources
                   .sort((a, b) => {
