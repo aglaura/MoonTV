@@ -1190,6 +1190,23 @@ function PlayPageClient() {
           return sorted;
         });
 
+        // 首個可用來源就立刻開播，但若已有年份要求，必須匹配年份
+        if (!playbackInitialized && availableSourcesRef.current.length > 0) {
+          const requiredYear = (videoYearRef.current || '').trim();
+          const candidates =
+            requiredYear.length > 0
+              ? availableSourcesRef.current.filter(
+                  (s) => (s.year || '').trim() === requiredYear
+                )
+              : availableSourcesRef.current;
+
+          if (candidates.length > 0) {
+            const bestInitial =
+              selectBestSourceByValuation(candidates) || candidates[0];
+            initializePlayback(bestInitial);
+          }
+        }
+
         newSources.forEach((source) => {
           if (!source.episodes || source.episodes.length === 0) {
             const key = getValuationKey(source.source);
