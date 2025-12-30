@@ -700,6 +700,12 @@ function PlayPageClient() {
     undefined
   );
   const [clientInfo, setClientInfo] = useState<string>('');
+  const currentPlayingInfo = useMemo(() => {
+    const bySourceKey =
+      precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
+      precomputedVideoInfo.get(getValuationKey(currentSource));
+    return bySourceKey || null;
+  }, [currentSource, currentId, precomputedVideoInfo, getValuationKey]);
   const englishVideoTitle = imdbVideoTitle ?? undefined;
   const displayVideoTitle = useMemo(
     () => convertToTraditional(videoTitle),
@@ -2472,9 +2478,30 @@ function PlayPageClient() {
             }`}
           >
             <div className='relative w-full h-[300px] lg:h-full'>
-              {clientInfo && (
-                <div className='absolute top-2 left-2 z-[501] px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
-                  {clientInfo}
+              {(clientInfo || detail?.source_name || currentPlayingInfo) && (
+                <div className='absolute top-2 left-2 z-[501] flex flex-col gap-1'>
+                  {clientInfo && (
+                    <div className='px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
+                      {clientInfo}
+                    </div>
+                  )}
+                  {(detail?.source_name || currentPlayingInfo) && (
+                    <div className='flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-white/85 dark:bg-gray-800/85 text-xs font-medium text-gray-800 dark:text-gray-100 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
+                      <span>
+                        播放來源：
+                        {convertToTraditional(detail?.source_name || '') ||
+                          detail?.source_name ||
+                          currentSource}
+                      </span>
+                      {currentPlayingInfo && !currentPlayingInfo.hasError && (
+                        <>
+                          <span>解析度：{currentPlayingInfo.quality}</span>
+                          <span>載入速度：{currentPlayingInfo.loadSpeed}</span>
+                          <span>延遲：{currentPlayingInfo.pingTime}ms</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               <div
