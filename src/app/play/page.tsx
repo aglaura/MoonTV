@@ -405,55 +405,78 @@ function PlayPageClient() {
       sources: SearchResult[],
       infoOverride?: Map<string, PrecomputedVideoInfoEntry>
     ): SearchResult[] => {
-      const valid = (sources || []).filter(
-        (s) =>
-          Array.isArray(s.episodes) &&
-          s.episodes.length > 0 &&
-          currentEpisodeIndexRef.current < s.episodes.length
-      );
+      const valid = (sources || []).filter((s) => {
+        const len = s.episodes?.length || 0;
+        return Array.isArray(s.episodes) && len > 0;
+      });
 
       // 先按年份过滤（若有指定年份）
       const targetYear = (videoYearRef.current || '').trim();
-      const yearFiltered =
-        targetYear.length > 0
-          ? valid.filter((s) => {
-              const y = (s.year || '').trim();
-              return y === targetYear || y === '';
-            })
-          : valid;
+      const penalties = new Map<string, string[]>();
 
-      const sourcesForMajority =
-        yearFiltered.length > 0 ? yearFiltered : valid;
+      const matchesYear = (s: SearchResult) => {
+        const y = (s.year || '').trim();
+        if (!targetYear) return true; // no requirement
+        if (!y) return true; // keep unknown year
+        return y === targetYear;
+      };
+
+      const sourcesForMajority = valid.filter(matchesYear);
+      const majorityBase = sourcesForMajority.length > 0 ? sourcesForMajority : valid;
 
       const majority = determineMajorityEpisodeCount(sourcesForMajority);
       majorityEpisodeCountRef.current = majority;
 
-      const filtered =
-        majority != null
-          ? sourcesForMajority.filter((s) => {
-              const len = s.episodes?.length || 0;
-              return Math.abs(len - majority) <= 2;
-            })
-          : sourcesForMajority;
+      // 记录不匹配原因（不剔除，只作排序靠后）
+      valid.forEach((s) => {
+        const reasons: string[] = [];
+        if (!matchesYear(s)) {
+          reasons.push('年份不符');
+        }
+        if (majority != null) {
+          const len = s.episodes?.length || 0;
+          if (Math.abs(len - majority) > 2) {
+            reasons.push('集數偏離主流');
+          }
+        }
+        if (currentEpisodeIndexRef.current >= (s.episodes?.length || 0)) {
+          reasons.push('當前集數超出範圍');
+        }
+        if (reasons.length) {
+          penalties.set(getValuationKey(s.source), reasons);
+        }
+      });
 
-      const sorted = sortSourcesByValuation(filtered, infoOverride);
+      const sorted = sortSourcesByValuation(valid, infoOverride);
       const infoMap =
         infoOverride && infoOverride.size > 0
           ? infoOverride
           : precomputedVideoInfoRef.current;
 
-      return sorted.map((s) => {
+      const decorate = (s: SearchResult) => {
         const info = infoMap.get(getValuationKey(s.source));
-        return info
-          ? {
-              ...s,
-              quality: info.quality,
-              loadSpeed: info.loadSpeed,
-              speedValue: info.speedValue,
-              pingTime: info.pingTime,
-            }
-          : s;
-      });
+        const reasons = penalties.get(getValuationKey(s.source));
+        const base =
+          info && info.quality !== undefined
+            ? {
+                ...s,
+                quality: info.quality,
+                loadSpeed: info.loadSpeed,
+                speedValue: info.speedValue,
+                pingTime: info.pingTime,
+              }
+            : s;
+        return reasons && reasons.length
+          ? { ...base, verifyReason: reasons.join('；') }
+          : base;
+      };
+
+      const decorated = sorted.map(decorate);
+
+      // 将有惩罚的排在末尾
+      const withPenalty = decorated.filter((s) => s.verifyReason);
+      const noPenalty = decorated.filter((s) => !s.verifyReason);
+      return [...noPenalty, ...withPenalty];
     },
     [determineMajorityEpisodeCount, sortSourcesByValuation, getValuationKey]
   );

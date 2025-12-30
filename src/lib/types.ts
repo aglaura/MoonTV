@@ -110,6 +110,8 @@ export interface SearchResult {
   loadSpeed?: string;
   speedValue?: number;
   pingTime?: number;
+  // Verification note (e.g., year mismatch, episode count mismatch)
+  verifyReason?: string;
 }
 
 // 豆瓣資料結構
