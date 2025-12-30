@@ -6,7 +6,6 @@ import { AdminConfig } from './admin.types';
 import runtimeConfig from './runtime';
 import { IStorage } from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
-import { getQualityRank, parseSpeedToKBps } from './utils';
 
 export interface ApiSite {
   key: string;
