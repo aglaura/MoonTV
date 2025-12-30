@@ -214,6 +214,7 @@ function PlayPageClient() {
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
     null
   );
+  const [sourceSearchCompleted, setSourceSearchCompleted] = useState(false);
 
   // 优选和测速开关
   const [optimizationEnabled] = useState<boolean>(false);
@@ -422,9 +423,10 @@ function PlayPageClient() {
       };
 
       const sourcesForMajority = valid.filter(matchesYear);
-      const majorityBase = sourcesForMajority.length > 0 ? sourcesForMajority : valid;
-
-      const majority = determineMajorityEpisodeCount(sourcesForMajority);
+      const majority =
+        sourceSearchCompleted && sourcesForMajority.length > 0
+          ? determineMajorityEpisodeCount(sourcesForMajority)
+          : null;
       majorityEpisodeCountRef.current = majority;
 
       // 记录不匹配原因（不剔除，只作排序靠后）
@@ -433,7 +435,7 @@ function PlayPageClient() {
         if (!matchesYear(s)) {
           reasons.push('年份不符');
         }
-        if (majority != null) {
+        if (sourceSearchCompleted && majority != null) {
           const len = s.episodes?.length || 0;
           if (Math.abs(len - majority) > 2) {
             reasons.push('集數偏離主流');
@@ -478,7 +480,12 @@ function PlayPageClient() {
       const noPenalty = decorated.filter((s) => !s.verifyReason);
       return [...noPenalty, ...withPenalty];
     },
-    [determineMajorityEpisodeCount, sortSourcesByValuation, getValuationKey]
+    [
+      determineMajorityEpisodeCount,
+      sortSourcesByValuation,
+      getValuationKey,
+      sourceSearchCompleted,
+    ]
   );
 
   type SourceValuationPayload = {
@@ -1371,6 +1378,7 @@ function PlayPageClient() {
       }
 
       setSourceSearchLoading(false);
+      setSourceSearchCompleted(true);
       fetchStoredValuations(allSources);
       // 确保搜索完成后使用最终排序结果
       setAvailableSources(() => {
