@@ -1158,6 +1158,33 @@ function PlayPageClient() {
     }
   };
 
+  const videoClickHandlerRef = useRef<((ev: Event) => void) | null>(null);
+
+  const removeVideoClickHandler = () => {
+    if (artPlayerRef.current?.video && videoClickHandlerRef.current) {
+      (artPlayerRef.current.video as HTMLVideoElement).removeEventListener(
+        'click',
+        videoClickHandlerRef.current
+      );
+    }
+    videoClickHandlerRef.current = null;
+  };
+
+  const attachVideoToggleHandler = (video: HTMLVideoElement) => {
+    removeVideoClickHandler();
+    const handler = () => {
+      const player = artPlayerRef.current;
+      if (!player) return;
+      if (player.paused) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    };
+    videoClickHandlerRef.current = handler;
+    video.addEventListener('click', handler);
+  };
+
   // 去廣告相关函数
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
@@ -2009,6 +2036,7 @@ function PlayPageClient() {
           artPlayerRef.current.video as HTMLVideoElement,
           videoUrl
         );
+        attachVideoToggleHandler(artPlayerRef.current.video as HTMLVideoElement);
       }
       return;
     }
@@ -2018,6 +2046,7 @@ function PlayPageClient() {
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
       }
+      removeVideoClickHandler();
       // 销毁播放器实例
       artPlayerRef.current.destroy();
       artPlayerRef.current = null;
@@ -2256,6 +2285,7 @@ function PlayPageClient() {
           artPlayerRef.current.video as HTMLVideoElement,
           videoUrl
         );
+        attachVideoToggleHandler(artPlayerRef.current.video as HTMLVideoElement);
       }
 
       // Fallback timeout: if the video doesn't become playable in 6s, switch source
