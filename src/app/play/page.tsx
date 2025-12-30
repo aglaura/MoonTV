@@ -517,11 +517,12 @@ function PlayPageClient() {
       const valuationEntries: SourceValuationPayload[] = [];
 
       sources.forEach((s) => {
-        const key = getValuationKey(s.source);
-        if (!key || seen.has(key)) return;
-        seen.add(key);
+        const valKey = getValuationKey(s.source);
+        const sourceKey = `${s.source}-${s.id}`;
+        if (!valKey || seen.has(sourceKey)) return;
+        seen.add(sourceKey);
         if (!s.episodes || s.episodes.length === 0) return;
-        if (precomputedVideoInfoRef.current.has(key)) return;
+        if (precomputedVideoInfoRef.current.has(valKey)) return;
 
         const url = s.episodes[0];
         tasks.push(
@@ -531,7 +532,17 @@ function PlayPageClient() {
               const speedValue = parseSpeedToKBps(info.loadSpeed);
               setPrecomputedVideoInfo((prev) => {
                 const next = new Map(prev);
-                next.set(key, {
+                // store by valuation key
+                next.set(valKey, {
+                  quality: info.quality,
+                  loadSpeed: info.loadSpeed,
+                  pingTime: info.pingTime,
+                  speedValue,
+                  sampleCount: 1,
+                  hasError: false,
+                });
+                // also store by unique source key for UI lookup
+                next.set(sourceKey, {
                   quality: info.quality,
                   loadSpeed: info.loadSpeed,
                   pingTime: info.pingTime,
@@ -549,7 +560,7 @@ function PlayPageClient() {
               });
 
               valuationEntries.push({
-                key,
+                key: valKey,
                 source: s.source,
                 id: s.id,
                 quality: info.quality,
@@ -622,7 +633,7 @@ function PlayPageClient() {
         setPrecomputedVideoInfo((prev) => {
           const next = new Map(prev);
           deduped.forEach((value, key) => {
-            next.set(key, {
+            const entry: PrecomputedVideoInfoEntry = {
               quality: value.quality,
               loadSpeed: value.loadSpeed,
               pingTime: value.pingTime,
@@ -635,7 +646,15 @@ function PlayPageClient() {
                   ? value.sampleCount || 1
                   : 1,
               hasError: false,
-            });
+            };
+
+            // store by valuation key for sorting
+            next.set(key, entry);
+            // also store by unique source key for UI resolution badge
+            if (value.id) {
+              const sourceKey = `${value.source}-${value.id}`;
+              next.set(sourceKey, entry);
+            }
           });
           updatedInfoMap = next;
           return next;
