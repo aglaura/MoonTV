@@ -406,12 +406,18 @@ function PlayPageClient() {
       sources: SearchResult[],
       infoOverride?: Map<string, PrecomputedVideoInfoEntry>
     ): SearchResult[] => {
+      const isTrailer = (s: SearchResult) => {
+        const title = s.title || '';
+        const originalTitle = s.original_title || '';
+        return title.includes('預告片') || originalTitle.includes('預告片');
+      };
+
       const valid = (sources || []).filter((s) => {
         const len = s.episodes?.length || 0;
         return Array.isArray(s.episodes) && len > 0;
       });
 
-      // 先按年份过滤（若有指定年份）
+      // 先按年份过滤（若有指定年份），預告片不參與集數投票
       const targetYear = (videoYearRef.current || '').trim();
       const penalties = new Map<string, string[]>();
 
@@ -422,7 +428,9 @@ function PlayPageClient() {
         return y === targetYear;
       };
 
-      const sourcesForMajority = valid.filter(matchesYear);
+      const sourcesForMajority = valid.filter(
+        (s) => matchesYear(s) && !isTrailer(s)
+      );
       const majority =
         sourceSearchCompleted && sourcesForMajority.length > 0
           ? determineMajorityEpisodeCount(sourcesForMajority)
@@ -432,6 +440,9 @@ function PlayPageClient() {
       // 记录不匹配原因（不剔除，只作排序靠后）
       valid.forEach((s) => {
         const reasons: string[] = [];
+        if (isTrailer(s)) {
+          reasons.push('預告片');
+        }
         if (!matchesYear(s)) {
           reasons.push('年份不符');
         }
