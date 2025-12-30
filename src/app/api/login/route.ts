@@ -23,11 +23,13 @@ export async function POST(req: NextRequest) {
       // 未配置任何共享密碼時直接放行
       if (sharedPasswords.length === 0) {
         const response = NextResponse.json({ ok: true });
+        const expires = new Date();
+        expires.setDate(expires.getDate() + 7); // 7天过期
 
-        // 清除可能存在的认证cookie
-        response.cookies.set('auth', '', {
+        // 無密碼時直接寫入一個允許通行的 Cookie，避免重定向循環
+        response.cookies.set('auth', 'guest', {
           path: '/',
-          expires: new Date(0),
+          expires,
           sameSite: 'lax', // 改为 lax 以支持 PWA
           httpOnly: false, // PWA 需要客户端可访问
           secure: false, // 根据协议自动设置
