@@ -1163,6 +1163,11 @@ function PlayPageClient() {
     null
   );
   const singleTapTimerRef = useRef<number | null>(null);
+  const doubleTapStateRef = useRef<{
+    dir: 'forward' | 'backward' | null;
+    count: number;
+    ts: number;
+  }>({ dir: null, count: 0, ts: 0 });
 
   const removeVideoHandlers = () => {
     if (singleTapTimerRef.current) {
@@ -1214,7 +1219,19 @@ function PlayPageClient() {
       const rect = video.getBoundingClientRect();
       const midX = rect.left + rect.width / 2;
       const seekForward = ev.clientX >= midX;
-      const delta = seekForward ? 10 : -10;
+      const now = Date.now();
+      const sameDir =
+        doubleTapStateRef.current.dir === (seekForward ? 'forward' : 'backward');
+      const withinWindow = now - doubleTapStateRef.current.ts < 1000;
+      const nextCount =
+        sameDir && withinWindow ? doubleTapStateRef.current.count + 1 : 1;
+      doubleTapStateRef.current = {
+        dir: seekForward ? 'forward' : 'backward',
+        count: nextCount,
+        ts: now,
+      };
+
+      const delta = (seekForward ? 10 : -10) * nextCount;
       const nextTime = Math.max(
         0,
         Math.min(
@@ -1224,7 +1241,9 @@ function PlayPageClient() {
       );
       player.currentTime = nextTime;
       player.notice?.show?.(
-        `${seekForward ? '快進' : '快退'} 10 秒至 ${Math.floor(nextTime)}s`
+        `${seekForward ? '快進' : '快退'} ${Math.abs(delta)} 秒至 ${Math.floor(
+          nextTime
+        )}s`
       );
     };
     videoDblClickHandlerRef.current = dblHandler;
