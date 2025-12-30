@@ -510,6 +510,73 @@ function PlayPageClient() {
     []
   );
 
+  const probeResolutionsForSources = useCallback(
+    async (sources: SearchResult[]) => {
+      const tasks: Promise<void>[] = [];
+      const seen = new Set<string>();
+      const valuationEntries: SourceValuationPayload[] = [];
+
+      sources.forEach((s) => {
+        const key = getValuationKey(s.source);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        if (!s.episodes || s.episodes.length === 0) return;
+        if (precomputedVideoInfoRef.current.has(key)) return;
+
+        const url = s.episodes[0];
+        tasks.push(
+          (async () => {
+            try {
+              const info = await getVideoResolutionFromM3u8(url);
+              const speedValue = parseSpeedToKBps(info.loadSpeed);
+              setPrecomputedVideoInfo((prev) => {
+                const next = new Map(prev);
+                next.set(key, {
+                  quality: info.quality,
+                  loadSpeed: info.loadSpeed,
+                  pingTime: info.pingTime,
+                  speedValue,
+                  sampleCount: 1,
+                  hasError: false,
+                });
+                precomputedVideoInfoRef.current = next;
+                return next;
+              });
+              setAvailableSources((prev) => {
+                const sorted = verifyAndSortSources(prev);
+                availableSourcesRef.current = sorted;
+                return sorted;
+              });
+
+              valuationEntries.push({
+                key,
+                source: s.source,
+                id: s.id,
+                quality: info.quality,
+                loadSpeed: info.loadSpeed,
+                pingTime: info.pingTime,
+                qualityRank: getQualityRank(info.quality),
+                speedValue,
+                sampleCount: 1,
+                updated_at: Date.now(),
+              });
+            } catch {
+              // ignore resolution probe failures
+            }
+          })()
+        );
+      });
+
+      if (tasks.length) {
+        await Promise.allSettled(tasks);
+        if (valuationEntries.length) {
+          void persistSourceValuations(valuationEntries);
+        }
+      }
+    },
+    [getValuationKey, verifyAndSortSources, getQualityRank, persistSourceValuations]
+  );
+
   const fetchStoredValuations = useCallback(
     async (sources: SearchResult[]) => {
       if (!sources || sources.length === 0) return;
@@ -1284,6 +1351,8 @@ function PlayPageClient() {
       setAvailableSources(() => {
         const finalSorted = verifyAndSortSources(allSources);
         availableSourcesRef.current = finalSorted;
+        // 预先探测分辨率，以便立即显示
+        probeResolutionsForSources(finalSorted);
         return finalSorted;
       });
 
