@@ -617,17 +617,56 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
 
                           {/* 源名称和集数信息 - 垂直居中 */}
-                          <div className='flex items-center justify-between'>
-                            <span className='text-xs px-2 py-1 border border-gray-500/60 rounded text-gray-700 dark:text-gray-300'>
-                              {convertToTraditional(source.source_name) ||
-                                source.source_name}
-                            </span>
+                          <div className='flex items-center justify-between gap-2'>
+                            <div className='flex items-center gap-2'>
+                              <span className='text-xs px-2 py-1 border border-gray-500/60 rounded text-gray-700 dark:text-gray-300'>
+                                {convertToTraditional(source.source_name) ||
+                                  source.source_name}
+                              </span>
+                              {(() => {
+                                const sourceKey = `${source.source}-${source.id}`;
+                                const videoInfo = videoInfoMap.get(sourceKey);
+                                if (videoInfo && videoInfo.quality !== '未知') {
+                                  if (videoInfo.hasError) {
+                                    return (
+                                      <span className='text-xs text-red-500 dark:text-red-400'>
+                                        無測速數據
+                                      </span>
+                                    );
+                                  }
+                                  const isUltraHigh = ['4K', '2K'].includes(
+                                    videoInfo.quality
+                                  );
+                                  const isHigh = ['1080p', '720p'].includes(
+                                    videoInfo.quality
+                                  );
+                                  const textColorClasses = isUltraHigh
+                                    ? 'text-purple-600 dark:text-purple-400'
+                                    : isHigh
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-yellow-600 dark:text-yellow-400';
+                                  return (
+                                    <span
+                                      className={`text-xs font-semibold ${textColorClasses}`}
+                                    >
+                                      {videoInfo.quality}
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                             {source.episodes.length > 1 && (
                               <span className='text-xs text-gray-500 dark:text-gray-400 font-medium'>
                                 {source.episodes.length} 集
                               </span>
                             )}
                           </div>
+                          {source.verifyReason && (
+                            <div className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                              {source.verifyReason}
+                            </div>
+                          )}
 
                           {/* 网络信息 - 底部 */}
                           <div className='flex items-end h-6'>
