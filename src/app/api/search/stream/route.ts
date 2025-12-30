@@ -55,29 +55,56 @@ export async function GET(request: NextRequest) {
       let foundCount = 0;
       let emptyCount = 0;
       let failedCount = 0;
+      let anyResult = false;
+
+      const runWave = async () => {
+        await Promise.all(
+          apiSites.map(async (site) => {
+            try {
+              const { results, failed } = await searchWithRetry(
+                site,
+                simplifiedQuery
+              );
+              if (results.length > 0) {
+                const transformed = convertResultsArray(results);
+                controller.enqueue(JSON.stringify(transformed));
+                foundCount += 1;
+                anyResult = true;
+              } else if (failed) {
+                failedCount += 1;
+              } else {
+                emptyCount += 1;
+              }
+            } catch (error) {
+              failedCount += 1;
+            }
+          })
+        );
+      };
 
       // Fire provider searches in parallel (order comes from SourceConfig/valuations).
-      const searchPromises = apiSites.map(async (site) => {
-        try {
-          const { results, failed } = await searchWithRetry(
-            site,
-            simplifiedQuery
-          );
-          if (results.length > 0) {
-            const transformed = convertResultsArray(results);
-            controller.enqueue(JSON.stringify(transformed));
-            foundCount += 1;
-          } else if (failed) {
-            failedCount += 1;
+      const wavePromises: Promise<void>[] = [];
+      const firstWave = runWave();
+      wavePromises.push(firstWave);
+
+      // If nothing comes back within 2 seconds, trigger a second wave as fallback.
+      let retryTimer: NodeJS.Timeout | null = null;
+      const secondWavePromise = new Promise<void>((resolveSecond) => {
+        retryTimer = setTimeout(() => {
+          if (!anyResult) {
+            const secondWave = runWave();
+            wavePromises.push(secondWave);
+            secondWave.finally(resolveSecond);
           } else {
-            emptyCount += 1;
+            resolveSecond();
           }
-        } catch (error) {
-          failedCount += 1;
-        }
+        }, 2000);
       });
 
-      await Promise.all(searchPromises);
+      await Promise.all([...wavePromises, secondWavePromise]);
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
 
       controller.enqueue(
         JSON.stringify({
