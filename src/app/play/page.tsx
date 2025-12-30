@@ -404,16 +404,29 @@ function PlayPageClient() {
           currentEpisodeIndexRef.current < s.episodes.length
       );
 
-      const majority = determineMajorityEpisodeCount(valid);
+      // 先按年份过滤（若有指定年份）
+      const targetYear = (videoYearRef.current || '').trim();
+      const yearFiltered =
+        targetYear.length > 0
+          ? valid.filter((s) => {
+              const y = (s.year || '').trim();
+              return y === targetYear || y === '';
+            })
+          : valid;
+
+      const sourcesForMajority =
+        yearFiltered.length > 0 ? yearFiltered : valid;
+
+      const majority = determineMajorityEpisodeCount(sourcesForMajority);
       majorityEpisodeCountRef.current = majority;
 
       const filtered =
         majority != null
-          ? valid.filter((s) => {
+          ? sourcesForMajority.filter((s) => {
               const len = s.episodes?.length || 0;
               return Math.abs(len - majority) <= 2;
             })
-          : valid;
+          : sourcesForMajority;
 
       const sorted = sortSourcesByValuation(filtered, infoOverride);
       const infoMap =
