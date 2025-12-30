@@ -1587,7 +1587,12 @@ function PlayPageClient() {
 
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
-    const ua = navigator.userAgent.toLowerCase();
+    const uaRaw = navigator.userAgent;
+    const ua = uaRaw.toLowerCase();
+    const findVersion = (regex: RegExp) => {
+      const m = uaRaw.match(regex);
+      return m?.[1];
+    };
 
     const os = (() => {
       if (/windows nt/.test(ua)) return 'Windows';
@@ -1606,7 +1611,39 @@ function PlayPageClient() {
       return 'Unknown Browser';
     })();
 
-    setClientInfo(`${browser} • ${os}`);
+    const browserVersion = (() => {
+      switch (browser) {
+        case 'Edge':
+          return findVersion(/Edg\/([\d.]+)/);
+        case 'Chrome':
+          return findVersion(/Chrome\/([\d.]+)/);
+        case 'Firefox':
+          return findVersion(/Firefox\/([\d.]+)/);
+        case 'Safari':
+          return findVersion(/Version\/([\d.]+)/);
+        default:
+          return undefined;
+      }
+    })();
+
+    const osVersion = (() => {
+      switch (os) {
+        case 'Windows':
+          return findVersion(/Windows NT ([\d.]+)/);
+        case 'macOS':
+          return findVersion(/Mac OS X ([\d_]+)/)?.replace(/_/g, '.');
+        case 'Android':
+          return findVersion(/Android ([\d.]+)/);
+        case 'iOS':
+          return findVersion(/OS ([\d_]+)/)?.replace(/_/g, '.');
+        default:
+          return undefined;
+      }
+    })();
+
+    const browserLabel = browserVersion ? `${browser} ${browserVersion}` : browser;
+    const osLabel = osVersion ? `${os} ${osVersion}` : os;
+    setClientInfo(`${browserLabel} • ${osLabel}`);
   }, []);
 
   // 自动错误恢复：出现错误时尝试切换下一可用源
@@ -2421,6 +2458,38 @@ function PlayPageClient() {
             )}
           </h1>
         </div>
+        {/* 播放資訊（置於播放器上方） */}
+        {(clientInfo || detail?.source_name || currentPlayingInfo) && (
+          <div className='flex flex-wrap items-center gap-3 text-xs text-gray-800 dark:text-gray-100 bg-white/70 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/70 rounded-lg px-3 py-2 shadow-sm backdrop-blur'>
+            {clientInfo && (
+              <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 font-medium border border-gray-200/80 dark:border-gray-700/60'>
+                {clientInfo}
+              </span>
+            )}
+            {(detail?.source_name || currentPlayingInfo) && (
+              <span className='px-2 py-1 rounded-full bg-white/85 dark:bg-gray-800/85 font-medium border border-gray-200/80 dark:border-gray-700/60'>
+                播放來源：
+                {convertToTraditional(detail?.source_name || '') ||
+                  detail?.source_name ||
+                  currentSource}
+              </span>
+            )}
+            {currentPlayingInfo && !currentPlayingInfo.hasError && (
+              <>
+                <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
+                  解析度：{currentPlayingInfo.quality}
+                </span>
+                <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
+                  載入速度：{currentPlayingInfo.loadSpeed}
+                </span>
+                <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
+                  延遲：{currentPlayingInfo.pingTime}ms
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2'>
           {/* 折叠控制 - 仅在 lg 及以上屏幕顯示 */}
@@ -2478,32 +2547,6 @@ function PlayPageClient() {
             }`}
           >
             <div className='relative w-full h-[300px] lg:h-full'>
-              {(clientInfo || detail?.source_name || currentPlayingInfo) && (
-                <div className='absolute top-2 left-2 z-[501] flex flex-col gap-1'>
-                  {clientInfo && (
-                    <div className='px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 text-xs font-medium text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
-                      {clientInfo}
-                    </div>
-                  )}
-                  {(detail?.source_name || currentPlayingInfo) && (
-                    <div className='flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-white/85 dark:bg-gray-800/85 text-xs font-medium text-gray-800 dark:text-gray-100 shadow-sm border border-gray-200/80 dark:border-gray-700/60 backdrop-blur'>
-                      <span>
-                        播放來源：
-                        {convertToTraditional(detail?.source_name || '') ||
-                          detail?.source_name ||
-                          currentSource}
-                      </span>
-                      {currentPlayingInfo && !currentPlayingInfo.hasError && (
-                        <>
-                          <span>解析度：{currentPlayingInfo.quality}</span>
-                          <span>載入速度：{currentPlayingInfo.loadSpeed}</span>
-                          <span>延遲：{currentPlayingInfo.pingTime}ms</span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
               <div
                 ref={artRef}
                 className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
