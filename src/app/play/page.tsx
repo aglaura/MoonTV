@@ -1189,7 +1189,10 @@ function PlayPageClient() {
 
   const attachVideoToggleHandler = (video: HTMLVideoElement) => {
     removeVideoHandlers();
-    const handler = () => {
+    const handler = (ev: Event) => {
+      if (ev && typeof ev.stopPropagation === 'function') {
+        ev.stopPropagation();
+      }
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
         singleTapTimerRef.current = null;
@@ -1210,6 +1213,7 @@ function PlayPageClient() {
 
     const dblHandler = (ev: MouseEvent) => {
       ev.preventDefault();
+      ev.stopPropagation();
       if (singleTapTimerRef.current) {
         clearTimeout(singleTapTimerRef.current);
         singleTapTimerRef.current = null;
@@ -2145,6 +2149,9 @@ function PlayPageClient() {
         miniProgressBar: false,
         mutex: true,
         playsInline: true,
+        // Disable built-in click/double-click toggles; we handle them in our overlay
+        click: false,
+        dblclick: false,
         autoPlayback: false,
         airplay: true,
         theme: '#22c55e',
