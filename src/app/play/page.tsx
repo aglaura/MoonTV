@@ -2135,9 +2135,6 @@ function PlayPageClient() {
         miniProgressBar: false,
         mutex: true,
         playsInline: true,
-        // Disable built-in click/double-click toggles; we handle them in our overlay
-        click: false,
-        dblclick: false,
         autoPlayback: false,
         airplay: true,
         theme: '#22c55e',
