@@ -584,38 +584,41 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               const sourceKey = `${source.source}-${source.id}`;
                               const videoInfo = videoInfoMap.get(sourceKey);
 
-                              if (videoInfo && videoInfo.quality !== '未知') {
-                                if (videoInfo.hasError) {
-                                  return (
-                                    <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
-                                      檢測失敗
-                                    </div>
-                                  );
-                                } else {
-                                  // 根据分辨率设置不同颜色：2K、4K为紫色，1080p、720p为绿色，其他为黄色
-                                  const isUltraHigh = ['4K', '2K'].includes(
-                                    videoInfo.quality
-                                  );
-                                  const isHigh = ['1080p', '720p'].includes(
-                                    videoInfo.quality
-                                  );
-                                  const textColorClasses = isUltraHigh
-                                    ? 'text-purple-600 dark:text-purple-400'
-                                    : isHigh
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-yellow-600 dark:text-yellow-400';
-
-                                  return (
-                                    <div
-                                      className={`bg-gray-500/10 dark:bg-gray-400/20 ${textColorClasses} px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center`}
-                                    >
-                                      {videoInfo.quality}
-                                    </div>
-                                  );
-                                }
+                              if (videoInfo?.hasError) {
+                                return (
+                                  <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
+                                    檢測失敗
+                                  </div>
+                                );
                               }
 
-                              return null;
+                              const qualityText =
+                                videoInfo && videoInfo.quality !== '未知'
+                                  ? videoInfo.quality
+                                  : 'NA';
+
+                              const isUltraHigh = ['4K', '2K'].includes(
+                                qualityText
+                              );
+                              const isHigh = ['1080p', '720p'].includes(
+                                qualityText
+                              );
+                              const textColorClasses =
+                                qualityText === 'NA'
+                                  ? 'text-gray-500 dark:text-gray-400'
+                                  : isUltraHigh
+                                  ? 'text-purple-600 dark:text-purple-400'
+                                  : isHigh
+                                  ? 'text-green-600 dark:text-green-400'
+                                  : 'text-yellow-600 dark:text-yellow-400';
+
+                              return (
+                                <div
+                                  className={`bg-gray-500/10 dark:bg-gray-400/20 ${textColorClasses} px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center`}
+                                >
+                                  {qualityText}
+                                </div>
+                              );
                             })()}
                           </div>
 
@@ -629,34 +632,38 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               {(() => {
                                 const sourceKey = `${source.source}-${source.id}`;
                                 const videoInfo = videoInfoMap.get(sourceKey);
-                                if (videoInfo && videoInfo.quality !== '未知') {
-                                  if (videoInfo.hasError) {
-                                    return (
-                                      <span className='text-xs text-red-500 dark:text-red-400'>
-                                        無測速數據
-                                      </span>
-                                    );
-                                  }
-                                  const isUltraHigh = ['4K', '2K'].includes(
-                                    videoInfo.quality
+                                if (videoInfo?.hasError) {
+                                  return (
+                                    <span className='text-xs text-red-500 dark:text-red-400'>
+                                      無測速數據
+                                    </span>
                                   );
-                                  const isHigh = ['1080p', '720p'].includes(
-                                    videoInfo.quality
-                                  );
-                                  const textColorClasses = isUltraHigh
+                                }
+                                const qualityText =
+                                  videoInfo && videoInfo.quality !== '未知'
+                                    ? videoInfo.quality
+                                    : 'NA';
+                                const isUltraHigh = ['4K', '2K'].includes(
+                                  qualityText
+                                );
+                                const isHigh = ['1080p', '720p'].includes(
+                                  qualityText
+                                );
+                                const textColorClasses =
+                                  qualityText === 'NA'
+                                    ? 'text-gray-500 dark:text-gray-400'
+                                    : isUltraHigh
                                     ? 'text-purple-600 dark:text-purple-400'
                                     : isHigh
                                     ? 'text-green-600 dark:text-green-400'
                                     : 'text-yellow-600 dark:text-yellow-400';
-                                  return (
-                                    <span
-                                      className={`text-xs font-semibold ${textColorClasses}`}
-                                    >
-                                      {videoInfo.quality}
-                                    </span>
-                                  );
-                                }
-                                return null;
+                                return (
+                                  <span
+                                    className={`text-xs font-semibold ${textColorClasses}`}
+                                  >
+                                    {qualityText}
+                                  </span>
+                                );
                               })()}
                             </div>
                             {source.episodes.length > 1 && (

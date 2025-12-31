@@ -2593,7 +2593,7 @@ function PlayPageClient() {
             {currentPlayingInfo && !currentPlayingInfo.hasError && (
               <>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
-                  解析度：{currentPlayingInfo.quality}
+                  解析度：{currentPlayingInfo.quality || 'NA'}
                 </span>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
                   載入速度：{currentPlayingInfo.loadSpeed}
