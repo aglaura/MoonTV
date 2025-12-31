@@ -10,6 +10,7 @@ const RETRY_DELAY_MS = 500;
 const MAX_ATTEMPTS = 2;
 const PROVIDER_RETRY_INTERVAL_MS = 1000;
 const PROVIDER_RETRY_WINDOW_MS = 4000; // initial attempt + up to ~3s of retries
+const OVERALL_TIMEOUT_MS = 5000; // ensure we return stats within ~5s
 
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
       let foundCount = 0;
       let emptyCount = 0;
       let failedCount = 0;
+      let finalized = false;
 
       // Track per-provider response and retry up to the configured window.
       const providerStates = apiSites.map((site) => ({
@@ -74,26 +76,34 @@ export async function GET(request: NextRequest) {
             );
 
             if (results.length > 0) {
-              const transformed = convertResultsArray(results);
-              controller.enqueue(JSON.stringify(transformed));
-              foundCount += 1;
+              if (!finalized) {
+                const transformed = convertResultsArray(results);
+                controller.enqueue(JSON.stringify(transformed));
+                foundCount += 1;
+              }
               state.returned = true;
               return;
             }
 
             if (failed) {
-              failedCount += 1;
+              if (!finalized) {
+                failedCount += 1;
+              }
               state.returned = true;
               return;
             }
 
             // Empty but responded.
-            emptyCount += 1;
+            if (!finalized) {
+              emptyCount += 1;
+            }
             state.returned = true;
             return;
           } catch (error) {
             // Treat exceptions as failure for this site.
-            failedCount += 1;
+            if (!finalized) {
+              failedCount += 1;
+            }
             state.returned = true;
             return;
           }
@@ -103,13 +113,28 @@ export async function GET(request: NextRequest) {
           }
         }
         if (!state.returned) {
-          failedCount += 1;
+          if (!finalized) {
+            failedCount += 1;
+          }
           state.returned = true;
         }
       };
 
-      // Fire all providers in parallel with per-provider retry window.
-      await Promise.all(providerStates.map((state) => runProvider(state)));
+      // Fire all providers in parallel with per-provider retry window, but stop waiting after timeout.
+      const tasks = providerStates.map((state) => runProvider(state));
+      await Promise.race([
+        Promise.allSettled(tasks),
+        delay(OVERALL_TIMEOUT_MS),
+      ]);
+
+      // If some providers never returned by the timeout, count them as failed.
+      for (const state of providerStates) {
+        if (!state.returned) {
+          failedCount += 1;
+          state.returned = true;
+        }
+      }
+      finalized = true;
 
       controller.enqueue(
         JSON.stringify({
