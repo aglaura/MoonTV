@@ -554,7 +554,6 @@ function PlayPageClient() {
         if (!valKey || seen.has(sourceKey)) return;
         seen.add(sourceKey);
         if (!s.episodes || s.episodes.length === 0) return;
-        if (precomputedVideoInfoRef.current.has(valKey)) return;
 
         const url = s.episodes[0];
         tasks.push(
