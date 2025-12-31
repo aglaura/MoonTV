@@ -8,6 +8,8 @@ import { convertResultsArray } from '@/lib/responseTrad';
 
 const RETRY_DELAY_MS = 500;
 const MAX_ATTEMPTS = 2;
+const PROVIDER_RETRY_INTERVAL_MS = 1000;
+const PROVIDER_RETRY_WINDOW_MS = 4000; // initial attempt + up to ~3s of retries
 
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,56 +57,59 @@ export async function GET(request: NextRequest) {
       let foundCount = 0;
       let emptyCount = 0;
       let failedCount = 0;
-      let anyResult = false;
 
-      const runWave = async () => {
-        await Promise.all(
-          apiSites.map(async (site) => {
-            try {
-              const { results, failed } = await searchWithRetry(
-                site,
-                simplifiedQuery
-              );
-              if (results.length > 0) {
-                const transformed = convertResultsArray(results);
-                controller.enqueue(JSON.stringify(transformed));
-                foundCount += 1;
-                anyResult = true;
-              } else if (failed) {
-                failedCount += 1;
-              } else {
-                emptyCount += 1;
-              }
-            } catch (error) {
-              failedCount += 1;
+      // Track per-provider response and retry up to the configured window.
+      const providerStates = apiSites.map((site) => ({
+        site,
+        returned: false,
+      }));
+
+      const runProvider = async (state: { site: ApiSite; returned: boolean }) => {
+        const deadline = Date.now() + PROVIDER_RETRY_WINDOW_MS;
+        while (!state.returned && Date.now() <= deadline) {
+          try {
+            const { results, failed } = await searchWithRetry(
+              state.site,
+              simplifiedQuery
+            );
+
+            if (results.length > 0) {
+              const transformed = convertResultsArray(results);
+              controller.enqueue(JSON.stringify(transformed));
+              foundCount += 1;
+              state.returned = true;
+              return;
             }
-          })
-        );
+
+            if (failed) {
+              failedCount += 1;
+              state.returned = true;
+              return;
+            }
+
+            // Empty but responded.
+            emptyCount += 1;
+            state.returned = true;
+            return;
+          } catch (error) {
+            // Treat exceptions as failure for this site.
+            failedCount += 1;
+            state.returned = true;
+            return;
+          }
+          // No response within attempt window, retry after interval until deadline.
+          if (!state.returned && Date.now() < deadline) {
+            await delay(PROVIDER_RETRY_INTERVAL_MS);
+          }
+        }
+        if (!state.returned) {
+          failedCount += 1;
+          state.returned = true;
+        }
       };
 
-      // Fire provider searches in parallel (order comes from SourceConfig/valuations).
-      const wavePromises: Promise<void>[] = [];
-      const firstWave = runWave();
-      wavePromises.push(firstWave);
-
-      // If nothing comes back within 2 seconds, trigger a second wave as fallback.
-      let retryTimer: NodeJS.Timeout | null = null;
-      const secondWavePromise = new Promise<void>((resolveSecond) => {
-        retryTimer = setTimeout(() => {
-          if (!anyResult) {
-            const secondWave = runWave();
-            wavePromises.push(secondWave);
-            secondWave.finally(resolveSecond);
-          } else {
-            resolveSecond();
-          }
-        }, 2000);
-      });
-
-      await Promise.all([...wavePromises, secondWavePromise]);
-      if (retryTimer) {
-        clearTimeout(retryTimer);
-      }
+      // Fire all providers in parallel with per-provider retry window.
+      await Promise.all(providerStates.map((state) => runProvider(state)));
 
       controller.enqueue(
         JSON.stringify({
