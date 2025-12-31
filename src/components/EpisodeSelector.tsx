@@ -498,9 +498,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             availableSources.length > 0 && (
               <div className='flex-1 overflow-y-auto space-y-2 pb-20'>
                 <div className='text-xs text-gray-600 dark:text-gray-300 mb-2 px-1'>
-                  已搜尋 {providerCount || searchStats.total} 個來源提供者 ·
-                  有來源 {searchStats.found} 個 · 無來源 {searchStats.notFound}{' '}
-                  個 · 失敗 {searchStats.failed} 個
+                  Searched {providerCount || searchStats.total} providers ·
+                  With sources {searchStats.found} · No sources {searchStats.notFound}{' '}
+                  · Failed {searchStats.failed}
                 </div>
                 {availableSources
                   .sort((a, b) => {
