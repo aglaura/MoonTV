@@ -1414,9 +1414,8 @@ function PlayPageClient() {
 
         setAvailableSources((prev) => {
           const merged = [...prev, ...newSources];
-          const sorted = verifyAndSortSources(merged);
-          availableSourcesRef.current = sorted;
-          return sorted;
+          availableSourcesRef.current = merged;
+          return merged;
         });
 
         // 首個可用來源就立刻開播，但若已有年份要求，必須匹配年份
@@ -1475,11 +1474,6 @@ function PlayPageClient() {
           penaltyEntries.length = 0;
           if (updatedInfoMap) {
             precomputedVideoInfoRef.current = updatedInfoMap;
-            setAvailableSources((prev) => {
-              const sorted = verifyAndSortSources(prev, updatedInfoMap!);
-              availableSourcesRef.current = sorted;
-              return sorted;
-            });
           }
         }
       }
@@ -1761,20 +1755,12 @@ function PlayPageClient() {
     setClientInfo(`${browserLabel} • ${osLabel}`);
   }, []);
 
-  // 自动错误恢复：出现错误时尝试切换下一可用源
+  // 自动错误恢复：出现错误时保持当前状态，交由用户选择
   useEffect(() => {
-    if (error && !autoErrorRecoveryRef.current) {
-      autoErrorRecoveryRef.current = true;
-      const switched = trySwitchToNextSource();
-      if (switched) {
-        setError(null);
-        setLoading(true);
-      }
-    }
     if (!error) {
       autoErrorRecoveryRef.current = false;
     }
-  }, [error, trySwitchToNextSource]);
+  }, [error]);
 
   // ---------------------------------------------------------------------------
   // 集数切换
@@ -2317,13 +2303,7 @@ function PlayPageClient() {
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
         }
-        if (artPlayerRef.current.currentTime > 0) {
-          return;
-        }
-        const switched = trySwitchToNextSource();
-        if (!switched) {
-          setIsVideoLoading(false);
-        }
+        setIsVideoLoading(false);
       });
 
       // 监听视频播放结束事件，自动播放下一集
@@ -2370,10 +2350,7 @@ function PlayPageClient() {
           Math.max(artPlayerRef.current.currentTime || 0, 0) <= 0
         ) {
           setError(t('timeoutSwitch'));
-          const switched = trySwitchToNextSource();
-          if (!switched) {
-            setIsVideoLoading(false);
-          }
+          setIsVideoLoading(false);
         }
       }, 6000);
     } catch (err) {
