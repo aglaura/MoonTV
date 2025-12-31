@@ -1499,12 +1499,11 @@ function PlayPageClient() {
       setSourceSearchLoading(false);
       setSourceSearchCompleted(true);
       fetchStoredValuations(allSources);
-      // 确保搜索完成后使用最终排序结果
+      // 先探测分辨率，再做最終排序，避免缺少分辨率信息時排序不穩定
+      await probeResolutionsForSources(allSources);
       setAvailableSources(() => {
         const finalSorted = verifyAndSortSources(allSources);
         availableSourcesRef.current = finalSorted;
-        // 预先探测分辨率，以便立即显示
-        probeResolutionsForSources(finalSorted);
         return finalSorted;
       });
 
