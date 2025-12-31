@@ -2158,7 +2158,6 @@ function PlayPageClient() {
         },
         // @ts-expect-error Artplayer options accept this
         click: false,
-        // @ts-expect-error Artplayer options accept this
         dblclick: false,
         // HLS 支持配置
         customType: {
