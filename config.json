@@ -200,7 +200,7 @@
     },
     "8maple": {
       "api": "https://8maple.me/vod",
-      "name": "豆瓣资源"
+      "name": "豆瓣资源2"
     },
     "gamer": {
       "m3u8": "https://api.gamer.com.tw/mobile_app/anime/v2/m3u8.php?sn={sn}&device={deviceID}",
