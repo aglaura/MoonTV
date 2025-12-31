@@ -8,8 +8,8 @@ import { convertResultsArray } from '@/lib/responseTrad';
 
 const RETRY_DELAY_MS = 500;
 const MAX_ATTEMPTS = 2;
-const PROVIDER_RETRY_INTERVAL_MS = 1000;
-const PROVIDER_RETRY_WINDOW_MS = 4000; // initial attempt + up to ~3s of retries
+const PROVIDER_RETRY_INTERVAL_MS = 500;
+const PROVIDER_RETRY_WINDOW_MS = 5000; // initial attempt + retries within ~5s
 const OVERALL_TIMEOUT_MS = 5000; // ensure we return stats within ~5s
 
 async function delay(ms: number) {
