@@ -592,9 +592,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 );
                               }
 
+                              const qualityCandidate =
+                                videoInfo?.quality ?? source.quality;
                               const qualityText =
-                                videoInfo && videoInfo.quality !== '未知'
-                                  ? videoInfo.quality
+                                qualityCandidate &&
+                                qualityCandidate !== '未知' &&
+                                qualityCandidate !== ''
+                                  ? qualityCandidate
                                   : 'NA';
 
                               const isUltraHigh = ['4K', '2K'].includes(
@@ -639,9 +643,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                     </span>
                                   );
                                 }
+                                const qualityCandidate =
+                                  videoInfo?.quality ?? source.quality;
                                 const qualityText =
-                                  videoInfo && videoInfo.quality !== '未知'
-                                    ? videoInfo.quality
+                                  qualityCandidate &&
+                                  qualityCandidate !== '未知' &&
+                                  qualityCandidate !== ''
+                                    ? qualityCandidate
                                     : 'NA';
                                 const isUltraHigh = ['4K', '2K'].includes(
                                   qualityText
