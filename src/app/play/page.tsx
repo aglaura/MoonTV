@@ -411,16 +411,12 @@ function PlayPageClient() {
       sources: SearchResult[],
       infoOverride?: Map<string, PrecomputedVideoInfoEntry>
     ): SearchResult[] => {
+      const all = sources || [];
       const isTrailer = (s: SearchResult) => {
         const title = s.title || '';
         const originalTitle = s.original_title || '';
         return title.includes('預告片') || originalTitle.includes('預告片');
       };
-
-      const valid = (sources || []).filter((s) => {
-        const len = s.episodes?.length || 0;
-        return Array.isArray(s.episodes) && len > 0;
-      });
 
       // 先按年份过滤（若有指定年份），預告片不參與集數投票
       const targetYear = (videoYearRef.current || '').trim();
@@ -434,9 +430,10 @@ function PlayPageClient() {
         return y === targetYear;
       };
 
-      const sourcesForMajority = valid.filter(
-        (s) => matchesYear(s) && !isTrailer(s)
-      );
+      const sourcesForMajority = all.filter((s) => {
+        const len = s.episodes?.length || 0;
+        return Array.isArray(s.episodes) && len > 0 && matchesYear(s) && !isTrailer(s);
+      });
       const majority =
         sourceSearchCompleted && sourcesForMajority.length > 0
           ? determineMajorityEpisodeCount(sourcesForMajority)
@@ -444,7 +441,7 @@ function PlayPageClient() {
       majorityEpisodeCountRef.current = majority;
 
       // 记录不匹配原因（不剔除，只作排序靠后）
-      valid.forEach((s) => {
+      all.forEach((s) => {
         const reasons: string[] = [];
         if (isTrailer(s)) {
           reasons.push('預告片');
@@ -461,13 +458,15 @@ function PlayPageClient() {
             reasons.push('標題長度不符');
           }
         }
-        if (sourceSearchCompleted && majority != null) {
-          const len = s.episodes?.length || 0;
+        const len = s.episodes?.length || 0;
+        if (!Array.isArray(s.episodes) || len === 0) {
+          reasons.push('缺少集數資訊');
+        } else if (sourceSearchCompleted && majority != null) {
           if (Math.abs(len - majority) > 2) {
             reasons.push('集數偏離主流');
           }
         }
-        if (currentEpisodeIndexRef.current >= (s.episodes?.length || 0)) {
+        if (Array.isArray(s.episodes) && currentEpisodeIndexRef.current >= len) {
           reasons.push('當前集數超出範圍');
         }
         if (reasons.length) {
@@ -475,7 +474,7 @@ function PlayPageClient() {
         }
       });
 
-      const sorted = sortSourcesByValuation(valid, infoOverride);
+      const sorted = sortSourcesByValuation(all, infoOverride);
       const infoMap =
         infoOverride && infoOverride.size > 0
           ? infoOverride
