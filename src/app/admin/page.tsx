@@ -1171,9 +1171,12 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
         source: s.name || s.key,
         quality: '—',
         loadSpeed: '—',
-        pingTime: undefined,
+        pingTime: 0,
+        qualityRank: undefined,
+        speedValue: undefined,
         sampleCount: 0,
         score: undefined,
+        updated_at: undefined,
       }))
       .sort((a, b) =>
         (a.source || a.key).localeCompare(b.source || b.key)
@@ -1273,7 +1276,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {item.loadSpeed}
-                      {item.speedValue ? (
+                      {typeof item.speedValue === 'number' ? (
                         <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
                           {item.speedValue} KB/s
                         </span>
