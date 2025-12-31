@@ -420,6 +420,7 @@ function PlayPageClient() {
       // 先按年份过滤（若有指定年份），預告片不參與集數投票
       const targetYear = (videoYearRef.current || '').trim();
       const penalties = new Map<string, string[]>();
+      const expectedTitle = (searchTitle || videoTitleRef.current || '').trim();
 
       const matchesYear = (s: SearchResult) => {
         const y = (s.year || '').trim();
@@ -445,6 +446,15 @@ function PlayPageClient() {
         }
         if (!matchesYear(s)) {
           reasons.push('年份不符');
+        }
+        if (expectedTitle) {
+          const t = (s.title || '').trim();
+          const o = (s.original_title || '').trim();
+          const matchesLen =
+            t.length === expectedTitle.length || o.length === expectedTitle.length;
+          if (!matchesLen) {
+            reasons.push('標題長度不符');
+          }
         }
         if (sourceSearchCompleted && majority != null) {
           const len = s.episodes?.length || 0;
