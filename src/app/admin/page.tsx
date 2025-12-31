@@ -1034,6 +1034,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
   const [valuations, setValuations] = useState<SourceValuationRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAllProviders, setShowAllProviders] = useState(false);
   const sourceNameMap = useMemo(() => {
     const map = new Map<string, string>();
     (sourceConfig ?? []).forEach((source) => {
@@ -1158,26 +1159,68 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
     fetchValuations();
   }, [fetchValuations]);
 
+  const mergedRows = useMemo(() => {
+    if (!showAllProviders || !Array.isArray(sourceConfig)) {
+      return valuations;
+    }
+    const existing = new Set(valuations.map((v) => v.key));
+    const missing = sourceConfig
+      .filter((s) => s.key && !existing.has(s.key))
+      .map((s) => ({
+        key: s.key,
+        source: s.name || s.key,
+        quality: '—',
+        loadSpeed: '—',
+        pingTime: undefined,
+        sampleCount: 0,
+        score: undefined,
+      }))
+      .sort((a, b) =>
+        (a.source || a.key).localeCompare(b.source || b.key)
+      );
+    return [...valuations, ...missing];
+  }, [showAllProviders, sourceConfig, valuations]);
+
+  const providerCount = sourceConfig?.length || 0;
+
   return (
     <div className='space-y-4'>
-      <div className='flex items-center justify-between'>
-        <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-          播放源評估 (依品質、速度、延遲排序)
-        </h4>
-        <button
-          onClick={fetchValuations}
-          className='px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
-          disabled={isLoading}
-        >
-          {isLoading ? '刷新中…' : '重新整理'}
-        </button>
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+            播放源評估 (依品質、速度、延遲排序)
+          </h4>
+          <p className='text-xs text-gray-500 dark:text-gray-400'>
+            {showAllProviders
+              ? `顯示所有來源（共 ${providerCount || '—'} 個，無資料者以佔位顯示）`
+              : '僅顯示有測速紀錄的來源'}
+          </p>
+        </div>
+        <div className='flex items-center gap-3'>
+          <label className='flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300'>
+            <input
+              type='checkbox'
+              className='h-4 w-4'
+              checked={showAllProviders}
+              onChange={(e) => setShowAllProviders(e.target.checked)}
+            />
+            顯示所有來源
+          </label>
+          <button
+            onClick={fetchValuations}
+            className='px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
+            disabled={isLoading}
+          >
+            {isLoading ? '刷新中…' : '重新整理'}
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
         <div className='text-sm text-gray-500 dark:text-gray-400'>
           讀取中…
         </div>
-      ) : valuations.length === 0 ? (
+      ) : mergedRows.length === 0 ? (
         <div className='text-sm text-gray-500 dark:text-gray-400'>
           尚無測速紀錄。
         </div>
@@ -1210,7 +1253,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
               </tr>
             </thead>
             <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
-              {valuations.map((item) => {
+              {mergedRows.map((item) => {
                 const trimmedSource = (item.source || '').trim();
                 const displayName =
                   sourceNameMap.get(item.key) ??
