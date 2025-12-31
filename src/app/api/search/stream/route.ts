@@ -141,8 +141,8 @@ export async function GET(request: NextRequest) {
           __meta: true,
           searched: apiSites.length,
           found: foundCount,
-          notFound: emptyCount + failedCount,
-          empty: emptyCount,
+          notFound: emptyCount,
+          empty: emptyCount, // kept for backward compatibility; equals notFound
           failed: failedCount,
         })
       );
