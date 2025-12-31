@@ -142,6 +142,7 @@ function PlayPageClient() {
   });
   const failedSourcesRef = useRef<Set<string>>(new Set());
   const [providerCount, setProviderCount] = useState(0);
+  const providerCountRef = useRef(0);
 
   // 同步最新值到 refs
   useEffect(() => {
@@ -163,6 +164,10 @@ function PlayPageClient() {
   useEffect(() => {
     availableSourcesRef.current = availableSources;
   }, [availableSources]);
+
+  useEffect(() => {
+    providerCountRef.current = providerCount;
+  }, [providerCount]);
 
   useEffect(() => {
     const doubanId = detail?.douban_id;
@@ -1400,13 +1405,17 @@ function PlayPageClient() {
               parsedSources.push(...entries);
             } else if (entries && typeof entries === 'object') {
               if (entries.__meta) {
+                const searchedCount = entries.searched ?? 0;
                 setSearchStats({
-                  total: entries.searched ?? 0,
+                  total: searchedCount,
                   found: entries.found ?? 0,
                   notFound: entries.notFound ?? 0,
                   empty: entries.empty ?? 0,
                   failed: entries.failed ?? 0,
                 });
+                if (searchedCount > 0) {
+                  setProviderCount(searchedCount);
+                }
                 continue;
               }
               parsedSources.push(entries as SearchResult);
@@ -1504,7 +1513,9 @@ function PlayPageClient() {
       const uniqueProviders = new Set(
         allSources.map((s) => (s.source_name || s.source || '').toString())
       );
-      setProviderCount(uniqueProviders.size);
+      if (uniqueProviders.size > providerCountRef.current) {
+        setProviderCount(uniqueProviders.size);
+      }
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
