@@ -2543,7 +2543,7 @@ function PlayPageClient() {
             {/* 错误信息 */}
             <div className='space-y-4 mb-8'>
               <h2 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>
-                哎呀，出現了一些問題
+                Oops, something went wrong
               </h2>
               <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4'>
                 <p className='text-red-600 dark:text-red-400 font-medium'>
