@@ -101,7 +101,6 @@ export const API_CONFIG = {
   },
 };
 
-// 在模块加载时根据环境决定配置来源
 let fileConfig: ConfigFileStruct;
 let cachedConfig: AdminConfig;
 let sortedApiSitesCache: ApiSite[] | null = null;
@@ -184,7 +183,6 @@ async function initConfig() {
     fileConfig = JSON.parse(raw) as ConfigFileStruct;
     console.log('load dynamic config success');
   } else {
-    // 默认使用编译时生成的配置
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
   }
 
@@ -196,7 +194,6 @@ async function initConfig() {
 
   const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
   if (storageType !== 'localstorage') {
-    // 数据库存储，读取并补全管理员配置
     let storage: IStorage | null = null;
     try {
       storage = getStorage();
@@ -208,13 +205,11 @@ async function initConfig() {
 
     let userNames: string[] = [];
     try {
-      // 尝试从数据库获取管理员配置
       let adminConfig: AdminConfig | null = null;
       if (storage && typeof (storage as any).getAdminConfig === 'function') {
         adminConfig = await (storage as any).getAdminConfig();
       }
 
-      // 获取所有用户名，用于补全 Users
       if (storage && typeof (storage as any).getAllUsers === 'function') {
         try {
           userNames = await (storage as any).getAllUsers();
@@ -228,11 +223,9 @@ async function initConfig() {
         }
       });
 
-      // 从文件中获取源信息，用于补全源
       const apiSiteEntries = Object.entries(fileConfig.api_site);
 
       if (adminConfig) {
-        // 补全 SourceConfig
         const existed = new Set(
           (adminConfig.SourceConfig || []).map((s) => s.key)
         );
@@ -250,7 +243,6 @@ async function initConfig() {
           }
         });
 
-        // 检查现有源是否在 fileConfig.api_site 中，如果不在则标记为 custom
         adminConfig.SourceConfig.forEach((source) => {
           const site = fileConfig.api_site[source.key];
           if (!site) {
@@ -299,7 +291,6 @@ async function initConfig() {
             existedUsers.add(uname);
           }
         });
-        // 站长
         const ownerUser = process.env.USERNAME;
         if (ownerUser) {
           adminConfig!.UserConfig.Users = adminConfig!.UserConfig.Users.filter(
@@ -311,7 +302,6 @@ async function initConfig() {
           });
         }
       } else {
-        // 数据库中没有配置，创建新的管理员配置
         let allUsers: {
           username: string;
           role: 'user' | 'admin' | 'owner';
@@ -354,12 +344,10 @@ async function initConfig() {
         };
       }
 
-      // 写回数据库（更新/创建）
       if (storage && typeof (storage as any).setAdminConfig === 'function') {
         await (storage as any).setAdminConfig(adminConfig);
       }
 
-      // 更新缓存
       cachedConfig = adminConfig;
     } catch (err) {
       console.error('加载管理员配置失败:', err);
@@ -375,7 +363,6 @@ async function initConfig() {
       cachedConfig = buildAdminConfigFromFile(fileConfig, fallbackUsers);
     }
   } else {
-    // 本地存储直接使用文件配置
     cachedConfig = buildAdminConfigFromFile(fileConfig);
   }
 }
@@ -386,7 +373,6 @@ export async function getConfig(): Promise<AdminConfig> {
     await initConfig();
     return cachedConfig;
   }
-  // 非 docker 环境且 DB 存储，直接读 db 配置
   let storage: IStorage | null = null;
   try {
     storage = getStorage();
@@ -398,7 +384,6 @@ export async function getConfig(): Promise<AdminConfig> {
     adminConfig = await (storage as any).getAdminConfig();
   }
   if (adminConfig) {
-    // 合并一些环境变量配置
     adminConfig.SiteConfig.SiteName = process.env.SITE_NAME || 'EssaouiraTV';
     adminConfig.SiteConfig.Announcement =
       process.env.ANNOUNCEMENT ||
@@ -408,7 +393,6 @@ export async function getConfig(): Promise<AdminConfig> {
     adminConfig.SiteConfig.ImageProxy =
       process.env.NEXT_PUBLIC_IMAGE_PROXY || '';
 
-    // 合并文件中的源信息
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
     const apiSiteEntries = Object.entries(fileConfig.api_site);
     const existed = new Set((adminConfig.SourceConfig || []).map((s) => s.key));
@@ -426,7 +410,6 @@ export async function getConfig(): Promise<AdminConfig> {
       }
     });
 
-    // 同步配置中的源信息，如果不存在则标记为 custom
     const apiSiteMap = new Map(apiSiteEntries);
     adminConfig.SourceConfig.forEach((source) => {
       const site = apiSiteMap.get(source.key);
@@ -442,7 +425,6 @@ export async function getConfig(): Promise<AdminConfig> {
     });
     cachedConfig = adminConfig;
   } else {
-    // DB 无配置，执行一次初始化
     await initConfig();
   }
   return cachedConfig;
@@ -450,7 +432,6 @@ export async function getConfig(): Promise<AdminConfig> {
 
 export async function resetConfig() {
   const storage = getStorage();
-  // 获取所有用户名，用于补全 Users
   let userNames: string[] = [];
   if (storage && typeof (storage as any).getAllUsers === 'function') {
     try {
@@ -471,7 +452,6 @@ export async function resetConfig() {
     fileConfig = JSON.parse(raw) as ConfigFileStruct;
     console.log('load dynamic config success');
   } else {
-    // 默认使用编译时生成的配置
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
   }
 
@@ -489,7 +469,6 @@ export async function resetConfig() {
     }
   });
 
-  // 从文件中获取源信息，用于补全源
   const apiSiteEntries = Object.entries(fileConfig.api_site);
   let allUsers: { username: string; role: 'user' | 'admin' | 'owner' }[] =
     userNames.map((uname) => ({
@@ -533,7 +512,6 @@ export async function resetConfig() {
     await (storage as any).setAdminConfig(adminConfig);
   }
   if (cachedConfig == null) {
-    // serverless 环境，直接使用 adminConfig
     cachedConfig = adminConfig;
   }
   cachedConfig.SiteConfig = adminConfig.SiteConfig;

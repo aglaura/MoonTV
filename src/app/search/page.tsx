@@ -10,7 +10,6 @@ import {
   BangumiCalendarData,
   GetBangumiCalendarData,
 } from '@/lib/bangumi.client';
-// 客户端收藏 API
 import {
   clearAllFavorites,
   getAllFavorites,
@@ -41,7 +40,6 @@ function HomeClient() {
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
 
-  // 检查公告弹窗状态
   useEffect(() => {
     if (typeof window !== 'undefined' && announcement) {
       const hasSeenAnnouncement = localStorage.getItem('hasSeenAnnouncement');
@@ -53,7 +51,6 @@ function HomeClient() {
     }
   }, [announcement]);
 
-  // 收藏夹数据
   type FavoriteItem = {
     id: string;
     source: string;
@@ -78,8 +75,6 @@ function HomeClient() {
       try {
         setLoading(true);
 
-        // 并行获取热门电影、热门剧集和热门综艺
-        // 豆瓣 API 只接受簡體分類標籤（例如 '热门'），所以相關參數保持簡體字
         const [moviesData, tvShowsData, varietyShowsData, bangumiCalendarData] =
           await Promise.all([
             getDoubanCategories({
@@ -115,11 +110,9 @@ function HomeClient() {
     fetchRecommendData();
   }, []);
 
-  // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
     const allPlayRecords = await getAllPlayRecords();
 
-    // 根据保存时间排序（从近到远）
     const sorted = Object.entries(allFavorites)
       .sort(([, a], [, b]) => b.save_time - a.save_time)
       .map(([key, fav]) => {
@@ -127,7 +120,6 @@ function HomeClient() {
         const source = key.slice(0, plusIndex);
         const id = key.slice(plusIndex + 1);
 
-        // 查找对应的播放记录，获取当前集数
         const playRecord = allPlayRecords[key];
         const currentEpisode = playRecord?.index;
 
@@ -147,7 +139,6 @@ function HomeClient() {
     setFavoriteItems(sorted);
   };
 
-  // 当切换到收藏夹时加载收藏数据
   useEffect(() => {
     if (activeTab !== 'favorites') return;
 
@@ -158,7 +149,6 @@ function HomeClient() {
 
     loadFavorites();
 
-    // 监听收藏更新事件
     const unsubscribe = subscribeToDataUpdates(
       'favoritesUpdated',
       (newFavorites: Record<string, any>) => {
@@ -364,7 +354,6 @@ function HomeClient() {
 
             <div className='max-w-[95%] mx-auto'>
               {activeTab === 'favorites' ? (
-                // 收藏夾視圖
                 <section className='mb-8'>
                   <div className='mb-4 flex items-center justify-between'>
                     <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
@@ -401,7 +390,6 @@ function HomeClient() {
                   </div>
                 </section>
               ) : (
-                // 首頁視圖
                 <>
                   {/* 继续观看 */}
                   <ContinueWatching />
@@ -531,7 +519,6 @@ function HomeClient() {
                           ))
                         : // 展示當前日期的番劇
                           (() => {
-                            // 獲取當前日期對應的星期
                             const today = new Date();
                             const weekdays = [
                               'Sun',
@@ -544,7 +531,6 @@ function HomeClient() {
                             ];
                             const currentWeekday = weekdays[today.getDay()];
 
-                            // 找到當前星期對應的番劇數據
                             const todayAnimes =
                               bangumiCalendarData.find(
                                 (item) => item.weekday.en === currentWeekday
@@ -634,20 +620,17 @@ function HomeClient() {
             showAnnouncement ? '' : 'opacity-0 pointer-events-none'
           }`}
           onTouchStart={(e) => {
-            // 如果點擊的是背景區域，阻止觸摸事件冒泡，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
             }
           }}
           onTouchMove={(e) => {
-            // 如果觸摸的是背景區域，阻止觸摸移動，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
               e.stopPropagation();
             }
           }}
           onTouchEnd={(e) => {
-            // 如果觸摸的是背景區域，阻止觸摸結束事件，防止背景滾動
             if (e.target === e.currentTarget) {
               e.preventDefault();
             }
@@ -659,7 +642,6 @@ function HomeClient() {
           <div
             className='w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-gray-900 transform transition-all duration-300 hover:shadow-2xl'
             onTouchMove={(e) => {
-              // 允許公告內容區域正常滾動，阻止事件冒泡到外層
               e.stopPropagation();
             }}
             style={{

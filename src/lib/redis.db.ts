@@ -11,10 +11,8 @@ import {
   parseSpeedToKBps,
 } from './utils';
 
-// 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
 
-// 添加Redis操作重试包装器
 async function withRetry<T>(
   operation: () => Promise<T>,
   maxRetries = 3
@@ -37,10 +35,8 @@ async function withRetry<T>(
         );
         console.error('Error:', err.message);
 
-        // 等待一段时间后重试
         await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
 
-        // 尝试重新连接
         try {
           const client = getRedisClient();
           if (!client.isOpen) {
@@ -67,7 +63,6 @@ export class RedisStorage implements IStorage {
     this.client = getRedisClient();
   }
 
-  // ---------- 播放记录 ----------
   private prKey(user: string, key: string) {
     return `u:${user}:pr:${key}`; // u:username:pr:source+id
   }
@@ -104,7 +99,6 @@ export class RedisStorage implements IStorage {
       const raw = values[idx];
       if (raw) {
         const rec = JSON.parse(raw) as PlayRecord;
-        // 截取 source+id 部分
         const keyPart = fullKey.replace(`u:${userName}:pr:`, '');
         result[keyPart] = rec;
       }
@@ -116,7 +110,6 @@ export class RedisStorage implements IStorage {
     await withRetry(() => this.client.del(this.prKey(userName, key)));
   }
 
-  // ---------- 收藏 ----------
   private favKey(user: string, key: string) {
     return `u:${user}:fav:${key}`;
   }
@@ -159,7 +152,6 @@ export class RedisStorage implements IStorage {
     await withRetry(() => this.client.del(this.favKey(userName, key)));
   }
 
-  // ---------- 播放源評估 ----------
   private valuationKey(key: string) {
     return `sourceval:${key}`;
   }
@@ -301,13 +293,11 @@ export class RedisStorage implements IStorage {
     return result;
   }
 
-  // ---------- 用户注册 / 登录 ----------
   private userPwdKey(user: string) {
     return `u:${user}:pwd`;
   }
 
   async registerUser(userName: string, password: string): Promise<void> {
-    // 简单存储明文密码，生产环境应加密
     await withRetry(() => this.client.set(this.userPwdKey(userName), password));
   }
 
@@ -319,32 +309,24 @@ export class RedisStorage implements IStorage {
     return stored === password;
   }
 
-  // 检查用户是否存在
   async checkUserExist(userName: string): Promise<boolean> {
-    // 使用 EXISTS 判断 key 是否存在
     const exists = await withRetry(() =>
       this.client.exists(this.userPwdKey(userName))
     );
     return exists === 1;
   }
 
-  // 修改用户密码
   async changePassword(userName: string, newPassword: string): Promise<void> {
-    // 简单存储明文密码，生产环境应加密
     await withRetry(() =>
       this.client.set(this.userPwdKey(userName), newPassword)
     );
   }
 
-  // 删除用户及其所有数据
   async deleteUser(userName: string): Promise<void> {
-    // 删除用户密码
     await withRetry(() => this.client.del(this.userPwdKey(userName)));
 
-    // 删除搜索历史
     await withRetry(() => this.client.del(this.shKey(userName)));
 
-    // 删除播放记录
     const playRecordPattern = `u:${userName}:pr:*`;
     const playRecordKeys = await withRetry(() =>
       this.client.keys(playRecordPattern)
@@ -353,7 +335,6 @@ export class RedisStorage implements IStorage {
       await withRetry(() => this.client.del(playRecordKeys));
     }
 
-    // 删除收藏夹
     const favoritePattern = `u:${userName}:fav:*`;
     const favoriteKeys = await withRetry(() =>
       this.client.keys(favoritePattern)
@@ -363,7 +344,6 @@ export class RedisStorage implements IStorage {
     }
   }
 
-  // ---------- 搜索历史 ----------
   private shKey(user: string) {
     return `u:${user}:sh`; // u:username:sh
   }
@@ -376,11 +356,8 @@ export class RedisStorage implements IStorage {
 
   async addSearchHistory(userName: string, keyword: string): Promise<void> {
     const key = this.shKey(userName);
-    // 先去重
     await withRetry(() => this.client.lRem(key, 0, keyword));
-    // 插入到最前
     await withRetry(() => this.client.lPush(key, keyword));
-    // 限制最大长度
     await withRetry(() => this.client.lTrim(key, 0, SEARCH_HISTORY_LIMIT - 1));
   }
 
@@ -393,7 +370,6 @@ export class RedisStorage implements IStorage {
     }
   }
 
-  // ---------- 获取全部用户 ----------
   async getAllUsers(): Promise<string[]> {
     const keys = await withRetry(() => this.client.keys('u:*:pwd'));
     return keys
@@ -404,7 +380,6 @@ export class RedisStorage implements IStorage {
       .filter((u): u is string => typeof u === 'string');
   }
 
-  // ---------- 管理员配置 ----------
   private adminConfigKey() {
     return 'admin:config';
   }
@@ -421,7 +396,6 @@ export class RedisStorage implements IStorage {
   }
 }
 
-// 单例 Redis 客户端
 function getRedisClient(): RedisClientType {
   const globalKey = Symbol.for('__MOONTV_REDIS_CLIENT__');
   let client: RedisClientType | undefined = (global as any)[globalKey];
@@ -432,11 +406,9 @@ function getRedisClient(): RedisClientType {
       throw new Error('REDIS_URL env variable not set');
     }
 
-    // 创建客户端，配置重连策略
     client = createClient({
       url,
       socket: {
-        // 重连策略：指数退避，最大30秒
         reconnectStrategy: (retries: number) => {
           console.log(`Redis reconnection attempt ${retries + 1}`);
           if (retries > 10) {
@@ -446,14 +418,11 @@ function getRedisClient(): RedisClientType {
           return Math.min(1000 * Math.pow(2, retries), 30000); // 指数退避，最大30秒
         },
         connectTimeout: 10000, // 10秒连接超时
-        // 设置no delay，减少延迟
         noDelay: true,
       },
-      // 添加其他配置
       pingInterval: 30000, // 30秒ping一次，保持连接活跃
     });
 
-    // 添加错误事件监听
     client.on('error', (err) => {
       console.error('Redis client error:', err);
     });
@@ -470,7 +439,6 @@ function getRedisClient(): RedisClientType {
       console.log('Redis ready');
     });
 
-    // 初始连接，带重试机制
     const connectWithRetry = async () => {
       try {
         await client!.connect();

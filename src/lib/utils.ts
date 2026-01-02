@@ -8,7 +8,6 @@ import Hls from 'hls.js';
 export function getImageProxyUrl(): string | null {
   if (typeof window === 'undefined') return null;
 
-  // 本地未开启图片代理，则不使用代理
   const enableImageProxy = localStorage.getItem('enableImageProxy');
   if (enableImageProxy !== null) {
     if (!JSON.parse(enableImageProxy) as boolean) {
@@ -21,7 +20,6 @@ export function getImageProxyUrl(): string | null {
     return localImageProxy.trim() ? localImageProxy.trim() : null;
   }
 
-  // 如果未设置，则使用全局对象
   const serverImageProxy = (window as any).RUNTIME_CONFIG?.IMAGE_PROXY;
   return serverImageProxy && serverImageProxy.trim()
     ? serverImageProxy.trim()
@@ -66,7 +64,6 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
 
   try {
     return await new Promise((resolve, reject) => {
-      // 测量网络延迟（ping时间） - 使用m3u8 URL而不是ts文件
       const pingStart = performance.now();
       let pingTime = 0;
 
@@ -110,7 +107,6 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
           cleanup();
           const width = video.videoWidth;
           if (width && width > 0) {
-            // 根据视频宽度判断视频质量等级
             const quality =
               width >= 3840
                 ? '4K'
@@ -157,12 +153,10 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
           }
         };
 
-        // 监听片段加载开始
         hls.on(Hls.Events.FRAG_LOADING, () => {
           fragmentStartTime = performance.now();
         });
 
-        // 监听片段加载完成，只需首个分片即可计算速度
         hls.on(Hls.Events.FRAG_LOADED, (event: any, data: any) => {
           if (
             fragmentStartTime > 0 &&
@@ -187,7 +181,6 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
           }
         });
 
-        // 监听hls.js错误
         hls.on(Hls.Events.ERROR, (event: any, data: any) => {
           console.error('HLS错误:', data);
           if (data.fatal) {
@@ -195,7 +188,6 @@ export async function getVideoResolutionFromM3u8(m3u8Url: string): Promise<{
           }
         });
 
-        // 监听视频元数据加载完成
         video.onloadedmetadata = () => {
           hasMetadataLoaded = true;
           checkAndResolve();

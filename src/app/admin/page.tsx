@@ -43,7 +43,6 @@ import { parseSpeedToKBps } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 
-// 统一弹窗方法（必须在首次使用前定义）
 const showError = (message: string) =>
   Swal.fire({ icon: 'error', title: '錯誤', text: message });
 
@@ -92,7 +91,6 @@ const toDisplayScore = (score: number | undefined): string => {
   return score.toFixed(1);
 };
 
-// 新增站點配置类型
 interface SiteConfig {
   SiteName: string;
   Announcement: string;
@@ -101,7 +99,6 @@ interface SiteConfig {
   ImageProxy: string;
 }
 
-// 视频源数据类型
 interface DataSource {
   name: string;
   key: string;
@@ -126,7 +123,6 @@ interface SourceValuationRow {
   score?: number;
 }
 
-// 可折叠标签组件
 interface CollapsibleTabProps {
   title: string;
   icon?: React.ReactNode;
@@ -164,7 +160,6 @@ const CollapsibleTab = ({
   );
 };
 
-// 用戶配置组件
 interface UserConfigProps {
   config: AdminConfig | null;
   role: 'owner' | 'admin' | null;
@@ -186,10 +181,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     password: '',
   });
 
-  // 当前登录使用者名稱
   const currentUsername = getAuthInfoFromBrowserCookie()?.username || null;
 
-  // 检测存储类型是否为 d1
   const isD1Storage =
     typeof window !== 'undefined' &&
     (window as any).RUNTIME_CONFIG?.STORAGE_TYPE === 'd1';
@@ -202,10 +195,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     }
   }, [config]);
 
-  // 切换允许註冊設定
   const toggleAllowRegister = async (value: boolean) => {
     try {
-      // 先更新本地 UI
       setUserSettings((prev) => ({ ...prev, enableRegistration: value }));
 
       const res = await fetch('/api/admin/user', {
@@ -286,7 +277,6 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     await handleUserAction('deleteUser', username);
   };
 
-  // 通用请求函数
   const handleUserAction = async (
     action:
       | 'add'
@@ -315,7 +305,6 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         throw new Error(data.error || `操作失敗: ${res.status}`);
       }
 
-      // 成功后刷新配置（无需整页刷新）
       await refreshConfig();
     } catch (err) {
       showError(err instanceof Error ? err.message : '操作失敗');
@@ -533,7 +522,6 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
               return (
                 <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
                   {sortedUsers.map((user) => {
-                    // 修改密碼权限：站長可修改管理員和一般用戶密碼，管理員可修改一般用戶和自己的密碼，但任何人都不能修改站長密碼
                     const canChangePassword =
                       user.role !== 'owner' && // 不能修改站長密碼
                       (role === 'owner' || // 站長可以修改管理員和一般用戶密碼
@@ -541,13 +529,11 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           (user.role === 'user' ||
                             user.username === currentUsername))); // 管理員可以修改一般用戶和自己的密碼
 
-                    // 刪除用戶权限：站長可删除除自己外的所有用户，管理員仅可删除一般用戶
                     const canDeleteUser =
                       user.username !== currentUsername &&
                       (role === 'owner' || // 站長可以删除除自己外的所有用户
                         (role === 'admin' && user.role === 'user')); // 管理員仅可删除一般用戶
 
-                    // 其他操作权限：不能操作自己，站長可操作所有用户，管理員可操作一般用戶
                     const canOperate =
                       user.username !== currentUsername &&
                       (role === 'owner' ||
@@ -664,7 +650,6 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
   );
 };
 
-// 影片來源配置组件
 const VideoSourceConfig = ({
   config,
   refreshConfig,
@@ -685,7 +670,6 @@ const VideoSourceConfig = ({
     from: 'config',
   });
 
-  // dnd-kit 传感器
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -700,16 +684,13 @@ const VideoSourceConfig = ({
     })
   );
 
-  // 初始化
   useEffect(() => {
     if (config?.SourceConfig) {
       setSources(config.SourceConfig);
-      // 进入时重置 orderChanged
       setOrderChanged(false);
     }
   }, [config]);
 
-  // 通用 API 请求
   const callSourceApi = async (body: Record<string, any>) => {
     try {
       const resp = await fetch('/api/admin/source', {
@@ -723,7 +704,6 @@ const VideoSourceConfig = ({
         throw new Error(data.error || `操作失敗: ${resp.status}`);
       }
 
-      // 成功后刷新配置
       await refreshConfig();
     } catch (err) {
       showError(err instanceof Error ? err.message : '操作失敗');
@@ -795,7 +775,6 @@ const VideoSourceConfig = ({
       });
   };
 
-  // 可拖拽行封装 (dnd-kit)
   const DraggableRow = ({ source }: { source: DataSource }) => {
     const { attributes, listeners, setNodeRef, transform, transition } =
       useSortable({ id: source.key });
@@ -1309,7 +1288,6 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
   );
 };
 
-// 新增站點配置组件
 const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
   const [siteSettings, setSiteSettings] = useState<SiteConfig>({
     SiteName: '',
@@ -1318,10 +1296,8 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     SiteInterfaceCacheTime: 7200,
     ImageProxy: '',
   });
-  // 保存狀態
   const [saving, setSaving] = useState(false);
 
-  // 检测存储类型是否为 d1
   const isD1Storage =
     typeof window !== 'undefined' &&
     (window as any).RUNTIME_CONFIG?.STORAGE_TYPE === 'd1';
@@ -1335,7 +1311,6 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     }
   }, [config]);
 
-  // 保存站點配置
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -1542,8 +1517,6 @@ function AdminPageClient() {
   } | null>(null);
   const [redisLoading, setRedisLoading] = useState(false);
 
-  // 获取管理員配置
-  // showLoading 用于控制是否在请求期间显示整体加载骨架。
   const fetchConfig = useCallback(async (showLoading = false) => {
     try {
       if (showLoading) {
@@ -1599,11 +1572,9 @@ function AdminPageClient() {
   }, []);
 
   useEffect(() => {
-    // 首次加载时显示骨架
     fetchConfig(true);
   }, [fetchConfig]);
 
-  // 切换标签展开狀態
   const toggleTab = (tabKey: string) => {
     setExpandedTabs((prev) => ({
       ...prev,
@@ -1611,7 +1582,6 @@ function AdminPageClient() {
     }));
   };
 
-  // 新增: 重置配置处理函数
   const handleResetConfig = async () => {
     const { isConfirmed } = await Swal.fire({
       title: '確認重置配置',
@@ -1657,7 +1627,6 @@ function AdminPageClient() {
   }
 
   if (error) {
-    // 错误已通过 SweetAlert2 展示，此处直接返回空
     return null;
   }
 

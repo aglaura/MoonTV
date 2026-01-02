@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const username = authInfo.username as string;
 
     const body = await request.json();
     const { key, record }: { key: string; record: PlayRecord } = body;
