@@ -14,6 +14,7 @@ import {
   generateStorageKey,
   getAllPlayRecords,
   isFavorited,
+  PlayRecord,
   saveFavorite,
   savePlayRecord,
   subscribeToDataUpdates,
@@ -407,6 +408,88 @@ function PlayPageClient() {
     },
     []
   );
+
+  const resumeRecordRef = useRef<PlayRecord | null>(null);
+  const resumeAppliedRef = useRef(false);
+
+  const normalizeTitle = useCallback(
+    (text?: string | null) =>
+      convertToTraditional((text || '').trim().toLowerCase()),
+    []
+  );
+
+  const tryResumeFromRecord = useCallback((): SearchResult | null => {
+    const record = resumeRecordRef.current;
+    if (!record || resumeAppliedRef.current) return null;
+
+    const targetTitle =
+      normalizeTitle(
+        videoTitleRef.current ||
+          searchTitle ||
+          record.search_title ||
+          record.title
+      ) || '';
+    if (!targetTitle) return null;
+
+    const targetYear =
+      (record.year || videoYearRef.current || '').trim() || undefined;
+    const sources = availableSourcesRef.current;
+    if (!sources.length) return null;
+
+    const match = sources.find((s) => {
+      const norm = normalizeTitle(s.title || s.original_title || '');
+      if (!norm) return false;
+      const yearOk =
+        !targetYear ||
+        !(s.year || '').trim() ||
+        (s.year || '').trim() === targetYear;
+      return norm === targetTitle && yearOk;
+    });
+
+    if (!match) return null;
+
+    const targetIndex =
+      record.index && record.index > 0 ? record.index - 1 : 0;
+    const clampedIndex =
+      match.episodes && match.episodes.length > 0
+        ? Math.min(Math.max(targetIndex, 0), match.episodes.length - 1)
+        : Math.max(targetIndex, 0);
+
+    resumeAppliedRef.current = true;
+    resumeTimeRef.current = record.play_time ?? 0;
+    setCurrentEpisodeIndex(clampedIndex);
+    currentEpisodeIndexRef.current = clampedIndex;
+    return match;
+  }, [normalizeTitle, searchTitle]);
+
+  useEffect(() => {
+    const fetchResumeByTitle = async () => {
+      try {
+        const records = await getAllPlayRecords();
+        const all = Object.values(records || {});
+        if (!all.length) return;
+        const targetTitle =
+          normalizeTitle(videoTitleRef.current || searchTitle) || '';
+        if (!targetTitle) return;
+        const targetYear = (videoYearRef.current || '').trim();
+        const found =
+          all.find((r) => {
+            const norm =
+              normalizeTitle(r.title || r.search_title || '') || '';
+            if (!norm || norm !== targetTitle) return false;
+            if (!targetYear || !r.year || !r.year.trim()) return true;
+            return r.year.trim() === targetYear;
+          }) || null;
+        if (found) {
+          resumeRecordRef.current = found;
+        }
+      } catch (err) {
+        console.error('讀取播放紀錄失敗:', err);
+      }
+    };
+
+    fetchResumeByTitle();
+  }, [normalizeTitle, searchTitle]);
 
   const verifyAndSortSources = useCallback(
     (
@@ -1440,6 +1523,10 @@ function PlayPageClient() {
           availableSourcesRef.current = merged;
           return merged;
         });
+        const resumeCandidate = tryResumeFromRecord();
+        if (!playbackInitialized && resumeCandidate) {
+          initializePlayback(resumeCandidate);
+        }
 
         // 首個可用來源就立刻開播，但若已有年份要求，必須匹配年份
         if (!playbackInitialized && availableSourcesRef.current.length > 0) {
@@ -1511,6 +1598,10 @@ function PlayPageClient() {
         availableSourcesRef.current = finalSorted;
         return finalSorted;
       });
+      const resumeCandidateFinal = tryResumeFromRecord();
+      if (!playbackInitialized && resumeCandidateFinal) {
+        initializePlayback(resumeCandidateFinal);
+      }
 
       // 记录已搜索的提供者数量（按源标识去重）
       const uniqueProviders = new Set(
