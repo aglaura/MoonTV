@@ -587,9 +587,8 @@ function PlayPageClient() {
                 return next;
               });
               setAvailableSources((prev) => {
-                const sorted = verifyAndSortSources(prev);
-                availableSourcesRef.current = sorted;
-                return sorted;
+                availableSourcesRef.current = prev;
+                return prev;
               });
 
               valuationEntries.push({
@@ -618,7 +617,7 @@ function PlayPageClient() {
         }
       }
     },
-    [getValuationKey, verifyAndSortSources, getQualityRank, persistSourceValuations]
+    [getValuationKey, getQualityRank, persistSourceValuations]
   );
 
   const fetchStoredValuations = useCallback(
@@ -694,17 +693,12 @@ function PlayPageClient() {
         });
         if (updatedInfoMap) {
           precomputedVideoInfoRef.current = updatedInfoMap;
-          setAvailableSources((prev) => {
-            const sorted = verifyAndSortSources(prev, updatedInfoMap!);
-            availableSourcesRef.current = sorted;
-            return sorted;
-          });
         }
       } catch (error) {
         console.warn('Failed to load stored source valuations:', error);
       }
     },
-    [getValuationKey, sortSourcesByValuation, verifyAndSortSources]
+    [getValuationKey, sortSourcesByValuation]
   );
 
   useEffect(() => {
@@ -960,11 +954,6 @@ function PlayPageClient() {
     });
     setPrecomputedVideoInfo(updatedInfoMap);
     precomputedVideoInfoRef.current = updatedInfoMap;
-    setAvailableSources((prev) => {
-      const sorted = verifyAndSortSources(prev, updatedInfoMap);
-      availableSourcesRef.current = sorted;
-      return sorted;
-    });
 
     const meaningfulAggregatedEntries = Array.from(aggregatedEntryMap.values()).filter(
       (entry) =>
