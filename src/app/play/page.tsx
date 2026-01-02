@@ -216,6 +216,8 @@ function PlayPageClient() {
   const lastVolumeRef = useRef<number>(0.7);
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
   const hasStartedRef = useRef<boolean>(false);
+  // 锁定自动换源：一旦播放开始，只有失败/显式允许才自动换源
+  const autoSwitchLockedRef = useRef<boolean>(false);
   const [sourceSearchError, setSourceSearchError] = useState<string | null>(
     null
   );
@@ -1553,7 +1555,8 @@ function PlayPageClient() {
           handleSourceChange(
             bestSource.source,
             bestSource.id,
-            bestSource.title
+            bestSource.title,
+            { auto: true }
           );
         }
       }
@@ -1614,8 +1617,17 @@ function PlayPageClient() {
   const handleSourceChange = async (
     newSource: string,
     newId: string,
-    newTitle: string
+    newTitle: string,
+    options?: { auto?: boolean; allowDuringPlayback?: boolean }
   ) => {
+    const autoSwitch = options?.auto ?? false;
+    const allowDuringPlayback = options?.allowDuringPlayback ?? false;
+
+    // 如果已经开始播放且自动换源被锁定，则跳过自动换源（除非显式允许）
+    if (autoSwitch && autoSwitchLockedRef.current && !allowDuringPlayback) {
+      return;
+    }
+
     try {
       // 顯示换源加载状态
       setVideoLoadingStage('sourceChanging');
@@ -1712,7 +1724,10 @@ function PlayPageClient() {
 
     if (nextSource) {
       setError('當前播放來源不可用，自動切換其他來源…');
-      handleSourceChange(nextSource.source, nextSource.id, nextSource.title);
+      handleSourceChange(nextSource.source, nextSource.id, nextSource.title, {
+        auto: true,
+        allowDuringPlayback: true,
+      });
       return true;
     }
 
@@ -2294,6 +2309,7 @@ function PlayPageClient() {
       // 监听视频可播放事件，这时恢复播放进度更可靠
       artPlayerRef.current.on('video:canplay', () => {
         hasStartedRef.current = true;
+        autoSwitchLockedRef.current = true;
         if (loadTimeoutRef.current) {
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
