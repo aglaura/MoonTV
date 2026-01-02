@@ -77,7 +77,9 @@ function PlayPageClient() {
   const [loadingStage, setLoadingStage] = useState<
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
-  const [loadingMessage, setLoadingMessage] = useState('正在搜尋播放源...');
+  const [loadingMessage, setLoadingMessage] = useState(
+    'Searching player resources…'
+  );
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SearchResult | null>(null);
 
@@ -1610,7 +1612,7 @@ function PlayPageClient() {
       setLoadingMessage(
         currentSource && currentId
           ? '🎬 Getting video info.....'
-          : '🔍 Serching Player resources...'
+          : '🔍 Searching player resources…'
       );
 
       streamSourcesData(searchTitle || videoTitle);
@@ -2502,10 +2504,46 @@ function PlayPageClient() {
             </div>
 
             {/* 加载消息 */}
-            <div className='space-y-2'>
+            <div className='space-y-3'>
               <p className='text-xl font-semibold text-gray-800 dark:text-gray-200 animate-pulse'>
                 {loadingMessage}
               </p>
+              <div className='text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 space-y-1'>
+                <div className='flex justify-between'>
+                  <span>Providers searched</span>
+                  <span>
+                    {searchStats.total || 0}/{providerCountRef.current ||
+                      searchStats.total ||
+                      providerCount ||
+                      0}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span>With sources</span>
+                  <span>{searchStats.found || 0}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span>No sources</span>
+                  <span>{(searchStats.notFound || 0) + (searchStats.empty || 0)}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span>Failed</span>
+                  <span>{searchStats.failed || 0}</span>
+                </div>
+                <div className='flex justify-between'>
+                  <span>Pending</span>
+                  <span>
+                    {Math.max(
+                      (providerCountRef.current ||
+                        searchStats.total ||
+                        providerCount ||
+                        0) -
+                        (searchStats.total || 0),
+                      0
+                    )}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
