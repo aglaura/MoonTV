@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const username = authInfo.username as string;
 
     const records = await db.getAllPlayRecords(authInfo.username);
     return NextResponse.json(records, { status: 200 });
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     } as PlayRecord;
 
     // Remove existing records with the same title (keep only one per title)
-    const existingRecords = await db.getAllPlayRecords(authInfo.username);
+    const existingRecords = await db.getAllPlayRecords(username);
     const normalizedTitle = normalizeTitle(finalRecord.title);
     const duplicates = Object.entries(existingRecords).filter(
       ([existingKey, existingRecord]) =>
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
         const [dupSource, dupId] = dupKey.split('+');
         if (dupSource && dupId) {
           try {
-            await db.deletePlayRecord(authInfo.username, dupSource, dupId);
+            await db.deletePlayRecord(username, dupSource, dupId);
           } catch (deleteErr) {
             console.warn(
               `删除重复的播放记录失败: ${dupKey}`,
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    await db.savePlayRecord(authInfo.username, source, id, finalRecord);
+    await db.savePlayRecord(username, source, id, finalRecord);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err) {
