@@ -223,6 +223,22 @@ function PlayPageClient() {
   const [precomputedVideoInfo, setPrecomputedVideoInfo] = useState<
     Map<string, PrecomputedVideoInfoEntry>
   >(new Map());
+
+  // Keep the loading banner informative while sources are being searched.
+  useEffect(() => {
+    if (loadingStage !== 'searching') return;
+
+    const totalProviders =
+      providerCountRef.current || searchStats.total || providerCount || 0;
+    const searched = searchStats.total || 0;
+    const found = searchStats.found || 0;
+    const noSources = (searchStats.notFound || 0) + (searchStats.empty || 0);
+    const failed = searchStats.failed || 0;
+
+    setLoadingMessage(
+      `Searching player resources… Searched ${searched}/${totalProviders} providers · With sources ${found} · No sources ${noSources} · Failed ${failed}`
+    );
+  }, [loadingStage, providerCount, searchStats]);
   const precomputedVideoInfoRef =
     useRef<Map<string, PrecomputedVideoInfoEntry>>(precomputedVideoInfo);
 
