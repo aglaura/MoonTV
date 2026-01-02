@@ -731,6 +731,14 @@ function PlayPageClient() {
     undefined
   );
   const [clientInfo, setClientInfo] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [clockText, setClockText] = useState(() => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+      now.getSeconds()
+    )}`;
+  });
   const currentPlayingInfo = useMemo(() => {
     const bySourceKey =
       precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
@@ -752,6 +760,13 @@ function PlayPageClient() {
   // -----------------------------------------------------------------------------
   // 工具函数（Utils）
   // -----------------------------------------------------------------------------
+  const formatClock = () => {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+      now.getSeconds()
+    )}`;
+  };
 
   // 播放源优选函数
   const preferBestSource = async (
@@ -2347,6 +2362,14 @@ function PlayPageClient() {
         saveCurrentPlayProgress();
       });
 
+      artPlayerRef.current.on('fullscreen', () => {
+        setIsFullscreen(true);
+      });
+
+      artPlayerRef.current.on('fullscreenCancel', () => {
+        setIsFullscreen(false);
+      });
+
       if (artPlayerRef.current?.video) {
         ensureVideoSource(
           artPlayerRef.current.video as HTMLVideoElement,
@@ -2391,6 +2414,17 @@ function PlayPageClient() {
       }
     };
   }, []);
+
+  // 全屏时显示时钟
+  useEffect(() => {
+    if (!isFullscreen) {
+      return;
+    }
+    const tick = () => setClockText(formatClock());
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [isFullscreen]);
 
   if (loading) {
     return (
@@ -2660,6 +2694,11 @@ function PlayPageClient() {
             }`}
           >
             <div className='relative w-full h-[300px] lg:h-full'>
+              {isFullscreen && (
+                <div className='pointer-events-none absolute top-3 right-3 z-[600] rounded-full bg-black/70 px-3 py-1 text-white text-sm tracking-widest'>
+                  {clockText}
+                </div>
+              )}
               <div
                 ref={artRef}
                 className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
