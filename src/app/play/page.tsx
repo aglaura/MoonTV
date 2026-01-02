@@ -503,15 +503,36 @@ function PlayPageClient() {
         return title.includes('預告片') || originalTitle.includes('預告片');
       };
 
+      const getResultKey = (s: SearchResult) =>
+        `${getValuationKey(s.source)}-${String(s.id ?? '')}`;
+
       const targetYear = (videoYearRef.current || '').trim();
       const penalties = new Map<string, string[]>();
-      const expectedTitle = (searchTitle || videoTitleRef.current || '').trim();
+      const expectedTitleNorm = normalizeTitle(
+        searchTitle || videoTitleRef.current || ''
+      );
 
       const matchesYear = (s: SearchResult) => {
         const y = (s.year || '').trim();
         if (!targetYear) return true; // no requirement
         if (!y) return true; // keep unknown year
         return y === targetYear;
+      };
+
+      const titleNoMatchKeys = new Set<string>();
+      const matchesTitle = (s: SearchResult) => {
+        if (!expectedTitleNorm) return true;
+        const t = normalizeTitle(s.title || '');
+        const o = normalizeTitle(s.original_title || '');
+        if (t && t === expectedTitleNorm) return true;
+        if (o && o === expectedTitleNorm) return true;
+        if (t && (t.includes(expectedTitleNorm) || expectedTitleNorm.includes(t))) {
+          return true;
+        }
+        if (o && (o.includes(expectedTitleNorm) || expectedTitleNorm.includes(o))) {
+          return true;
+        }
+        return false;
       };
 
       const sourcesForMajority = all.filter((s) => {
@@ -526,20 +547,16 @@ function PlayPageClient() {
 
       all.forEach((s) => {
         const reasons: string[] = [];
+        const resultKey = getResultKey(s);
         if (isTrailer(s)) {
           reasons.push('預告片');
         }
         if (!matchesYear(s)) {
           reasons.push('年份不符');
         }
-        if (expectedTitle) {
-          const t = (s.title || '').trim();
-          const o = (s.original_title || '').trim();
-          const matchesLen =
-            t.length === expectedTitle.length || o.length === expectedTitle.length;
-          if (!matchesLen) {
-            reasons.push('標題長度不符');
-          }
+        if (!matchesTitle(s)) {
+          reasons.push('標題不符');
+          titleNoMatchKeys.add(resultKey);
         }
         const len = s.episodes?.length || 0;
         if (!Array.isArray(s.episodes) || len === 0) {
@@ -553,7 +570,7 @@ function PlayPageClient() {
           reasons.push('當前集數超出範圍');
         }
         if (reasons.length) {
-          penalties.set(getValuationKey(s.source), reasons);
+          penalties.set(resultKey, reasons);
         }
       });
 
@@ -565,7 +582,7 @@ function PlayPageClient() {
 
       const decorate = (s: SearchResult) => {
         const info = infoMap.get(getValuationKey(s.source));
-        const reasons = penalties.get(getValuationKey(s.source));
+        const reasons = penalties.get(getResultKey(s));
         const base =
           info && info.quality !== undefined
             ? {
@@ -583,14 +600,22 @@ function PlayPageClient() {
 
       const decorated = sorted.map(decorate);
 
-      const withPenalty = decorated.filter((s) => s.verifyReason);
-      const noPenalty = decorated.filter((s) => !s.verifyReason);
-      return [...noPenalty, ...withPenalty];
+      const titleNoMatch = decorated.filter((s) =>
+        titleNoMatchKeys.has(getResultKey(s))
+      );
+      const rest = decorated.filter(
+        (s) => !titleNoMatchKeys.has(getResultKey(s))
+      );
+
+      const withPenalty = rest.filter((s) => s.verifyReason);
+      const noPenalty = rest.filter((s) => !s.verifyReason);
+      return [...noPenalty, ...withPenalty, ...titleNoMatch];
     },
     [
       determineMajorityEpisodeCount,
       sortSourcesByValuation,
       getValuationKey,
+      normalizeTitle,
       sourceSearchCompleted,
     ]
   );
