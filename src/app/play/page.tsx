@@ -1393,6 +1393,7 @@ function PlayPageClient() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let buffer = '';
       let playbackInitialized = false;
       const allSources: SearchResult[] = [];
       const penaltyEntries: SourceValuationPayload[] = [];
@@ -1431,20 +1432,26 @@ function PlayPageClient() {
       let keepReading = true;
       while (keepReading) {
         const { done, value } = await reader.read();
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done });
+        }
         if (done) {
+          buffer += decoder.decode();
           keepReading = false;
-          break;
         }
 
-        const chunk = decoder.decode(value).trim();
-        if (!chunk) {
-          continue;
+        const payloads: string[] = [];
+        for (let idx = buffer.indexOf('\n'); idx >= 0; idx = buffer.indexOf('\n')) {
+          const line = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 1);
+          if (line) payloads.push(line);
         }
-
-        const payloads = chunk
-          .split(/\n+/)
-          .map((line) => line.trim())
-          .filter(Boolean);
+        if (!keepReading) {
+          const tail = buffer.trim();
+          buffer = '';
+          if (tail) payloads.push(tail);
+        }
+        if (!payloads.length) continue;
 
         const parsedSources: SearchResult[] = [];
         for (const payload of payloads) {

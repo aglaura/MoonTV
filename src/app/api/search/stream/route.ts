@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      const encoder = new TextEncoder();
       const apiSites = await getAvailableApiSites();
       const simplifiedQuery = convertToSimplified(query) || query;
       let foundCount = 0;
@@ -76,10 +77,21 @@ export async function GET(request: NextRequest) {
             );
 
             if (results.length > 0) {
-              if (!finalized) {
-                const transformed = convertResultsArray(results);
-                controller.enqueue(JSON.stringify(transformed));
+              const transformed = convertResultsArray(results);
+              const playable = transformed.filter(
+                (r) => Array.isArray(r.episodes) && r.episodes.length > 0
+              );
+
+              if (!finalized && playable.length > 0) {
+                controller.enqueue(encoder.encode(`${JSON.stringify(playable)}\n`));
                 foundCount += 1;
+                state.returned = true;
+                return;
+              }
+
+              // Provider responded but none of the results were playable.
+              if (!finalized) {
+                emptyCount += 1;
               }
               state.returned = true;
               return;
@@ -137,14 +149,16 @@ export async function GET(request: NextRequest) {
       finalized = true;
 
       controller.enqueue(
-        JSON.stringify({
+        encoder.encode(
+          `${JSON.stringify({
           __meta: true,
           searched: apiSites.length,
           found: foundCount,
           notFound: emptyCount,
           empty: emptyCount, // kept for backward compatibility; equals notFound
           failed: failedCount,
-        })
+        })}\n`
+        )
       );
       controller.close();
     },
@@ -152,7 +166,7 @@ export async function GET(request: NextRequest) {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
       'Cache-Control': 'no-cache',
     },
   });
