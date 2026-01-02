@@ -7,6 +7,8 @@ import { db } from '@/lib/db';
 import { PlayRecord } from '@/lib/types';
 
 export const runtime = 'nodejs';
+const normalizeTitle = (title?: string): string =>
+  (title || '').trim().toLowerCase();
 
 export async function GET(request: NextRequest) {
   try {
@@ -66,6 +68,32 @@ export async function POST(request: NextRequest) {
       ...record,
       save_time: record.save_time ?? Date.now(),
     } as PlayRecord;
+
+    // Remove existing records with the same title (keep only one per title)
+    const existingRecords = await db.getAllPlayRecords(authInfo.username);
+    const normalizedTitle = normalizeTitle(finalRecord.title);
+    const duplicates = Object.entries(existingRecords).filter(
+      ([existingKey, existingRecord]) =>
+        existingKey !== key &&
+        normalizeTitle((existingRecord as PlayRecord | undefined)?.title) ===
+          normalizedTitle
+    );
+
+    await Promise.all(
+      duplicates.map(async ([dupKey]) => {
+        const [dupSource, dupId] = dupKey.split('+');
+        if (dupSource && dupId) {
+          try {
+            await db.deletePlayRecord(authInfo.username, dupSource, dupId);
+          } catch (deleteErr) {
+            console.warn(
+              `删除重复的播放记录失败: ${dupKey}`,
+              deleteErr as unknown
+            );
+          }
+        }
+      })
+    );
 
     await db.savePlayRecord(authInfo.username, source, id, finalRecord);
 

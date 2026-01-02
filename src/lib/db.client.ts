@@ -373,6 +373,9 @@ export function generateStorageKey(source: string, id: string): string {
   return `${source}+${id}`;
 }
 
+const normalizeTitle = (title?: string): string =>
+  (title || '').trim().toLowerCase();
+
 // ---- API ----
 /**
  * 读取全部播放记录。
@@ -446,11 +449,20 @@ export async function savePlayRecord(
   record: PlayRecord
 ): Promise<void> {
   const key = generateStorageKey(source, id);
+  const normalizedTitle = normalizeTitle(record.title);
 
   // D1 存储模式：乐观更新策略
   if (STORAGE_TYPE !== 'localstorage') {
     // 立即更新缓存
     const cachedRecords = cacheManager.getCachedPlayRecords() || {};
+    Object.entries(cachedRecords).forEach(([cachedKey, cachedRecord]) => {
+      if (
+        cachedKey !== key &&
+        normalizeTitle(cachedRecord?.title) === normalizedTitle
+      ) {
+        delete cachedRecords[cachedKey];
+      }
+    });
     cachedRecords[key] = record;
     cacheManager.cachePlayRecords(cachedRecords);
 
@@ -489,6 +501,14 @@ export async function savePlayRecord(
 
   try {
     const allRecords = await getAllPlayRecords();
+    Object.entries(allRecords).forEach(([existingKey, existingRecord]) => {
+      if (
+        existingKey !== key &&
+        normalizeTitle(existingRecord?.title) === normalizedTitle
+      ) {
+        delete allRecords[existingKey];
+      }
+    });
     allRecords[key] = record;
     localStorage.setItem(PLAY_RECORDS_KEY, JSON.stringify(allRecords));
     window.dispatchEvent(
