@@ -2059,9 +2059,9 @@ function PlayPageClient() {
 
     if (!isWebkit && artPlayerRef.current) {
       artPlayerRef.current.switch = videoUrl;
-      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
+      artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
         currentEpisodeIndex + 1
-      }集`;
+      }`;
       artPlayerRef.current.poster = videoCover;
       if (artPlayerRef.current?.video) {
         ensureVideoSource(
@@ -2076,7 +2076,6 @@ function PlayPageClient() {
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
       }
-      removeVideoHandlers();
       artPlayerRef.current.destroy();
       artPlayerRef.current = null;
     }
@@ -2111,7 +2110,7 @@ function PlayPageClient() {
         autoPlayback: false,
         airplay: true,
         theme: '#22c55e',
-        lang: 'zh-cn',
+        lang: 'en',
         hotkey: false,
         fastForward: true,
         autoOrientation: true,
@@ -2178,9 +2177,9 @@ function PlayPageClient() {
         },
         settings: [
           {
-            html: '去廣告',
+            html: 'Ad Block',
             icon: '<text x="50%" y="50%" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">AD</text>',
-            tooltip: blockAdEnabled ? '已開啟' : '已關閉',
+            tooltip: blockAdEnabled ? 'Enabled' : 'Disabled',
             onClick() {
               const newVal = !blockAdEnabled;
               try {
@@ -2200,7 +2199,7 @@ function PlayPageClient() {
               } catch (_) {
                 // ignore
               }
-              return newVal ? '當前開啟' : '當前關閉';
+              return newVal ? 'Enabled' : 'Disabled';
             },
           },
         ],
@@ -2209,16 +2208,16 @@ function PlayPageClient() {
             position: 'left',
             index: 13,
             html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
-            tooltip: '播放下一集',
+            tooltip: 'Next episode',
             click: function () {
               handleNextEpisode();
             },
           },
         ],
       });
-      artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
+      artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
         currentEpisodeIndex + 1
-      }集`;
+      }`;
 
       artPlayerRef.current.on('ready', () => {
         setError(null);
@@ -2334,9 +2333,9 @@ function PlayPageClient() {
     if (!artPlayerRef.current) {
       return;
     }
-    artPlayerRef.current.title = `${displayTitleWithEnglish} - 第${
+    artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
       currentEpisodeIndex + 1
-    }集`;
+    }`;
   }, [displayTitleWithEnglish, currentEpisodeIndex]);
 
   useEffect(() => {
