@@ -1114,51 +1114,6 @@ function PlayPageClient() {
     return resultsWithScore[0].source;
   };
 
-  const selectBestSourceByValuation = useCallback(
-    (sources: SearchResult[]): SearchResult | null => {
-      if (!sources || sources.length === 0) return null;
-
-      const enriched = sources.map((source) => {
-        const key = getValuationKey(source.source);
-        const info = precomputedVideoInfoRef.current.get(key);
-        const qualityRank = info?.qualityRank ?? getQualityRank(info?.quality);
-        const speedValue =
-          info?.speedValue ?? parseSpeedToKBps(info?.loadSpeed);
-        const pingTime =
-          typeof info?.pingTime === 'number' && info.pingTime > 0
-            ? info.pingTime
-            : Number.MAX_SAFE_INTEGER;
-        const sampleCount = info?.sampleCount ?? 0;
-        const hasInfo =
-          sampleCount > 0 && (qualityRank > 0 || speedValue > 0);
-        return {
-          source,
-          qualityRank,
-          speedValue,
-          pingTime,
-          hasInfo,
-        };
-      });
-
-      const candidates = enriched.some((item) => item.hasInfo)
-        ? enriched.filter((item) => item.hasInfo)
-        : enriched;
-
-      candidates.sort((a, b) => {
-        if (b.qualityRank !== a.qualityRank) {
-          return b.qualityRank - a.qualityRank;
-        }
-        if (b.speedValue !== a.speedValue) {
-          return b.speedValue - a.speedValue;
-        }
-        return a.pingTime - b.pingTime;
-      });
-
-      return candidates[0]?.source ?? sources[0];
-    },
-    []
-  );
-
   const calculateSourceScore = (
     testResult: {
       quality: string;
