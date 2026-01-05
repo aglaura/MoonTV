@@ -2303,6 +2303,15 @@ function PlayPageClient() {
         setIsFullscreen(false);
       });
 
+      // Web fullscreen mode (fullscreen within page / Fullscreen API wrapper)
+      artPlayerRef.current.on('fullscreenWeb', () => {
+        setIsFullscreen(true);
+      });
+
+      artPlayerRef.current.on('fullscreenWebCancel', () => {
+        setIsFullscreen(false);
+      });
+
       if (artPlayerRef.current?.video) {
         ensureVideoSource(
           artPlayerRef.current.video as HTMLVideoElement,
