@@ -1426,19 +1426,15 @@ function PlayPageClient() {
           initializePlayback(resumeCandidate);
         }
 
-        if (!playbackInitialized && availableSourcesRef.current.length > 0) {
-          const requiredYear = (videoYearRef.current || '').trim();
-          const candidates =
-            requiredYear.length > 0
-              ? availableSourcesRef.current.filter(
-                  (s) => (s.year || '').trim() === requiredYear
-                )
-              : availableSourcesRef.current;
-
-          if (candidates.length > 0) {
-            const bestInitial =
-              selectBestSourceByValuation(candidates) || candidates[0];
-            initializePlayback(bestInitial);
+        if (!playbackInitialized) {
+          const firstPlayable =
+            newSources.find((s) => Array.isArray(s.episodes) && s.episodes.length > 0) ||
+            availableSourcesRef.current.find(
+              (s) => Array.isArray(s.episodes) && s.episodes.length > 0
+            ) ||
+            null;
+          if (firstPlayable) {
+            initializePlayback(firstPlayable);
           }
         }
 
@@ -1508,9 +1504,10 @@ function PlayPageClient() {
 
       if (!playbackInitialized) {
         if (allSources.length > 0) {
-          const bestInitial =
-            selectBestSourceByValuation(allSources) ?? allSources[0];
-          initializePlayback(bestInitial);
+          const firstPlayable =
+            allSources.find((s) => Array.isArray(s.episodes) && s.episodes.length > 0) ||
+            allSources[0];
+          initializePlayback(firstPlayable);
         } else {
           setLoadingStage('searching');
           setLoadingMessage('未找到可用的播放來源');
