@@ -11,6 +11,7 @@ const MAX_ATTEMPTS = 2;
 const PROVIDER_RETRY_INTERVAL_MS = 500;
 const PROVIDER_RETRY_WINDOW_MS = 5000; // initial attempt + retries within ~5s
 const OVERALL_TIMEOUT_MS = 5000; // ensure we return stats within ~5s
+const DEFAULT_PROVIDER_CONCURRENCY = 4;
 
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,6 +56,15 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       const encoder = new TextEncoder();
       const apiSites = await getAvailableApiSites();
+      const providerConcurrencyRaw = Number(
+        process.env.PROVIDER_SEARCH_CONCURRENCY ?? DEFAULT_PROVIDER_CONCURRENCY
+      );
+      const providerConcurrency = Number.isFinite(providerConcurrencyRaw)
+        ? Math.max(
+            1,
+            Math.min(Math.floor(providerConcurrencyRaw), apiSites.length || 1)
+          )
+        : Math.min(DEFAULT_PROVIDER_CONCURRENCY, apiSites.length || 1);
       const simplifiedQuery = convertToSimplified(query) || query;
       let foundCount = 0;
       let emptyCount = 0;
@@ -132,12 +142,25 @@ export async function GET(request: NextRequest) {
         }
       };
 
-      // Fire all providers in parallel with per-provider retry window, but stop waiting after timeout.
-      const tasks = providerStates.map((state) => runProvider(state));
-      await Promise.race([
-        Promise.allSettled(tasks),
-        delay(OVERALL_TIMEOUT_MS),
+      // Run providers in priority order (as returned by getAvailableApiSites),
+      // with limited concurrency so early providers get searched first.
+      let nextIndex = 0;
+      const workers = Array.from(
+        { length: Math.min(providerConcurrency, providerStates.length) },
+        async () => {
+          while (!finalized) {
+            const idx = nextIndex++;
+            if (idx >= providerStates.length) return;
+            await runProvider(providerStates[idx]);
+          }
+        }
+      );
+
+      const outcome = await Promise.race([
+        Promise.allSettled(workers).then(() => 'done' as const),
+        delay(OVERALL_TIMEOUT_MS).then(() => 'timeout' as const),
       ]);
+      finalized = outcome === 'timeout';
 
       // If some providers never returned by the timeout, count them as failed.
       for (const state of providerStates) {
