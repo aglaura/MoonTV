@@ -1256,102 +1256,6 @@ function PlayPageClient() {
     }
   };
 
-  const videoClickHandlerRef = useRef<((ev: Event) => void) | null>(null);
-  const videoDblClickHandlerRef = useRef<((ev: MouseEvent) => void) | null>(
-    null
-  );
-  const singleTapTimerRef = useRef<number | null>(null);
-  const doubleTapStateRef = useRef<{
-    dir: 'forward' | 'backward' | null;
-    count: number;
-    ts: number;
-  }>({ dir: null, count: 0, ts: 0 });
-
-  const removeVideoHandlers = () => {
-    if (singleTapTimerRef.current) {
-      clearTimeout(singleTapTimerRef.current);
-      singleTapTimerRef.current = null;
-    }
-    if (artPlayerRef.current?.video) {
-      const v = artPlayerRef.current.video as HTMLVideoElement;
-      if (videoClickHandlerRef.current) {
-        v.removeEventListener('click', videoClickHandlerRef.current);
-      }
-      if (videoDblClickHandlerRef.current) {
-        v.removeEventListener('dblclick', videoDblClickHandlerRef.current);
-      }
-    }
-    videoClickHandlerRef.current = null;
-    videoDblClickHandlerRef.current = null;
-  };
-
-  const attachVideoToggleHandler = (video: HTMLVideoElement) => {
-    removeVideoHandlers();
-    const handler = (ev: Event) => {
-      if (ev && typeof ev.stopPropagation === 'function') {
-        ev.stopPropagation();
-      }
-      if (singleTapTimerRef.current) {
-        clearTimeout(singleTapTimerRef.current);
-        singleTapTimerRef.current = null;
-      }
-      singleTapTimerRef.current = window.setTimeout(() => {
-        const player = artPlayerRef.current;
-        if (!player) return;
-        if (player.paused) {
-          player.play();
-        } else {
-          player.pause();
-        }
-        singleTapTimerRef.current = null;
-      }, 220);
-    };
-    videoClickHandlerRef.current = handler;
-    video.addEventListener('click', handler);
-
-    const dblHandler = (ev: MouseEvent) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (singleTapTimerRef.current) {
-        clearTimeout(singleTapTimerRef.current);
-        singleTapTimerRef.current = null;
-      }
-      const player = artPlayerRef.current;
-      if (!player) return;
-      const rect = video.getBoundingClientRect();
-      const midX = rect.left + rect.width / 2;
-      const seekForward = ev.clientX >= midX;
-      const now = Date.now();
-      const sameDir =
-        doubleTapStateRef.current.dir === (seekForward ? 'forward' : 'backward');
-      const withinWindow = now - doubleTapStateRef.current.ts < 1000;
-      const nextCount =
-        sameDir && withinWindow ? doubleTapStateRef.current.count + 1 : 1;
-      doubleTapStateRef.current = {
-        dir: seekForward ? 'forward' : 'backward',
-        count: nextCount,
-        ts: now,
-      };
-
-      const delta = (seekForward ? 10 : -10) * nextCount;
-      const nextTime = Math.max(
-        0,
-        Math.min(
-          (player.duration || 0) - 0.1,
-          (player.currentTime || 0) + delta
-        )
-      );
-      player.currentTime = nextTime;
-      player.notice?.show?.(
-        `${seekForward ? '快進' : '快退'} ${Math.abs(delta)} 秒至 ${Math.floor(
-          nextTime
-        )}s`
-      );
-    };
-    videoDblClickHandlerRef.current = dblHandler;
-    video.addEventListener('dblclick', dblHandler);
-  };
-
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
 
@@ -2164,7 +2068,6 @@ function PlayPageClient() {
           artPlayerRef.current.video as HTMLVideoElement,
           videoUrl
         );
-        attachVideoToggleHandler(artPlayerRef.current.video as HTMLVideoElement);
       }
       return;
     }
@@ -2406,7 +2309,6 @@ function PlayPageClient() {
           artPlayerRef.current.video as HTMLVideoElement,
           videoUrl
         );
-        attachVideoToggleHandler(artPlayerRef.current.video as HTMLVideoElement);
       }
 
       // Fallback timeout: if the video doesn't become playable in 6s, switch source
