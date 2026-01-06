@@ -5,7 +5,7 @@
 import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import { Heart } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -47,7 +47,6 @@ declare global {
 
 function PlayPageClient() {
   const { userLocale } = useUserLanguage();
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const delayInitialPlaybackRef = useRef<boolean>(
@@ -172,6 +171,25 @@ function PlayPageClient() {
     'Searching player resources…'
   );
   const [error, setError] = useState<string | null>(null);
+  type PlayerErrorType =
+    | 'playback'
+    | 'source'
+    | 'search'
+    | 'network'
+    | 'params'
+    | 'unknown';
+  const [errorType, setErrorType] = useState<PlayerErrorType>('unknown');
+  const reportError = useCallback(
+    (message: string, type: PlayerErrorType = 'unknown') => {
+      setErrorType(type);
+      setError(message);
+    },
+    []
+  );
+  const clearError = useCallback(() => {
+    setError(null);
+    setErrorType('unknown');
+  }, []);
   const [detail, setDetail] = useState<SearchResult | null>(null);
 
   const [favorited, setFavorited] = useState(false);
@@ -1725,7 +1743,7 @@ function PlayPageClient() {
         } else {
           setLoadingStage('searching');
           setLoadingMessage('未找到可用的播放來源');
-          setError('未找到可用的播放來源');
+          reportError('未找到可用的播放來源', 'search');
           setLoading(false);
         }
       }
@@ -1750,7 +1768,7 @@ function PlayPageClient() {
 
     const initAll = () => {
       if (!currentSource && !currentId && !videoTitle && !searchTitle) {
-        setError('缺少必要參數');
+        reportError('缺少必要參數', 'params');
         setLoading(false);
         return;
       }
@@ -1832,7 +1850,7 @@ function PlayPageClient() {
         (source) => source.source === newSource && source.id === newId
       );
       if (!newDetail) {
-        setError('未找到匹配結果');
+        reportError('未找到匹配結果', 'source');
         return;
       }
 
@@ -1868,7 +1886,7 @@ function PlayPageClient() {
       setCurrentEpisodeIndex(targetIndex);
     } catch (err) {
       setIsVideoLoading(false);
-      setError(err instanceof Error ? err.message : '換源失敗');
+      reportError(err instanceof Error ? err.message : '換源失敗', 'source');
     }
   };
 
@@ -1895,7 +1913,7 @@ function PlayPageClient() {
     });
 
     if (nextSource) {
-      setError('當前播放來源不可用，自動切換其他來源…');
+      reportError('當前播放來源不可用，自動切換其他來源…', 'source');
       handleSourceChange(nextSource.source, nextSource.id, nextSource.title, {
         auto: true,
         allowDuringPlayback: true,
@@ -1903,7 +1921,7 @@ function PlayPageClient() {
       return true;
     }
 
-    setError('當前播放來源不可用，請手動選擇其他來源');
+    reportError('當前播放來源不可用，請手動選擇其他來源', 'source');
     return false;
   }, [getValuationKey, handleSourceChange]);
 
@@ -2254,12 +2272,15 @@ function PlayPageClient() {
       currentEpisodeIndex >= detail.episodes.length ||
       currentEpisodeIndex < 0
     ) {
-      setError(`選集索引無效，目前共 ${totalEpisodes} 集`);
+      reportError(
+        `選集索引無效，目前共 ${totalEpisodes} 集`,
+        'params'
+      );
       return;
     }
 
     if (!videoUrl) {
-      setError('影片地址無效');
+      reportError('影片地址無效', 'playback');
       return;
     }
     console.log(videoUrl);
@@ -2431,7 +2452,7 @@ function PlayPageClient() {
       }`;
 
       artPlayerRef.current.on('ready', () => {
-        setError(null);
+        clearError();
       });
 
       // Expose for debugging in browser devtools
@@ -2484,6 +2505,10 @@ function PlayPageClient() {
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
         }
+        reportError(
+          err?.message || err?.type || 'Playback error',
+          'playback'
+        );
         setIsVideoLoading(false);
       });
 
@@ -2545,14 +2570,14 @@ function PlayPageClient() {
           artPlayerRef.current &&
           Math.max(artPlayerRef.current.currentTime || 0, 0) <= 0
         ) {
-          setError(t('timeoutSwitch'));
+          reportError(t('timeoutSwitch'), 'playback');
           setIsVideoLoading(false);
           trySwitchToNextSource();
         }
       }, 6000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
-      setError('播放器初始化失敗');
+      reportError('播放器初始化失敗', 'playback');
     }
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
@@ -2711,74 +2736,6 @@ function PlayPageClient() {
     );
   }
 
-  if (error) {
-    return (
-      <PageLayout activePath='/play'>
-        <div className='flex items-center justify-center min-h-screen bg-transparent'>
-          <div className='text-center max-w-md mx-auto px-6'>
-            {/* 错误图标 */}
-            <div className='relative mb-8'>
-              <div className='relative mx-auto w-24 h-24 bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl shadow-2xl flex items-center justify-center transform hover:scale-105 transition-transform duration-300'>
-                <div className='text-white text-4xl'>😵</div>
-                {/* 脉冲效果 */}
-                <div className='absolute -inset-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-2xl opacity-20 animate-pulse'></div>
-              </div>
-
-              {/* 浮动错误粒子 */}
-              <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
-                <div className='absolute top-2 left-2 w-2 h-2 bg-red-400 rounded-full animate-bounce'></div>
-                <div
-                  className='absolute top-4 right-4 w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce'
-                  style={{ animationDelay: '0.5s' }}
-                ></div>
-                <div
-                  className='absolute bottom-3 left-6 w-1 h-1 bg-yellow-400 rounded-full animate-bounce'
-                  style={{ animationDelay: '1s' }}
-                ></div>
-              </div>
-            </div>
-
-            {/* 错误信息 */}
-            <div className='space-y-4 mb-8'>
-              <h2 className='text-2xl font-bold text-gray-800 dark:text-gray-200'>
-                Oops, something went wrong
-              </h2>
-              <div className='bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4'>
-                <p className='text-red-600 dark:text-red-400 font-medium'>
-                  {error}
-                </p>
-              </div>
-              <p className='text-sm text-gray-500 dark:text-gray-400'>
-                請檢查網路連線或嘗試重新整理頁面
-              </p>
-            </div>
-
-            {/* 操作按钮 */}
-            <div className='space-y-3'>
-              <button
-                onClick={() =>
-                  videoTitle
-                    ? router.push(`/search?q=${encodeURIComponent(videoTitle)}`)
-                    : router.back()
-                }
-                className='w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl'
-              >
-                {videoTitle ? '🔍 返回搜尋' : '← 返回上頁'}
-              </button>
-
-              <button
-                onClick={() => window.location.reload()}
-                className='w-full px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200'
-              >
-                🔄 重新尝试
-              </button>
-            </div>
-          </div>
-        </div>
-      </PageLayout>
-    );
-  }
-
   return (
     <PageLayout activePath='/play'>
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
@@ -2890,6 +2847,60 @@ function PlayPageClient() {
               {isFullscreen && (
                 <div className='pointer-events-none absolute top-3 right-3 z-[600] rounded-full bg-black/70 px-3 py-1 text-white text-sm tracking-widest'>
                   {clockText}
+                </div>
+              )}
+              {error && (
+                <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
+                  <div className='flex items-start justify-between gap-3'>
+                    <div className='min-w-0'>
+                      <div className='text-[11px] uppercase tracking-wider text-white/80'>
+                        {errorType === 'playback'
+                          ? 'Playback error'
+                          : errorType === 'source'
+                          ? 'Source error'
+                          : errorType === 'search'
+                          ? 'Search error'
+                          : errorType === 'network'
+                          ? 'Network error'
+                          : errorType === 'params'
+                          ? 'Parameter error'
+                          : 'Error'}
+                      </div>
+                      <div className='mt-1 text-sm font-medium break-words'>
+                        {error}
+                      </div>
+                      {(errorType === 'playback' || errorType === 'source') && (
+                        <div className='mt-2 flex items-center gap-2'>
+                          <button
+                            type='button'
+                            onClick={() => {
+                              clearError();
+                              trySwitchToNextSource();
+                            }}
+                            className='rounded-md bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold'
+                          >
+                            Try next source
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => window.location.reload()}
+                            className='rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold'
+                          >
+                            Reload
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type='button'
+                      onClick={clearError}
+                      className='shrink-0 rounded-md bg-white/10 hover:bg-white/20 px-2 py-1 text-xs font-semibold'
+                      aria-label='Dismiss error'
+                      title='Dismiss'
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               )}
               <div
