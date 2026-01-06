@@ -502,29 +502,6 @@ function PlayPageClient() {
     [getValuationKey]
   );
 
-  const determineMajorityEpisodeCount = useCallback(
-    (sources: SearchResult[]): number | null => {
-      const counts = new Map<number, number>();
-      sources.forEach((source) => {
-        const len = source.episodes?.length || 0;
-        if (len > 0) {
-          counts.set(len, (counts.get(len) || 0) + 1);
-        }
-      });
-      if (!counts.size) return null;
-      let majorityLen = 0;
-      let majorityFreq = 0;
-      counts.forEach((freq, len) => {
-        if (freq > majorityFreq || (freq === majorityFreq && len > majorityLen)) {
-          majorityFreq = freq;
-          majorityLen = len;
-        }
-      });
-      return majorityLen || null;
-    },
-    []
-  );
-
   const resumeRecordRef = useRef<PlayRecord | null>(null);
   const resumeAppliedRef = useRef(false);
 
@@ -774,15 +751,21 @@ function PlayPageClient() {
         return false;
       };
 
-      const sourcesForMajority = all.filter((s) => {
+      const episodeCandidates = all.filter((s) => {
         const len = s.episodes?.length || 0;
-        return Array.isArray(s.episodes) && len > 0 && matchesYear(s) && !isTrailer(s);
+        return (
+          Array.isArray(s.episodes) &&
+          len > 0 &&
+          matchesYear(s) &&
+          matchesTitle(s) &&
+          !isTrailer(s)
+        );
       });
-      const majority =
-        sourceSearchCompleted && sourcesForMajority.length > 0
-          ? determineMajorityEpisodeCount(sourcesForMajority)
-          : null;
-      majorityEpisodeCountRef.current = majority;
+      const maxEpisodeCount =
+        episodeCandidates.length > 0
+          ? Math.max(...episodeCandidates.map((s) => s.episodes?.length || 0))
+          : 0;
+      majorityEpisodeCountRef.current = maxEpisodeCount > 0 ? maxEpisodeCount : null;
 
       all.forEach((s) => {
         const reasons: string[] = [];
@@ -800,12 +783,6 @@ function PlayPageClient() {
         const len = s.episodes?.length || 0;
         if (!Array.isArray(s.episodes) || len === 0) {
           reasons.push(tt('No episodes', '缺少集数信息', '缺少集數資訊'));
-        } else if (sourceSearchCompleted && majority != null) {
-          if (Math.abs(len - majority) > 2) {
-            reasons.push(
-              tt('Episode count differs', '集数偏离主流', '集數偏離主流')
-            );
-          }
         }
         if (Array.isArray(s.episodes) && currentEpisodeIndexRef.current >= len) {
           reasons.push(
@@ -856,10 +833,14 @@ function PlayPageClient() {
 
       const withPenalty = rest.filter((s) => s.verifyReason);
       const noPenalty = rest.filter((s) => !s.verifyReason);
-      return [...noPenalty, ...withPenalty, ...titleNoMatch];
+      const noPenaltyEpisodeSorted = noPenalty
+        .map((s, idx) => ({ s, idx, len: s.episodes?.length || 0 }))
+        .sort((a, b) => (b.len - a.len) || (a.idx - b.idx))
+        .map((x) => x.s);
+
+      return [...noPenaltyEpisodeSorted, ...withPenalty, ...titleNoMatch];
     },
     [
-      determineMajorityEpisodeCount,
       sortSourcesByValuation,
       getValuationKey,
       normalizeTitle,
