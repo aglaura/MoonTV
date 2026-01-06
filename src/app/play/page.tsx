@@ -1196,6 +1196,15 @@ function PlayPageClient() {
 
   const ensureVideoSource = (video: HTMLVideoElement | null, url: string) => {
     if (!video || !url) return;
+    // When Hls.js is driving playback (common on Android/Chrome), touching <source>
+    // can cause reload loops / restarts. Only keep remote playback flags in sync.
+    if ((video as any).hls) {
+      video.disableRemotePlayback = false;
+      if (video.hasAttribute('disableRemotePlayback')) {
+        video.removeAttribute('disableRemotePlayback');
+      }
+      return;
+    }
     const sources = Array.from(video.getElementsByTagName('source'));
     const existed = sources.some((s) => s.src === url);
     if (!existed) {
@@ -2282,13 +2291,14 @@ function PlayPageClient() {
         ) {
           setError(t('timeoutSwitch'));
           setIsVideoLoading(false);
+          trySwitchToNextSource();
         }
       }, 6000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
       setError('播放器初始化失敗');
     }
-  }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled, trySwitchToNextSource]);
+  }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
   useEffect(() => {
     if (!artPlayerRef.current) {
