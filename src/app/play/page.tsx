@@ -47,6 +47,22 @@ declare global {
 
 function PlayPageClient() {
   const { userLocale } = useUserLanguage();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const delayInitialPlaybackRef = useRef<boolean>(
+    !(searchParams.get('source') && searchParams.get('id'))
+  );
+  const initialPlaybackChosenRef = useRef(false);
+  const FIRST_PLAY_CANDIDATE_LIMIT = 5;
+  const [firstPlayCandidates, setFirstPlayCandidates] = useState<SearchResult[]>(
+    []
+  );
+  const firstPlayCandidatesRef = useRef<SearchResult[]>([]);
+  useEffect(() => {
+    firstPlayCandidatesRef.current = firstPlayCandidates;
+  }, [firstPlayCandidates]);
+  const firstPlayProviderSetRef = useRef<Set<string>>(new Set());
 
   const localeTexts: Record<string, Record<string, string>> = {
     en: {
@@ -145,9 +161,6 @@ function PlayPageClient() {
       hls: hlsInfo,
     };
   }, []);
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   // -----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------
@@ -494,6 +507,80 @@ function PlayPageClient() {
     (text?: string | null) =>
       convertToTraditional((text || '').trim().toLowerCase()),
     []
+  );
+
+  const scoreInitialPlayCandidate = useCallback(
+    (candidate: SearchResult): number => {
+      if (!candidate) return -999999;
+
+      const title = candidate.title || candidate.original_title || '';
+      const lower = title.toLowerCase();
+      if (
+        lower.includes('trailer') ||
+        title.includes('預告') ||
+        title.includes('预告')
+      ) {
+        return -1000;
+      }
+
+      const expectedTitleNorm = normalizeTitle(
+        searchTitle || videoTitleRef.current || ''
+      );
+      const titleNorm = normalizeTitle(candidate.title || '');
+      const originalNorm = normalizeTitle(candidate.original_title || '');
+      const year = (candidate.year || '').trim();
+      const expectedYear = (videoYearRef.current || '').trim();
+      const episodeCount = Array.isArray(candidate.episodes)
+        ? candidate.episodes.length
+        : 0;
+
+      let titleScore = 0;
+      if (!expectedTitleNorm) {
+        titleScore = 10;
+      } else if (titleNorm && titleNorm === expectedTitleNorm) {
+        titleScore = 120;
+      } else if (originalNorm && originalNorm === expectedTitleNorm) {
+        titleScore = 110;
+      } else if (
+        titleNorm &&
+        (titleNorm.includes(expectedTitleNorm) ||
+          expectedTitleNorm.includes(titleNorm))
+      ) {
+        titleScore = 80;
+      } else if (
+        originalNorm &&
+        (originalNorm.includes(expectedTitleNorm) ||
+          expectedTitleNorm.includes(originalNorm))
+      ) {
+        titleScore = 70;
+      }
+
+      const yearScore =
+        !expectedYear || !year || year === expectedYear ? 20 : 0;
+
+      const episodesScore = Math.min(20, Math.max(0, episodeCount));
+
+      return titleScore + yearScore + episodesScore;
+    },
+    [normalizeTitle, searchTitle]
+  );
+
+  const pickBestInitialCandidate = useCallback(
+    (candidates: SearchResult[]): SearchResult | null => {
+      if (!candidates || candidates.length === 0) return null;
+      let best = candidates[0];
+      let bestScore = scoreInitialPlayCandidate(best);
+      for (let i = 1; i < candidates.length; i += 1) {
+        const s = candidates[i];
+        const score = scoreInitialPlayCandidate(s);
+        if (score > bestScore) {
+          best = s;
+          bestScore = score;
+        }
+      }
+      return best;
+    },
+    [scoreInitialPlayCandidate]
   );
 
   const tryResumeFromRecord = useCallback((): SearchResult | null => {
@@ -1365,13 +1452,16 @@ function PlayPageClient() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let playbackInitialized = false;
+      initialPlaybackChosenRef.current = false;
+      firstPlayProviderSetRef.current.clear();
+      firstPlayCandidatesRef.current = [];
+      setFirstPlayCandidates([]);
       const allSources: SearchResult[] = [];
       const penaltyEntries: SourceValuationPayload[] = [];
 
       const initializePlayback = (detailData: SearchResult) => {
-        if (playbackInitialized) return;
-        playbackInitialized = true;
+        if (initialPlaybackChosenRef.current) return;
+        initialPlaybackChosenRef.current = true;
 
         setNeedPrefer(false);
         setCurrentSource(detailData.source);
@@ -1380,8 +1470,9 @@ function PlayPageClient() {
         setVideoTitle(detailData.title || videoTitleRef.current);
         setVideoCover(detailData.poster);
         setDetail(detailData);
-        if (currentEpisodeIndex >= detailData.episodes.length) {
+        if (currentEpisodeIndexRef.current >= detailData.episodes.length) {
           setCurrentEpisodeIndex(0);
+          currentEpisodeIndexRef.current = 0;
         }
 
         const newUrl = new URL(window.location.href);
@@ -1464,19 +1555,75 @@ function PlayPageClient() {
           return merged;
         });
         const resumeCandidate = tryResumeFromRecord();
-        if (!playbackInitialized && resumeCandidate) {
+        if (!initialPlaybackChosenRef.current && resumeCandidate) {
           initializePlayback(resumeCandidate);
         }
 
-        if (!playbackInitialized) {
-          const firstPlayable =
-            newSources.find((s) => Array.isArray(s.episodes) && s.episodes.length > 0) ||
+        if (
+          !initialPlaybackChosenRef.current &&
+          !delayInitialPlaybackRef.current &&
+          currentSourceRef.current &&
+          currentIdRef.current
+        ) {
+          const match =
+            newSources.find(
+              (s) =>
+                s.source === currentSourceRef.current &&
+                String(s.id ?? '') === String(currentIdRef.current ?? '')
+            ) ||
             availableSourcesRef.current.find(
-              (s) => Array.isArray(s.episodes) && s.episodes.length > 0
+              (s) =>
+                s.source === currentSourceRef.current &&
+                String(s.id ?? '') === String(currentIdRef.current ?? '')
             ) ||
             null;
-          if (firstPlayable) {
-            initializePlayback(firstPlayable);
+          if (match) {
+            initializePlayback(match);
+          }
+        }
+
+        if (!initialPlaybackChosenRef.current && delayInitialPlaybackRef.current) {
+          const grouped = new Map<string, SearchResult[]>();
+          newSources.forEach((s) => {
+            const key = getValuationKey(s.source);
+            if (!key) return;
+            if (!Array.isArray(s.episodes) || s.episodes.length === 0) return;
+            const arr = grouped.get(key);
+            if (arr) {
+              arr.push(s);
+            } else {
+              grouped.set(key, [s]);
+            }
+          });
+
+          if (grouped.size > 0) {
+            const next = [...firstPlayCandidatesRef.current];
+            grouped.forEach((items, key) => {
+              if (next.length >= FIRST_PLAY_CANDIDATE_LIMIT) return;
+              if (firstPlayProviderSetRef.current.has(key)) return;
+              const bestFromProvider = pickBestInitialCandidate(items);
+              if (!bestFromProvider) return;
+              firstPlayProviderSetRef.current.add(key);
+              next.push(bestFromProvider);
+            });
+            if (next.length !== firstPlayCandidatesRef.current.length) {
+              const limited = next.slice(0, FIRST_PLAY_CANDIDATE_LIMIT);
+              firstPlayCandidatesRef.current = limited;
+              setFirstPlayCandidates(limited);
+            }
+          }
+
+          const candidatesNow = firstPlayCandidatesRef.current;
+          if (
+            candidatesNow.length >= FIRST_PLAY_CANDIDATE_LIMIT &&
+            !initialPlaybackChosenRef.current
+          ) {
+            const picked = pickBestInitialCandidate(
+              candidatesNow.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
+            );
+            if (picked) {
+              initializePlayback(picked);
+            }
           }
         }
 
@@ -1533,7 +1680,7 @@ function PlayPageClient() {
         return finalSorted;
       });
       const resumeCandidateFinal = tryResumeFromRecord();
-      if (!playbackInitialized && resumeCandidateFinal) {
+      if (!initialPlaybackChosenRef.current && resumeCandidateFinal) {
         initializePlayback(resumeCandidateFinal);
       }
 
@@ -1544,7 +1691,17 @@ function PlayPageClient() {
         setProviderCount(uniqueProviders.size);
       }
 
-      if (!playbackInitialized) {
+      if (!initialPlaybackChosenRef.current && delayInitialPlaybackRef.current) {
+        const candidates = firstPlayCandidatesRef.current;
+        const picked = pickBestInitialCandidate(
+          candidates.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
+        );
+        if (picked) {
+          initializePlayback(picked);
+        }
+      }
+
+      if (!initialPlaybackChosenRef.current) {
         if (allSources.length > 0) {
           const firstPlayable =
             allSources.find((s) => Array.isArray(s.episodes) && s.episodes.length > 0) ||
