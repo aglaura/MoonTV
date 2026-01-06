@@ -39,6 +39,10 @@ declare global {
   interface HTMLVideoElement {
     hls?: any;
   }
+  interface Window {
+    __moontv_player?: any;
+    __moontv_getVideoInfo?: () => any;
+  }
 }
 
 function PlayPageClient() {
@@ -67,6 +71,80 @@ function PlayPageClient() {
     },
     [userLocale]
   );
+
+  const getLiveVideoInfo = useCallback(() => {
+    const player = artPlayerRef.current;
+    const video = player?.video as HTMLVideoElement | undefined;
+    if (!player || !video) return null;
+
+    const buffered = (() => {
+      try {
+        const ranges: Array<{ start: number; end: number }> = [];
+        for (let i = 0; i < video.buffered.length; i += 1) {
+          ranges.push({
+            start: video.buffered.start(i),
+            end: video.buffered.end(i),
+          });
+        }
+        return ranges;
+      } catch {
+        return [];
+      }
+    })();
+
+    const quality = (() => {
+      const anyVideo = video as any;
+      if (typeof anyVideo.getVideoPlaybackQuality === 'function') {
+        try {
+          return anyVideo.getVideoPlaybackQuality();
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    })();
+
+    const hls = (video as any).hls;
+    const hlsInfo = hls
+      ? {
+          currentLevel: hls.currentLevel,
+          loadLevel: hls.loadLevel,
+          nextLevel: hls.nextLevel,
+          autoLevelEnabled: hls.autoLevelEnabled,
+          bandwidthEstimate: hls.bandwidthEstimate,
+          liveSyncPosition: hls.liveSyncPosition,
+          level:
+            hls.levels && hls.currentLevel >= 0
+              ? hls.levels[hls.currentLevel]
+              : null,
+        }
+      : null;
+
+    return {
+      currentSrc: video.currentSrc || (player.url as string) || '',
+      currentTime: video.currentTime,
+      duration: video.duration,
+      paused: video.paused,
+      ended: video.ended,
+      readyState: video.readyState,
+      networkState: video.networkState,
+      playbackRate: video.playbackRate,
+      volume: video.volume,
+      muted: video.muted,
+      width: video.videoWidth,
+      height: video.videoHeight,
+      buffered,
+      decodedFrames:
+        quality && typeof quality.totalVideoFrames === 'number'
+          ? quality.totalVideoFrames
+          : undefined,
+      droppedFrames:
+        quality && typeof quality.droppedVideoFrames === 'number'
+          ? quality.droppedVideoFrames
+          : undefined,
+      hls: hlsInfo,
+    };
+  }, []);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2183,6 +2261,12 @@ function PlayPageClient() {
       artPlayerRef.current.on('ready', () => {
         setError(null);
       });
+
+      // Expose for debugging in browser devtools
+      if (typeof window !== 'undefined') {
+        window.__moontv_player = artPlayerRef.current;
+        window.__moontv_getVideoInfo = getLiveVideoInfo;
+      }
 
       artPlayerRef.current.on('video:volumechange', () => {
         lastVolumeRef.current = artPlayerRef.current.volume;
