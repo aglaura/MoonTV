@@ -9,6 +9,8 @@ import {
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { resolveUiLocale } from '@/lib/i18n.client';
+import { useUserLanguage } from '@/lib/userLanguage.client';
 
 import ScrollableRow from '@/components/ScrollableRow';
 import VideoCard from '@/components/VideoCard';
@@ -18,6 +20,17 @@ interface ContinueWatchingProps {
 }
 
 export default function ContinueWatching({ className }: ContinueWatchingProps) {
+  const { userLocale } = useUserLanguage();
+  const uiLocale =
+    userLocale === 'en' || userLocale === 'zh-Hans' || userLocale === 'zh-Hant'
+      ? userLocale
+      : resolveUiLocale();
+  const tt = (en: string, zhHans: string, zhHant: string) => {
+    if (uiLocale === 'zh-Hans') return zhHans;
+    if (uiLocale === 'zh-Hant') return zhHant;
+    return en;
+  };
+
   const [playRecords, setPlayRecords] = useState<
     (PlayRecord & { key: string })[]
   >([]);
@@ -48,7 +61,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
         const allRecords = await getAllPlayRecords();
         updatePlayRecords(allRecords);
       } catch (error) {
-        console.error('獲取播放紀錄失敗:', error);
+        console.error('Failed to load play records:', error);
         setPlayRecords([]);
       } finally {
         setLoading(false);
@@ -77,7 +90,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
         <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-          繼續觀看
+          {tt('Continue watching', '继续观看', '繼續觀看')}
         </h2>
         {!loading && playRecords.length > 0 && (
           <button
@@ -87,7 +100,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
               setPlayRecords([]);
             }}
           >
-            清空
+            {tt('Clear', '清空', '清空')}
           </button>
         )}
       </div>
