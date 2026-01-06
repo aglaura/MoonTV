@@ -22,6 +22,7 @@ import {
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
+import { useUserLanguage } from '@/lib/userLanguage.client';
 import {
   formatSpeedFromKBps,
   getQualityLabelFromRank,
@@ -33,7 +34,6 @@ import {
 
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
-import { useUserLanguage } from '@/lib/userLanguage.client';
 
 declare global {
   interface HTMLVideoElement {
@@ -49,6 +49,18 @@ function PlayPageClient() {
   const { userLocale } = useUserLanguage();
   const searchParams = useSearchParams();
 
+  type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+  const uiLocale: UiLocale =
+    userLocale === 'zh-Hans' || userLocale === 'zh-Hant' ? userLocale : 'en';
+  const tt = useCallback(
+    (en: string, zhHans: string, zhHant: string) => {
+      if (uiLocale === 'zh-Hans') return zhHans;
+      if (uiLocale === 'zh-Hant') return zhHant;
+      return en;
+    },
+    [uiLocale]
+  );
+
   const delayInitialPlaybackRef = useRef<boolean>(
     !(searchParams.get('source') && searchParams.get('id'))
   );
@@ -62,30 +74,6 @@ function PlayPageClient() {
     firstPlayCandidatesRef.current = firstPlayCandidates;
   }, [firstPlayCandidates]);
   const firstPlayProviderSetRef = useRef<Set<string>>(new Set());
-
-  const localeTexts: Record<string, Record<string, string>> = {
-    en: {
-      timeoutSwitch: 'Source timed out, switching to another source…',
-    },
-    'zh-Hans': {
-      timeoutSwitch: '来源响应超时，自动切换其他来源…',
-    },
-    'zh-Hant': {
-      timeoutSwitch: '來源響應超時，自動切換其他來源…',
-    },
-  };
-
-  const t = useCallback(
-    (key: string) => {
-      const locale = userLocale || 'en';
-      return (
-        localeTexts[locale]?.[key] ??
-        localeTexts['en']?.[key] ??
-        key
-      );
-    },
-    [userLocale]
-  );
 
   const getLiveVideoInfo = useCallback(() => {
     const player = artPlayerRef.current;
@@ -168,7 +156,11 @@ function PlayPageClient() {
     'searching' | 'preferring' | 'fetching' | 'ready'
   >('searching');
   const [loadingMessage, setLoadingMessage] = useState(
-    'Searching player resources…'
+    tt(
+      'Searching player resources…',
+      '正在搜索播放资源…',
+      '正在搜尋播放資源…'
+    )
   );
   const [error, setError] = useState<string | null>(null);
   type PlayerErrorType =
@@ -358,9 +350,13 @@ function PlayPageClient() {
     const failed = searchStats.failed || 0;
 
     setLoadingMessage(
-      `Searching player resources… Searched ${searched}/${totalProviders} providers · With sources ${found} · No sources ${noSources} · Failed ${failed}`
+      tt(
+        `Searching player resources… Searched ${searched}/${totalProviders} providers · With sources ${found} · No sources ${noSources} · Failed ${failed}`,
+        `正在搜索播放资源… 已搜索 ${searched}/${totalProviders} 个来源 · 有资源 ${found} · 无资源 ${noSources} · 失败 ${failed}`,
+        `正在搜尋播放資源… 已搜尋 ${searched}/${totalProviders} 個來源 · 有資源 ${found} · 無資源 ${noSources} · 失敗 ${failed}`
+      )
     );
-  }, [loadingStage, providerCount, searchStats]);
+  }, [loadingStage, providerCount, searchStats, tt]);
   const precomputedVideoInfoRef =
     useRef<Map<string, PrecomputedVideoInfoEntry>>(precomputedVideoInfo);
 
@@ -753,6 +749,7 @@ function PlayPageClient() {
       const expectedTitleNorm = normalizeTitle(
         searchTitle || videoTitleRef.current || ''
       );
+      const reasonSep = tt('; ', '；', '；');
 
       const matchesYear = (s: SearchResult) => {
         const y = (s.year || '').trim();
@@ -791,25 +788,33 @@ function PlayPageClient() {
         const reasons: string[] = [];
         const resultKey = getResultKey(s);
         if (isTrailer(s)) {
-          reasons.push('預告片');
+          reasons.push(tt('Trailer', '预告片', '預告片'));
         }
         if (!matchesYear(s)) {
-          reasons.push('年份不符');
+          reasons.push(tt('Year mismatch', '年份不符', '年份不符'));
         }
         if (!matchesTitle(s)) {
-          reasons.push('標題不符');
+          reasons.push(tt('Title mismatch', '标题不符', '標題不符'));
           titleNoMatchKeys.add(resultKey);
         }
         const len = s.episodes?.length || 0;
         if (!Array.isArray(s.episodes) || len === 0) {
-          reasons.push('缺少集數資訊');
+          reasons.push(tt('No episodes', '缺少集数信息', '缺少集數資訊'));
         } else if (sourceSearchCompleted && majority != null) {
           if (Math.abs(len - majority) > 2) {
-            reasons.push('集數偏離主流');
+            reasons.push(
+              tt('Episode count differs', '集数偏离主流', '集數偏離主流')
+            );
           }
         }
         if (Array.isArray(s.episodes) && currentEpisodeIndexRef.current >= len) {
-          reasons.push('當前集數超出範圍');
+          reasons.push(
+            tt(
+              'Current episode out of range',
+              '当前集数超出范围',
+              '當前集數超出範圍'
+            )
+          );
         }
         if (reasons.length) {
           penalties.set(resultKey, reasons);
@@ -836,7 +841,7 @@ function PlayPageClient() {
               }
             : s;
         return reasons && reasons.length
-          ? { ...base, verifyReason: reasons.join('；') }
+          ? { ...base, verifyReason: reasons.join(reasonSep) }
           : base;
       };
 
@@ -859,6 +864,7 @@ function PlayPageClient() {
       getValuationKey,
       normalizeTitle,
       sourceSearchCompleted,
+      tt,
     ]
   );
 
@@ -1100,12 +1106,27 @@ function PlayPageClient() {
       precomputedVideoInfo.get(getValuationKey(currentSource));
     return bySourceKey || null;
   }, [currentSource, currentId, precomputedVideoInfo, getValuationKey]);
+  const localizeInfoLabel = useCallback(
+    (value?: string | null) => {
+      const normalized = (value || '').trim();
+      if (!normalized) return '';
+      if (normalized === '未知') return tt('Unknown', '未知', '未知');
+      if (normalized === '測量中...') {
+        return tt('Measuring…', '测量中…', '測量中…');
+      }
+      if (normalized === '錯誤') return tt('Error', '错误', '錯誤');
+      if (normalized === 'Unavailable') return tt('Unavailable', '不可用', '不可用');
+      return normalized;
+    },
+    [tt]
+  );
   const englishVideoTitle = imdbVideoTitle ?? undefined;
   const displayVideoTitle = useMemo(
     () => convertToTraditional(videoTitle),
     [videoTitle]
   );
-  const displayTitleText = displayVideoTitle || '影片標題';
+  const displayTitleText =
+    displayVideoTitle || tt('Video title', '影片标题', '影片標題');
   const displayTitleWithEnglish = englishVideoTitle
     ? `${displayTitleText} (${englishVideoTitle})`
     : displayTitleText;
@@ -1536,7 +1557,7 @@ function PlayPageClient() {
       );
 
       if (!response.body) {
-        setSourceSearchError('搜尋失敗');
+        setSourceSearchError(tt('Search failed', '搜索失败', '搜尋失敗'));
         setSourceSearchLoading(false);
         return;
       }
@@ -1576,7 +1597,13 @@ function PlayPageClient() {
         window.history.replaceState({}, '', newUrl.toString());
 
         setLoadingStage('ready');
-        setLoadingMessage('✨ 準備就緒，即將開始播放...');
+        setLoadingMessage(
+          tt(
+            '✨ Ready. Starting playback…',
+            '✨ 准备就绪，即将开始播放…',
+            '✨ 準備就緒，即將開始播放...'
+          )
+        );
 
         setTimeout(() => {
           setLoading(false);
@@ -1801,8 +1828,21 @@ function PlayPageClient() {
           initializePlayback(firstPlayable);
         } else {
           setLoadingStage('searching');
-          setLoadingMessage('未找到可用的播放來源');
-          reportError('未找到可用的播放來源', 'search');
+          setLoadingMessage(
+            tt(
+              'No playable sources found',
+              '未找到可用的播放来源',
+              '未找到可用的播放來源'
+            )
+          );
+          reportError(
+            tt(
+              'No playable sources found',
+              '未找到可用的播放来源',
+              '未找到可用的播放來源'
+            ),
+            'search'
+          );
           setLoading(false);
         }
       }
@@ -1827,7 +1867,14 @@ function PlayPageClient() {
 
     const initAll = () => {
       if (!currentSource && !currentId && !videoTitle && !searchTitle) {
-        reportError('缺少必要參數', 'params');
+        reportError(
+          tt(
+            'Missing required parameters',
+            '缺少必要参数',
+            '缺少必要參數'
+          ),
+          'params'
+        );
         setLoading(false);
         return;
       }
@@ -1835,8 +1882,16 @@ function PlayPageClient() {
       setLoadingStage(currentSource && currentId ? 'fetching' : 'searching');
       setLoadingMessage(
         currentSource && currentId
-          ? '🎬 Getting video info.....'
-          : '🔍 Searching player resources…'
+          ? tt(
+              '🎬 Getting video info…',
+              '🎬 正在获取视频信息…',
+              '🎬 正在取得影片資訊…'
+            )
+          : tt(
+              '🔍 Searching player resources…',
+              '🔍 正在搜索播放资源…',
+              '🔍 正在搜尋播放資源…'
+            )
       );
 
       streamSourcesData(searchTitle || videoTitle);
@@ -1909,7 +1964,10 @@ function PlayPageClient() {
         (source) => source.source === newSource && source.id === newId
       );
       if (!newDetail) {
-        reportError('未找到匹配結果', 'source');
+        reportError(
+          tt('No matching result found', '未找到匹配结果', '未找到匹配結果'),
+          'source'
+        );
         return;
       }
 
@@ -1945,7 +2003,12 @@ function PlayPageClient() {
       setCurrentEpisodeIndex(targetIndex);
     } catch (err) {
       setIsVideoLoading(false);
-      reportError(err instanceof Error ? err.message : '換源失敗', 'source');
+      reportError(
+        err instanceof Error
+          ? err.message
+          : tt('Failed to switch source', '换源失败', '換源失敗'),
+        'source'
+      );
     }
   };
 
@@ -1972,7 +2035,14 @@ function PlayPageClient() {
     });
 
     if (nextSource) {
-      reportError('當前播放來源不可用，自動切換其他來源…', 'source');
+      reportError(
+        tt(
+          'Current source unavailable, switching to another source…',
+          '当前播放来源不可用，自动切换其他来源…',
+          '當前播放來源不可用，自動切換其他來源…'
+        ),
+        'source'
+      );
       handleSourceChange(nextSource.source, nextSource.id, nextSource.title, {
         auto: true,
         allowDuringPlayback: true,
@@ -1980,9 +2050,16 @@ function PlayPageClient() {
       return true;
     }
 
-    reportError('當前播放來源不可用，請手動選擇其他來源', 'source');
+    reportError(
+      tt(
+        'Current source unavailable. Please choose another source.',
+        '当前播放来源不可用，请手动选择其他来源',
+        '當前播放來源不可用，請手動選擇其他來源'
+      ),
+      'source'
+    );
     return false;
-  }, [getValuationKey, handleSourceChange]);
+  }, [getValuationKey, handleSourceChange, tt]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -2137,9 +2214,11 @@ function PlayPageClient() {
       if (artPlayerRef.current && artPlayerRef.current.volume < 1) {
         artPlayerRef.current.volume =
           Math.round((artPlayerRef.current.volume + 0.1) * 10) / 10;
-        artPlayerRef.current.notice.show = `音量: ${Math.round(
-          artPlayerRef.current.volume * 100
-        )}`;
+        artPlayerRef.current.notice.show = tt(
+          `Volume: ${Math.round(artPlayerRef.current.volume * 100)}`,
+          `音量：${Math.round(artPlayerRef.current.volume * 100)}`,
+          `音量：${Math.round(artPlayerRef.current.volume * 100)}`
+        );
         e.preventDefault();
       }
     }
@@ -2148,9 +2227,11 @@ function PlayPageClient() {
       if (artPlayerRef.current && artPlayerRef.current.volume > 0) {
         artPlayerRef.current.volume =
           Math.round((artPlayerRef.current.volume - 0.1) * 10) / 10;
-        artPlayerRef.current.notice.show = `音量: ${Math.round(
-          artPlayerRef.current.volume * 100
-        )}`;
+        artPlayerRef.current.notice.show = tt(
+          `Volume: ${Math.round(artPlayerRef.current.volume * 100)}`,
+          `音量：${Math.round(artPlayerRef.current.volume * 100)}`,
+          `音量：${Math.round(artPlayerRef.current.volume * 100)}`
+        );
         e.preventDefault();
       }
     }
@@ -2335,14 +2416,18 @@ function PlayPageClient() {
       currentEpisodeIndex < 0
     ) {
       reportError(
-        `選集索引無效，目前共 ${totalEpisodes} 集`,
+        tt(
+          `Invalid episode index. Total: ${totalEpisodes}`,
+          `选集索引无效，目前共 ${totalEpisodes} 集`,
+          `選集索引無效，目前共 ${totalEpisodes} 集`
+        ),
         'params'
       );
       return;
     }
 
     if (!videoUrl) {
-      reportError('影片地址無效', 'playback');
+      reportError(tt('Invalid video URL', '视频地址无效', '影片地址無效'), 'playback');
       return;
     }
     console.log(videoUrl);
@@ -2359,9 +2444,11 @@ function PlayPageClient() {
 
     if (!isWebkit && artPlayerRef.current) {
       artPlayerRef.current.switch = videoUrl;
-      artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
-        currentEpisodeIndex + 1
-      }`;
+      artPlayerRef.current.title = tt(
+        `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
+        `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`,
+        `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`
+      );
       artPlayerRef.current.poster = videoCover;
       if (artPlayerRef.current?.video) {
         ensureVideoSource(
@@ -2411,7 +2498,12 @@ function PlayPageClient() {
         autoPlayback: false,
         airplay: true,
         theme: '#22c55e',
-        lang: 'en',
+        lang:
+          uiLocale === 'zh-Hans'
+            ? 'zh-cn'
+            : uiLocale === 'zh-Hant'
+            ? 'zh-tw'
+            : 'en',
         hotkey: false,
         fastForward: true,
         autoOrientation: true,
@@ -2496,9 +2588,11 @@ function PlayPageClient() {
         },
         settings: [
           {
-            html: 'Ad Block',
+            html: tt('Ad block', '广告拦截', '廣告攔截'),
             icon: '<text x="50%" y="50%" font-size="20" font-weight="bold" text-anchor="middle" dominant-baseline="middle" fill="#ffffff">AD</text>',
-            tooltip: blockAdEnabled ? 'Enabled' : 'Disabled',
+            tooltip: blockAdEnabled
+              ? tt('Enabled', '已启用', '已啟用')
+              : tt('Disabled', '已禁用', '已禁用'),
             onClick() {
               const newVal = !blockAdEnabled;
               try {
@@ -2518,7 +2612,9 @@ function PlayPageClient() {
               } catch (_) {
                 // ignore
               }
-              return newVal ? 'Enabled' : 'Disabled';
+              return newVal
+                ? tt('Enabled', '已启用', '已啟用')
+                : tt('Disabled', '已禁用', '已禁用');
             },
           },
         ],
@@ -2527,16 +2623,18 @@ function PlayPageClient() {
             position: 'left',
             index: 13,
             html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
-            tooltip: 'Next episode',
+            tooltip: tt('Next episode', '下一集', '下一集'),
             click: function () {
               handleNextEpisode();
             },
           },
         ],
       });
-      artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
-        currentEpisodeIndex + 1
-      }`;
+      artPlayerRef.current.title = tt(
+        `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
+        `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`,
+        `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`
+      );
 
       artPlayerRef.current.on('ready', () => {
         clearError();
@@ -2657,25 +2755,50 @@ function PlayPageClient() {
           artPlayerRef.current &&
           Math.max(artPlayerRef.current.currentTime || 0, 0) <= 0
         ) {
-          reportError(t('timeoutSwitch'), 'playback');
+          reportError(
+            tt(
+              'Source timed out, switching to another source…',
+              '来源响应超时，自动切换其他来源…',
+              '來源響應超時，自動切換其他來源…'
+            ),
+            'playback'
+          );
           setIsVideoLoading(false);
           trySwitchToNextSource();
         }
       }, 10000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
-      reportError('播放器初始化失敗', 'playback');
+      reportError(
+        tt(
+          'Player initialization failed',
+          '播放器初始化失败',
+          '播放器初始化失敗'
+        ),
+        'playback'
+      );
     }
-  }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
+  }, [
+    Artplayer,
+    Hls,
+    blockAdEnabled,
+    loading,
+    tt,
+    trySwitchToNextSource,
+    uiLocale,
+    videoUrl,
+  ]);
 
   useEffect(() => {
     if (!artPlayerRef.current) {
       return;
     }
-    artPlayerRef.current.title = `${displayTitleWithEnglish} - Episode ${
-      currentEpisodeIndex + 1
-    }`;
-  }, [displayTitleWithEnglish, currentEpisodeIndex]);
+    artPlayerRef.current.title = tt(
+      `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
+      `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`,
+      `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`
+    );
+  }, [displayTitleWithEnglish, currentEpisodeIndex, tt]);
 
   useEffect(() => {
     return () => {
@@ -2782,7 +2905,9 @@ function PlayPageClient() {
               </p>
               <div className='text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 space-y-1'>
                 <div className='flex justify-between'>
-                  <span>Providers searched</span>
+                  <span>
+                    {tt('Providers searched', '已搜索来源', '已搜尋來源')}
+                  </span>
                   <span>
                     {searchStats.total || 0}/{providerCountRef.current ||
                       searchStats.total ||
@@ -2791,19 +2916,19 @@ function PlayPageClient() {
                   </span>
                 </div>
                 <div className='flex justify-between'>
-                  <span>With sources</span>
+                  <span>{tt('With sources', '有资源', '有資源')}</span>
                   <span>{searchStats.found || 0}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span>No sources</span>
+                  <span>{tt('No sources', '无资源', '無資源')}</span>
                   <span>{(searchStats.notFound || 0) + (searchStats.empty || 0)}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span>Failed</span>
+                  <span>{tt('Failed', '失败', '失敗')}</span>
                   <span>{searchStats.failed || 0}</span>
                 </div>
                 <div className='flex justify-between'>
-                  <span>Pending</span>
+                  <span>{tt('Pending', '待搜索', '待搜尋')}</span>
                   <span>
                     {Math.max(
                       (providerCountRef.current ||
@@ -2837,7 +2962,11 @@ function PlayPageClient() {
             )}
             {totalEpisodes > 1 && (
               <span className='text-gray-500 dark:text-gray-400'>
-                {` > 第 ${currentEpisodeIndex + 1} 集`}
+                {tt(
+                  ` > Episode ${currentEpisodeIndex + 1}`,
+                  ` > 第 ${currentEpisodeIndex + 1} 集`,
+                  ` > 第 ${currentEpisodeIndex + 1} 集`
+                )}
               </span>
             )}
           </h1>
@@ -2852,7 +2981,7 @@ function PlayPageClient() {
             )}
             {(detail?.source_name || currentPlayingInfo) && (
               <span className='px-2 py-1 rounded-full bg-white/85 dark:bg-gray-800/85 font-medium border border-gray-200/80 dark:border-gray-700/60'>
-                播放來源：
+                {tt('Source: ', '播放来源：', '播放來源：')}
                 {convertToTraditional(detail?.source_name || '') ||
                   detail?.source_name ||
                   currentSource}
@@ -2861,13 +2990,16 @@ function PlayPageClient() {
             {currentPlayingInfo && !currentPlayingInfo.hasError && (
               <>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
-                  解析度：{currentPlayingInfo.quality || 'NA'}
+                  {tt('Resolution: ', '解析度：', '解析度：')}
+                  {localizeInfoLabel(currentPlayingInfo.quality) || 'NA'}
                 </span>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
-                  載入速度：{currentPlayingInfo.loadSpeed}
+                  {tt('Load speed: ', '载入速度：', '載入速度：')}
+                  {localizeInfoLabel(currentPlayingInfo.loadSpeed)}
                 </span>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
-                  延遲：{currentPlayingInfo.pingTime}ms
+                  {tt('Ping: ', '延迟：', '延遲：')}
+                  {currentPlayingInfo.pingTime}ms
                 </span>
               </>
             )}
@@ -2884,7 +3016,17 @@ function PlayPageClient() {
               }
               className='group relative flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/80 hover:bg-white dark:bg-gray-800/80 dark:hover:bg-gray-800 backdrop-blur-sm border border-gray-200/50 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-200'
               title={
-                isEpisodeSelectorCollapsed ? '顯示選集面板' : '隱藏選集面板'
+                isEpisodeSelectorCollapsed
+                  ? tt(
+                      'Show episode panel',
+                      '显示选集面板',
+                      '顯示選集面板'
+                    )
+                  : tt(
+                      'Hide episode panel',
+                      '隐藏选集面板',
+                      '隱藏選集面板'
+                    )
               }
             >
               <svg
@@ -2903,7 +3045,9 @@ function PlayPageClient() {
                 />
               </svg>
               <span className='text-xs font-medium text-gray-600 dark:text-gray-300'>
-                {isEpisodeSelectorCollapsed ? '顯示' : '隱藏'}
+                {isEpisodeSelectorCollapsed
+                  ? tt('Show', '显示', '顯示')
+                  : tt('Hide', '隐藏', '隱藏')}
               </span>
 
               {/* 精致的状态指示点 */}
@@ -2942,16 +3086,16 @@ function PlayPageClient() {
                     <div className='min-w-0'>
                       <div className='text-[11px] uppercase tracking-wider text-white/80'>
                         {errorType === 'playback'
-                          ? 'Playback error'
+                          ? tt('Playback error', '播放错误', '播放錯誤')
                           : errorType === 'source'
-                          ? 'Source error'
+                          ? tt('Source error', '来源错误', '來源錯誤')
                           : errorType === 'search'
-                          ? 'Search error'
+                          ? tt('Search error', '搜索错误', '搜尋錯誤')
                           : errorType === 'network'
-                          ? 'Network error'
+                          ? tt('Network error', '网络错误', '網路錯誤')
                           : errorType === 'params'
-                          ? 'Parameter error'
-                          : 'Error'}
+                          ? tt('Parameter error', '参数错误', '參數錯誤')
+                          : tt('Error', '错误', '錯誤')}
                       </div>
                       <div className='mt-1 text-sm font-medium break-words'>
                         {error}
@@ -2966,14 +3110,18 @@ function PlayPageClient() {
                             }}
                             className='rounded-md bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold'
                           >
-                            Try next source
+                            {tt(
+                              'Try next source',
+                              '尝试下一个来源',
+                              '嘗試下一個來源'
+                            )}
                           </button>
                           <button
                             type='button'
                             onClick={() => window.location.reload()}
                             className='rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold'
                           >
-                            Reload
+                            {tt('Reload', '刷新', '重新整理')}
                           </button>
                         </div>
                       )}
@@ -2982,8 +3130,12 @@ function PlayPageClient() {
                       type='button'
                       onClick={clearError}
                       className='shrink-0 rounded-md bg-white/10 hover:bg-white/20 px-2 py-1 text-xs font-semibold'
-                      aria-label='Dismiss error'
-                      title='Dismiss'
+                      aria-label={tt(
+                        'Dismiss error',
+                        '关闭错误提示',
+                        '關閉錯誤提示'
+                      )}
+                      title={tt('Dismiss', '关闭', '關閉')}
                     >
                       ✕
                     </button>
@@ -3025,8 +3177,16 @@ function PlayPageClient() {
                       <div className='space-y-2'>
                         <p className='text-xl font-semibold text-white animate-pulse'>
                           {videoLoadingStage === 'sourceChanging'
-                            ? '🔄 切換播放源...'
-                            : '🔄 影片載入中...'}
+                            ? tt(
+                                '🔄 Switching source…',
+                                '🔄 切换播放源…',
+                                '🔄 切換播放源...'
+                              )
+                            : tt(
+                                '🔄 Loading video…',
+                                '🔄 视频载入中…',
+                                '🔄 影片載入中...'
+                              )}
                         </p>
                       </div>
                     </div>
@@ -3134,7 +3294,7 @@ function PlayPageClient() {
                   />
                 ) : (
                   <span className='text-gray-600 dark:text-gray-400'>
-                    封面图片
+                    {tt('Cover image', '封面图片', '封面圖片')}
                   </span>
                 )}
               </div>
