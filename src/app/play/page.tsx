@@ -448,7 +448,7 @@ function PlayPageClient() {
         }
 
         const score =
-          qualityScore * 0.4 + speedScore * 0.4 + pingScore * 0.2;
+          qualityScore * 0.5 + speedScore * 0.3 + pingScore * 0.2;
 
         return {
           ...metric,
@@ -1324,7 +1324,7 @@ function PlayPageClient() {
           return 0;
       }
     })();
-    score += qualityScore * 0.4;
+    score += qualityScore * 0.5;
 
     const speedScore = (() => {
       const speedStr = testResult.loadSpeed;
@@ -1340,7 +1340,7 @@ function PlayPageClient() {
       const speedRatio = speedKBps / maxSpeed;
       return Math.min(100, Math.max(0, speedRatio * 100));
     })();
-    score += speedScore * 0.4;
+    score += speedScore * 0.3;
 
     const pingScore = (() => {
       const ping = testResult.pingTime;
