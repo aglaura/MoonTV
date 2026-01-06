@@ -28,12 +28,12 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
+  Database,
+  GripVertical,
   Settings,
   Users,
   Video,
-  Database,
 } from 'lucide-react';
-import { GripVertical } from 'lucide-react';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
 
@@ -43,13 +43,49 @@ import { parseSpeedToKBps } from '@/lib/utils';
 
 import PageLayout from '@/components/PageLayout';
 
+type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+
+function resolveUiLocale(): UiLocale {
+  try {
+    const saved =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('userLocale')
+        : null;
+    if (saved === 'en' || saved === 'zh-Hans' || saved === 'zh-Hant') {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+
+  const nav =
+    typeof navigator !== 'undefined' ? (navigator.language || '') : '';
+  const lower = nav.toLowerCase();
+  if (lower.startsWith('zh-cn') || lower.startsWith('zh-hans')) return 'zh-Hans';
+  if (
+    lower.startsWith('zh-tw') ||
+    lower.startsWith('zh-hant') ||
+    lower.startsWith('zh-hk')
+  ) {
+    return 'zh-Hant';
+  }
+  return 'en';
+}
+
+function tt(en: string, zhHans: string, zhHant: string): string {
+  const locale = resolveUiLocale();
+  if (locale === 'zh-Hans') return zhHans;
+  if (locale === 'zh-Hant') return zhHant;
+  return en;
+}
+
 const showError = (message: string) =>
-  Swal.fire({ icon: 'error', title: '錯誤', text: message });
+  Swal.fire({ icon: 'error', title: tt('Error', '错误', '錯誤'), text: message });
 
 const showSuccess = (message: string) =>
   Swal.fire({
     icon: 'success',
-    title: '成功',
+    title: tt('Success', '成功', '成功'),
     text: message,
     timer: 2000,
     showConfirmButton: false,
@@ -210,12 +246,23 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `操作失敗: ${res.status}`);
+        throw new Error(
+          data.error ||
+            tt(
+              `Operation failed: ${res.status}`,
+              `操作失败: ${res.status}`,
+              `操作失敗: ${res.status}`
+            )
+        );
       }
 
       await refreshConfig();
     } catch (err) {
-      showError(err instanceof Error ? err.message : '操作失敗');
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Operation failed', '操作失败', '操作失敗')
+      );
       // revert toggle UI
       setUserSettings((prev) => ({ ...prev, enableRegistration: !value }));
     }
@@ -239,13 +286,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
   const handleSetAvatar = async (uname: string, currentAvatar?: string) => {
     const { value: avatar } = await Swal.fire({
-      title: '設定頭像',
+      title: tt('Set avatar', '设置头像', '設定頭像'),
       input: 'url',
       inputValue: currentAvatar || '',
       inputPlaceholder: 'https://example.com/avatar.png',
       showCancelButton: true,
-      confirmButtonText: '保存',
-      cancelButtonText: '取消',
+      confirmButtonText: tt('Save', '保存', '保存'),
+      cancelButtonText: tt('Cancel', '取消', '取消'),
     });
 
     if (avatar === undefined) return;
@@ -278,12 +325,16 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
   const handleDeleteUser = async (username: string) => {
     const { isConfirmed } = await Swal.fire({
-      title: '確認刪除用戶',
-      text: `刪除用戶 ${username} 將同時刪除其搜尋歷史、播放紀錄與收藏夾，此操作不可恢復！`,
+      title: tt('Confirm delete user', '确认删除用户', '確認刪除用戶'),
+      text: tt(
+        `Deleting ${username} will also delete their search history, play records, and favorites. This cannot be undone.`,
+        `删除用户 ${username} 将同时删除其搜索历史、播放记录与收藏夹，此操作不可恢复！`,
+        `刪除用戶 ${username} 將同時刪除其搜尋歷史、播放紀錄與收藏夾，此操作不可恢復！`
+      ),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: '確認刪除',
-      cancelButtonText: '取消',
+      confirmButtonText: tt('Delete', '确认删除', '確認刪除'),
+      cancelButtonText: tt('Cancel', '取消', '取消'),
       confirmButtonColor: '#dc2626',
     });
 
@@ -320,19 +371,30 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `操作失敗: ${res.status}`);
+        throw new Error(
+          data.error ||
+            tt(
+              `Operation failed: ${res.status}`,
+              `操作失败: ${res.status}`,
+              `操作失敗: ${res.status}`
+            )
+        );
       }
 
       await refreshConfig();
     } catch (err) {
-      showError(err instanceof Error ? err.message : '操作失敗');
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Operation failed', '操作失败', '操作失敗')
+      );
     }
   };
 
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
-        載入中...
+        {tt('Loading…', '加载中…', '載入中...')}
       </div>
     );
   }
@@ -342,14 +404,14 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       {/* 用戶統計 */}
       <div>
         <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-          用戶統計
+          {tt('User stats', '用户统计', '用戶統計')}
         </h4>
         <div className='p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800'>
           <div className='text-2xl font-bold text-green-800 dark:text-green-300'>
             {config.UserConfig.Users.length}
           </div>
           <div className='text-sm text-green-600 dark:text-green-400'>
-            總用戶數
+            {tt('Total users', '总用户数', '總用戶數')}
           </div>
         </div>
       </div>
@@ -357,7 +419,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       {/* 註冊設定 */}
       <div>
         <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-3'>
-          註冊設定
+          {tt('Registration', '注册设置', '註冊設定')}
         </h4>
         <div className='flex items-center justify-between'>
           <label
@@ -365,10 +427,18 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
               isD1Storage ? 'opacity-50' : ''
             }`}
           >
-            允許新用戶註冊
+            {tt(
+              'Allow new user registration',
+              '允许新用户注册',
+              '允許新用戶註冊'
+            )}
             {isD1Storage && (
               <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                (D1 環境下不可修改)
+                {tt(
+                  '(Not editable on D1)',
+                  '(D1 环境下不可修改)',
+                  '(D1 環境下不可修改)'
+                )}
               </span>
             )}
           </label>
@@ -399,7 +469,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       <div>
         <div className='flex items-center justify-between mb-3'>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-            用戶列表
+            {tt('Users', '用户列表', '用戶列表')}
           </h4>
           <button
             onClick={() => {
@@ -411,7 +481,9 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
             }}
             className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
           >
-            {showAddUserForm ? '取消' : '新增用戶'}
+            {showAddUserForm
+              ? tt('Cancel', '取消', '取消')
+              : tt('Add user', '新增用户', '新增用戶')}
           </button>
         </div>
 
@@ -421,7 +493,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
             <div className='flex flex-col sm:flex-row gap-4 sm:gap-3'>
               <input
                 type='text'
-                placeholder='使用者名稱'
+                placeholder={tt('Username', '用户名', '使用者名稱')}
                 value={newUser.username}
                 onChange={(e) =>
                   setNewUser((prev) => ({ ...prev, username: e.target.value }))
@@ -430,7 +502,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
               />
               <input
                 type='password'
-                placeholder='密碼'
+                placeholder={tt('Password', '密码', '密碼')}
                 value={newUser.password}
                 onChange={(e) =>
                   setNewUser((prev) => ({ ...prev, password: e.target.value }))
@@ -442,7 +514,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 disabled={!newUser.username || !newUser.password}
                 className='w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors'
               >
-                新增
+                {tt('Add', '新增', '新增')}
               </button>
             </div>
           </div>
@@ -452,19 +524,23 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         {showChangePasswordForm && (
           <div className='mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700'>
             <h5 className='text-sm font-medium text-blue-800 dark:text-blue-300 mb-3'>
-              修改用戶密碼
+              {tt(
+                'Change user password',
+                '修改用户密码',
+                '修改用戶密碼'
+              )}
             </h5>
             <div className='flex flex-col sm:flex-row gap-4 sm:gap-3'>
               <input
                 type='text'
-                placeholder='使用者名稱'
+                placeholder={tt('Username', '用户名', '使用者名稱')}
                 value={changePasswordUser.username}
                 disabled
                 className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed'
               />
               <input
                 type='password'
-                placeholder='新密碼'
+                placeholder={tt('New password', '新密码', '新密碼')}
                 value={changePasswordUser.password}
                 onChange={(e) =>
                   setChangePasswordUser((prev) => ({
@@ -479,7 +555,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 disabled={!changePasswordUser.password}
                 className='w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors'
               >
-                修改密碼
+                {tt('Change', '修改密码', '修改密碼')}
               </button>
               <button
                 onClick={() => {
@@ -488,7 +564,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 }}
                 className='w-full sm:w-auto px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors'
               >
-                取消
+                {tt('Cancel', '取消', '取消')}
               </button>
             </div>
           </div>
@@ -503,25 +579,25 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
-                  使用者名稱
+                  {tt('Username', '用户名', '使用者名稱')}
                 </th>
                 <th
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
-                  角色
+                  {tt('Role', '角色', '角色')}
                 </th>
                 <th
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
-                  狀態
+                  {tt('Status', '状态', '狀態')}
                 </th>
                 <th
                   scope='col'
                   className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
-                  操作
+                  {tt('Actions', '操作', '操作')}
                 </th>
               </tr>
             </thead>
@@ -593,10 +669,10 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                             }`}
                           >
                             {user.role === 'owner'
-                              ? '站長'
+                              ? tt('Owner', '站长', '站長')
                               : user.role === 'admin'
-                              ? '管理員'
-                              : '一般用戶'}
+                              ? tt('Admin', '管理员', '管理員')
+                              : tt('User', '普通用户', '一般用戶')}
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
@@ -607,7 +683,9 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                 : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
                             }`}
                           >
-                            {!user.banned ? '正常' : '已封禁'}
+                            {!user.banned
+                              ? tt('Active', '正常', '正常')
+                              : tt('Banned', '已封禁', '已封禁')}
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
@@ -618,7 +696,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               }
                               className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
                             >
-                              頭像
+                              {tt('Avatar', '头像', '頭像')}
                             </button>
                           )}
                           {/* 修改密碼按钮 */}
@@ -629,7 +707,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               }
                               className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-200 transition-colors'
                             >
-                              修改密碼
+                              {tt('Change password', '修改密码', '修改密碼')}
                             </button>
                           )}
                           {canOperate && (
@@ -640,7 +718,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                   onClick={() => handleSetAdmin(user.username)}
                                   className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 dark:text-purple-200 transition-colors'
                                 >
-                                  設為管理
+                                  {tt('Make admin', '设为管理员', '設為管理')}
                                 </button>
                               )}
                               {user.role === 'admin' && (
@@ -650,7 +728,11 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                   }
                                   className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
                                 >
-                                  取消管理
+                                  {tt(
+                                    'Remove admin',
+                                    '取消管理员',
+                                    '取消管理'
+                                  )}
                                 </button>
                               )}
                               {user.role !== 'owner' &&
@@ -659,7 +741,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                     onClick={() => handleBanUser(user.username)}
                                     className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-300 transition-colors'
                                   >
-                                    封禁
+                                    {tt('Ban', '封禁', '封禁')}
                                   </button>
                                 ) : (
                                   <button
@@ -668,7 +750,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                     }
                                     className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-300 transition-colors'
                                   >
-                                    解封
+                                    {tt('Unban', '解封', '解封')}
                                   </button>
                                 ))}
                             </>
@@ -679,7 +761,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               onClick={() => handleDeleteUser(user.username)}
                               className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors'
                             >
-                              刪除用戶
+                              {tt('Delete', '删除', '刪除用戶')}
                             </button>
                           )}
                         </td>
@@ -747,12 +829,23 @@ const VideoSourceConfig = ({
 
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
-        throw new Error(data.error || `操作失敗: ${resp.status}`);
+        throw new Error(
+          data.error ||
+            tt(
+              `Operation failed: ${resp.status}`,
+              `操作失败: ${resp.status}`,
+              `操作失敗: ${resp.status}`
+            )
+        );
       }
 
       await refreshConfig();
     } catch (err) {
-      showError(err instanceof Error ? err.message : '操作失敗');
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Operation failed', '操作失败', '操作失敗')
+      );
       throw err; // 向上抛出方便调用处判断
     }
   };
@@ -762,13 +855,13 @@ const VideoSourceConfig = ({
     if (!target) return;
     const action = target.disabled ? 'enable' : 'disable';
     callSourceApi({ action, key }).catch(() => {
-      console.error('操作失敗', action, key);
+      console.error('Operation failed', action, key);
     });
   };
 
   const handleDelete = (key: string) => {
     callSourceApi({ action: 'delete', key }).catch(() => {
-      console.error('操作失敗', 'delete', key);
+      console.error('Operation failed', 'delete', key);
     });
   };
 
@@ -797,7 +890,7 @@ const VideoSourceConfig = ({
         setShowAddForm(false);
       })
       .catch(() => {
-        console.error('操作失敗', 'add', newSource);
+        console.error('Operation failed', 'add', newSource);
       });
   };
 
@@ -817,7 +910,7 @@ const VideoSourceConfig = ({
         setOrderChanged(false);
       })
       .catch(() => {
-        console.error('操作失敗', 'sort', order);
+        console.error('Operation failed', 'sort', order);
       });
   };
 
@@ -876,7 +969,9 @@ const VideoSourceConfig = ({
                 : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
             }`}
           >
-            {!source.disabled ? '啟用中' : '已禁用'}
+            {!source.disabled
+              ? tt('Enabled', '启用中', '啟用中')
+              : tt('Disabled', '已禁用', '已禁用')}
           </span>
         </td>
         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
@@ -888,14 +983,16 @@ const VideoSourceConfig = ({
                 : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60'
             } transition-colors`}
           >
-            {!source.disabled ? '禁用' : '啟用'}
+            {!source.disabled
+              ? tt('Disable', '禁用', '禁用')
+              : tt('Enable', '启用', '啟用')}
           </button>
           {source.from !== 'config' && (
             <button
               onClick={() => handleDelete(source.key)}
               className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
             >
-              刪除
+              {tt('Delete', '删除', '刪除')}
             </button>
           )}
         </td>
@@ -906,7 +1003,7 @@ const VideoSourceConfig = ({
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
-        載入中...
+        {tt('Loading…', '加载中…', '載入中...')}
       </div>
     );
   }
@@ -916,13 +1013,15 @@ const VideoSourceConfig = ({
       {/* 新增影片來源表单 */}
       <div className='flex items-center justify-between'>
         <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-          影片來源列表
+          {tt('Video sources', '影片来源列表', '影片來源列表')}
         </h4>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className='px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors'
         >
-          {showAddForm ? '取消' : '新增影片來源'}
+          {showAddForm
+            ? tt('Cancel', '取消', '取消')
+            : tt('Add source', '新增影片来源', '新增影片來源')}
         </button>
       </div>
 
@@ -931,7 +1030,7 @@ const VideoSourceConfig = ({
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <input
               type='text'
-              placeholder='名稱'
+              placeholder={tt('Name', '名称', '名稱')}
               value={newSource.name}
               onChange={(e) =>
                 setNewSource((prev) => ({ ...prev, name: e.target.value }))
@@ -949,7 +1048,11 @@ const VideoSourceConfig = ({
             />
             <input
               type='text'
-              placeholder='API 地址（選填）'
+              placeholder={tt(
+                'API URL (optional)',
+                'API 地址（选填）',
+                'API 地址（選填）'
+              )}
               value={newSource.api}
               onChange={(e) =>
                 setNewSource((prev) => ({ ...prev, api: e.target.value }))
@@ -958,7 +1061,11 @@ const VideoSourceConfig = ({
             />
             <input
               type='text'
-              placeholder='M3U8 地址（選填）'
+              placeholder={tt(
+                'M3U8 URL (optional)',
+                'M3U8 地址（选填）',
+                'M3U8 地址（選填）'
+              )}
               value={newSource.m3u8}
               onChange={(e) =>
                 setNewSource((prev) => ({ ...prev, m3u8: e.target.value }))
@@ -967,7 +1074,11 @@ const VideoSourceConfig = ({
             />
             <input
               type='text'
-              placeholder='Detail 地址（選填）'
+              placeholder={tt(
+                'Detail URL (optional)',
+                'Detail 地址（选填）',
+                'Detail 地址（選填）'
+              )}
               value={newSource.detail}
               onChange={(e) =>
                 setNewSource((prev) => ({ ...prev, detail: e.target.value }))
@@ -985,7 +1096,7 @@ const VideoSourceConfig = ({
               }
               className='w-full sm:w-auto px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg transition-colors'
             >
-              新增
+              {tt('Add', '新增', '新增')}
             </button>
           </div>
         </div>
@@ -998,25 +1109,25 @@ const VideoSourceConfig = ({
             <tr>
               <th className='w-8' />
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                名稱
+                {tt('Name', '名称', '名稱')}
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                 Key
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                API 地址
+                {tt('API URL', 'API 地址', 'API 地址')}
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                M3U8 地址
+                {tt('M3U8 URL', 'M3U8 地址', 'M3U8 地址')}
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                Detail 地址
+                {tt('Detail URL', 'Detail 地址', 'Detail 地址')}
               </th>
               <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                狀態
+                {tt('Status', '状态', '狀態')}
               </th>
               <th className='px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                操作
+                {tt('Actions', '操作', '操作')}
               </th>
             </tr>
           </thead>
@@ -1048,7 +1159,7 @@ const VideoSourceConfig = ({
             onClick={handleSaveOrder}
             className='px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors'
           >
-            儲存排序
+            {tt('Save order', '保存排序', '儲存排序')}
           </button>
         </div>
       )}
@@ -1077,7 +1188,14 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
       const response = await fetch('/api/admin/valuations');
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || `載入失敗: ${response.status}`);
+        throw new Error(
+          data.error ||
+            tt(
+              `Failed to load: ${response.status}`,
+              `载入失败: ${response.status}`,
+              `載入失敗: ${response.status}`
+            )
+        );
       }
       const data = (await response.json()) as { items?: SourceValuationRow[] };
       const rows = data.items ?? [];
@@ -1172,7 +1290,10 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
 
       setValuations(rowsWithScores);
     } catch (err) {
-      const message = err instanceof Error ? err.message : '載入失敗';
+      const message =
+        err instanceof Error
+          ? err.message
+          : tt('Failed to load', '载入失败', '載入失敗');
       console.error('Failed to load source valuations:', err);
       setError(message);
       showError(message);
@@ -1217,12 +1338,24 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
       <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
         <div>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
-            播放源評估 (依品質、速度、延遲排序)
+            {tt(
+              'Source valuations (sorted by quality, speed, ping)',
+              '播放源评估（按质量、速度、延迟排序）',
+              '播放源評估 (依品質、速度、延遲排序)'
+            )}
           </h4>
           <p className='text-xs text-gray-500 dark:text-gray-400'>
             {showAllProviders
-              ? `顯示所有來源（共 ${providerCount || '—'} 個，無資料者以佔位顯示）`
-              : '僅顯示有測速紀錄的來源'}
+              ? tt(
+                  `Showing all sources (${providerCount || '—'} total; sources without data appear as placeholders)`,
+                  `显示所有来源（共 ${providerCount || '—'} 个，无数据者以占位显示）`,
+                  `顯示所有來源（共 ${providerCount || '—'} 個，無資料者以佔位顯示）`
+                )
+              : tt(
+                  'Showing sources with benchmark data only',
+                  '仅显示有测速记录的来源',
+                  '僅顯示有測速紀錄的來源'
+                )}
           </p>
         </div>
         <div className='flex items-center gap-3'>
@@ -1233,25 +1366,31 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
               checked={showAllProviders}
               onChange={(e) => setShowAllProviders(e.target.checked)}
             />
-            顯示所有來源
+            {tt('Show all sources', '显示所有来源', '顯示所有來源')}
           </label>
           <button
             onClick={fetchValuations}
             className='px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors'
             disabled={isLoading}
           >
-            {isLoading ? '刷新中…' : '重新整理'}
+            {isLoading
+              ? tt('Refreshing…', '刷新中…', '刷新中…')
+              : tt('Refresh', '刷新', '重新整理')}
           </button>
         </div>
       </div>
 
       {isLoading ? (
         <div className='text-sm text-gray-500 dark:text-gray-400'>
-          讀取中…
+          {tt('Loading…', '加载中…', '讀取中…')}
         </div>
       ) : mergedRows.length === 0 ? (
         <div className='text-sm text-gray-500 dark:text-gray-400'>
-          尚無測速紀錄。
+          {tt(
+            'No benchmark records yet.',
+            '尚无测速记录。',
+            '尚無測速紀錄。'
+          )}
         </div>
       ) : (
         <div className='border border-gray-200 dark:border-gray-700 rounded-lg max-h-[28rem] overflow-y-auto overflow-x-auto'>
@@ -1298,7 +1437,12 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                       {item.key}
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
-                      {toDisplayScore(item.score)} 分
+                      {(() => {
+                        const scoreLabel = toDisplayScore(item.score);
+                        return scoreLabel === '—'
+                          ? '—'
+                          : `${scoreLabel}${tt(' pts', ' 分', ' 分')}`;
+                      })()}
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {item.loadSpeed}
@@ -1368,12 +1512,29 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
 
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
-        throw new Error(data.error || `保存失敗: ${resp.status}`);
+        throw new Error(
+          data.error ||
+            tt(
+              `Save failed: ${resp.status}`,
+              `保存失败: ${resp.status}`,
+              `保存失敗: ${resp.status}`
+            )
+        );
       }
 
-      showSuccess('保存成功，請重新整理頁面');
+      showSuccess(
+        tt(
+          'Saved. Please refresh the page.',
+          '保存成功，请刷新页面。',
+          '保存成功，請重新整理頁面'
+        )
+      );
     } catch (err) {
-      showError(err instanceof Error ? err.message : '保存失敗');
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Save failed', '保存失败', '保存失敗')
+      );
     } finally {
       setSaving(false);
     }
@@ -1382,7 +1543,7 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
   if (!config) {
     return (
       <div className='text-center text-gray-500 dark:text-gray-400'>
-        載入中...
+        {tt('Loading…', '加载中…', '載入中...')}
       </div>
     );
   }
@@ -1396,10 +1557,14 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
             isD1Storage ? 'opacity-50' : ''
           }`}
         >
-          站点名稱
+          {tt('Site name', '站点名称', '站點名稱')}
           {isD1Storage && (
             <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (D1 環境下不可修改)
+              {tt(
+                '(Not editable on D1)',
+                '(D1 环境下不可修改)',
+                '(D1 環境下不可修改)'
+              )}
             </span>
           )}
         </label>
@@ -1424,10 +1589,14 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
             isD1Storage ? 'opacity-50' : ''
           }`}
         >
-          站點公告
+          {tt('Announcement', '站点公告', '站點公告')}
           {isD1Storage && (
             <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (D1 環境下不可修改)
+              {tt(
+                '(Not editable on D1)',
+                '(D1 环境下不可修改)',
+                '(D1 環境下不可修改)'
+              )}
             </span>
           )}
         </label>
@@ -1451,7 +1620,11 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       {/* 搜尋接口可拉取最大頁數 */}
       <div>
         <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-          搜尋接口可拉取最大頁數
+          {tt(
+            'Max pages to fetch (search)',
+            '搜索接口可拉取最大页数',
+            '搜尋接口可拉取最大頁數'
+          )}
         </label>
         <input
           type='number'
@@ -1470,7 +1643,11 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       {/* 站点接口缓存时间 */}
       <div>
         <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-          站點接口快取時間（秒）
+          {tt(
+            'API cache time (seconds)',
+            '站点接口缓存时间（秒）',
+            '站點接口快取時間（秒）'
+          )}
         </label>
         <input
           type='number'
@@ -1493,16 +1670,24 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
             isD1Storage ? 'opacity-50' : ''
           }`}
         >
-          圖片代理前綴
+          {tt('Image proxy prefix', '图片代理前缀', '圖片代理前綴')}
           {isD1Storage && (
             <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-              (D1 環境下不可修改)
+              {tt(
+                '(Not editable on D1)',
+                '(D1 环境下不可修改)',
+                '(D1 環境下不可修改)'
+              )}
             </span>
           )}
         </label>
         <input
           type='text'
-          placeholder='例如：https://imageproxy.example.com/?url='
+          placeholder={tt(
+            'e.g. https://imageproxy.example.com/?url=',
+            '例如：https://imageproxy.example.com/?url=',
+            '例如：https://imageproxy.example.com/?url='
+          )}
           value={siteSettings.ImageProxy}
           onChange={(e) =>
             !isD1Storage &&
@@ -1517,7 +1702,11 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
           }`}
         />
         <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-          用於代理圖片存取，解決跨域或訪問限制問題。留空則不使用代理。
+          {tt(
+            'Used to proxy image requests (CORS/restriction workaround). Leave empty to disable.',
+            '用于代理图片访问，解决跨域或访问限制问题。留空则不使用代理。',
+            '用於代理圖片存取，解決跨域或訪問限制問題。留空則不使用代理。'
+          )}
         </p>
       </div>
 
@@ -1532,7 +1721,9 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
               : 'bg-green-600 hover:bg-green-700'
           } text-white rounded-lg transition-colors`}
         >
-          {saving ? '保存中…' : '保存'}
+          {saving
+            ? tt('Saving…', '保存中…', '保存中…')
+            : tt('Save', '保存', '保存')}
         </button>
       </div>
     </div>
@@ -1573,14 +1764,23 @@ function AdminPageClient() {
 
       if (!response.ok) {
         const data = (await response.json()) as any;
-        throw new Error(`獲取配置失敗: ${data.error}`);
+        throw new Error(
+          tt(
+            `Failed to load config: ${data.error}`,
+            `获取配置失败: ${data.error}`,
+            `獲取配置失敗: ${data.error}`
+          )
+        );
       }
 
       const data = (await response.json()) as AdminConfigResult;
       setConfig(data.Config);
       setRole(data.Role);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : '獲取配置失敗';
+      const msg =
+        err instanceof Error
+          ? err.message
+          : tt('Failed to load config', '获取配置失败', '獲取配置失敗');
       showError(msg);
       setError(msg);
     } finally {
@@ -1600,7 +1800,11 @@ function AdminPageClient() {
           setRedisInfo({
             error:
               data?.error ||
-              '無法取得 Redis 狀態，請確認環境變數 REDIS_URL 或 Redis 服務。',
+              tt(
+                'Unable to fetch Redis status. Check REDIS_URL and Redis service.',
+                '无法获取 Redis 状态，请确认环境变量 REDIS_URL 或 Redis 服务。',
+                '無法取得 Redis 狀態，請確認環境變數 REDIS_URL 或 Redis 服務。'
+              ),
           });
           return;
         }
@@ -1608,7 +1812,13 @@ function AdminPageClient() {
       } catch (err) {
         setRedisInfo({
           error:
-            err instanceof Error ? err.message : '取得 Redis 狀態時發生錯誤',
+            err instanceof Error
+              ? err.message
+              : tt(
+                  'Failed to fetch Redis status',
+                  '获取 Redis 状态时发生错误',
+                  '取得 Redis 狀態時發生錯誤'
+                ),
         });
       } finally {
         setRedisLoading(false);
@@ -1630,23 +1840,43 @@ function AdminPageClient() {
 
   const handleResetConfig = async () => {
     const { isConfirmed } = await Swal.fire({
-      title: '確認重置配置',
-      text: '此操作將重置用戶封禁與管理員設定、自訂影片來源，站點配置將還原為預設值，是否繼續？',
+      title: tt('Confirm reset', '确认重置', '確認重置'),
+      text: tt(
+        'This will reset user bans/admin roles and custom sources. Site settings will revert to defaults. Continue?',
+        '此操作将重置用户封禁与管理员设置、自定义影片来源，站点配置将还原为默认值，是否继续？',
+        '此操作將重置用戶封禁與管理員設定、自訂影片來源，站點配置將還原為預設值，是否繼續？'
+      ),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: '確認',
-      cancelButtonText: '取消',
+      confirmButtonText: tt('Confirm', '确认', '確認'),
+      cancelButtonText: tt('Cancel', '取消', '取消'),
     });
     if (!isConfirmed) return;
 
     try {
       const response = await fetch(`/api/admin/reset`);
       if (!response.ok) {
-        throw new Error(`重置失敗: ${response.status}`);
+        throw new Error(
+          tt(
+            `Reset failed: ${response.status}`,
+            `重置失败: ${response.status}`,
+            `重置失敗: ${response.status}`
+          )
+        );
       }
-      showSuccess('重置成功，請重新整理頁面！');
+      showSuccess(
+        tt(
+          'Reset successful. Please refresh the page.',
+          '重置成功，请刷新页面。',
+          '重置成功，請重新整理頁面！'
+        )
+      );
     } catch (err) {
-      showError(err instanceof Error ? err.message : '重置失敗');
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Reset failed', '重置失败', '重置失敗')
+      );
     }
   };
 
@@ -1656,7 +1886,7 @@ function AdminPageClient() {
         <div className='px-2 sm:px-10 py-4 sm:py-8'>
           <div className='max-w-[95%] mx-auto'>
             <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100 mb-8'>
-              管理員設定
+              {tt('Admin', '管理', '管理員設定')}
             </h1>
             <div className='space-y-4'>
               {Array.from({ length: 3 }).map((_, index) => (
@@ -1683,21 +1913,21 @@ function AdminPageClient() {
           {/* 标题 + 重置配置按钮 */}
           <div className='flex items-center gap-2 mb-8'>
             <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-              管理員設定
+              {tt('Admin', '管理', '管理員設定')}
             </h1>
             {config && role === 'owner' && (
               <button
                 onClick={handleResetConfig}
                 className='px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-md transition-colors'
               >
-                重置配置
+                {tt('Reset', '重置', '重置配置')}
               </button>
             )}
           </div>
 
           {/* 站點配置标签 */}
           <CollapsibleTab
-            title='站點配置'
+            title={tt('Site settings', '站点配置', '站點配置')}
             icon={
               <Settings
                 size={20}
@@ -1712,7 +1942,7 @@ function AdminPageClient() {
 
           {/* Redis 狀態 */}
           <CollapsibleTab
-            title='快取 / Redis'
+            title={tt('Cache / Redis', '缓存 / Redis', '快取 / Redis')}
             icon={
               <Database
                 size={20}
@@ -1724,7 +1954,7 @@ function AdminPageClient() {
           >
             {redisLoading && (
               <div className='text-sm text-gray-600 dark:text-gray-300'>
-                讀取中…
+                {tt('Loading…', '加载中…', '讀取中…')}
               </div>
             )}
             {!redisLoading && redisInfo?.error && (
@@ -1736,7 +1966,7 @@ function AdminPageClient() {
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-800 dark:text-gray-200'>
                 <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
                   <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    已使用
+                    {tt('Used', '已使用', '已使用')}
                   </div>
                   <div className='font-semibold'>
                     {redisInfo.usedHuman || '—'}
@@ -1747,20 +1977,20 @@ function AdminPageClient() {
                 </div>
                 <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
                   <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    上限
+                    {tt('Max', '上限', '上限')}
                   </div>
                   <div className='font-semibold'>
                     {redisInfo.maxHuman || '—'}
                     {redisInfo.max
                       ? ` (${redisInfo.max.toLocaleString()} bytes)`
                       : redisInfo.max === null
-                        ? ' (無上限)'
+                        ? tt(' (Unlimited)', ' (无上限)', ' (無上限)')
                         : ''}
                   </div>
                 </div>
                 <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
                   <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    剩餘可用
+                    {tt('Available', '剩余可用', '剩餘可用')}
                   </div>
                   <div className='font-semibold'>
                     {redisInfo.availableHuman || '—'}
@@ -1773,7 +2003,7 @@ function AdminPageClient() {
                 </div>
                 <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
                   <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    淘汰策略
+                    {tt('Eviction policy', '淘汰策略', '淘汰策略')}
                   </div>
                   <div className='font-semibold'>
                     {redisInfo.policy || '—'}
@@ -1786,7 +2016,7 @@ function AdminPageClient() {
           <div className='space-y-4'>
             {/* 用戶配置标签 */}
             <CollapsibleTab
-              title='用戶配置'
+              title={tt('Users', '用户', '用戶配置')}
               icon={
                 <Users size={20} className='text-gray-600 dark:text-gray-400' />
               }
@@ -1802,7 +2032,7 @@ function AdminPageClient() {
 
             {/* 影片來源配置标签 */}
             <CollapsibleTab
-              title='影片來源配置'
+              title={tt('Sources', '来源', '影片來源配置')}
               icon={
                 <Video size={20} className='text-gray-600 dark:text-gray-400' />
               }
@@ -1813,7 +2043,7 @@ function AdminPageClient() {
             </CollapsibleTab>
 
             <CollapsibleTab
-              title='播放源評估資料'
+              title={tt('Source valuations', '来源评估', '播放源評估資料')}
               icon={
                 <BarChart3
                   size={20}
