@@ -9,6 +9,42 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
+type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+
+function resolveUiLocale(): UiLocale {
+  try {
+    const saved =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('userLocale')
+        : null;
+    if (saved === 'en' || saved === 'zh-Hans' || saved === 'zh-Hant') {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+
+  const nav =
+    typeof navigator !== 'undefined' ? (navigator.language || '') : '';
+  const lower = nav.toLowerCase();
+  if (lower.startsWith('zh-cn') || lower.startsWith('zh-hans')) return 'zh-Hans';
+  if (
+    lower.startsWith('zh-tw') ||
+    lower.startsWith('zh-hant') ||
+    lower.startsWith('zh-hk')
+  ) {
+    return 'zh-Hant';
+  }
+  return 'en';
+}
+
+function tt(en: string, zhHans: string, zhHant: string): string {
+  const locale = resolveUiLocale();
+  if (locale === 'zh-Hans') return zhHans;
+  if (locale === 'zh-Hant') return zhHant;
+  return en;
+}
+
 function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -98,7 +134,13 @@ function LoginPageClient() {
       event.preventDefault();
 
       if (!password) {
-        setError('請輸入共享密碼');
+        setError(
+          tt(
+            'Please enter the shared password',
+            '请输入共享密码',
+            '請輸入共享密碼'
+          )
+        );
         return;
       }
 
@@ -120,9 +162,18 @@ function LoginPageClient() {
 
         if (!res.ok) {
           if (res.status === 401) {
-            setError('共享密碼錯誤');
+            setError(
+              tt(
+                'Incorrect shared password',
+                '共享密码错误',
+                '共享密碼錯誤'
+              )
+            );
           } else {
-            setError(data.error ?? '登入失敗');
+            setError(
+              data.error ??
+                tt('Login failed', '登录失败', '登入失敗')
+            );
           }
           setRequiresSelection(false);
           setAutoSelectPending(false);
@@ -145,7 +196,13 @@ function LoginPageClient() {
         setAutoSelectPending(false);
         router.replace(redirectTarget);
       } catch (err) {
-        setError('網路錯誤，請稍後再試');
+        setError(
+          tt(
+            'Network error. Please try again later.',
+            '网络错误，请稍后再试。',
+            '網路錯誤，請稍後再試'
+          )
+        );
         setRequiresSelection(false);
         setAutoSelectPending(false);
       } finally {
@@ -170,14 +227,27 @@ function LoginPageClient() {
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          setError(data.error ?? '選擇使用者失敗');
+          setError(
+            data.error ??
+              tt(
+                'Failed to select user',
+                '选择用户失败',
+                '選擇使用者失敗'
+              )
+          );
           return;
         }
 
         const redirect = searchParams.get('redirect') || '/';
         router.replace(redirect);
       } catch (err) {
-        setError('網路錯誤，請稍後再試');
+        setError(
+          tt(
+            'Network error. Please try again later.',
+            '网络错误，请稍后再试。',
+            '網路錯誤，請稍後再試'
+          )
+        );
       } finally {
         setLoading(false);
         setPendingUser(null);
@@ -218,7 +288,7 @@ function LoginPageClient() {
         <form onSubmit={handleSubmit} className='space-y-6'>
           <div>
             <label htmlFor='password' className='sr-only'>
-              密碼
+              {tt('Password', '密码', '密碼')}
             </label>
             <input
               id='password'
@@ -226,7 +296,11 @@ function LoginPageClient() {
               autoComplete='current-password'
               disabled={requiresSelection}
               className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
-              placeholder='輸入共享密碼...'
+              placeholder={tt(
+                'Enter shared password…',
+                '输入共享密码…',
+                '輸入共享密碼...'
+              )}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -242,7 +316,9 @@ function LoginPageClient() {
               disabled={!password || loading}
               className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50'
             >
-              {loading ? '登入中...' : '登入'}
+              {loading
+                ? tt('Logging in…', '登录中…', '登入中...')
+                : tt('Log in', '登录', '登入')}
             </button>
           )}
         </form>
@@ -250,16 +326,28 @@ function LoginPageClient() {
         {requiresSelection && (
           <div className='mt-6 space-y-4'>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
-              選擇要登入的使用者
+              {tt(
+                'Select a user to log in',
+                '选择要登录的用户',
+                '選擇要登入的使用者'
+              )}
             </p>
             <div
               className='flex flex-col gap-3'
               role='radiogroup'
-              aria-label='可登入的使用者'
+              aria-label={tt(
+                'Available users',
+                '可登录的用户',
+                '可登入的使用者'
+              )}
             >
               {availableUsers.length === 0 && (
                 <p className='text-xs text-gray-500 dark:text-gray-400'>
-                  尚未設定其他使用者
+                  {tt(
+                    'No other users are set up yet',
+                    '尚未设置其他用户',
+                    '尚未設定其他使用者'
+                  )}
                 </p>
               )}
               {availableUsers.map((user) => {
@@ -301,7 +389,7 @@ function LoginPageClient() {
                     </span>
                     {isPending && (
                       <span className='absolute inset-0 flex items-center justify-center rounded-3xl bg-black/10 dark:bg-black/20 text-xs text-white'>
-                        登入中...
+                        {tt('Logging in…', '登录中…', '登入中...')}
                       </span>
                     )}
                   </button>
@@ -317,7 +405,11 @@ function LoginPageClient() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>載入中...</div>}>
+    <Suspense
+      fallback={
+        <div>{tt('Loading…', '加载中…', '載入中...')}</div>
+      }
+    >
       <LoginPageClient />
     </Suspense>
   );
