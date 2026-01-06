@@ -3,10 +3,12 @@
 'use client';
 
 import { Settings, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 export const SettingsButton: React.FC = () => {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [defaultAggregateSearch, setDefaultAggregateSearch] = useState(true);
   const [doubanProxyUrl, setDoubanProxyUrl] = useState('');
@@ -104,6 +106,11 @@ export const SettingsButton: React.FC = () => {
     setIsOpen(false);
   };
 
+  const handleOpenAdmin = () => {
+    setIsOpen(false);
+    router.push('/admin');
+  };
+
   // 重置所有设置为默认值
   const handleResetSettings = () => {
     const defaultImageProxy = (window as any).RUNTIME_CONFIG?.IMAGE_PROXY || '';
@@ -143,7 +150,7 @@ export const SettingsButton: React.FC = () => {
         <div className='flex items-center justify-between mb-6'>
           <div className='flex items-center gap-3'>
             <h3 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-              本地設定
+              Settings
             </h3>
             <button
               onClick={handleResetSettings}
@@ -151,6 +158,14 @@ export const SettingsButton: React.FC = () => {
               title='重置為預設設定'
             >
               重置
+            </button>
+            <button
+              onClick={handleOpenAdmin}
+              className='px-2 py-1 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-white border border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/60 rounded transition-colors'
+              title='Admin settings'
+              type='button'
+            >
+              Admin
             </button>
           </div>
           <button
