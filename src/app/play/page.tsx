@@ -1087,6 +1087,78 @@ function PlayPageClient() {
       precomputedVideoInfo.get(getValuationKey(currentSource));
     return bySourceKey || null;
   }, [currentSource, currentId, precomputedVideoInfo, getValuationKey]);
+  const [actualPlaybackInfo, setActualPlaybackInfo] = useState<{
+    width: number;
+    height: number;
+    quality: string;
+    level?: number;
+  } | null>(null);
+  const actualPlaybackInfoRef = useRef(actualPlaybackInfo);
+  useEffect(() => {
+    actualPlaybackInfoRef.current = actualPlaybackInfo;
+  }, [actualPlaybackInfo]);
+
+  const deriveQualityLabelFromDimensions = useCallback((w: number, h: number) => {
+    const width = Math.max(0, w || 0);
+    const height = Math.max(0, h || 0);
+    const maxDim = Math.max(width, height);
+    if (maxDim >= 3840 || height >= 2160) return '4K';
+    if (maxDim >= 2560 || height >= 1440) return '2K';
+    if (maxDim >= 1920 || height >= 1080) return '1080p';
+    if (maxDim >= 1280 || height >= 720) return '720p';
+    if (maxDim >= 854 || height >= 480) return '480p';
+    return maxDim > 0 ? 'SD' : '';
+  }, []);
+
+  const refreshActualPlaybackInfo = useCallback(() => {
+    const player = artPlayerRef.current;
+    const video = player?.video as HTMLVideoElement | undefined;
+    if (!video) return;
+
+    let width = video.videoWidth || 0;
+    let height = video.videoHeight || 0;
+    const hls = (video as any).hls as any;
+
+    const readLevel = () => {
+      if (!hls) return undefined;
+      const candidates = [hls.currentLevel, hls.loadLevel, hls.nextLevel];
+      const found = candidates.find(
+        (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0
+      );
+      return typeof found === 'number' ? found : undefined;
+    };
+
+    const level = readLevel();
+    if (
+      (!width || !height) &&
+      hls &&
+      Array.isArray(hls.levels) &&
+      level !== undefined &&
+      level >= 0
+    ) {
+      const lvl = hls.levels[level];
+      if (lvl) {
+        width = (lvl.width as number) || width;
+        height = (lvl.height as number) || height;
+      }
+    }
+
+    const quality = deriveQualityLabelFromDimensions(width, height);
+    if (!quality) return;
+
+    const next = { width, height, quality, level };
+    const prev = actualPlaybackInfoRef.current;
+    if (
+      prev &&
+      prev.width === next.width &&
+      prev.height === next.height &&
+      prev.quality === next.quality &&
+      prev.level === next.level
+    ) {
+      return;
+    }
+    setActualPlaybackInfo(next);
+  }, [deriveQualityLabelFromDimensions]);
   const localizeInfoLabel = useCallback(
     (value?: string | null) => {
       const normalized = (value || '').trim();
@@ -2437,6 +2509,7 @@ function PlayPageClient() {
           videoUrl
         );
       }
+      refreshActualPlaybackInfo();
       return;
     }
 
@@ -2632,6 +2705,7 @@ function PlayPageClient() {
       });
 
       artPlayerRef.current.on('video:canplay', () => {
+        refreshActualPlaybackInfo();
         hasStartedRef.current = true;
         autoSwitchLockedRef.current = true;
         if (loadTimeoutRef.current) {
@@ -2690,6 +2764,7 @@ function PlayPageClient() {
 
       artPlayerRef.current.on('video:timeupdate', () => {
         const now = Date.now();
+        refreshActualPlaybackInfo();
         if (
           now - lastSaveTimeRef.current >
           (process.env.NEXT_PUBLIC_STORAGE_TYPE === 'd1' ? 10000 : 5000)
@@ -2725,6 +2800,7 @@ function PlayPageClient() {
           artPlayerRef.current.video as HTMLVideoElement,
           videoUrl
         );
+        refreshActualPlaybackInfo();
       }
 
       // Fallback timeout: if the video doesn't become playable in 10s, switch source
@@ -2765,6 +2841,7 @@ function PlayPageClient() {
     blockAdEnabled,
     loading,
     tt,
+    refreshActualPlaybackInfo,
     trySwitchToNextSource,
     uiLocale,
     videoUrl,
@@ -2972,7 +3049,9 @@ function PlayPageClient() {
               <>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
                   {tt('Resolution: ', '解析度：', '解析度：')}
-                  {localizeInfoLabel(currentPlayingInfo.quality) || 'NA'}
+                  {actualPlaybackInfo?.quality ||
+                    localizeInfoLabel(currentPlayingInfo.quality) ||
+                    'NA'}
                 </span>
                 <span className='px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60'>
                   {tt('Load speed: ', '载入速度：', '載入速度：')}
