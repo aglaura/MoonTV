@@ -2561,7 +2561,7 @@ function PlayPageClient() {
         );
       }
 
-      // Fallback timeout: if the video doesn't become playable in 6s, switch source
+      // Fallback timeout: if the video doesn't become playable in 10s, switch source
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
       }
@@ -2574,7 +2574,7 @@ function PlayPageClient() {
           setIsVideoLoading(false);
           trySwitchToNextSource();
         }
-      }, 6000);
+      }, 10000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
       reportError('播放器初始化失敗', 'playback');
