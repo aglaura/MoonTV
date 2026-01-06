@@ -2288,6 +2288,12 @@ function PlayPageClient() {
     const isWebkit =
       typeof window !== 'undefined' &&
       typeof (window as any).webkitConvertPointFromNodeToPage === 'function';
+    const isIOS =
+      typeof navigator !== 'undefined' &&
+      ((/iphone|ipad|ipod/i.test(navigator.userAgent) ||
+        // iPadOS 13+ reports as MacIntel
+        ((navigator as any).platform === 'MacIntel' &&
+          (navigator as any).maxTouchPoints > 1)) as boolean);
 
     if (!isWebkit && artPlayerRef.current) {
       artPlayerRef.current.switch = videoUrl;
@@ -2322,7 +2328,8 @@ function PlayPageClient() {
         poster: videoCover,
         volume: 0.7,
         isLive: false,
-        muted: false,
+        // iOS Safari blocks autoplay-with-sound; muted autoplay is allowed.
+        muted: isIOS,
         autoplay: true,
         pip: true,
         autoSize: false,
@@ -2347,13 +2354,33 @@ function PlayPageClient() {
         fastForward: true,
         autoOrientation: true,
         lock: true,
-        moreVideoAttr: {
+        moreVideoAttr: ({
           crossOrigin: 'anonymous',
-        },
+          playsInline: true,
+          preload: 'auto',
+          'webkit-playsinline': 'true',
+        } as any),
         customType: {
           m3u8: function (video: HTMLVideoElement, url: string) {
-            if (!Hls) {
-              console.error('HLS.js 未載入');
+            // iOS Safari (and other non-MSE browsers) should use native HLS playback.
+            // Hls.js requires MediaSource Extensions; fallback to video.src when unsupported.
+            const canUseHlsJs = Boolean(Hls && typeof Hls.isSupported === 'function' && Hls.isSupported());
+            if (!canUseHlsJs) {
+              try {
+                if ((video as any).hls) {
+                  (video as any).hls.destroy();
+                }
+              } catch (_) {
+                // ignore
+              }
+              (video as any).hls = undefined;
+              video.src = url;
+              ensureVideoSource(video, url);
+              try {
+                video.load();
+              } catch (_) {
+                // ignore
+              }
               return;
             }
 
@@ -2379,8 +2406,6 @@ function PlayPageClient() {
             hls.loadSource(url);
             hls.attachMedia(video);
             video.hls = hls;
-
-            ensureVideoSource(video, url);
 
             hls.on(Hls.Events.ERROR, function (event: any, data: any) {
               console.error('HLS Error:', event, data);
