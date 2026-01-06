@@ -29,6 +29,10 @@ export interface Favorite {
   cover: string; // 海報
   save_time: number; // 記錄保存時間（時間戳）
   search_title: string; // 搜尋時使用的標題
+  // Optional metadata for English/IMDb and Douban linkage
+  imdbId?: string;
+  imdbTitle?: string;
+  douban_id?: number;
 }
 
 export interface SourceValuation {

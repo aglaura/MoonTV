@@ -409,6 +409,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     );
 
     const handleClick = useCallback(() => {
+      const doubanParam =
+        dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
+          ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
+          : '';
+      const imdbParam = imdbIdState
+        ? `&imdbId=${encodeURIComponent(imdbIdState)}`
+        : '';
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面
         const url = `/live?source=${actualSource.replace(
@@ -426,7 +433,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }`;
+        }${doubanParam}${imdbParam}`;
         router.push(url);
       } else if (actualSource && actualId) {
         const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
@@ -435,7 +442,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+        }${actualSearchType ? `&stype=${actualSearchType}` : ''}${doubanParam}${imdbParam}`;
         router.push(url);
       }
     }, [
@@ -449,10 +456,19 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       isAggregate,
       actualQuery,
       actualSearchType,
+      dynamicDoubanId,
+      imdbIdState,
     ]);
 
     // 新标签页播放处理函数
     const handlePlayInNewTab = useCallback(() => {
+      const doubanParam =
+        dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
+          ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
+          : '';
+      const imdbParam = imdbIdState
+        ? `&imdbId=${encodeURIComponent(imdbIdState)}`
+        : '';
       if (origin === 'live' && actualSource && actualId) {
         // 直播内容跳转到直播页面
         const url = `/live?source=${actualSource.replace(
@@ -470,7 +486,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }`;
+        }${doubanParam}${imdbParam}`;
         window.open(url, '_blank');
       } else if (actualSource && actualId) {
         const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
@@ -479,7 +495,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${actualSearchType ? `&stype=${actualSearchType}` : ''}`;
+        }${actualSearchType ? `&stype=${actualSearchType}` : ''}${doubanParam}${imdbParam}`;
         window.open(url, '_blank');
       }
     }, [
@@ -492,6 +508,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       isAggregate,
       actualQuery,
       actualSearchType,
+      dynamicDoubanId,
+      imdbIdState,
     ]);
 
     // 检查搜索结果的收藏状态

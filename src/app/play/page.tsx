@@ -213,6 +213,17 @@ function PlayPageClient() {
     searchParams.get('source') || ''
   );
   const [currentId, setCurrentId] = useState(searchParams.get('id') || '');
+  const targetDoubanId = useMemo(() => {
+    const raw = searchParams.get('douban_id');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+  const targetImdbId = useMemo(() => {
+    const raw = searchParams.get('imdbId');
+    const m = raw?.match(/(tt\\d{5,}|imdbt\\d+)/i);
+    return m ? m[0].toLowerCase() : null;
+  }, [searchParams]);
 
   const [searchTitle] = useState(searchParams.get('stitle') || '');
 
@@ -605,6 +616,35 @@ function PlayPageClient() {
     const record = resumeRecordRef.current;
     if (!record || resumeAppliedRef.current) return null;
 
+    const sources = availableSourcesRef.current;
+    if (!sources.length) return null;
+
+    const recordDoubanId =
+      typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
+        ? record.douban_id
+        : undefined;
+    if (recordDoubanId) {
+      const matchByDouban =
+        sources.find((s) => s.douban_id === recordDoubanId) || null;
+      if (matchByDouban) {
+        const targetIndex =
+          record.index && record.index > 0 ? record.index - 1 : 0;
+        const clampedIndex =
+          matchByDouban.episodes && matchByDouban.episodes.length > 0
+            ? Math.min(
+                Math.max(targetIndex, 0),
+                matchByDouban.episodes.length - 1
+              )
+            : Math.max(targetIndex, 0);
+
+        resumeAppliedRef.current = true;
+        resumeTimeRef.current = record.play_time ?? 0;
+        setCurrentEpisodeIndex(clampedIndex);
+        currentEpisodeIndexRef.current = clampedIndex;
+        return matchByDouban;
+      }
+    }
+
     const targetTitle =
       normalizeTitle(
         videoTitleRef.current ||
@@ -616,8 +656,6 @@ function PlayPageClient() {
 
     const targetYear =
       (record.year || videoYearRef.current || '').trim() || undefined;
-    const sources = availableSourcesRef.current;
-    if (!sources.length) return null;
 
     const match = sources.find((s) => {
       const norm = normalizeTitle(s.title || s.original_title || '');
@@ -651,6 +689,27 @@ function PlayPageClient() {
         const records = await getAllPlayRecords();
         const all = Object.values(records || {});
         if (!all.length) return;
+
+        if (targetDoubanId) {
+          const found = all.find((r) => r.douban_id === targetDoubanId) || null;
+          if (found) {
+            resumeRecordRef.current = found;
+            return;
+          }
+        }
+
+        if (targetImdbId) {
+          const found =
+            all.find((r) => {
+              const m = r.imdbId?.match(/(tt\\d{5,}|imdbt\\d+)/i);
+              return m ? m[0].toLowerCase() === targetImdbId : false;
+            }) || null;
+          if (found) {
+            resumeRecordRef.current = found;
+            return;
+          }
+        }
+
         const targetTitle =
           normalizeTitle(videoTitleRef.current || searchTitle) || '';
         if (!targetTitle) return;
@@ -672,7 +731,7 @@ function PlayPageClient() {
     };
 
     fetchResumeByTitle();
-  }, [normalizeTitle, searchTitle]);
+  }, [normalizeTitle, searchTitle, targetDoubanId, targetImdbId]);
 
   const verifyAndSortSources = useCallback(
     (
@@ -2245,6 +2304,9 @@ function PlayPageClient() {
             detailRef.current?.episodes.length ??
             1,
           save_time: Date.now(),
+          imdbId: imdbVideoId,
+          imdbTitle: imdbVideoTitle,
+          douban_id: detailRef.current?.douban_id,
           search_title: searchTitle,
         });
         setFavorited(true);

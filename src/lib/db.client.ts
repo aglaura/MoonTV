@@ -45,6 +45,9 @@ export interface Favorite {
   total_episodes: number;
   save_time: number;
   search_title?: string;
+  imdbId?: string;
+  imdbTitle?: string;
+  douban_id?: number;
 }
 
 // ---- 缓存数据结构 ----
@@ -376,6 +379,27 @@ export function generateStorageKey(source: string, id: string): string {
 const normalizeTitle = (title?: string): string =>
   (title || '').trim().toLowerCase();
 
+const normalizeImdbId = (value?: string | null): string | null => {
+  if (!value) return null;
+  const m = value.match(/(tt\d{5,}|imdbt\d+)/i);
+  return m ? m[0].toLowerCase() : null;
+};
+
+const getVideoIdentity = (record: Partial<PlayRecord>): string => {
+  const doubanId =
+    typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
+      ? record.douban_id
+      : undefined;
+  if (doubanId) return `douban:${doubanId}`;
+
+  const imdbId = normalizeImdbId(record.imdbId);
+  if (imdbId) return `imdb:${imdbId}`;
+
+  const titleNorm = normalizeTitle(record.title || record.search_title || '');
+  const year = (record.year || '').trim();
+  return `titleyear:${titleNorm}:${year}`;
+};
+
 // ---- API ----
 /**
  * 读取全部播放记录。
@@ -449,7 +473,7 @@ export async function savePlayRecord(
   record: PlayRecord
 ): Promise<void> {
   const key = generateStorageKey(source, id);
-  const normalizedTitle = normalizeTitle(record.title);
+  const identity = getVideoIdentity(record);
 
   // D1 存储模式：乐观更新策略
   if (STORAGE_TYPE !== 'localstorage') {
@@ -458,7 +482,7 @@ export async function savePlayRecord(
     Object.entries(cachedRecords).forEach(([cachedKey, cachedRecord]) => {
       if (
         cachedKey !== key &&
-        normalizeTitle(cachedRecord?.title) === normalizedTitle
+        getVideoIdentity(cachedRecord as PlayRecord) === identity
       ) {
         delete cachedRecords[cachedKey];
       }
@@ -504,7 +528,7 @@ export async function savePlayRecord(
     Object.entries(allRecords).forEach(([existingKey, existingRecord]) => {
       if (
         existingKey !== key &&
-        normalizeTitle(existingRecord?.title) === normalizedTitle
+        getVideoIdentity(existingRecord) === identity
       ) {
         delete allRecords[existingKey];
       }
