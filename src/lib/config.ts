@@ -293,12 +293,16 @@ async function initConfig() {
         });
         const ownerUser = process.env.USERNAME;
         if (ownerUser) {
+          const existingOwner = adminConfig!.UserConfig.Users.find(
+            (u) => u.username === ownerUser
+          );
           adminConfig!.UserConfig.Users = adminConfig!.UserConfig.Users.filter(
             (u) => u.username !== ownerUser
           );
           adminConfig!.UserConfig.Users.unshift({
             username: ownerUser,
             role: 'owner',
+            ...(existingOwner?.avatar ? { avatar: existingOwner.avatar } : {}),
           });
         }
       } else {

@@ -11,6 +11,7 @@ export interface AdminConfig {
     Users: {
       username: string;
       role: 'user' | 'admin' | 'owner';
+      avatar?: string;
       banned?: boolean;
     }[];
   };

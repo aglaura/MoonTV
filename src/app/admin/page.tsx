@@ -237,6 +237,21 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     await handleUserAction('cancelAdmin', uname);
   };
 
+  const handleSetAvatar = async (uname: string, currentAvatar?: string) => {
+    const { value: avatar } = await Swal.fire({
+      title: '設定頭像',
+      input: 'url',
+      inputValue: currentAvatar || '',
+      inputPlaceholder: 'https://example.com/avatar.png',
+      showCancelButton: true,
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+    });
+
+    if (avatar === undefined) return;
+    await handleUserAction('setAvatar', uname, undefined, avatar);
+  };
+
   const handleAddUser = async () => {
     if (!newUser.username || !newUser.password) return;
     await handleUserAction('add', newUser.username, newUser.password);
@@ -284,10 +299,12 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       | 'unban'
       | 'setAdmin'
       | 'cancelAdmin'
+      | 'setAvatar'
       | 'changePassword'
       | 'deleteUser',
     targetUsername: string,
-    targetPassword?: string
+    targetPassword?: string,
+    avatar?: string
   ) => {
     try {
       const res = await fetch('/api/admin/user', {
@@ -296,6 +313,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         body: JSON.stringify({
           targetUsername,
           ...(targetPassword ? { targetPassword } : {}),
+          ...(typeof avatar === 'string' ? { avatar } : {}),
           action,
         }),
       });
@@ -538,13 +556,31 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                       user.username !== currentUsername &&
                       (role === 'owner' ||
                         (role === 'admin' && user.role === 'user'));
+                    const canEditAvatar =
+                      role === 'owner' ||
+                      user.username === currentUsername ||
+                      (role === 'admin' && user.role === 'user');
                     return (
                       <tr
                         key={user.username}
                         className='hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors'
                       >
                         <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100'>
-                          {user.username}
+                          <div className='flex items-center gap-3'>
+                            <span className='block w-8 h-8 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-xs font-semibold text-green-700 dark:text-green-300 border border-green-500/20'>
+                              {user.avatar ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={user.avatar}
+                                  alt={user.username}
+                                  className='w-full h-full object-cover'
+                                />
+                              ) : (
+                                user.username.charAt(0).toUpperCase()
+                              )}
+                            </span>
+                            <span>{user.username}</span>
+                          </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span
@@ -575,6 +611,16 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
+                          {canEditAvatar && (
+                            <button
+                              onClick={() =>
+                                handleSetAvatar(user.username, user.avatar)
+                              }
+                              className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
+                            >
+                              頭像
+                            </button>
+                          )}
                           {/* 修改密碼按钮 */}
                           {canChangePassword && (
                             <button

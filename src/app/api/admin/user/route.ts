@@ -17,6 +17,7 @@ const ACTIONS = [
   'setAdmin',
   'cancelAdmin',
   'setAllowRegister',
+  'setAvatar',
   'changePassword',
   'deleteUser',
 ] as const;
@@ -41,9 +42,10 @@ export async function POST(request: NextRequest) {
     }
     const username = authInfo.username;
 
-    const { targetUsername, allowRegister, action } = body as {
+    const { targetUsername, allowRegister, avatar, action } = body as {
       targetUsername?: string;
       allowRegister?: boolean;
+      avatar?: string;
       action?: (typeof ACTIONS)[number];
     };
 
@@ -58,6 +60,7 @@ export async function POST(request: NextRequest) {
     if (
       action !== 'setAllowRegister' &&
       action !== 'changePassword' &&
+      action !== 'setAvatar' &&
       action !== 'deleteUser' &&
       username === targetUsername
     ) {
@@ -136,6 +139,34 @@ export async function POST(request: NextRequest) {
             adminConfig.UserConfig.Users[
               adminConfig.UserConfig.Users.length - 1
             ];
+          break;
+        }
+        case 'setAvatar': {
+          if (!targetEntry) {
+            return NextResponse.json(
+              { error: '目标用户不存在' },
+              { status: 404 }
+            );
+          }
+
+          const canEditAvatar =
+            operatorRole === 'owner' ||
+            targetUsername === username ||
+            targetEntry.role === 'user';
+          if (!canEditAvatar) {
+            return NextResponse.json(
+              { error: '权限不足' },
+              { status: 401 }
+            );
+          }
+
+          const normalized =
+            typeof avatar === 'string' ? avatar.trim() : '';
+          if (normalized) {
+            targetEntry.avatar = normalized;
+          } else {
+            delete (targetEntry as any).avatar;
+          }
           break;
         }
         case 'ban': {

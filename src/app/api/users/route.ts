@@ -11,9 +11,11 @@ export async function GET() {
   const ownerUser = process.env.USERNAME?.trim();
 
   // 始終至少返回站長帳號（若配置了 USERNAME）
-  const fallbackOwner: Array<{ username: string; role: 'owner' }> = ownerUser
-    ? [{ username: ownerUser, role: 'owner' }]
-    : [];
+  const fallbackOwner: Array<{
+    username: string;
+    role: 'owner';
+    avatar?: string;
+  }> = ownerUser ? [{ username: ownerUser, role: 'owner' }] : [];
 
   if (storageType === 'localstorage') {
     return NextResponse.json(
@@ -28,10 +30,15 @@ export async function GET() {
 
   try {
     const config = await getConfig();
-    const users: Array<{ username: string; role: 'user' | 'admin' | 'owner' }> =
+    const users: Array<{
+      username: string;
+      role: 'user' | 'admin' | 'owner';
+      avatar?: string;
+    }> =
       config.UserConfig.Users?.map((user) => ({
         username: user.username,
         role: (user.role as 'user' | 'admin' | 'owner') ?? 'user',
+        avatar: user.avatar,
       })) ?? [];
 
     fallbackOwner.forEach((owner) => {
