@@ -10,6 +10,7 @@ import {
   GetBangumiCalendarData,
 } from '@/lib/bangumi.client';
 import { getDoubanCategories, getDoubanRecommends } from '@/lib/douban.client';
+import { tt } from '@/lib/i18n.client';
 import { convertToSimplified } from '@/lib/locale';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 
@@ -443,20 +444,28 @@ function DoubanPageClient() {
 
   const getPageTitle = () => {
     return type === 'movie'
-      ? '電影'
+      ? tt('Movies', '电影', '電影')
       : type === 'tv'
-      ? '電視劇'
+      ? tt('TV shows', '电视剧', '電視劇')
       : type === 'anime'
-      ? '動漫'
+      ? tt('Anime', '动漫', '動漫')
       : type === 'show'
-      ? '綜藝'
-      : '自訂';
+      ? tt('Variety', '综艺', '綜藝')
+      : tt('Custom', '自定义', '自訂');
   };
 
   const getPageDescription = () =>
     type === 'anime' && primarySelection === '每日放送'
-      ? '來自 Bangumi 番組計劃的每日放送清單'
-      : '來自豆瓣的精選內容';
+      ? tt(
+          'Daily schedule from Bangumi',
+          '来自 Bangumi 的每日放送列表',
+          '來自 Bangumi 番組計劃的每日放送清單'
+        )
+      : tt(
+          'Curated picks from Douban',
+          '来自豆瓣的精选内容',
+          '來自豆瓣的精選內容'
+        );
 
   const getActivePath = () => {
     const params = new URLSearchParams();
@@ -518,18 +527,28 @@ function DoubanPageClient() {
               {isLoadingMore && (
                 <div className='flex items-center gap-2'>
                   <div className='animate-spin rounded-full h-6 w-6 border-b-2 border-green-500'></div>
-                  <span className='text-gray-600'>加載中...</span>
+                  <span className='text-gray-600'>
+                    {tt('Loading…', '加载中…', '載入中...')}
+                  </span>
                 </div>
               )}
             </div>
           )}
 
           {!hasMore && doubanData.length > 0 && (
-            <div className='text-center text-gray-500 py-8'>已加載全部內容</div>
+            <div className='text-center text-gray-500 py-8'>
+              {tt(
+                'All content loaded',
+                '已加载全部内容',
+                '已加載全部內容'
+              )}
+            </div>
           )}
 
           {!loading && doubanData.length === 0 && (
-            <div className='text-center text-gray-500 py-8'>暫無相關內容</div>
+            <div className='text-center text-gray-500 py-8'>
+              {tt('No results', '暂无相关内容', '暫無相關內容')}
+            </div>
           )}
         </div>
       </div>

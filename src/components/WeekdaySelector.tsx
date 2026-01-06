@@ -4,25 +4,27 @@
 
 import React, { useEffect, useState } from 'react';
 
+import { tt } from '@/lib/i18n.client';
+
 interface WeekdaySelectorProps {
   onWeekdayChange: (weekday: string) => void;
   className?: string;
 }
 
-const weekdays = [
-  { value: 'Mon', label: '週一', shortLabel: '週一' },
-  { value: 'Tue', label: '週二', shortLabel: '週二' },
-  { value: 'Wed', label: '週三', shortLabel: '週三' },
-  { value: 'Thu', label: '週四', shortLabel: '週四' },
-  { value: 'Fri', label: '週五', shortLabel: '週五' },
-  { value: 'Sat', label: '週六', shortLabel: '週六' },
-  { value: 'Sun', label: '週日', shortLabel: '週日' },
-];
-
 const WeekdaySelector: React.FC<WeekdaySelectorProps> = ({
   onWeekdayChange,
   className = '',
 }) => {
+  const weekdays = [
+    { value: 'Mon', label: tt('Monday', '周一', '週一'), shortLabel: tt('Mon', '周一', '週一') },
+    { value: 'Tue', label: tt('Tuesday', '周二', '週二'), shortLabel: tt('Tue', '周二', '週二') },
+    { value: 'Wed', label: tt('Wednesday', '周三', '週三'), shortLabel: tt('Wed', '周三', '週三') },
+    { value: 'Thu', label: tt('Thursday', '周四', '週四'), shortLabel: tt('Thu', '周四', '週四') },
+    { value: 'Fri', label: tt('Friday', '周五', '週五'), shortLabel: tt('Fri', '周五', '週五') },
+    { value: 'Sat', label: tt('Saturday', '周六', '週六'), shortLabel: tt('Sat', '周六', '週六') },
+    { value: 'Sun', label: tt('Sunday', '周日', '週日'), shortLabel: tt('Sun', '周日', '週日') },
+  ];
+
   // 获取今天的星期数，默认选中今天
   const getTodayWeekday = (): string => {
     const today = new Date().getDay();

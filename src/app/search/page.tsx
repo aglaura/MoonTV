@@ -17,6 +17,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanCategories } from '@/lib/douban.client';
+import { tt } from '@/lib/i18n.client';
 import { convertToTraditional } from '@/lib/locale';
 import { DoubanItem, SearchResult } from '@/lib/types';
 
@@ -219,7 +220,13 @@ function HomeClient() {
                     `/api/search?q=${encodeURIComponent(trimmed)}`
                   );
                   if (!response.ok) {
-                    throw new Error(`搜尋失敗 (${response.status})`);
+                    throw new Error(
+                      tt(
+                        `Search failed (${response.status})`,
+                        `搜索失败 (${response.status})`,
+                        `搜尋失敗 (${response.status})`
+                      )
+                    );
                   }
                   const data = (await response.json()) as {
                     results?: SearchResult[];
@@ -228,7 +235,9 @@ function HomeClient() {
                   setHasSearched(true);
                 } catch (err) {
                   setSearchError(
-                    err instanceof Error ? err.message : '搜尋失敗'
+                    err instanceof Error
+                      ? err.message
+                      : tt('Search failed', '搜索失败', '搜尋失敗')
                   );
                   setSearchResults([]);
                   setHasSearched(true);
@@ -245,7 +254,11 @@ function HomeClient() {
               <input
                 type='text'
                 className='w-full py-4 px-6 pr-20 text-base sm:text-lg bg-transparent focus:outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400'
-                placeholder='輸入想看的影片、演員或關鍵字'
+                placeholder={tt(
+                  'Search for a title, actor, or keyword',
+                  '输入影片、演员或关键字',
+                  '輸入想看的影片、演員或關鍵字'
+                )}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoComplete='off'
@@ -262,7 +275,7 @@ function HomeClient() {
                     }}
                     className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors'
                   >
-                    清除
+                    {tt('Clear', '清除', '清除')}
                   </button>
                 )}
                 <button
@@ -270,7 +283,7 @@ function HomeClient() {
                   className='px-4 py-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors'
                   disabled={searching}
                 >
-                  搜尋
+                  {tt('Search', '搜索', '搜尋')}
                 </button>
               </div>
             </div>
@@ -299,7 +312,11 @@ function HomeClient() {
               searchResults.length === 0 &&
               !searchError && (
                 <p className='mt-8 text-center text-gray-500 dark:text-gray-400'>
-                  找不到相關內容，試試其他關鍵字。
+                  {tt(
+                    'No results. Try a different keyword.',
+                    '找不到相关内容，试试其他关键字。',
+                    '找不到相關內容，試試其他關鍵字。'
+                  )}
                 </p>
               )}
 
@@ -307,10 +324,14 @@ function HomeClient() {
               <div className='mt-8'>
                 <div className='flex items-center justify-between mb-4'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    搜尋結果
+                    {tt('Search results', '搜索结果', '搜尋結果')}
                   </h2>
                   <span className='text-sm text-gray-500 dark:text-gray-400'>
-                    共 {searchResults.length} 筆
+                    {tt(
+                      `Total ${searchResults.length}`,
+                      `共 ${searchResults.length} 条`,
+                      `共 ${searchResults.length} 筆`
+                    )}
                   </span>
                 </div>
                 <div className='grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
@@ -342,8 +363,11 @@ function HomeClient() {
             <div className='mb-8 flex justify-center'>
               <CapsuleSwitch
                 options={[
-                  { label: '首頁', value: 'home' },
-                  { label: '收藏夾', value: 'favorites' },
+                  { label: tt('Home', '首页', '首頁'), value: 'home' },
+                  {
+                    label: tt('Favorites', '收藏夹', '收藏夾'),
+                    value: 'favorites',
+                  },
                 ]}
                 active={activeTab}
                 onChange={(value) =>
@@ -357,7 +381,7 @@ function HomeClient() {
                 <section className='mb-8'>
                   <div className='mb-4 flex items-center justify-between'>
                     <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      我的收藏
+                      {tt('My favorites', '我的收藏', '我的收藏')}
                     </h2>
                     {favoriteItems.length > 0 && (
                       <button
@@ -367,7 +391,7 @@ function HomeClient() {
                           setFavoriteItems([]);
                         }}
                       >
-                        清空
+                        {tt('Clear', '清空', '清空')}
                       </button>
                     )}
                   </div>
@@ -384,7 +408,11 @@ function HomeClient() {
                     ))}
                     {favoriteItems.length === 0 && (
                       <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                        暫無收藏內容
+                        {tt(
+                          'No favorites yet',
+                          '暂无收藏内容',
+                          '暫無收藏內容'
+                        )}
                       </div>
                     )}
                   </div>
@@ -398,13 +426,13 @@ function HomeClient() {
                   <section className='mb-8'>
                     <div className='mb-4 flex items-center justify-between'>
                       <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                        熱門電影
+                        {tt('Hot movies', '热门电影', '熱門電影')}
                       </h2>
                       <Link
                         href='/douban?type=movie'
                         className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                       >
-                        查看更多
+                        {tt('See more', '查看更多', '查看更多')}
                         <ChevronRight className='w-4 h-4 ml-1' />
                       </Link>
                     </div>
@@ -446,13 +474,13 @@ function HomeClient() {
                   <section className='mb-8'>
                     <div className='mb-4 flex items-center justify-between'>
                       <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                        熱門劇集
+                        {tt('Hot TV shows', '热门剧集', '熱門劇集')}
                       </h2>
                       <Link
                         href='/douban?type=tv'
                         className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                       >
-                        查看更多
+                        {tt('See more', '查看更多', '查看更多')}
                         <ChevronRight className='w-4 h-4 ml-1' />
                       </Link>
                     </div>
@@ -493,13 +521,13 @@ function HomeClient() {
                   <section className='mb-8'>
                     <div className='mb-4 flex items-center justify-between'>
                       <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                        新番放送
+                        {tt('Airing today', '新番放送', '新番放送')}
                       </h2>
                       <Link
                         href='/douban?type=anime'
                         className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                       >
-                        查看更多
+                        {tt('See more', '查看更多', '查看更多')}
                         <ChevronRight className='w-4 h-4 ml-1' />
                       </Link>
                     </div>
@@ -566,13 +594,13 @@ function HomeClient() {
                   <section className='mb-8'>
                     <div className='mb-4 flex items-center justify-between'>
                       <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                        熱門綜藝
+                        {tt('Hot variety shows', '热门综艺', '熱門綜藝')}
                       </h2>
                       <Link
                         href='/douban?type=show'
                         className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                       >
-                        查看更多
+                        {tt('See more', '查看更多', '查看更多')}
                         <ChevronRight className='w-4 h-4 ml-1' />
                       </Link>
                     </div>
@@ -650,12 +678,12 @@ function HomeClient() {
           >
             <div className='flex justify-between items-start mb-4'>
               <h3 className='text-2xl font-bold tracking-tight text-gray-800 dark:text-white border-b border-green-500 pb-1'>
-                提示
+                {tt('Notice', '提示', '提示')}
               </h3>
               <button
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className='text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white transition-colors'
-                aria-label='關閉'
+                aria-label={tt('Close', '关闭', '關閉')}
               ></button>
             </div>
             <div className='mb-6'>
@@ -670,7 +698,7 @@ function HomeClient() {
               onClick={() => handleCloseAnnouncement(announcement)}
               className='w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 text-white font-medium shadow-md hover:shadow-lg hover:from-green-700 hover:to-green-800 dark:from-green-600 dark:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 transform hover:-translate-y-0.5'
             >
-              我知道了
+              {tt('Got it', '我知道了', '我知道了')}
             </button>
           </div>
         </div>

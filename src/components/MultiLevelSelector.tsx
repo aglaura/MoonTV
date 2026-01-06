@@ -3,6 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { resolveUiLocale } from '@/lib/i18n.client';
+import { convertToSimplified, convertToTraditional } from '@/lib/locale';
+
 interface MultiLevelOption {
   label: string;
   value: string;
@@ -24,6 +27,8 @@ const MultiLevelSelector: React.FC<MultiLevelSelectorProps> = ({
   onChange,
   contentType = 'movie',
 }) => {
+  const uiLocale = resolveUiLocale();
+
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{
     x: number;
@@ -33,6 +38,162 @@ const MultiLevelSelector: React.FC<MultiLevelSelectorProps> = ({
   const [values, setValues] = useState<Record<string, string>>({});
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const localizeZh = (text: string): string => {
+    if (uiLocale === 'zh-Hans') return convertToSimplified(text);
+    if (uiLocale === 'zh-Hant') return convertToTraditional(text);
+    return text;
+  };
+
+  const categoryLabelEn: Record<string, string> = {
+    type: 'Genre',
+    label: 'Genre',
+    region: 'Region',
+    year: 'Year',
+    platform: 'Platform',
+    sort: 'Sort',
+  };
+
+  const optionLabelEn = {
+    type: {
+      all: 'All',
+      comedy: 'Comedy',
+      romance: 'Romance',
+      action: 'Action',
+      'sci-fi': 'Sci‑Fi',
+      suspense: 'Mystery',
+      crime: 'Crime',
+      thriller: 'Thriller',
+      adventure: 'Adventure',
+      music: 'Music',
+      history: 'History',
+      fantasy: 'Fantasy',
+      horror: 'Horror',
+      war: 'War',
+      biography: 'Biography',
+      musical: 'Musical',
+      wuxia: 'Wuxia',
+      erotic: 'Erotic',
+      disaster: 'Disaster',
+      western: 'Western',
+      documentary: 'Documentary',
+      short: 'Short',
+      costume: 'Costume',
+      family: 'Family',
+      drama: 'Drama',
+      reality: 'Reality',
+      talkshow: 'Talk show',
+    } as Record<string, string>,
+    region: {
+      all: 'All',
+      chinese: 'Chinese',
+      western: 'Europe/US',
+      foreign: 'Foreign',
+      korean: 'Korea',
+      japanese: 'Japan',
+      mainland_china: 'Mainland China',
+      hong_kong: 'Hong Kong',
+      taiwan: 'Taiwan',
+      usa: 'United States',
+      uk: 'United Kingdom',
+      france: 'France',
+      germany: 'Germany',
+      italy: 'Italy',
+      spain: 'Spain',
+      india: 'India',
+      thailand: 'Thailand',
+      russia: 'Russia',
+      canada: 'Canada',
+      australia: 'Australia',
+      ireland: 'Ireland',
+      sweden: 'Sweden',
+      brazil: 'Brazil',
+      denmark: 'Denmark',
+    } as Record<string, string>,
+    year: {
+      all: 'All',
+      '2020s': '2020s',
+      '2010s': '2010s',
+      '2000s': '2000s',
+      '1990s': '1990s',
+      '1980s': '1980s',
+      '1970s': '1970s',
+      '1960s': '1960s',
+      earlier: 'Earlier',
+    } as Record<string, string>,
+    platform: {
+      all: 'All',
+      tencent: 'Tencent Video',
+      iqiyi: 'iQIYI',
+      youku: 'Youku',
+      hunan_tv: 'Hunan TV',
+      netflix: 'Netflix',
+      hbo: 'HBO',
+      bbc: 'BBC',
+      nhk: 'NHK',
+      cbs: 'CBS',
+      nbc: 'NBC',
+      tvn: 'tvN',
+    } as Record<string, string>,
+    label: {
+      all: 'All',
+      stop_motion: 'Stop motion',
+      biography: 'Biography',
+      us_animation: 'US animation',
+      romance: 'Romance',
+      dark_humor: 'Dark humor',
+      musical: 'Musical',
+      children: 'Children',
+      anime: 'Anime',
+      animal: 'Animals',
+      youth: 'Youth',
+      history: 'History',
+      inspirational: 'Inspirational',
+      parody: 'Parody',
+      healing: 'Healing',
+      sports: 'Sports',
+      harem: 'Harem',
+      erotic: 'Erotic',
+      human_nature: 'Human nature',
+      suspense: 'Mystery',
+      love: 'Love',
+      fantasy: 'Fantasy',
+      sci_fi: 'Sci‑Fi',
+      chinese_anime: 'Chinese animation',
+    } as Record<string, string>,
+    sort: {
+      T: 'Default',
+      U: 'Trending',
+      R: 'Release date',
+      S: 'Top rated',
+    } as Record<string, string>,
+  };
+
+  const getCategoryDisplayLabel = (category: MultiLevelCategory): string => {
+    if (uiLocale === 'en') {
+      return categoryLabelEn[category.key] ?? category.label;
+    }
+    return localizeZh(category.label);
+  };
+
+  const getOptionDisplayLabel = (
+    categoryKey: string,
+    option: MultiLevelOption
+  ): string => {
+    if (uiLocale === 'en') {
+      if (categoryKey === 'sort' && option.value === 'R') {
+        return contentType === 'tv' || contentType === 'show'
+          ? 'First air date'
+          : 'Release date';
+      }
+      const map = (optionLabelEn as Record<string, Record<string, string>>)[
+        categoryKey
+      ];
+      return map?.[option.value] ?? option.label;
+    }
+
+    return localizeZh(option.label);
+  };
 
   // 根据内容類型获取对应的類型选项
   const getTypeOptions = (
@@ -434,10 +595,10 @@ const MultiLevelSelector: React.FC<MultiLevelSelectorProps> = ({
       value === 'all' ||
       (categoryKey === 'sort' && value === 'T')
     ) {
-      return category.label;
+      return getCategoryDisplayLabel(category);
     }
     const option = category.options.find((opt) => opt.value === value);
-    return option?.label || category.label;
+    return option ? getOptionDisplayLabel(categoryKey, option) : getCategoryDisplayLabel(category);
   };
 
   // 检查是否为默认值
@@ -579,7 +740,7 @@ const MultiLevelSelector: React.FC<MultiLevelSelectorProps> = ({
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-gray-700/80'
                       }`}
                     >
-                      {option.label}
+                      {getOptionDisplayLabel(activeCategory, option)}
                     </button>
                   ))}
               </div>

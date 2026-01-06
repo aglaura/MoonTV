@@ -4,6 +4,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
+import { tt } from '@/lib/i18n.client';
+
 import MultiLevelSelector from '@/components/MultiLevelSelector';
 import WeekdaySelector from '@/components/WeekdaySelector';
 
@@ -48,57 +50,57 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
 
   // 电影的一级选择器选项
   const moviePrimaryOptions: SelectorOption[] = [
-    { label: '全部', value: '全部' },
-    { label: '熱門電影', value: '热门' },
-    { label: '最新電影', value: '最新' },
-    { label: '豆瓣高分', value: '豆瓣高分' },
-    { label: '冷門佳片', value: '冷门佳片' },
+    { label: tt('All', '全部', '全部'), value: '全部' },
+    { label: tt('Hot movies', '热门电影', '熱門電影'), value: '热门' },
+    { label: tt('Latest movies', '最新电影', '最新電影'), value: '最新' },
+    { label: tt('Top rated', '豆瓣高分', '豆瓣高分'), value: '豆瓣高分' },
+    { label: tt('Hidden gems', '冷门佳片', '冷門佳片'), value: '冷门佳片' },
   ];
 
   // 电影的二级选择器选项
   const movieSecondaryOptions: SelectorOption[] = [
-    { label: '全部', value: '全部' },
-    { label: '華語', value: '华语' },
-    { label: '歐美', value: '欧美' },
-    { label: '韓國', value: '韩国' },
-    { label: '日本', value: '日本' },
+    { label: tt('All', '全部', '全部'), value: '全部' },
+    { label: tt('Chinese', '华语', '華語'), value: '华语' },
+    { label: tt('Europe/US', '欧美', '歐美'), value: '欧美' },
+    { label: tt('Korea', '韩国', '韓國'), value: '韩国' },
+    { label: tt('Japan', '日本', '日本'), value: '日本' },
   ];
 
   // 电视剧一级选择器选项
   const tvPrimaryOptions: SelectorOption[] = [
-    { label: '全部', value: '全部' },
-    { label: '最近熱門', value: '最近热门' },
+    { label: tt('All', '全部', '全部'), value: '全部' },
+    { label: tt('Trending', '最近热门', '最近熱門'), value: '最近热门' },
   ];
 
   // 电视剧二级选择器选项
   const tvSecondaryOptions: SelectorOption[] = [
-    { label: '全部', value: 'tv' },
-    { label: '國產', value: 'tv_domestic' },
-    { label: '歐美', value: 'tv_american' },
-    { label: '日本', value: 'tv_japanese' },
-    { label: '韓國', value: 'tv_korean' },
-    { label: '動漫', value: 'tv_animation' },
-    { label: '紀錄片', value: 'tv_documentary' },
+    { label: tt('All', '全部', '全部'), value: 'tv' },
+    { label: tt('China', '国产', '國產'), value: 'tv_domestic' },
+    { label: tt('Europe/US', '欧美', '歐美'), value: 'tv_american' },
+    { label: tt('Japan', '日本', '日本'), value: 'tv_japanese' },
+    { label: tt('Korea', '韩国', '韓國'), value: 'tv_korean' },
+    { label: tt('Anime', '动漫', '動漫'), value: 'tv_animation' },
+    { label: tt('Documentary', '纪录片', '紀錄片'), value: 'tv_documentary' },
   ];
 
   // 综艺一级选择器选项
   const showPrimaryOptions: SelectorOption[] = [
-    { label: '全部', value: '全部' },
-    { label: '最近熱門', value: '最近热门' },
+    { label: tt('All', '全部', '全部'), value: '全部' },
+    { label: tt('Trending', '最近热门', '最近熱門'), value: '最近热门' },
   ];
 
   // 综艺二级选择器选项
   const showSecondaryOptions: SelectorOption[] = [
-    { label: '全部', value: 'show' },
-    { label: '國內', value: 'show_domestic' },
-    { label: '國外', value: 'show_foreign' },
+    { label: tt('All', '全部', '全部'), value: 'show' },
+    { label: tt('Domestic', '国内', '國內'), value: 'show_domestic' },
+    { label: tt('Foreign', '国外', '國外'), value: 'show_foreign' },
   ];
 
   // 动漫一级选择器选项
   const animePrimaryOptions: SelectorOption[] = [
-    { label: '每日放送', value: '每日放送' },
-    { label: '番劇', value: '番剧' },
-    { label: '劇場版', value: '剧场版' },
+    { label: tt('Daily schedule', '每日放送', '每日放送'), value: '每日放送' },
+    { label: tt('Series', '番剧', '番劇'), value: '番剧' },
+    { label: tt('Theatrical', '剧场版', '劇場版'), value: '剧场版' },
   ];
 
   // 处理多级选择器变化
@@ -359,7 +361,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              分類
+              {tt('Category', '分类', '分類')}
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
@@ -375,7 +377,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {primarySelection !== '全部' ? (
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                地區
+                {tt('Region', '地区', '地區')}
               </span>
               <div className='overflow-x-auto'>
                 {renderCapsuleSelector(
@@ -390,7 +392,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             /* 多級選擇器 - 只在選中"全部"時顯示 */
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                篩選
+                {tt('Filters', '筛选', '篩選')}
               </span>
               <div className='overflow-x-auto'>
                 <MultiLevelSelector
@@ -410,7 +412,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              分类
+              {tt('Category', '分类', '分類')}
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
@@ -426,7 +428,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {(primarySelection || tvPrimaryOptions[1].value) === '最近热门' ? (
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                類型
+                {tt('Type', '类型', '類型')}
               </span>
               <div className='overflow-x-auto'>
                 {renderCapsuleSelector(
@@ -441,7 +443,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             /* 多級選擇器 - 只在選中"全部"時顯示 */
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                篩選
+                {tt('Filters', '筛选', '篩選')}
               </span>
               <div className='overflow-x-auto'>
                 <MultiLevelSelector
@@ -460,7 +462,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
         <div className='space-y-3 sm:space-y-4'>
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              分類
+              {tt('Category', '分类', '分類')}
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
@@ -477,7 +479,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             // 每日放送分類下顯示星期選擇器
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                星期
+                {tt('Weekday', '星期', '星期')}
               </span>
               <div className='overflow-x-auto'>
                 <WeekdaySelector onWeekdayChange={onWeekdayChange} />
@@ -487,7 +489,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             // 其他分類下顯示原有的篩選功能
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                篩選
+                {tt('Filters', '筛选', '篩選')}
               </span>
               <div className='overflow-x-auto'>
                 {(primarySelection || animePrimaryOptions[0].value) ===
@@ -516,7 +518,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {/* 一级选择器 */}
           <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
             <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-              分類
+              {tt('Category', '分类', '分類')}
             </span>
             <div className='overflow-x-auto'>
               {renderCapsuleSelector(
@@ -532,7 +534,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
           {(primarySelection || showPrimaryOptions[1].value) === '最近热门' ? (
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                類型
+                {tt('Type', '类型', '類型')}
               </span>
               <div className='overflow-x-auto'>
                 {renderCapsuleSelector(
@@ -547,7 +549,7 @@ const DoubanSelector: React.FC<DoubanSelectorProps> = ({
             /* 多級選擇器 - 只在選中"全部"時顯示 */
             <div className='flex flex-col sm:flex-row sm:items-center gap-2'>
               <span className='text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 min-w-[48px]'>
-                篩選
+                {tt('Filters', '筛选', '篩選')}
               </span>
               <div className='overflow-x-auto'>
                 <MultiLevelSelector
