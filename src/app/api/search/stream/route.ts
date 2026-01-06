@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 
 import { ApiSite, getAvailableApiSites } from '@/lib/config';
+import { db } from '@/lib/db';
 import { searchFromApi } from '@/lib/downstream';
 import { SearchResult } from '@/lib/types';
 import { convertToSimplified } from '@/lib/locale';
@@ -103,6 +104,24 @@ export async function GET(request: NextRequest) {
               if (!finalized) {
                 emptyCount += 1;
               }
+              // Penalize provider availability when it returns results but none are playable.
+              try {
+                void db.saveSourceValuations([
+                  {
+                    key: state.site.key,
+                    source: state.site.key,
+                    quality: 'Unavailable',
+                    loadSpeed: 'Unavailable',
+                    pingTime: Number.MAX_SAFE_INTEGER,
+                    qualityRank: -1,
+                    speedValue: 0,
+                    sampleCount: 1,
+                    updated_at: Date.now(),
+                  },
+                ]);
+              } catch {
+                // ignore
+              }
               state.returned = true;
               return;
             }
@@ -110,6 +129,24 @@ export async function GET(request: NextRequest) {
             if (failed) {
               if (!finalized) {
                 failedCount += 1;
+              }
+              // Penalize provider availability when the provider request fails.
+              try {
+                void db.saveSourceValuations([
+                  {
+                    key: state.site.key,
+                    source: state.site.key,
+                    quality: 'Unavailable',
+                    loadSpeed: 'Unavailable',
+                    pingTime: Number.MAX_SAFE_INTEGER,
+                    qualityRank: -1,
+                    speedValue: 0,
+                    sampleCount: 1,
+                    updated_at: Date.now(),
+                  },
+                ]);
+              } catch {
+                // ignore
               }
               state.returned = true;
               return;

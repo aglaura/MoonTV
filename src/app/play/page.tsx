@@ -818,6 +818,7 @@ function PlayPageClient() {
     async (sources: SearchResult[]) => {
       const tasks: Promise<void>[] = [];
       const seen = new Set<string>();
+      const penalizedProviders = new Set<string>();
       const valuationEntries: SourceValuationPayload[] = [];
 
       sources.forEach((s) => {
@@ -874,7 +875,21 @@ function PlayPageClient() {
                 updated_at: Date.now(),
               });
             } catch {
-              // ignore resolution probe failures
+              if (!penalizedProviders.has(valKey)) {
+                penalizedProviders.add(valKey);
+                valuationEntries.push({
+                  key: valKey,
+                  source: s.source,
+                  id: s.id,
+                  quality: 'Unavailable',
+                  loadSpeed: 'Unavailable',
+                  pingTime: Number.MAX_SAFE_INTEGER,
+                  qualityRank: -1,
+                  speedValue: 0,
+                  sampleCount: 1,
+                  updated_at: Date.now(),
+                });
+              }
             }
           })()
         );

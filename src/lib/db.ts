@@ -200,13 +200,28 @@ export class DbManager {
 
         const previousCount = existing?.sampleCount ?? 0;
 
-        const measurementQualityRank =
-          valuation.qualityRank ?? getQualityRank(valuation.quality);
-        const measurementSpeedValue =
-          valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
-        const measurementPingTime = Number.isFinite(valuation.pingTime)
+        const isFailureSample =
+          valuation.qualityRank === -1 ||
+          valuation.pingTime >= Number.MAX_SAFE_INTEGER / 2 ||
+          (typeof valuation.quality === 'string' &&
+            valuation.quality.trim().toLowerCase() === 'unavailable') ||
+          (typeof valuation.loadSpeed === 'string' &&
+            valuation.loadSpeed.trim().toLowerCase() === 'unavailable');
+
+        const measurementQualityRank = isFailureSample
+          ? 0
+          : valuation.qualityRank ?? getQualityRank(valuation.quality);
+        const measurementSpeedValue = isFailureSample
+          ? 0
+          : valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
+        const measurementPingTimeRaw = Number.isFinite(valuation.pingTime)
           ? valuation.pingTime
           : 0;
+        const measurementPingTime = isFailureSample
+          ? existing?.pingTime && existing.pingTime > 0
+            ? Math.min(Math.round(existing.pingTime * 2), 10000)
+            : 10000
+          : measurementPingTimeRaw;
 
         const existingQualityRank =
           existing?.qualityRank ?? getQualityRank(existing?.quality);
@@ -216,9 +231,9 @@ export class DbManager {
           ? existing!.pingTime
           : 0;
 
-        const hasQuality = measurementQualityRank > 0;
-        const hasSpeed = measurementSpeedValue > 0;
-        const hasPing = measurementPingTime > 0;
+        const hasQuality = isFailureSample ? true : measurementQualityRank > 0;
+        const hasSpeed = isFailureSample ? true : measurementSpeedValue > 0;
+        const hasPing = isFailureSample ? true : measurementPingTime > 0;
         const increment = hasQuality || hasSpeed || hasPing ? 1 : 0;
         const combinedCount = previousCount + increment;
 
