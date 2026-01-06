@@ -27,6 +27,42 @@ import ScrollableRow from '@/components/ScrollableRow';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
+type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+
+function resolveUiLocale(): UiLocale {
+  try {
+    const saved =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('userLocale')
+        : null;
+    if (saved === 'en' || saved === 'zh-Hans' || saved === 'zh-Hant') {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+
+  const nav =
+    typeof navigator !== 'undefined' ? (navigator.language || '') : '';
+  const lower = nav.toLowerCase();
+  if (lower.startsWith('zh-cn') || lower.startsWith('zh-hans')) return 'zh-Hans';
+  if (
+    lower.startsWith('zh-tw') ||
+    lower.startsWith('zh-hant') ||
+    lower.startsWith('zh-hk')
+  ) {
+    return 'zh-Hant';
+  }
+  return 'en';
+}
+
+function tt(en: string, zhHans: string, zhHant: string): string {
+  const locale = resolveUiLocale();
+  if (locale === 'zh-Hans') return zhHans;
+  if (locale === 'zh-Hant') return zhHant;
+  return en;
+}
+
 function HomeClient() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
@@ -184,8 +220,11 @@ function HomeClient() {
         <div className='mb-8 flex justify-center'>
           <CapsuleSwitch
             options={[
-              { label: '首頁', value: 'home' },
-              { label: '收藏夾', value: 'favorites' },
+              { label: tt('Home', '首页', '首頁'), value: 'home' },
+              {
+                label: tt('Favorites', '收藏夹', '收藏夾'),
+                value: 'favorites',
+              },
             ]}
             active={activeTab}
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
@@ -198,7 +237,7 @@ function HomeClient() {
             <section className='mb-8'>
               <div className='mb-4 flex items-center justify-between'>
                 <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                  我的收藏
+                  {tt('My favorites', '我的收藏', '我的收藏')}
                 </h2>
                 {favoriteItems.length > 0 && (
                   <button
@@ -208,7 +247,7 @@ function HomeClient() {
                       setFavoriteItems([]);
                     }}
                   >
-                    清空
+                    {tt('Clear', '清空', '清空')}
                   </button>
                 )}
               </div>
@@ -225,7 +264,11 @@ function HomeClient() {
                 ))}
                 {favoriteItems.length === 0 && (
                   <div className='col-span-full text-center text-gray-500 py-8 dark:text-gray-400'>
-                    暫無收藏內容
+                    {tt(
+                      'No favorites yet',
+                      '暂无收藏内容',
+                      '暫無收藏內容'
+                    )}
                   </div>
                 )}
               </div>
@@ -239,8 +282,20 @@ function HomeClient() {
               {/* 错误提示 */}
               {error && (
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-                  <p className="font-bold">⚠️ 数据加载异常</p>
-                  <p>无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。</p>
+                  <p className="font-bold">
+                    {tt(
+                      '⚠️ Data load issue',
+                      '⚠️ 数据加载异常',
+                      '⚠️ 資料載入異常'
+                    )}
+                  </p>
+                  <p>
+                    {tt(
+                      'Unable to fetch data from Douban and other third-party APIs. Check your network and try again later.',
+                      '无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。',
+                      '無法從豆瓣等第三方介面取得資料，請檢查網路連線或稍後再試。'
+                    )}
+                  </p>
                 </div>
               )}
 
@@ -248,13 +303,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    熱門電影
+                    {tt('Hot movies', '热门电影', '熱門電影')}
                   </h2>
                   <Link
                     href='/douban?type=movie'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    {tt('See more', '查看更多', '查看更多')}
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -275,7 +330,13 @@ function HomeClient() {
                     : error || hotMovies.length === 0
                     ? // 显示空状态或错误状态
                       <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error ? '数据加载失败' : '暂无数据'}
+                        {error
+                          ? tt(
+                              'Failed to load data',
+                              '数据加载失败',
+                              '資料載入失敗'
+                            )
+                          : tt('No data', '暂无数据', '暫無資料')}
                       </div>
                     : // 顯示真實數據
                       hotMovies.map((movie, index) => (
@@ -301,13 +362,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    熱門劇集
+                    {tt('Hot TV shows', '热门剧集', '熱門劇集')}
                   </h2>
                   <Link
                     href='/douban?type=tv'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    {tt('See more', '查看更多', '查看更多')}
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -328,7 +389,13 @@ function HomeClient() {
                     : error || hotTvShows.length === 0
                     ? // 显示空状态或错误状态
                       <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error ? '数据加载失败' : '暂无数据'}
+                        {error
+                          ? tt(
+                              'Failed to load data',
+                              '数据加载失败',
+                              '資料載入失敗'
+                            )
+                          : tt('No data', '暂无数据', '暫無資料')}
                       </div>
                     : // 顯示真實數據
                       hotTvShows.map((show, index) => (
@@ -353,13 +420,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    新番放送
+                    {tt('Airing today', '新番放送', '新番放送')}
                   </h2>
                   <Link
                     href='/douban?type=anime'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    {tt('See more', '查看更多', '查看更多')}
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -401,7 +468,11 @@ function HomeClient() {
                         return todayAnimes.length === 0
                           ? // 显示空状态
                             <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                              暂无番剧数据
+                              {tt(
+                                'No anime data for today',
+                                '暂无番剧数据',
+                                '暫無番劇資料'
+                              )}
                             </div>
                           : todayAnimes.map((anime, index) => (
                               <div
@@ -433,13 +504,13 @@ function HomeClient() {
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    熱門綜藝
+                    {tt('Hot variety shows', '热门综艺', '熱門綜藝')}
                   </h2>
                   <Link
                     href='/douban?type=show'
                     className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                   >
-                    查看更多
+                    {tt('See more', '查看更多', '查看更多')}
                     <ChevronRight className='w-4 h-4 ml-1' />
                   </Link>
                 </div>
@@ -460,7 +531,13 @@ function HomeClient() {
                     : error || hotVarietyShows.length === 0
                     ? // 显示空状态或错误状态
                       <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error ? '数据加载失败' : '暂无数据'}
+                        {error
+                          ? tt(
+                              'Failed to load data',
+                              '数据加载失败',
+                              '資料載入失敗'
+                            )
+                          : tt('No data', '暂无数据', '暫無資料')}
                       </div>
                     : // 顯示真實數據
                       hotVarietyShows.map((show, index) => (
@@ -524,12 +601,12 @@ function HomeClient() {
           >
             <div className='flex justify-between items-start mb-4'>
               <h3 className='text-2xl font-bold tracking-tight text-gray-800 dark:text-white border-b border-green-500 pb-1'>
-                提示
+                {tt('Notice', '提示', '提示')}
               </h3>
               <button
                 onClick={() => handleCloseAnnouncement(announcement)}
                 className='text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white transition-colors'
-                aria-label='關閉'
+                aria-label={tt('Close', '关闭', '關閉')}
               ></button>
             </div>
             <div className='mb-6'>
@@ -544,7 +621,7 @@ function HomeClient() {
               onClick={() => handleCloseAnnouncement(announcement)}
               className='w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 text-white font-medium shadow-md hover:shadow-lg hover:from-green-700 hover:to-green-800 dark:from-green-600 dark:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 transform hover:-translate-y-0.5'
             >
-              我知道了
+              {tt('Got it', '我知道了', '我知道了')}
             </button>
           </div>
         </div>
