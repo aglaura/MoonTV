@@ -4,10 +4,23 @@
 import { useEffect, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { useUserLanguage } from '@/lib/userLanguage.client';
+
+const t = (key: 'loggedInAs', locale: string) => {
+  switch (locale) {
+    case 'zh-Hans':
+      return '当前用户';
+    case 'zh-Hant':
+      return '目前使用者';
+    default:
+      return 'Logged in as';
+  }
+};
 
 export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const { userLocale } = useUserLanguage();
 
   useEffect(() => {
     const read = () => {
@@ -61,7 +74,7 @@ export default function UserBadge() {
   return (
     <div
       className='max-w-[12rem] truncate px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2'
-      title={`Logged in as ${username}`}
+      title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
     >
       <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
         {avatar ? (
