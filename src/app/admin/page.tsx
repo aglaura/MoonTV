@@ -117,6 +117,32 @@ const getQualityScoreFromLabel = (
   }
 };
 
+const getQualityBadgeClasses = (quality?: string): string => {
+  const normalized = (quality || '').toLowerCase();
+  if (!normalized || normalized === '—' || normalized === 'na') {
+    return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+  }
+  if (normalized.includes('4k') || normalized.includes('2160')) {
+    return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200';
+  }
+  if (normalized.includes('2k') || normalized.includes('1440')) {
+    return 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200';
+  }
+  if (normalized.includes('1080')) {
+    return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200';
+  }
+  if (normalized.includes('720')) {
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200';
+  }
+  if (normalized.includes('480') || normalized.includes('sd')) {
+    return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-200';
+  }
+  if (normalized.includes('unavailable') || normalized.includes('error')) {
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-200';
+  }
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
+};
+
 const toDisplayScore = (score: number | undefined): string => {
   if (!Number.isFinite(score) || score === undefined) {
     return '—';
@@ -1278,8 +1304,14 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
             pingScore = 100;
           }
 
+          // Provider valuation weights: prioritize quality, de-emphasize speed.
+          const QUALITY_WEIGHT = 0.6;
+          const SPEED_WEIGHT = 0.15;
+          const PING_WEIGHT = 0.25;
           const score =
-            qualityScore * 0.4 + speedScore * 0.4 + pingScore * 0.2;
+            qualityScore * QUALITY_WEIGHT +
+            speedScore * SPEED_WEIGHT +
+            pingScore * PING_WEIGHT;
 
           return {
             ...item,
@@ -1404,6 +1436,9 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                   Key
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
+                  {tt('Resolution', '分辨率', '解析度')}
+                </th>
+                <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                   Score
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
@@ -1435,6 +1470,15 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                     </td>
                     <td className='px-4 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap'>
                       {item.key}
+                    </td>
+                    <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getQualityBadgeClasses(
+                          item.quality
+                        )}`}
+                      >
+                        {item.quality || '—'}
+                      </span>
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {(() => {
