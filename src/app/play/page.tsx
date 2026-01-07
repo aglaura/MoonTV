@@ -8,6 +8,15 @@ import { Heart } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+const isIOSDevice = () => {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    ((navigator as any).platform === 'MacIntel' &&
+      (navigator as any).maxTouchPoints > 1)
+  );
+};
+
 import {
   deleteFavorite,
   generateStorageKey,
@@ -1129,6 +1138,7 @@ function PlayPageClient() {
   );
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [forceRotate, setForceRotate] = useState(false);
   const [clockText, setClockText] = useState(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -1210,9 +1220,27 @@ function PlayPageClient() {
       }
     }
     orientationLockRef.current = null;
+    setForceRotate(false);
   }, []);
 
   const autoRotateToFit = useCallback(async () => {
+    const supportsLock =
+      typeof window !== 'undefined' &&
+      !!(window as any).screen &&
+      !!(window as any).screen.orientation &&
+      typeof (window as any).screen.orientation.lock === 'function';
+    if (!supportsLock) {
+      const target = preferredOrientationForVideo();
+      const viewportIsPortrait =
+        typeof window !== 'undefined'
+          ? window.innerHeight > window.innerWidth
+          : false;
+      const needsRotate =
+        target === 'landscape' && viewportIsPortrait && isIOSDevice();
+      setForceRotate(needsRotate);
+      return;
+    }
+    setForceRotate(false);
     const target = preferredOrientationForVideo();
     const locked = await tryLockScreenOrientation(target);
     if (!locked) {
@@ -3357,7 +3385,9 @@ function PlayPageClient() {
               )}
               <div
                 ref={artRef}
-                className='bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
+                className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
+                  forceRotate ? 'forced-rotate-player' : ''
+                }`}
               ></div>
 
                 {/* 换源加载蒙层 */}
