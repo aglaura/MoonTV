@@ -1156,6 +1156,76 @@ function PlayPageClient() {
     new Map()
   );
 
+  const orientationLockRef = useRef<'landscape' | 'portrait' | null>(null);
+
+  const preferredOrientationForVideo = useCallback(() => {
+    const info = actualPlaybackInfoRef.current;
+    const w = info?.width || 0;
+    const h = info?.height || 0;
+    if (w > 0 && h > 0) {
+      return w >= h ? 'landscape' : 'portrait';
+    }
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= window.innerHeight ? 'landscape' : 'portrait';
+    }
+    return 'landscape';
+  }, []);
+
+  const tryLockScreenOrientation = useCallback(
+    async (target: 'landscape' | 'portrait') => {
+      if (typeof window === 'undefined') return false;
+      const orientation: any = (window as any).screen?.orientation;
+      if (!orientation || typeof orientation.lock !== 'function') {
+        return false;
+      }
+      const lockType =
+        target === 'landscape' ? 'landscape-primary' : 'portrait-primary';
+      try {
+        if (orientation.type && orientation.type.indexOf(target) >= 0) {
+          orientationLockRef.current = target;
+          return true;
+        }
+        const result = orientation.lock(lockType);
+        if (result && typeof result.then === 'function') {
+          await result;
+        }
+        orientationLockRef.current = target;
+        return true;
+      } catch (error) {
+        console.warn('Screen orientation lock failed:', error);
+        return false;
+      }
+    },
+    []
+  );
+
+  const unlockScreenOrientation = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const orientation: any = (window as any).screen?.orientation;
+    if (orientation && typeof orientation.unlock === 'function') {
+      try {
+        orientation.unlock();
+      } catch (error) {
+        console.warn('Screen orientation unlock failed:', error);
+      }
+    }
+    orientationLockRef.current = null;
+  }, []);
+
+  const autoRotateToFit = useCallback(async () => {
+    const target = preferredOrientationForVideo();
+    const locked = await tryLockScreenOrientation(target);
+    if (!locked) {
+      console.warn('Auto-rotate to fullscreen orientation not supported here.');
+    }
+  }, [preferredOrientationForVideo, tryLockScreenOrientation]);
+
+  useEffect(() => {
+    return () => {
+      unlockScreenOrientation();
+    };
+  }, [unlockScreenOrientation]);
+
   const deriveQualityLabelFromDimensions = useCallback((w: number, h: number) => {
     const width = Math.max(0, w || 0);
     const height = Math.max(0, h || 0);
@@ -2849,19 +2919,23 @@ function PlayPageClient() {
 
       artPlayerRef.current.on('fullscreen', () => {
         setIsFullscreen(true);
+        void autoRotateToFit();
       });
 
       artPlayerRef.current.on('fullscreenCancel', () => {
         setIsFullscreen(false);
+        unlockScreenOrientation();
       });
 
       // Web fullscreen mode (fullscreen within page / Fullscreen API wrapper)
       artPlayerRef.current.on('fullscreenWeb', () => {
         setIsFullscreen(true);
+        void autoRotateToFit();
       });
 
       artPlayerRef.current.on('fullscreenWebCancel', () => {
         setIsFullscreen(false);
+        unlockScreenOrientation();
       });
 
       if (artPlayerRef.current?.video) {
@@ -2914,6 +2988,8 @@ function PlayPageClient() {
     trySwitchToNextSource,
     uiLocale,
     videoUrl,
+    autoRotateToFit,
+    unlockScreenOrientation,
   ]);
 
   useEffect(() => {
@@ -2934,6 +3010,14 @@ function PlayPageClient() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isFullscreen) {
+      void autoRotateToFit();
+    } else {
+      unlockScreenOrientation();
+    }
+  }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
 
   useEffect(() => {
     if (!isFullscreen) {
