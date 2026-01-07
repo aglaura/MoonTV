@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { LogoutButton } from '@/components/LogoutButton';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
 const t = (key: 'loggedInAs', locale: string) => {
@@ -73,7 +74,7 @@ export default function UserBadge() {
 
   return (
     <div
-      className='max-w-[12rem] truncate px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2'
+      className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2'
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
     >
       <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
@@ -85,6 +86,8 @@ export default function UserBadge() {
         )}
       </span>
       <span className='truncate hidden sm:inline'>{username}</span>
+      <span className='ml-1 h-6 w-px bg-gray-300/70 dark:bg-gray-600/60'></span>
+      <LogoutButton />
     </div>
   );
 }

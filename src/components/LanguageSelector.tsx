@@ -34,14 +34,14 @@ export default function LanguageSelector({
     );
   }
 
-  const wrapperClassName = variant === 'compact' ? 'w-24' : 'w-40';
+  const wrapperClassName = variant === 'compact' ? 'w-14' : 'w-40';
   const buttonClassName =
     variant === 'compact'
-      ? 'relative w-full cursor-default rounded-md bg-white/60 dark:bg-gray-800/60 py-1.5 pl-2.5 pr-9 text-left border border-gray-300/70 dark:border-gray-600/60 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-xs backdrop-blur'
+      ? 'relative w-full cursor-default rounded-md bg-white/60 dark:bg-gray-800/60 py-1 pl-2 pr-6 text-left border border-gray-300/70 dark:border-gray-600/60 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 text-[10px] leading-tight backdrop-blur'
       : 'relative w-full cursor-default rounded-md bg-white dark:bg-gray-800 py-2 pl-3 pr-10 text-left shadow-sm border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 sm:text-sm';
   const optionsClassName =
     variant === 'compact'
-      ? 'absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white/90 dark:bg-gray-800/90 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none text-xs backdrop-blur'
+      ? 'absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white/90 dark:bg-gray-800/90 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none text-[11px] backdrop-blur'
       : 'absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm';
 
   return (
