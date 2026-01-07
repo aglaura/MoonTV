@@ -9,9 +9,9 @@ import { useUserLanguage } from '@/lib/userLanguage.client';
 type LanguageSelectorVariant = 'default' | 'compact';
 
 const languageOptions = [
-  { value: 'en', label: 'English' },
-  { value: 'zh-Hans', label: '简体中文' },
-  { value: 'zh-Hant', label: '繁體中文' },
+  { value: 'en', label: 'EN' },
+  { value: 'zh-Hans', label: '简' },
+  { value: 'zh-Hant', label: '繁' },
 ];
 
 export default function LanguageSelector({
