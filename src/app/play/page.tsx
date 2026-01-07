@@ -406,7 +406,11 @@ function PlayPageClient() {
           typeof info?.pingTime === 'number' && info.pingTime > 0
             ? info.pingTime
             : Number.MAX_SAFE_INTEGER;
-        const hasInfo = Boolean(info) && (qualityRank > 0 || speedValue > 0);
+        const hasInfo =
+          Boolean(info) &&
+          (qualityRank > 0 ||
+            speedValue > 0 ||
+            pingTime < Number.MAX_SAFE_INTEGER);
 
         return {
           source,
@@ -938,17 +942,20 @@ function PlayPageClient() {
   const probeResolutionsForSources = useCallback(
     async (sources: SearchResult[]) => {
       const tasks: Promise<void>[] = [];
-      const seen = new Set<string>();
+      const seenProviders = new Set<string>();
       const penalizedProviders = new Set<string>();
       const valuationEntries: SourceValuationPayload[] = [];
 
+      const providerSamples = new Map<string, SearchResult>();
       sources.forEach((s) => {
         const valKey = getValuationKey(s.source);
-        const sourceKey = `${s.source}-${s.id}`;
-        if (!valKey || seen.has(sourceKey)) return;
-        seen.add(sourceKey);
+        if (!valKey || seenProviders.has(valKey)) return;
         if (!s.episodes || s.episodes.length === 0) return;
+        providerSamples.set(valKey, s);
+        seenProviders.add(valKey);
+      });
 
+      providerSamples.forEach((s, valKey) => {
         const url = s.episodes[0];
         tasks.push(
           (async () => {
@@ -966,27 +973,13 @@ function PlayPageClient() {
                   sampleCount: 1,
                   hasError: false,
                 });
-                // also store by unique source key for UI lookup
-                next.set(sourceKey, {
-                  quality: info.quality,
-                  loadSpeed: info.loadSpeed,
-                  pingTime: info.pingTime,
-                  speedValue,
-                  sampleCount: 1,
-                  hasError: false,
-                });
                 precomputedVideoInfoRef.current = next;
                 return next;
-              });
-              setAvailableSources((prev) => {
-                availableSourcesRef.current = prev;
-                return prev;
               });
 
               valuationEntries.push({
                 key: valKey,
                 source: s.source,
-                id: s.id,
                 quality: info.quality,
                 loadSpeed: info.loadSpeed,
                 pingTime: info.pingTime,
@@ -1001,7 +994,6 @@ function PlayPageClient() {
                 valuationEntries.push({
                   key: valKey,
                   source: s.source,
-                  id: s.id,
                   quality: 'Unavailable',
                   loadSpeed: 'Unavailable',
                   pingTime: Number.MAX_SAFE_INTEGER,
@@ -1684,6 +1676,8 @@ function PlayPageClient() {
       setFirstPlayCandidates([]);
       const allSources: SearchResult[] = [];
       const penaltyEntries: SourceValuationPayload[] = [];
+      const providersWithPlayableSources = new Set<string>();
+      const providersWithEmptySources = new Map<string, string>();
 
       const initializePlayback = (detailData: SearchResult) => {
         if (initialPlaybackChosenRef.current) return;
@@ -1781,6 +1775,18 @@ function PlayPageClient() {
         const newSources: SearchResult[] = parsedSources;
         allSources.push(...newSources);
 
+        newSources.forEach((source) => {
+          const key = getValuationKey(source.source);
+          if (!key) return;
+          if (Array.isArray(source.episodes) && source.episodes.length > 0) {
+            providersWithPlayableSources.add(key);
+            return;
+          }
+          if (!providersWithEmptySources.has(key)) {
+            providersWithEmptySources.set(key, source.source);
+          }
+        });
+
         setAvailableSources((prev) => {
           const merged = [...prev, ...newSources];
           availableSourcesRef.current = merged;
@@ -1859,47 +1865,46 @@ function PlayPageClient() {
           }
         }
 
-        newSources.forEach((source) => {
-          if (!source.episodes || source.episodes.length === 0) {
-            const key = getValuationKey(source.source);
-            penaltyEntries.push({
-              key,
-              source: source.source,
-              quality: '未知',
-              loadSpeed: '未知',
-              pingTime: Number.MAX_SAFE_INTEGER,
-              qualityRank: -1,
-              speedValue: 0,
-              sampleCount: 1,
-              updated_at: Date.now(),
-            });
-          }
-        });
+      }
 
-        if (penaltyEntries.length) {
-          let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null =
-            null;
-          setPrecomputedVideoInfo((prev) => {
-            const next = new Map(prev);
-            penaltyEntries.forEach((entry) => {
-              next.set(entry.key, {
-                quality: entry.quality,
-                loadSpeed: entry.loadSpeed,
-                pingTime: entry.pingTime,
-                qualityRank: entry.qualityRank,
-                speedValue: entry.speedValue,
-                sampleCount: entry.sampleCount,
-                hasError: true,
-              });
+      providersWithEmptySources.forEach((sourceName, providerKey) => {
+        if (providersWithPlayableSources.has(providerKey)) return;
+        penaltyEntries.push({
+          key: providerKey,
+          source: sourceName,
+          quality: 'Unavailable',
+          loadSpeed: 'Unavailable',
+          pingTime: Number.MAX_SAFE_INTEGER,
+          qualityRank: -1,
+          speedValue: 0,
+          sampleCount: 1,
+          updated_at: Date.now(),
+        });
+      });
+
+      if (penaltyEntries.length) {
+        let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null = null;
+        setPrecomputedVideoInfo((prev) => {
+          const next = new Map(prev);
+          penaltyEntries.forEach((entry) => {
+            next.set(entry.key, {
+              quality: entry.quality,
+              loadSpeed: entry.loadSpeed,
+              pingTime: entry.pingTime,
+              qualityRank: entry.qualityRank,
+              speedValue: entry.speedValue,
+              sampleCount: entry.sampleCount,
+              hasError: true,
             });
-            updatedInfoMap = next;
-            return next;
           });
-          penaltyEntries.length = 0;
-          if (updatedInfoMap) {
-            precomputedVideoInfoRef.current = updatedInfoMap;
-          }
+          updatedInfoMap = next;
+          return next;
+        });
+        if (updatedInfoMap) {
+          precomputedVideoInfoRef.current = updatedInfoMap;
         }
+        void persistSourceValuations(penaltyEntries);
+        penaltyEntries.length = 0;
       }
 
       setSourceSearchLoading(false);
