@@ -10,7 +10,6 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 
 import {
   deleteFavorite,
-  deletePlayRecord,
   generateStorageKey,
   getAllPlayRecords,
   isFavorited,
@@ -2017,17 +2016,8 @@ function PlayPageClient() {
         const currentPlayTime = artPlayerRef.current?.currentTime || 0;
         console.log('換源前當前播放時間:', currentPlayTime);
 
-        if (currentSourceRef.current && currentIdRef.current) {
-          try {
-            await deletePlayRecord(
-              currentSourceRef.current,
-              currentIdRef.current
-            );
-            console.log('已清除前一個播放紀錄');
-          } catch (err) {
-            console.error('清除播放紀錄失敗:', err);
-          }
-        }
+        // Do not delete the previous play record when switching providers; play records
+        // are merged/deduped by video identity (douban/imdb/title+year) on save.
 
         const newDetail = availableSourcesRef.current.find(
           (source) => source.source === newSource && source.id === newId

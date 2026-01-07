@@ -10,6 +10,48 @@ export const runtime = 'nodejs';
 const normalizeTitle = (title?: string): string =>
   (title || '').trim().toLowerCase();
 
+const normalizeImdbId = (value?: string | null): string | null => {
+  if (!value) return null;
+  const m = value.match(/(tt\d{5,}|imdbt\d+)/i);
+  return m ? m[0].toLowerCase() : null;
+};
+
+const getVideoIdentities = (record: Partial<PlayRecord>): string[] => {
+  const identities: string[] = [];
+  const doubanId =
+    typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
+      ? record.douban_id
+      : undefined;
+  if (doubanId) identities.push(`douban:${doubanId}`);
+
+  const imdbId = normalizeImdbId(record.imdbId);
+  if (imdbId) identities.push(`imdb:${imdbId}`);
+
+  const titleNorm = normalizeTitle(
+    (record.search_title || record.title || '').toString(),
+  );
+  const year = (record.year || '').toString().trim();
+  const cover = (record.cover || '').toString().trim();
+
+  if (titleNorm) {
+    if (year) identities.push(`titleyear:${titleNorm}:${year}`);
+    if (cover) identities.push(`titlecover:${titleNorm}:${cover}`);
+    if (!year && !cover && titleNorm.length >= 6) {
+      identities.push(`title:${titleNorm}`);
+    }
+  }
+
+  return Array.from(new Set(identities));
+};
+
+const overlapsAnyIdentity = (a: Partial<PlayRecord>, b: Partial<PlayRecord>) => {
+  const aIds = getVideoIdentities(a);
+  if (aIds.length === 0) return false;
+  const bIds = getVideoIdentities(b);
+  if (bIds.length === 0) return false;
+  return bIds.some((id) => aIds.includes(id));
+};
+
 export async function GET(request: NextRequest) {
   try {
     // 从 cookie 获取用户信息
@@ -20,7 +62,44 @@ export async function GET(request: NextRequest) {
     const username = authInfo.username as string;
 
     const records = await db.getAllPlayRecords(authInfo.username);
-    return NextResponse.json(records, { status: 200 });
+
+    // Deduplicate by stable video identity (douban/imdb preferred), keeping newest.
+    const entries = Object.entries(records || {}).sort(([, a], [, b]) => {
+      const at = typeof a?.save_time === 'number' ? a.save_time : 0;
+      const bt = typeof b?.save_time === 'number' ? b.save_time : 0;
+      return bt - at;
+    });
+
+    const seen = new Set<string>();
+    const deduped: Record<string, PlayRecord> = {};
+    const toDelete: string[] = [];
+
+    for (const [key, record] of entries) {
+      const ids = getVideoIdentities(record);
+      if (ids.length && ids.some((id) => seen.has(id))) {
+        toDelete.push(key);
+        continue;
+      }
+      deduped[key] = record;
+      ids.forEach((id) => seen.add(id));
+    }
+
+    if (toDelete.length) {
+      await Promise.all(
+        toDelete.map(async (dupKey) => {
+          const [dupSource, dupId] = dupKey.split('+');
+          if (dupSource && dupId) {
+            try {
+              await db.deletePlayRecord(username, dupSource, dupId);
+            } catch (deleteErr) {
+              console.warn(`删除重复的播放记录失败: ${dupKey}`, deleteErr);
+            }
+          }
+        }),
+      );
+    }
+
+    return NextResponse.json(deduped, { status: 200 });
   } catch (err) {
     console.error('获取播放记录失败', err);
     return NextResponse.json(
@@ -71,14 +150,16 @@ export async function POST(request: NextRequest) {
       save_time: record.save_time ?? Date.now(),
     } as PlayRecord;
 
-    // Remove existing records with the same title (keep only one per title)
+    // Remove existing records with the same identity (keep only one per video)
     const existingRecords = await db.getAllPlayRecords(username);
-    const normalizedTitle = normalizeTitle(finalRecord.title);
+    const identities = getVideoIdentities(finalRecord);
     const duplicates = Object.entries(existingRecords).filter(
       ([existingKey, existingRecord]) =>
         existingKey !== key &&
-        normalizeTitle((existingRecord as PlayRecord | undefined)?.title) ===
-          normalizedTitle
+        (identities.length
+          ? overlapsAnyIdentity(existingRecord as PlayRecord, finalRecord)
+          : normalizeTitle((existingRecord as PlayRecord | undefined)?.title) ===
+            normalizeTitle(finalRecord.title)),
     );
 
     await Promise.all(
