@@ -1294,7 +1294,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
         err instanceof Error
           ? err.message
           : tt('Failed to load', '载入失败', '載入失敗');
-      console.error('Failed to load source valuations:', err);
+      console.error('Failed to load provider valuations:', err);
       setError(message);
       showError(message);
     } finally {
@@ -1339,22 +1339,22 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
         <div>
           <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
             {tt(
-              'Source valuations (sorted by quality, speed, ping)',
-              '播放源评估（按质量、速度、延迟排序）',
-              '播放源評估 (依品質、速度、延遲排序)'
+              'Provider valuations (sorted by quality, speed, ping)',
+              '提供者评估（按画质、速度、延迟排序）',
+              '提供者評估（依畫質、速度、延遲排序）'
             )}
           </h4>
           <p className='text-xs text-gray-500 dark:text-gray-400'>
             {showAllProviders
               ? tt(
-                  `Showing all sources (${providerCount || '—'} total; sources without data appear as placeholders)`,
-                  `显示所有来源（共 ${providerCount || '—'} 个，无数据者以占位显示）`,
-                  `顯示所有來源（共 ${providerCount || '—'} 個，無資料者以佔位顯示）`
+                  `Showing all providers (${providerCount || '—'} total; providers without data appear as placeholders)`,
+                  `显示所有提供者（共 ${providerCount || '—'} 个，无数据者以占位显示）`,
+                  `顯示所有提供者（共 ${providerCount || '—'} 個，無資料者以佔位顯示）`
                 )
               : tt(
-                  'Showing sources with benchmark data only',
-                  '仅显示有测速记录的来源',
-                  '僅顯示有測速紀錄的來源'
+                  'Showing providers with benchmark data only',
+                  '仅显示有测速记录的提供者',
+                  '僅顯示有測速紀錄的提供者'
                 )}
           </p>
         </div>
@@ -1366,7 +1366,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
               checked={showAllProviders}
               onChange={(e) => setShowAllProviders(e.target.checked)}
             />
-            {tt('Show all sources', '显示所有来源', '顯示所有來源')}
+            {tt('Show all providers', '显示所有提供者', '顯示所有提供者')}
           </label>
           <button
             onClick={fetchValuations}
@@ -1398,7 +1398,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
             <thead className='bg-gray-50 dark:bg-gray-900'>
               <tr>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
-                  Source
+                  {tt('Provider', '提供者', '提供者')}
                 </th>
                 <th className='px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'>
                   Key
@@ -2043,7 +2043,7 @@ function AdminPageClient() {
             </CollapsibleTab>
 
             <CollapsibleTab
-              title={tt('Source valuations', '来源评估', '播放源評估資料')}
+              title={tt('Provider valuations', '提供者评估', '提供者評估')}
               icon={
                 <BarChart3
                   size={20}

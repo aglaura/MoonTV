@@ -19,7 +19,7 @@ export async function GET() {
     return NextResponse.json({ items: Array.from(dedup.values()) });
   } catch (error) {
     return NextResponse.json(
-      { error: 'Failed to load source valuations' },
+      { error: 'Failed to load provider valuations' },
       { status: 500 }
     );
   }
