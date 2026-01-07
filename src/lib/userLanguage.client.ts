@@ -50,7 +50,10 @@ export function useUserLanguage() {
         try {
           const savedLocale = localStorage.getItem('userLocale');
           if (savedLocale) {
-            setUserLocale(normalizeLocale(savedLocale));
+              const normalized = normalizeLocale(savedLocale);
+              setUserLocale(normalized);
+              setLoading(false);
+              return;
           }
         } catch {
           // ignore localStorage failures
