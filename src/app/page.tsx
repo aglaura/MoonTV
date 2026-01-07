@@ -17,7 +17,6 @@ import {
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { getDoubanCategories } from '@/lib/douban.client';
 import { DoubanItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
@@ -110,38 +109,23 @@ function HomeClient() {
         setLoading(true);
         setError(false);
 
-        // 并行获取热门电影、热门剧集和热门综艺
-        // 豆瓣 API 只接受簡體分類標籤（例如 '热门'），所以相關參數保持簡體字
-        const [moviesData, tvShowsData, varietyShowsData, bangumiCalendarData] =
-          await Promise.all([
-            getDoubanCategories({
-              kind: 'movie',
-              category: '热门',
-              type: '全部',
-            }),
-            getDoubanCategories({ kind: 'tv', category: 'tv', type: 'tv' }),
-            getDoubanCategories({ kind: 'tv', category: 'show', type: 'show' }),
-            GetBangumiCalendarData(),
-          ]);
+        const [doubanHome, bangumiCalendarData] = await Promise.all([
+          fetch('/api/douban/home', { cache: 'force-cache' }).then((r) => {
+            if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
+            return r.json() as Promise<{
+              movies?: DoubanItem[];
+              tv?: DoubanItem[];
+              variety?: DoubanItem[];
+            }>;
+          }),
+          GetBangumiCalendarData(),
+        ]);
 
-        if (moviesData?.code === 200) {
-          setHotMovies(moviesData.list);
-        } else {
-          console.warn('获取热门电影数据失败:', moviesData?.message);
-        }
-
-        if (tvShowsData?.code === 200) {
-          setHotTvShows(tvShowsData.list);
-        } else {
-          console.warn('获取热门剧集数据失败:', tvShowsData?.message);
-        }
-
-        if (varietyShowsData?.code === 200) {
-          setHotVarietyShows(varietyShowsData.list);
-        } else {
-          console.warn('获取热门综艺数据失败:', varietyShowsData?.message);
-        }
-
+        setHotMovies(Array.isArray(doubanHome?.movies) ? doubanHome.movies : []);
+        setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
+        setHotVarietyShows(
+          Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
+        );
         setBangumiCalendarData(bangumiCalendarData);
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
