@@ -1490,11 +1490,6 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {item.loadSpeed}
-                      {typeof item.speedValue === 'number' ? (
-                        <span className='ml-2 text-xs text-gray-500 dark:text-gray-400'>
-                          {item.speedValue} KB/s
-                        </span>
-                      ) : null}
                     </td>
                     <td className='px-4 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap'>
                       {item.pingTime ?? '—'}

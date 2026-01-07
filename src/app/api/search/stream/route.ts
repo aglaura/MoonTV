@@ -3,9 +3,9 @@ import { NextRequest } from 'next/server';
 import { ApiSite, getAvailableApiSites } from '@/lib/config';
 import { db } from '@/lib/db';
 import { searchFromApi } from '@/lib/downstream';
-import { SearchResult } from '@/lib/types';
 import { convertToSimplified } from '@/lib/locale';
 import { convertResultsArray } from '@/lib/responseTrad';
+import { SearchResult } from '@/lib/types';
 
 const RETRY_DELAY_MS = 500;
 const MAX_ATTEMPTS = 2;
@@ -40,6 +40,47 @@ async function searchWithRetry(
     return { results: [], failed: true };
   }
   return { results: [], failed: false };
+}
+
+async function persistProviderOutcome(
+  siteKey: string,
+  outcome:
+    | { type: 'success'; pingTime: number }
+    | { type: 'unavailable' | 'failed' | 'empty' }
+) {
+  try {
+    if (!siteKey) return;
+    if (outcome.type === 'success') {
+      await db.saveSourceValuations([
+        {
+          key: siteKey,
+          source: siteKey,
+          quality: '未知',
+          loadSpeed: '未知',
+          pingTime: Math.max(1, Math.round(outcome.pingTime)),
+          sampleCount: 1,
+          updated_at: Date.now(),
+        },
+      ]);
+      return;
+    }
+
+    await db.saveSourceValuations([
+      {
+        key: siteKey,
+        source: siteKey,
+        quality: 'Unavailable',
+        loadSpeed: 'Unavailable',
+        pingTime: Number.MAX_SAFE_INTEGER,
+        qualityRank: -1,
+        speedValue: 0,
+        sampleCount: 1,
+        updated_at: Date.now(),
+      },
+    ]);
+  } catch {
+    // ignore
+  }
 }
 
 export const runtime = 'nodejs';
@@ -82,10 +123,12 @@ export async function GET(request: NextRequest) {
         const deadline = Date.now() + PROVIDER_RETRY_WINDOW_MS;
         while (!state.returned && Date.now() <= deadline) {
           try {
+            const startTime = Date.now();
             const { results, failed } = await searchWithRetry(
               state.site,
               simplifiedQuery
             );
+            const pingTime = Date.now() - startTime;
 
             if (results.length > 0) {
               const transformed = convertResultsArray(results);
@@ -96,6 +139,10 @@ export async function GET(request: NextRequest) {
               if (!finalized && playable.length > 0) {
                 controller.enqueue(encoder.encode(`${JSON.stringify(playable)}\n`));
                 foundCount += 1;
+                await persistProviderOutcome(state.site.key, {
+                  type: 'success',
+                  pingTime,
+                });
                 state.returned = true;
                 return;
               }
@@ -104,24 +151,7 @@ export async function GET(request: NextRequest) {
               if (!finalized) {
                 emptyCount += 1;
               }
-              // Penalize provider availability when it returns results but none are playable.
-              try {
-                void db.saveSourceValuations([
-                  {
-                    key: state.site.key,
-                    source: state.site.key,
-                    quality: 'Unavailable',
-                    loadSpeed: 'Unavailable',
-                    pingTime: Number.MAX_SAFE_INTEGER,
-                    qualityRank: -1,
-                    speedValue: 0,
-                    sampleCount: 1,
-                    updated_at: Date.now(),
-                  },
-                ]);
-              } catch {
-                // ignore
-              }
+              await persistProviderOutcome(state.site.key, { type: 'unavailable' });
               state.returned = true;
               return;
             }
@@ -130,24 +160,7 @@ export async function GET(request: NextRequest) {
               if (!finalized) {
                 failedCount += 1;
               }
-              // Penalize provider availability when the provider request fails.
-              try {
-                void db.saveSourceValuations([
-                  {
-                    key: state.site.key,
-                    source: state.site.key,
-                    quality: 'Unavailable',
-                    loadSpeed: 'Unavailable',
-                    pingTime: Number.MAX_SAFE_INTEGER,
-                    qualityRank: -1,
-                    speedValue: 0,
-                    sampleCount: 1,
-                    updated_at: Date.now(),
-                  },
-                ]);
-              } catch {
-                // ignore
-              }
+              await persistProviderOutcome(state.site.key, { type: 'failed' });
               state.returned = true;
               return;
             }
@@ -156,6 +169,7 @@ export async function GET(request: NextRequest) {
             if (!finalized) {
               emptyCount += 1;
             }
+            await persistProviderOutcome(state.site.key, { type: 'empty' });
             state.returned = true;
             return;
           } catch (error) {
@@ -163,6 +177,7 @@ export async function GET(request: NextRequest) {
             if (!finalized) {
               failedCount += 1;
             }
+            await persistProviderOutcome(state.site.key, { type: 'failed' });
             state.returned = true;
             return;
           }
@@ -175,6 +190,7 @@ export async function GET(request: NextRequest) {
           if (!finalized) {
             failedCount += 1;
           }
+          await persistProviderOutcome(state.site.key, { type: 'failed' });
           state.returned = true;
         }
       };
@@ -203,6 +219,7 @@ export async function GET(request: NextRequest) {
       for (const state of providerStates) {
         if (!state.returned) {
           failedCount += 1;
+          await persistProviderOutcome(state.site.key, { type: 'failed' });
           state.returned = true;
         }
       }
