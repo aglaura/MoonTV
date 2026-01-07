@@ -892,6 +892,49 @@ function PlayPageClient() {
     []
   );
 
+  useEffect(() => {
+    const info = actualPlaybackInfoRef.current;
+    if (!info || !info.quality) return;
+    const providerKey = getValuationKey(currentSourceRef.current);
+    if (!providerKey) return;
+
+    const lastQuality =
+      lastPersistedProviderQualityRef.current.get(providerKey) || null;
+    if (lastQuality === info.quality) return;
+    lastPersistedProviderQualityRef.current.set(providerKey, info.quality);
+
+    const existing = precomputedVideoInfoRef.current.get(providerKey);
+    const payload: SourceValuationPayload = {
+      key: providerKey,
+      source: currentSourceRef.current,
+      quality: info.quality,
+      loadSpeed: existing?.loadSpeed ?? '未知',
+      pingTime: existing?.pingTime ?? 0,
+      qualityRank: getQualityRank(info.quality),
+      speedValue:
+        existing?.speedValue ?? parseSpeedToKBps(existing?.loadSpeed ?? '未知'),
+      sampleCount: (existing?.sampleCount ?? 0) + 1,
+      updated_at: Date.now(),
+    };
+
+    setPrecomputedVideoInfo((prev) => {
+      const next = new Map(prev);
+      next.set(providerKey, {
+        quality: payload.quality,
+        loadSpeed: payload.loadSpeed,
+        pingTime: payload.pingTime,
+        qualityRank: payload.qualityRank,
+        speedValue: payload.speedValue,
+        sampleCount: payload.sampleCount,
+        hasError: false,
+      });
+      precomputedVideoInfoRef.current = next;
+      return next;
+    });
+
+    void persistSourceValuations([payload]);
+  }, [getValuationKey, persistSourceValuations]);
+
   const probeResolutionsForSources = useCallback(
     async (sources: SearchResult[]) => {
       const tasks: Promise<void>[] = [];
@@ -1111,6 +1154,9 @@ function PlayPageClient() {
   useEffect(() => {
     actualPlaybackInfoRef.current = actualPlaybackInfo;
   }, [actualPlaybackInfo]);
+  const lastPersistedProviderQualityRef = useRef<Map<string, string>>(
+    new Map()
+  );
 
   const deriveQualityLabelFromDimensions = useCallback((w: number, h: number) => {
     const width = Math.max(0, w || 0);

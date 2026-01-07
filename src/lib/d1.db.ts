@@ -2,12 +2,7 @@
 
 import { AdminConfig } from './admin.types';
 import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
-import {
-  formatSpeedFromKBps,
-  getQualityLabelFromRank,
-  getQualityRank,
-  parseSpeedToKBps,
-} from './utils';
+import { getQualityRank, parseSpeedToKBps } from './utils';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -527,51 +522,10 @@ export class D1Storage implements IStorage {
         typeof valuation.id === 'string' && valuation.id.trim().length > 0
           ? valuation.id.trim()
           : trimmedKey;
-      const existing = await this.getSourceValuation(trimmedKey);
-      const weightOld = 0.9;
-      const weightNew = 0.1;
-
-      const incomingQualityRank =
-        valuation.qualityRank ?? getQualityRank(valuation.quality);
-      const incomingSpeedValue =
-        valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
-      const incomingPing =
-        typeof valuation.pingTime === 'number' ? valuation.pingTime : 0;
-
-      const existingQualityRank = existing?.qualityRank ?? 0;
-      const existingSpeedValue = existing?.speedValue ?? 0;
-      const existingPing = existing?.pingTime ?? 0;
-
-      const mergedQualityRank = Math.round(
-        existingQualityRank * weightOld + incomingQualityRank * weightNew
-      );
-
-      const mergedSpeedValue =
-        existingSpeedValue || incomingSpeedValue
-          ? Math.round(
-              existingSpeedValue * weightOld + incomingSpeedValue * weightNew
-            )
-          : 0;
-
-      const hasIncomingPing =
-        Number.isFinite(incomingPing) && incomingPing > 0;
-      const hasExistingPing = Number.isFinite(existingPing) && existingPing > 0;
-      const mergedPingTime = hasIncomingPing
-        ? hasExistingPing
-          ? Math.round(existingPing * weightOld + incomingPing * weightNew)
-          : Math.round(incomingPing)
-        : existingPing;
-
-      const mergedSampleCount = (existing?.sampleCount ?? 0) + 1;
-
-      const mergedQualityLabel = getQualityLabelFromRank(
-        mergedQualityRank,
-        valuation.quality ?? existing?.quality ?? '未知'
-      );
-      const mergedLoadSpeed =
-        mergedSpeedValue > 0
-          ? formatSpeedFromKBps(mergedSpeedValue)
-          : valuation.loadSpeed ?? existing?.loadSpeed;
+      const qualityRank = valuation.qualityRank ?? getQualityRank(valuation.quality);
+      const speedValue = valuation.speedValue ?? parseSpeedToKBps(valuation.loadSpeed);
+      const sampleCount = valuation.sampleCount ?? 1;
+      const updatedAt = valuation.updated_at ?? Date.now();
       await db
         .prepare(
           `
@@ -584,13 +538,13 @@ export class D1Storage implements IStorage {
           trimmedKey,
           trimmedSource,
           storedSourceId,
-          mergedQualityLabel,
-          mergedLoadSpeed,
-          mergedPingTime || undefined,
-          mergedQualityRank,
-          mergedSpeedValue,
-          mergedSampleCount,
-          valuation.updated_at
+          valuation.quality ?? '',
+          valuation.loadSpeed ?? '',
+          valuation.pingTime ?? undefined,
+          qualityRank,
+          speedValue,
+          sampleCount,
+          updatedAt
         )
         .run();
     } catch (err) {
