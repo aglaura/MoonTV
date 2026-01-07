@@ -1,5 +1,6 @@
 'use client';
 
+// eslint-disable-next-line simple-import-sort/imports
 import { Clover, Film, Home, Menu, Search, Sparkles, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -12,6 +13,7 @@ import {
   useState,
 } from 'react';
 
+import { useUserLanguage } from '@/lib/userLanguage.client';
 import { useSite } from './SiteProvider';
 
 interface SidebarContextType {
@@ -52,6 +54,17 @@ declare global {
 }
 
 const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
+  const { userLocale } = useUserLanguage();
+  const locale =
+    userLocale === 'zh-Hans' || userLocale === 'zh-Hant' ? userLocale : 'en';
+  const t = useCallback(
+    (en: string, zhHans: string, zhHant: string) => {
+      if (locale === 'zh-Hans') return zhHans;
+      if (locale === 'zh-Hant') return zhHant;
+      return en;
+    },
+    [locale],
+  );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -125,22 +138,22 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const menuItems = [
     {
       icon: Film,
-      label: 'Movies...莊曦嬡的最愛',
+      label: t('Movies', '电影', '電影'),
       href: '/douban?type=movie',
     },
     {
       icon: Tv,
-      label: 'TV..莊雨溦的最愛',
+      label: t('TV Shows', '电视剧', '電視劇'),
       href: '/douban?type=tv',
     },
     {
       icon: Clover,
-      label: 'Variety Show',
+      label: t('Variety', '综艺', '綜藝'),
       href: '/douban?type=show',
     },
     {
       icon: Sparkles,
-      label: 'Anime 動漫',
+      label: t('Anime', '动漫', '動漫'),
       href: '/douban?type=anime',
     },
   ];
@@ -196,7 +209,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    首頁
+                    {t('Home', '首页', '首頁')}
                   </span>
                 )}
               </Link>
@@ -217,7 +230,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 </div>
                 {!isCollapsed && (
                   <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    搜尋
+                    {t('Search', '搜索', '搜尋')}
                   </span>
                 )}
               </Link>
