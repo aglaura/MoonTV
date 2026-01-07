@@ -4,6 +4,8 @@ import { Clover, Film, Home, Search, Sparkles, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { useUserLanguage } from '@/lib/userLanguage.client';
+
 interface MobileBottomNavProps {
   /**
    * 主动指定当前激活的路径。当未提供时，自动使用 usePathname() 获取的路径。
@@ -13,31 +15,39 @@ interface MobileBottomNavProps {
 
 const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const pathname = usePathname();
+  const { userLocale } = useUserLanguage();
+  const locale =
+    userLocale === 'zh-Hans' || userLocale === 'zh-Hant' ? userLocale : 'en';
+  const t = (en: string, zhHans: string, zhHant: string) => {
+    if (locale === 'zh-Hans') return zhHans;
+    if (locale === 'zh-Hant') return zhHant;
+    return en;
+  };
 
   // 当前激活路径：优先使用传入的 activePath，否则回退到浏览器地址
   const currentActive = activePath ?? pathname;
 
   const navItems = [
-    { icon: Home, label: '首頁', href: '/' },
-    { icon: Search, label: '搜尋', href: '/search' },
+    { icon: Home, label: t('Home', '首页', '首頁'), href: '/' },
+    { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
     {
       icon: Film,
-      label: '電影',
+      label: t('Movies', '电影', '電影'),
       href: '/douban?type=movie',
     },
     {
       icon: Tv,
-      label: '劇集',
+      label: t('TV', '剧集', '劇集'),
       href: '/douban?type=tv',
     },
     {
       icon: Clover,
-      label: '綜藝',
+      label: t('Variety', '综艺', '綜藝'),
       href: '/douban?type=show',
     },
     {
       icon: Sparkles,
-      label: '動漫',
+      label: t('Anime', '动漫', '動漫'),
       href: '/douban?type=anime',
     },
   ];
