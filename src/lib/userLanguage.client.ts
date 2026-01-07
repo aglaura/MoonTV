@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
 
+const normalizeLocale = (raw?: string | null): string => {
+  const val = (raw || '').toLowerCase();
+  if (val.startsWith('zh-hant') || val.startsWith('zh-tw') || val.startsWith('zh-hk')) {
+    return 'zh-Hant';
+  }
+  if (val.startsWith('zh-hans') || val.startsWith('zh-cn') || val === 'zh') {
+    return 'zh-Hans';
+  }
+  return 'en';
+};
+
 // Define TypeScript interfaces for better type safety
 interface LanguageResponse {
   locale: string;
@@ -11,7 +22,21 @@ interface ErrorData {
 
 // Client-side hook for managing user language preferences
 export function useUserLanguage() {
-  const [userLocale, setUserLocale] = useState<string | null>(null);
+  const [userLocale, setUserLocale] = useState<string | null>(() => {
+    try {
+      const saved =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('userLocale')
+          : null;
+      if (saved) return normalizeLocale(saved);
+      if (typeof navigator !== 'undefined') {
+        return normalizeLocale(navigator.language || '');
+      }
+    } catch {
+      // ignore
+    }
+    return 'en';
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +50,7 @@ export function useUserLanguage() {
         try {
           const savedLocale = localStorage.getItem('userLocale');
           if (savedLocale) {
-            setUserLocale(savedLocale);
+            setUserLocale(normalizeLocale(savedLocale));
           }
         } catch {
           // ignore localStorage failures
@@ -44,7 +69,7 @@ export function useUserLanguage() {
         }
 
         const data: LanguageResponse = await response.json();
-        setUserLocale(data.locale);
+        setUserLocale(normalizeLocale(data.locale));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
@@ -70,7 +95,7 @@ export function useUserLanguage() {
 
       // Not logged in: fall back to local selection
       if (response.status === 401) {
-        setUserLocale(locale);
+        setUserLocale(normalizeLocale(locale));
         localStorage.setItem('userLocale', locale);
         window.location.reload();
         return;
@@ -82,7 +107,7 @@ export function useUserLanguage() {
       }
 
       // Update local state
-      setUserLocale(locale);
+      setUserLocale(normalizeLocale(locale));
       
       // Persist the language preference locally
       localStorage.setItem('userLocale', locale);
@@ -100,7 +125,7 @@ export function useUserLanguage() {
   useEffect(() => {
     const savedLocale = localStorage.getItem('userLocale');
     if (savedLocale) {
-      setUserLocale(savedLocale);
+      setUserLocale(normalizeLocale(savedLocale));
     }
   }, []);
 
