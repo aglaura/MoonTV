@@ -1,4 +1,5 @@
 import { BackButton } from './BackButton';
+import LanguageSelector from './LanguageSelector';
 import { LogoutButton } from './LogoutButton';
 import MobileBottomNav from './MobileBottomNav';
 import MobileHeader from './MobileHeader';
@@ -37,6 +38,7 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
           {/* 桌面端顶部按钮 */}
           <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
             <SettingsButton />
+            <LanguageSelector variant='compact' />
             <UserBadge />
             <LogoutButton />
             <ThemeToggle />

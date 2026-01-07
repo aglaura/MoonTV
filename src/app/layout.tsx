@@ -1,12 +1,11 @@
-import './globals.css';
-import 'sweetalert2/dist/sweetalert2.min.css';
-
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 
-import LanguageSelector from '@/components/LanguageSelector';
+import 'sweetalert2/dist/sweetalert2.min.css';
+import './globals.css';
+
 import { getConfig } from '@/lib/config';
-import { getDefaultLocale, getUserLanguage, type Locale } from '@/lib/userLanguage';
+import { type Locale,getDefaultLocale, getUserLanguage } from '@/lib/userLanguage';
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
@@ -132,14 +131,6 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <SiteProvider siteName={siteName} announcement={announcement}>
-            {/* Header with language selector */}
-            <header className="sticky top-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-              <div className="container mx-auto px-4 py-3 flex justify-end">
-                <div className="flex items-center space-x-4">
-                  <LanguageSelector />
-                </div>
-              </div>
-            </header>
             <main>
               {children}
             </main>

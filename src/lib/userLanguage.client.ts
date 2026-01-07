@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Define TypeScript interfaces for better type safety
 interface LanguageResponse {
@@ -20,14 +20,29 @@ export function useUserLanguage() {
     const loadUserLanguage = async () => {
       try {
         setLoading(true);
-        
+
+        // Prefer locally saved locale first (works even before login)
+        try {
+          const savedLocale = localStorage.getItem('userLocale');
+          if (savedLocale) {
+            setUserLocale(savedLocale);
+          }
+        } catch {
+          // ignore localStorage failures
+        }
+
         // Use a named variable for the URL for better readability
         const response = await fetch('/api/change-language');
-        
+
+        // Not logged in: keep local/previous selection without showing errors
+        if (response.status === 401) {
+          return;
+        }
+
         if (!response.ok) {
           throw new Error('Failed to load user language preference');
         }
-        
+
         const data: LanguageResponse = await response.json();
         setUserLocale(data.locale);
       } catch (err) {
@@ -52,6 +67,14 @@ export function useUserLanguage() {
         },
         body: JSON.stringify({ locale }),
       });
+
+      // Not logged in: fall back to local selection
+      if (response.status === 401) {
+        setUserLocale(locale);
+        localStorage.setItem('userLocale', locale);
+        window.location.reload();
+        return;
+      }
 
       if (!response.ok) {
         const errorData: ErrorData = await response.json();
