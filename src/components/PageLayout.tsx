@@ -1,6 +1,5 @@
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
-import { LogoutButton } from './LogoutButton';
 import MobileBottomNav from './MobileBottomNav';
 import MobileHeader from './MobileHeader';
 import { SettingsButton } from './SettingsButton';
@@ -39,11 +38,7 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
           <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
             <SettingsButton />
             <LanguageSelector variant='compact' />
-            <div className='flex items-center rounded-md border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/60 px-2 py-1 gap-2 text-xs font-medium'>
-              <UserBadge />
-              <span className='text-gray-400'>|</span>
-              <LogoutButton />
-            </div>
+            <UserBadge />
             <ThemeToggle />
           </div>
 

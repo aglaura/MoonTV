@@ -4,7 +4,6 @@ import Link from 'next/link';
 
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
-import { LogoutButton } from './LogoutButton';
 import { SettingsButton } from './SettingsButton';
 import { useSite } from './SiteProvider';
 import { ThemeToggle } from './ThemeToggle';
@@ -36,7 +35,6 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
         {/* 右侧按钮 */}
         <div className='flex items-center gap-2 justify-self-end'>
           <UserBadge />
-          <LogoutButton />
           <LanguageSelector variant='compact' />
           <ThemeToggle />
         </div>
