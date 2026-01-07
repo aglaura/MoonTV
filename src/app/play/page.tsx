@@ -1980,90 +1980,93 @@ function PlayPageClient() {
     initFromHistory();
   }, []);
 
-  const handleSourceChange = async (
-    newSource: string,
-    newId: string,
-    newTitle: string,
-    options?: { auto?: boolean; allowDuringPlayback?: boolean }
-  ) => {
-    const autoSwitch = options?.auto ?? false;
-    const allowDuringPlayback = options?.allowDuringPlayback ?? false;
+  const handleSourceChange = useCallback(
+    async (
+      newSource: string,
+      newId: string,
+      newTitle: string,
+      options?: { auto?: boolean; allowDuringPlayback?: boolean }
+    ) => {
+      const autoSwitch = options?.auto ?? false;
+      const allowDuringPlayback = options?.allowDuringPlayback ?? false;
 
-    if (autoSwitch && autoSwitchLockedRef.current && !allowDuringPlayback) {
-      return;
-    }
-
-    try {
-      setVideoLoadingStage('sourceChanging');
-      setIsVideoLoading(true);
-      hasStartedRef.current = false;
-
-      const currentPlayTime = artPlayerRef.current?.currentTime || 0;
-      console.log('換源前當前播放時間:', currentPlayTime);
-
-      if (currentSourceRef.current && currentIdRef.current) {
-        try {
-          await deletePlayRecord(
-            currentSourceRef.current,
-            currentIdRef.current
-          );
-          console.log('已清除前一個播放紀錄');
-        } catch (err) {
-          console.error('清除播放紀錄失敗:', err);
-        }
-      }
-
-      const newDetail = availableSources.find(
-        (source) => source.source === newSource && source.id === newId
-      );
-      if (!newDetail) {
-        reportError(
-          tt('No matching result found', '未找到匹配结果', '未找到匹配結果'),
-          'source'
-        );
+      if (autoSwitch && autoSwitchLockedRef.current && !allowDuringPlayback) {
         return;
       }
 
-      failedSourcesRef.current.delete(getValuationKey(newSource));
+      try {
+        setVideoLoadingStage('sourceChanging');
+        setIsVideoLoading(true);
+        hasStartedRef.current = false;
 
-      let targetIndex = currentEpisodeIndex;
+        const currentPlayTime = artPlayerRef.current?.currentTime || 0;
+        console.log('換源前當前播放時間:', currentPlayTime);
 
-      if (!newDetail.episodes || targetIndex >= newDetail.episodes.length) {
-        targetIndex = 0;
+        if (currentSourceRef.current && currentIdRef.current) {
+          try {
+            await deletePlayRecord(
+              currentSourceRef.current,
+              currentIdRef.current
+            );
+            console.log('已清除前一個播放紀錄');
+          } catch (err) {
+            console.error('清除播放紀錄失敗:', err);
+          }
+        }
+
+        const newDetail = availableSourcesRef.current.find(
+          (source) => source.source === newSource && source.id === newId
+        );
+        if (!newDetail) {
+          reportError(
+            tt('No matching result found', '未找到匹配结果', '未找到匹配結果'),
+            'source'
+          );
+          return;
+        }
+
+        failedSourcesRef.current.delete(getValuationKey(newSource));
+
+        let targetIndex = currentEpisodeIndexRef.current;
+
+        if (!newDetail.episodes || targetIndex >= newDetail.episodes.length) {
+          targetIndex = 0;
+        }
+
+        if (targetIndex !== currentEpisodeIndexRef.current) {
+          resumeTimeRef.current = 0;
+        } else if (
+          (!resumeTimeRef.current || resumeTimeRef.current === 0) &&
+          currentPlayTime > 1
+        ) {
+          resumeTimeRef.current = currentPlayTime;
+        }
+
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('source', newSource);
+        newUrl.searchParams.set('id', newId);
+        newUrl.searchParams.set('year', newDetail.year);
+        window.history.replaceState({}, '', newUrl.toString());
+
+        setVideoTitle(newDetail.title || newTitle);
+        setVideoYear(newDetail.year);
+        setVideoCover(newDetail.poster);
+        setCurrentSource(newSource);
+        setCurrentId(newId);
+        setDetail(newDetail);
+        setCurrentEpisodeIndex(targetIndex);
+      } catch (err) {
+        setIsVideoLoading(false);
+        reportError(
+          err instanceof Error
+            ? err.message
+            : tt('Failed to switch source', '换源失败', '換源失敗'),
+          'source'
+        );
       }
-
-      if (targetIndex !== currentEpisodeIndex) {
-        resumeTimeRef.current = 0;
-      } else if (
-        (!resumeTimeRef.current || resumeTimeRef.current === 0) &&
-        currentPlayTime > 1
-      ) {
-        resumeTimeRef.current = currentPlayTime;
-      }
-
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('source', newSource);
-      newUrl.searchParams.set('id', newId);
-      newUrl.searchParams.set('year', newDetail.year);
-      window.history.replaceState({}, '', newUrl.toString());
-
-      setVideoTitle(newDetail.title || newTitle);
-      setVideoYear(newDetail.year);
-      setVideoCover(newDetail.poster);
-      setCurrentSource(newSource);
-      setCurrentId(newId);
-      setDetail(newDetail);
-      setCurrentEpisodeIndex(targetIndex);
-    } catch (err) {
-      setIsVideoLoading(false);
-      reportError(
-        err instanceof Error
-          ? err.message
-          : tt('Failed to switch source', '换源失败', '換源失敗'),
-        'source'
-      );
-    }
-  };
+    },
+    [getValuationKey, reportError, tt]
+  );
 
   const trySwitchToNextSource = useCallback((): boolean => {
     const currentKey = currentSourceRef.current
@@ -2496,7 +2499,11 @@ function PlayPageClient() {
           (navigator as any).maxTouchPoints > 1)) as boolean);
 
     if (!isWebkit && artPlayerRef.current) {
-      artPlayerRef.current.switch = videoUrl;
+      if (typeof artPlayerRef.current.switchUrl === 'function') {
+        artPlayerRef.current.switchUrl(videoUrl);
+      } else {
+        artPlayerRef.current.switch = videoUrl;
+      }
       artPlayerRef.current.title = tt(
         `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
         `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`,
