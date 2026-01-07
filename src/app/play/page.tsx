@@ -849,6 +849,21 @@ function PlayPageClient() {
     ]
   );
 
+  const pickFirstPlayCandidate = useCallback(
+    (candidates: SearchResult[]): SearchResult | null => {
+      if (!Array.isArray(candidates) || candidates.length === 0) return null;
+      const verifiedSorted = verifyAndSortSources(candidates);
+      return (
+        verifiedSorted.find(
+          (s) => Array.isArray(s.episodes) && s.episodes.length > 0
+        ) ||
+        verifiedSorted[0] ||
+        null
+      );
+    },
+    [verifyAndSortSources]
+  );
+
   type SourceValuationPayload = {
     key: string;
     source: string;
@@ -1790,7 +1805,7 @@ function PlayPageClient() {
             candidatesNow.length >= FIRST_PLAY_CANDIDATE_LIMIT &&
             !initialPlaybackChosenRef.current
           ) {
-            const picked = pickBestInitialCandidate(
+            const picked = pickFirstPlayCandidate(
               candidatesNow.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
             );
             if (picked) {
@@ -1865,7 +1880,7 @@ function PlayPageClient() {
 
       if (!initialPlaybackChosenRef.current && delayInitialPlaybackRef.current) {
         const candidates = firstPlayCandidatesRef.current;
-        const picked = pickBestInitialCandidate(
+        const picked = pickFirstPlayCandidate(
           candidates.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
         );
         if (picked) {
