@@ -385,20 +385,36 @@ const normalizeImdbId = (value?: string | null): string | null => {
   return m ? m[0].toLowerCase() : null;
 };
 
-const getVideoIdentity = (record: Partial<PlayRecord>): string => {
+const getTitleForIdentity = (record: Partial<PlayRecord>): string =>
+  (record.search_title || record.title || '').toString();
+
+const getVideoIdentities = (record: Partial<PlayRecord>): string[] => {
+  const identities: string[] = [];
+
   const doubanId =
     typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
       ? record.douban_id
       : undefined;
-  if (doubanId) return `douban:${doubanId}`;
+  if (doubanId) identities.push(`douban:${doubanId}`);
 
   const imdbId = normalizeImdbId(record.imdbId);
-  if (imdbId) return `imdb:${imdbId}`;
+  if (imdbId) identities.push(`imdb:${imdbId}`);
 
-  const titleNorm = normalizeTitle(record.title || record.search_title || '');
-  const year = (record.year || '').trim();
-  return `titleyear:${titleNorm}:${year}`;
+  const titleNorm = normalizeTitle(getTitleForIdentity(record));
+  const year = (record.year || '').toString().trim();
+  const cover = (record.cover || '').toString().trim();
+
+  if (titleNorm) {
+    if (year) identities.push(`titleyear:${titleNorm}:${year}`);
+    if (cover) identities.push(`titlecover:${titleNorm}:${cover}`);
+    if (!year && !cover && titleNorm.length >= 6) {
+      identities.push(`title:${titleNorm}`);
+    }
+  }
+
+  return Array.from(new Set(identities));
 };
+
 
 // ---- API ----
 /**
@@ -456,7 +472,39 @@ export async function getAllPlayRecords(): Promise<Record<string, PlayRecord>> {
   try {
     const raw = localStorage.getItem(PLAY_RECORDS_KEY);
     if (!raw) return {};
-    return JSON.parse(raw) as Record<string, PlayRecord>;
+    const parsed = JSON.parse(raw) as Record<string, PlayRecord>;
+
+    // Deduplicate legacy records (e.g. older entries without douban_id/imdbId)
+    // by keeping the newest save_time for each overlapping identity.
+    const entries = Object.entries(parsed || {}).sort(([, a], [, b]) => {
+      const at = typeof a?.save_time === 'number' ? a.save_time : 0;
+      const bt = typeof b?.save_time === 'number' ? b.save_time : 0;
+      return bt - at;
+    });
+
+    const seen = new Set<string>();
+    const deduped: Record<string, PlayRecord> = {};
+    let changed = false;
+
+    for (const [key, record] of entries) {
+      const ids = getVideoIdentities(record);
+      if (ids.length && ids.some((id) => seen.has(id))) {
+        changed = true;
+        continue;
+      }
+      deduped[key] = record;
+      ids.forEach((id) => seen.add(id));
+    }
+
+    if (changed) {
+      try {
+        localStorage.setItem(PLAY_RECORDS_KEY, JSON.stringify(deduped));
+      } catch (e) {
+        // ignore write-back failures; still return deduped view
+      }
+    }
+
+    return deduped;
   } catch (err) {
     console.error('读取播放记录失败:', err);
     return {};
@@ -473,17 +521,19 @@ export async function savePlayRecord(
   record: PlayRecord
 ): Promise<void> {
   const key = generateStorageKey(source, id);
-  const identity = getVideoIdentity(record);
+  const identities = getVideoIdentities(record);
 
   // D1 存储模式：乐观更新策略
   if (STORAGE_TYPE !== 'localstorage') {
     // 立即更新缓存
     const cachedRecords = cacheManager.getCachedPlayRecords() || {};
     Object.entries(cachedRecords).forEach(([cachedKey, cachedRecord]) => {
-      if (
-        cachedKey !== key &&
-        getVideoIdentity(cachedRecord as PlayRecord) === identity
-      ) {
+      if (cachedKey === key) return;
+      const existingIds = getVideoIdentities(cachedRecord as PlayRecord);
+      const overlaps =
+        identities.length > 0 &&
+        existingIds.some((existing) => identities.includes(existing));
+      if (overlaps) {
         delete cachedRecords[cachedKey];
       }
     });
@@ -526,10 +576,12 @@ export async function savePlayRecord(
   try {
     const allRecords = await getAllPlayRecords();
     Object.entries(allRecords).forEach(([existingKey, existingRecord]) => {
-      if (
-        existingKey !== key &&
-        getVideoIdentity(existingRecord) === identity
-      ) {
+      if (existingKey === key) return;
+      const existingIds = getVideoIdentities(existingRecord);
+      const overlaps =
+        identities.length > 0 &&
+        existingIds.some((existing) => identities.includes(existing));
+      if (overlaps) {
         delete allRecords[existingKey];
       }
     });
