@@ -120,6 +120,19 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       return;
     }
 
+    // 如果已经有提供者级别的分辨率信息，就不再做 m3u8 探测
+    const providerQuality = source.quality?.trim();
+    if (
+      providerQuality &&
+      providerQuality !== '未知' &&
+      providerQuality !== 'NA' &&
+      providerQuality !== '錯誤' &&
+      providerQuality !== 'Error' &&
+      providerQuality !== 'Unavailable'
+    ) {
+      return;
+    }
+
     // 获取第一集的URL
     if (!source.episodes || source.episodes.length === 0) {
       return;
@@ -191,7 +204,18 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       // 筛选出尚未测速的播放源
       const pendingSources = availableSources.filter((source) => {
         const sourceKey = `${source.source}-${source.id}`;
-        return !attemptedSourcesRef.current.has(sourceKey);
+        if (attemptedSourcesRef.current.has(sourceKey)) return false;
+
+        // 已有提供者级别的分辨率信息就不再探测，避免频繁请求导致卡顿/重渲染
+        const providerQuality = source.quality?.trim();
+        const qualityIsKnown =
+          providerQuality &&
+          providerQuality !== '未知' &&
+          providerQuality !== 'NA' &&
+          providerQuality !== '錯誤' &&
+          providerQuality !== 'Error' &&
+          providerQuality !== 'Unavailable';
+        return !qualityIsKnown;
       });
 
       if (pendingSources.length === 0) return;
@@ -333,6 +357,44 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     },
     [onSourceChange]
   );
+
+  const sortedSources = useMemo(() => {
+    const sourcesWithIndex = availableSources.map((source, index) => ({
+      source,
+      index,
+    }));
+
+    sourcesWithIndex.sort((a, b) => {
+      const aIsCurrent =
+        a.source.source?.toString() === currentSource?.toString() &&
+        a.source.id?.toString() === currentId?.toString();
+      const bIsCurrent =
+        b.source.source?.toString() === currentSource?.toString() &&
+        b.source.id?.toString() === currentId?.toString();
+      if (aIsCurrent && !bIsCurrent) return -1;
+      if (!aIsCurrent && bIsCurrent) return 1;
+      return a.index - b.index;
+    });
+
+    return sourcesWithIndex.map(({ source }) => source);
+  }, [availableSources, currentId, currentSource]);
+
+  const groupedSources = useMemo(() => {
+    const groups = new Map<string, SearchResult[]>();
+    for (const source of sortedSources) {
+      const groupKey = source.source?.toString() ?? '';
+      const existing = groups.get(groupKey);
+      if (existing) {
+        existing.push(source);
+      } else {
+        groups.set(groupKey, [source]);
+      }
+    }
+    return Array.from(groups.entries()).map(([key, sources]) => ({
+      key,
+      sources,
+    }));
+  }, [sortedSources]);
 
   const currentStart = currentPage * episodesPerPage + 1;
   const currentEnd = Math.min(
@@ -504,219 +566,275 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                   providers · With sources {searchStats.found} · No sources{' '}
                   {searchStats.notFound} · Failed {searchStats.failed}
                 </div>
-                {availableSources
-                  .sort((a, b) => {
-                    const aIsCurrent =
-                      a.source?.toString() === currentSource?.toString() &&
-                      a.id?.toString() === currentId?.toString();
-                    const bIsCurrent =
-                      b.source?.toString() === currentSource?.toString() &&
-                      b.id?.toString() === currentId?.toString();
-                    if (aIsCurrent && !bIsCurrent) return -1;
-                    if (!aIsCurrent && bIsCurrent) return 1;
-                    return 0;
-                  })
-                  .map((source, index) => {
-                    const displaySourceTitle =
-                      convertToTraditional(source.title) || source.title;
-                    const englishSourceTitle =
-                      (source.douban_id &&
-                        doubanEnglishMap[source.douban_id]) ||
-                      source.original_title?.trim();
-                    const isCurrentSource =
-                      source.source?.toString() === currentSource?.toString() &&
-                      source.id?.toString() === currentId?.toString();
+                <div className='space-y-3'>
+                  {groupedSources.map((group) => {
+                    const primary = group.sources[0];
+                    if (!primary) return null;
+
+                    const providerName =
+                      convertToTraditional(primary.source_name) ||
+                      primary.source_name;
+                    const providerCode = primary.source?.toString() ?? '';
+
+                    const groupHasCurrent = group.sources.some(
+                      (source) =>
+                        source.source?.toString() === currentSource?.toString() &&
+                        source.id?.toString() === currentId?.toString()
+                    );
+
+                    const primaryKey = `${primary.source}-${primary.id}`;
+                    const primaryVideoInfo = videoInfoMap.get(primaryKey);
+
+                    const qualityCandidate =
+                      primaryVideoInfo?.quality ?? primary.quality;
+                    const qualityText =
+                      qualityCandidate &&
+                      qualityCandidate !== '未知' &&
+                      qualityCandidate !== ''
+                        ? qualityCandidate
+                        : 'NA';
+                    const isUltraHigh = ['4K', '2K'].includes(qualityText);
+                    const isHigh = ['1080p', '720p'].includes(qualityText);
+                    const qualityTextColor =
+                      qualityText === 'NA'
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : isUltraHigh
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : isHigh
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-yellow-600 dark:text-yellow-400';
+
+                    const loadSpeedCandidate =
+                      primaryVideoInfo && !primaryVideoInfo.hasError
+                        ? primaryVideoInfo.loadSpeed
+                        : primary.loadSpeed;
+                    const loadSpeedText =
+                      loadSpeedCandidate &&
+                      loadSpeedCandidate !== '未知' &&
+                      loadSpeedCandidate !== ''
+                        ? loadSpeedCandidate
+                        : '';
+                    const pingCandidate =
+                      primaryVideoInfo && !primaryVideoInfo.hasError
+                        ? primaryVideoInfo.pingTime
+                        : primary.pingTime;
+                    const pingText =
+                      typeof pingCandidate === 'number' && pingCandidate > 0
+                        ? `${pingCandidate}ms`
+                        : '';
+
                     return (
                       <div
-                        key={`${source.source}-${source.id}`}
-                        onClick={() =>
-                          !isCurrentSource && handleSourceClick(source)
-                        }
-                        className={`flex items-start gap-3 px-2 py-3 rounded-lg transition-all select-none duration-200 relative
-                      ${
-                        isCurrentSource
-                          ? 'bg-green-500/10 dark:bg-green-500/20 border-green-500/30 border'
-                          : 'hover:bg-gray-200/50 dark:hover:bg-white/10 hover:scale-[1.02] cursor-pointer'
-                      }`.trim()}
+                        key={group.key}
+                        className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
                       >
-                        {/* 封面 */}
-                        <div className='flex-shrink-0 w-12 h-20 bg-gray-300 dark:bg-gray-600 rounded overflow-hidden'>
-                          {source.episodes && source.episodes.length > 0 && (
-                            <img
-                              src={processImageUrl(source.poster)}
-                              alt={displaySourceTitle}
-                              className='w-full h-full object-cover'
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
-                          )}
-                        </div>
-
-                        {/* 信息区域 */}
-                        <div className='flex-1 min-w-0 flex flex-col justify-between h-20'>
-                          {/* 标题和分辨率 - 顶部 */}
-                          <div className='flex items-start justify-between gap-3 h-6'>
-                            <div className='flex-1 min-w-0 relative group/title'>
-                              <h3 className='font-medium text-base truncate text-gray-900 dark:text-gray-100 leading-none'>
-                                {displaySourceTitle}
-                                {englishSourceTitle && (
-                                  <span className='ml-1 text-xs text-gray-500 dark:text-gray-400'>
-                                    ({englishSourceTitle})
-                                  </span>
-                                )}
-                              </h3>
-                              {/* 标题级别的 tooltip - 第一个元素不显示 */}
-                              {index !== 0 && (
-                                <div className='absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 invisible group-hover/title:opacity-100 group-hover/title:visible transition-all duration-200 ease-out delay-100 whitespace-nowrap z-[500] pointer-events-none'>
-                                  <div>{displaySourceTitle}</div>
-                                  {englishSourceTitle && (
-                                    <div className='mt-0.5 text-gray-300'>
-                                      {englishSourceTitle}
-                                    </div>
-                                  )}
-                                  <div className='absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800'></div>
+                        <div className='flex items-center justify-between gap-2 px-3 py-2 bg-black/5 dark:bg-white/5'>
+                          <div className='min-w-0'>
+                            <div className='flex items-center gap-2 min-w-0'>
+                              <div
+                                className='text-xs font-medium text-gray-900 dark:text-gray-100 truncate'
+                                title={providerName}
+                              >
+                                {providerName}
+                              </div>
+                              {providerCode && (
+                                <div className='text-[11px] text-gray-500 dark:text-gray-400'>
+                                  {providerCode}
+                                </div>
+                              )}
+                              {groupHasCurrent && (
+                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-500/15 dark:bg-green-500/20 text-green-700 dark:text-green-300'>
+                                  Playing
                                 </div>
                               )}
                             </div>
-                            {(() => {
-                              const sourceKey = `${source.source}-${source.id}`;
-                              const videoInfo = videoInfoMap.get(sourceKey);
-
-                              if (videoInfo?.hasError) {
-                                return (
-                                  <div className='bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center'>
-                                    檢測失敗
-                                  </div>
-                                );
-                              }
-
-                              const qualityCandidate =
-                                videoInfo?.quality ?? source.quality;
-                              const qualityText =
-                                qualityCandidate &&
-                                qualityCandidate !== '未知' &&
-                                qualityCandidate !== ''
-                                  ? qualityCandidate
-                                  : 'NA';
-
-                              const isUltraHigh = ['4K', '2K'].includes(
-                                qualityText
-                              );
-                              const isHigh = ['1080p', '720p'].includes(
-                                qualityText
-                              );
-                              const textColorClasses =
-                                qualityText === 'NA'
-                                  ? 'text-gray-500 dark:text-gray-400'
-                                  : isUltraHigh
-                                  ? 'text-purple-600 dark:text-purple-400'
-                                  : isHigh
-                                  ? 'text-green-600 dark:text-green-400'
-                                  : 'text-yellow-600 dark:text-yellow-400';
-
-                              return (
-                                <div
-                                  className={`bg-gray-500/10 dark:bg-gray-400/20 ${textColorClasses} px-1.5 py-0 rounded text-xs flex-shrink-0 min-w-[50px] text-center`}
-                                >
-                                  {qualityText}
-                                </div>
-                              );
-                            })()}
                           </div>
-
-                          {/* 源名称和集数信息 - 垂直居中 */}
-                          <div className='flex items-center justify-between gap-2'>
-                            <div className='flex items-center gap-2'>
-                              <span className='text-xs px-2 py-1 border border-gray-500/60 rounded text-gray-700 dark:text-gray-300'>
-                                {convertToTraditional(source.source_name) ||
-                                  source.source_name}
-                              </span>
-                              {(() => {
-                                const sourceKey = `${source.source}-${source.id}`;
-                                const videoInfo = videoInfoMap.get(sourceKey);
-                                if (videoInfo?.hasError) {
-                                  return (
-                                    <span className='text-xs text-red-500 dark:text-red-400'>
-                                      無測速數據
-                                    </span>
-                                  );
-                                }
-                                const qualityCandidate =
-                                  videoInfo?.quality ?? source.quality;
-                                const qualityText =
-                                  qualityCandidate &&
-                                  qualityCandidate !== '未知' &&
-                                  qualityCandidate !== ''
-                                    ? qualityCandidate
-                                    : 'NA';
-                                const isUltraHigh = ['4K', '2K'].includes(
-                                  qualityText
-                                );
-                                const isHigh = ['1080p', '720p'].includes(
-                                  qualityText
-                                );
-                                const textColorClasses =
-                                  qualityText === 'NA'
-                                    ? 'text-gray-500 dark:text-gray-400'
-                                    : isUltraHigh
-                                    ? 'text-purple-600 dark:text-purple-400'
-                                    : isHigh
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-yellow-600 dark:text-yellow-400';
-                                return (
-                                  <span
-                                    className={`text-xs font-semibold ${textColorClasses}`}
-                                  >
-                                    {qualityText}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                            {source.episodes.length > 1 && (
-                              <span className='text-xs text-gray-500 dark:text-gray-400 font-medium'>
-                                {source.episodes.length} 集
-                              </span>
+                          <div className='flex items-center gap-2 flex-shrink-0'>
+                            {primaryVideoInfo?.hasError ? (
+                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
+                                檢測失敗
+                              </div>
+                            ) : (
+                              <div
+                                className={`text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${qualityTextColor}`}
+                              >
+                                {qualityText}
+                              </div>
+                            )}
+                            {loadSpeedText && (
+                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 dark:bg-green-500/15 text-green-700 dark:text-green-300'>
+                                {loadSpeedText}
+                              </div>
+                            )}
+                            {pingText && (
+                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-orange-500/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'>
+                                {pingText}
+                              </div>
                             )}
                           </div>
-                          {source.verifyReason && (
-                            <div className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
-                              {source.verifyReason}
-                            </div>
-                          )}
+                        </div>
 
-                          {/* 网络信息 - 底部 */}
-                          <div className='flex items-end h-6'>
-                            {(() => {
-                              const sourceKey = `${source.source}-${source.id}`;
-                              const videoInfo = videoInfoMap.get(sourceKey);
-                              if (videoInfo) {
-                                if (!videoInfo.hasError) {
-                                  return (
-                                    <div className='flex items-end gap-3 text-xs'>
-                                      <div className='text-green-600 dark:text-green-400 font-medium text-xs'>
-                                        {videoInfo.loadSpeed}
-                                      </div>
-                                      <div className='text-orange-600 dark:text-orange-400 font-medium text-xs'>
-                                        {videoInfo.pingTime}ms
-                                      </div>
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div className='text-red-500/90 dark:text-red-400 font-medium text-xs'>
-                                      無測速數據
-                                    </div>
-                                  ); // 占位div
+                        <div className='p-2 space-y-2'>
+                          {group.sources.map((source) => {
+                            const displaySourceTitle =
+                              convertToTraditional(source.title) || source.title;
+                            const englishSourceTitle =
+                              (source.douban_id &&
+                                doubanEnglishMap[source.douban_id]) ||
+                              source.original_title?.trim();
+                            const isCurrentSource =
+                              source.source?.toString() ===
+                                currentSource?.toString() &&
+                              source.id?.toString() === currentId?.toString();
+
+                            const sourceKey = `${source.source}-${source.id}`;
+                            const videoInfo = videoInfoMap.get(sourceKey);
+
+                            const itemQualityCandidate =
+                              videoInfo?.quality ?? source.quality;
+                            const itemQualityText =
+                              itemQualityCandidate &&
+                              itemQualityCandidate !== '未知' &&
+                              itemQualityCandidate !== ''
+                                ? itemQualityCandidate
+                                : 'NA';
+                            const itemIsUltraHigh = ['4K', '2K'].includes(
+                              itemQualityText
+                            );
+                            const itemIsHigh = ['1080p', '720p'].includes(
+                              itemQualityText
+                            );
+                            const itemQualityTextColor =
+                              itemQualityText === 'NA'
+                                ? 'text-gray-500 dark:text-gray-400'
+                                : itemIsUltraHigh
+                                ? 'text-purple-600 dark:text-purple-400'
+                                : itemIsHigh
+                                ? 'text-green-600 dark:text-green-400'
+                                : 'text-yellow-600 dark:text-yellow-400';
+
+                            const itemLoadSpeedCandidate =
+                              videoInfo && !videoInfo.hasError
+                                ? videoInfo.loadSpeed
+                                : source.loadSpeed;
+                            const itemLoadSpeedText =
+                              itemLoadSpeedCandidate &&
+                              itemLoadSpeedCandidate !== '未知' &&
+                              itemLoadSpeedCandidate !== ''
+                                ? itemLoadSpeedCandidate
+                                : '';
+                            const itemPingCandidate =
+                              videoInfo && !videoInfo.hasError
+                                ? videoInfo.pingTime
+                                : source.pingTime;
+                            const itemPingText =
+                              typeof itemPingCandidate === 'number' &&
+                              itemPingCandidate > 0
+                                ? `${itemPingCandidate}ms`
+                                : '';
+
+                            return (
+                              <div
+                                key={`${source.source}-${source.id}`}
+                                onClick={() =>
+                                  !isCurrentSource && handleSourceClick(source)
                                 }
-                              }
-                            })()}
-                          </div>
+                                className={`rounded-lg border px-2.5 py-2 transition-all select-none duration-200
+                                  ${
+                                    isCurrentSource
+                                      ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
+                                      : 'bg-white/40 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-gray-200/40 dark:hover:bg-white/10 cursor-pointer'
+                                  }`.trim()}
+                              >
+                                <div className='flex items-start gap-3'>
+                                  <div className='flex-shrink-0 w-12 h-20 bg-gray-300 dark:bg-gray-600 rounded-md overflow-hidden'>
+                                    {source.episodes &&
+                                      source.episodes.length > 0 && (
+                                        <img
+                                          src={processImageUrl(source.poster)}
+                                          alt={displaySourceTitle}
+                                          className='w-full h-full object-cover'
+                                          onError={(e) => {
+                                            const target =
+                                              e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                          }}
+                                        />
+                                      )}
+                                  </div>
+
+                                  <div className='min-w-0 flex-1'>
+                                    <div className='flex items-start justify-between gap-3'>
+                                      <div className='min-w-0'>
+                                        <div
+                                          className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'
+                                          title={displaySourceTitle}
+                                        >
+                                          {displaySourceTitle}
+                                        </div>
+                                        {englishSourceTitle && (
+                                          <div
+                                            className='text-xs text-gray-500 dark:text-gray-400 truncate'
+                                            title={englishSourceTitle}
+                                          >
+                                            {englishSourceTitle}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {videoInfo?.hasError ? (
+                                        <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 flex-shrink-0'>
+                                          檢測失敗
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className={`text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${itemQualityTextColor} flex-shrink-0`}
+                                        >
+                                          {itemQualityText}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
+                                      {source.episodes.length > 1 && (
+                                        <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
+                                          {source.episodes.length} 集
+                                        </div>
+                                      )}
+                                      {itemLoadSpeedText && (
+                                        <div className='px-2 py-0.5 rounded-full bg-green-500/10 dark:bg-green-500/15 text-green-700 dark:text-green-300'>
+                                          {itemLoadSpeedText}
+                                        </div>
+                                      )}
+                                      {itemPingText && (
+                                        <div className='px-2 py-0.5 rounded-full bg-orange-500/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'>
+                                          {itemPingText}
+                                        </div>
+                                      )}
+                                      {!itemLoadSpeedText &&
+                                        !itemPingText &&
+                                        videoInfo?.hasError && (
+                                          <div className='text-red-500/90 dark:text-red-400'>
+                                            無測速數據
+                                          </div>
+                                        )}
+                                    </div>
+
+                                    {source.verifyReason && (
+                                      <div className='mt-1 text-xs text-gray-500 dark:text-gray-400 break-words'>
+                                        {source.verifyReason}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );
                   })}
+                </div>
                 <div className='flex-shrink-0 mt-auto pt-2 border-t border-gray-400 dark:border-gray-700'>
                   <button
                     onClick={() => {
