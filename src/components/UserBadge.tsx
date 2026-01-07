@@ -60,7 +60,7 @@ export default function UserBadge() {
 
   return (
     <div
-      className='max-w-[12rem] truncate px-3 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2'
+      className='max-w-[12rem] truncate px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2'
       title={`Logged in as ${username}`}
     >
       <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
@@ -71,7 +71,7 @@ export default function UserBadge() {
           username.charAt(0).toUpperCase()
         )}
       </span>
-      {username}
+      <span className='truncate hidden sm:inline'>{username}</span>
     </div>
   );
 }

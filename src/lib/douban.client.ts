@@ -92,6 +92,50 @@ async function fetchWithTimeout(
   }
 }
 
+async function fetchWithRetry(
+  url: string,
+  proxyUrl: string,
+  options?: { retries?: number; baseDelayMs?: number; maxDelayMs?: number }
+): Promise<Response> {
+  const retries = options?.retries ?? 2;
+  const baseDelayMs = options?.baseDelayMs ?? 400;
+  const maxDelayMs = options?.maxDelayMs ?? 2500;
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const jitter = (ms: number) => {
+    const delta = ms * 0.2;
+    return Math.max(0, Math.round(ms - delta + Math.random() * delta * 2));
+  };
+  const retryStatuses = new Set([429, 500, 502, 503, 504]);
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const res = await fetchWithTimeout(url, proxyUrl);
+      if (!retryStatuses.has(res.status) || attempt === retries) {
+        return res;
+      }
+      const retryAfterHeader = res.headers.get('retry-after');
+      const retryAfterSeconds = retryAfterHeader
+        ? Number(retryAfterHeader)
+        : NaN;
+      const retryAfterMs = Number.isFinite(retryAfterSeconds)
+        ? retryAfterSeconds * 1000
+        : null;
+
+      const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt));
+      await sleep(jitter(retryAfterMs ?? delay));
+    } catch (error) {
+      lastError = error;
+      if (attempt === retries) break;
+      const delay = Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt));
+      await sleep(jitter(delay));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Fetch failed');
+}
+
 function getDoubanProxyConfig(): {
   proxyType:
     | 'direct'
@@ -151,7 +195,7 @@ export async function fetchDoubanCategories(
     : `https://m.douban.com/rexxar/api/v2/subject/recent_hot/${kind}?start=${pageStart}&limit=${pageLimit}&category=${category}&type=${type}`;
 
   try {
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       target,
       useTencentCDN || useAliCDN ? '' : proxyUrl
     );
@@ -283,7 +327,7 @@ export async function fetchDoubanList(
     : `https://movie.douban.com/j/search_subjects?type=${type}&tag=${tag}&sort=recommend&page_limit=${pageLimit}&page_start=${pageStart}`;
 
   try {
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       target,
       useTencentCDN || useAliCDN ? '' : proxyUrl
     );
@@ -481,7 +525,7 @@ async function fetchDoubanRecommends(
   const target = `${baseUrl}?${reqParams.toString()}`;
   console.log(target);
   try {
-    const response = await fetchWithTimeout(
+    const response = await fetchWithRetry(
       target,
       useTencentCDN || useAliCDN ? '' : proxyUrl
     );

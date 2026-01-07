@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getCacheTime } from '@/lib/config';
+import { fetchJsonWithRetry, fetchWithRetry } from '@/lib/fetchRetry.server';
 
 interface DoubanSubjectApiResponse {
   subject?: {
@@ -16,13 +17,10 @@ interface DoubanSubjectApiResponse {
 async function fetchImdbIdFromDouban(
   subjectId: string
 ): Promise<string | undefined> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
   const detailUrl = `https://movie.douban.com/subject/${subjectId}/`;
 
   try {
-    const response = await fetch(detailUrl, {
-      signal: controller.signal,
+    const response = await fetchWithRetry(detailUrl, {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -54,8 +52,6 @@ async function fetchImdbIdFromDouban(
     return genericMatch?.[1];
   } catch {
     return undefined;
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -120,34 +116,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '无效的豆瓣ID' }, { status: 400 });
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-
   const targetUrl = `https://movie.douban.com/j/subject_abstract?subject_id=${encodeURIComponent(
     sanitizedId
   )}`;
 
   try {
-    const response = await fetch(targetUrl, {
-      signal: controller.signal,
+    const data = await fetchJsonWithRetry<DoubanSubjectApiResponse>(
+      targetUrl,
+      {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
         Referer: 'https://movie.douban.com/',
         Accept: 'application/json, text/plain, */*',
       },
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: `豆瓣接口请求失败: ${response.status}` },
-        { status: response.status }
-      );
-    }
-
-    const data = (await response.json()) as DoubanSubjectApiResponse;
+      },
+      { retries: 2, timeoutMs: 10000 }
+    );
     if (!data?.subject) {
       return NextResponse.json(
         { error: '未找到豆瓣条目信息' },
@@ -194,7 +179,5 @@ export async function GET(request: Request) {
         ? '请求豆瓣接口超时'
         : (error as Error).message;
     return NextResponse.json({ error: message }, { status: 500 });
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
