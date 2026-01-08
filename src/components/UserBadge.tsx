@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps, simple-import-sort/imports */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -44,6 +44,7 @@ export default function UserBadge() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [showLogout, setShowLogout] = useState(false);
   const { userLocale } = useUserLanguage();
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const read = () => {
@@ -128,6 +129,16 @@ export default function UserBadge() {
     }
   };
 
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowLogout(false);
+      }
+    };
+    document.addEventListener('click', onClickOutside);
+    return () => document.removeEventListener('click', onClickOutside);
+  }, []);
+
   if (!username) return null;
 
   return (
@@ -153,7 +164,10 @@ export default function UserBadge() {
       </span>
       <span className='truncate hidden sm:inline'>{username}</span>
       {showLogout && (
-        <div className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[8rem] space-y-2'>
+        <div
+          ref={dropdownRef}
+          className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[8rem] space-y-2'
+        >
           <button
             onClick={handleSwitchUser}
             className='w-full text-left text-xs text-gray-700 hover:text-green-600 dark:text-gray-200 dark:hover:text-green-400'
