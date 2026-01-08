@@ -45,6 +45,7 @@ export default function UserBadge() {
   const [showLogout, setShowLogout] = useState(false);
   const { userLocale } = useUserLanguage();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const read = () => {
@@ -131,9 +132,11 @@ export default function UserBadge() {
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowLogout(false);
-      }
+      const target = e.target as Node;
+      const inMenu =
+        (dropdownRef.current && dropdownRef.current.contains(target)) ||
+        (wrapperRef.current && wrapperRef.current.contains(target));
+      if (!inMenu) setShowLogout(false);
     };
     document.addEventListener('click', onClickOutside);
     return () => document.removeEventListener('click', onClickOutside);
@@ -143,6 +146,7 @@ export default function UserBadge() {
 
   return (
     <div
+      ref={wrapperRef}
       className='relative max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none'
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
       tabIndex={0}
@@ -151,8 +155,9 @@ export default function UserBadge() {
         e.stopPropagation();
         toggleMenu();
       }}
-      onMouseLeave={() => setShowLogout(false)}
       onKeyDown={handleKeyDown}
+      aria-expanded={showLogout}
+      role='button'
     >
       <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
         {avatar ? (
