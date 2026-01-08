@@ -28,6 +28,17 @@ const logoutLabel = (locale: string) => {
   }
 };
 
+const switchUserLabel = (locale: string) => {
+  switch (locale) {
+    case 'zh-Hans':
+      return '切换账号';
+    case 'zh-Hant':
+      return '切換帳號';
+    default:
+      return 'Switch user';
+  }
+};
+
 export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -83,8 +94,7 @@ export default function UserBadge() {
 
   if (!username) return null;
 
-  const handleLogout = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const performLogout = async () => {
     try {
       await fetch('/api/logout', {
         method: 'POST',
@@ -93,7 +103,19 @@ export default function UserBadge() {
     } catch {
       // ignore
     }
+  };
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await performLogout();
     window.location.reload();
+  };
+
+  const handleSwitchUser = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await performLogout();
+    const redirect = typeof window !== 'undefined' ? window.location.href : '/';
+    window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
   };
 
   return (
@@ -113,12 +135,18 @@ export default function UserBadge() {
       </span>
       <span className='truncate hidden sm:inline'>{username}</span>
       {showLogout && (
-        <div className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-1 z-50'>
+        <div className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[8rem] space-y-2'>
+          <button
+            onClick={handleSwitchUser}
+            className='w-full text-left text-xs text-gray-700 hover:text-green-600 dark:text-gray-200 dark:hover:text-green-400'
+          >
+            {switchUserLabel(userLocale || 'en')}
+          </button>
           <button
             onClick={handleLogout}
-            className='flex items-center gap-2 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
+            className='w-full text-left text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
           >
-            <span>{logoutLabel(userLocale || 'en')}</span>
+            {logoutLabel(userLocale || 'en')}
           </button>
         </div>
       )}
