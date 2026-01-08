@@ -92,8 +92,6 @@ export default function UserBadge() {
     };
   }, [username]);
 
-  if (!username) return null;
-
   const performLogout = async () => {
     try {
       await fetch('/api/logout', {
@@ -118,12 +116,32 @@ export default function UserBadge() {
     window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
   };
 
+  const toggleMenu = () => setShowLogout((prev) => !prev);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleMenu();
+    }
+    if (e.key === 'Escape') {
+      setShowLogout(false);
+    }
+  };
+
+  if (!username) return null;
+
   return (
     <div
       className='relative max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none'
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
-      onClick={() => setShowLogout((prev) => !prev)}
+      tabIndex={0}
+      onClick={toggleMenu}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        toggleMenu();
+      }}
       onMouseLeave={() => setShowLogout(false)}
+      onKeyDown={handleKeyDown}
     >
       <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
         {avatar ? (

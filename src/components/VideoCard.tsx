@@ -309,6 +309,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       () => convertToTraditional(actualTitle),
       [actualTitle]
     );
+    const placeholderPoster = useMemo(() => {
+      const text = (traditionalTitle || actualTitle || 'No Image').slice(0, 18);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="26" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
+      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+    }, [actualTitle, traditionalTitle]);
 
     // 获取收藏状态（搜索结果页面不检查）
     useEffect(() => {
@@ -822,7 +827,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
             {/* 图片 */}
             <Image
-              src={processImageUrl(actualPoster)}
+              src={actualPoster ? processImageUrl(actualPoster) : placeholderPoster}
               alt={traditionalTitle || actualTitle}
               fill
               className={origin === 'live' ? 'object-contain' : 'object-cover'}
@@ -830,13 +835,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               loading='lazy'
               onLoadingComplete={() => setIsLoading(true)}
               onError={(e) => {
-                // 图片加载失败时的重试机制
+                // 图片加载失败时的重试机制，最终回退到占位图
                 const img = e.target as HTMLImageElement;
-                if (!img.dataset.retried) {
+                if (!img.dataset.retried && actualPoster) {
                   img.dataset.retried = 'true';
                   setTimeout(() => {
                     img.src = processImageUrl(actualPoster);
-                  }, 2000);
+                  }, 1200);
+                } else {
+                  img.src = placeholderPoster;
                 }
               }}
               style={
