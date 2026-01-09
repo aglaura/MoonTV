@@ -120,6 +120,7 @@ export default function UserBadge() {
     e.stopPropagation();
     await performLogout();
     const redirect = typeof window !== 'undefined' ? window.location.href : '/';
+    // Always send to login for re-selection; ensure navigation even if logout API fails.
     window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
   };
 
@@ -160,11 +161,11 @@ export default function UserBadge() {
   }, []);
 
   return username ? (
-    <div className='relative z-[99999]'>
+    <div className='relative z-[1200000]'>
       <button
         ref={buttonRef}
         title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
-        className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'
+        className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000]'
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-haspopup='menu'
@@ -183,7 +184,7 @@ export default function UserBadge() {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className='fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] space-y-2 focus:outline-none'
+          className='fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[1200000] space-y-2 focus:outline-none'
           style={{
             top: menuStyle.top,
             left: menuStyle.left,
