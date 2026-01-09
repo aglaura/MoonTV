@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { tt } from '@/lib/i18n.client';
 import { convertToTraditional } from '@/lib/locale';
@@ -38,6 +38,84 @@ function HomeClient() {
     setShowAnnouncement(false);
     localStorage.setItem('hasSeenAnnouncement', announcement); // 记录已查看弹窗
   };
+
+  const aggregatedResults = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        key: string;
+        id: string;
+        title: string;
+        original_title?: string;
+        poster: string;
+        rate?: string;
+        year: string;
+        douban_id?: number;
+        imdbId?: string;
+        episodesCount: number;
+      }
+    >();
+
+    const buildKey = (item: SearchResult) => {
+      const imdbId = (item as unknown as { imdbId?: string; imdb_id?: string })
+        ?.imdbId
+        ?.toString()
+        .toLowerCase() ||
+        (item as unknown as { imdb_id?: string })?.imdb_id?.toString().toLowerCase();
+      if (imdbId) return `imdb:${imdbId}`;
+      if (item.douban_id) return `douban:${item.douban_id}`;
+      const baseTitle = (item.title || '').trim().toLowerCase();
+      const originalTitle = (item.original_title || '').trim().toLowerCase();
+      const titleKey = baseTitle || originalTitle || (item.id || '').toString();
+      const yearKey = (item.year || '').trim();
+      return `${titleKey}#${yearKey}`;
+    };
+
+    searchResults.forEach((item) => {
+      const key = buildKey(item);
+      const existing = map.get(key);
+      const episodesCount = Array.isArray(item.episodes)
+        ? item.episodes.length
+        : 0;
+
+      if (!existing) {
+        map.set(key, {
+          key,
+          id: item.id,
+          title: item.title,
+          original_title: item.original_title,
+          poster: item.poster,
+          rate: item.rate,
+          year: item.year,
+          douban_id: item.douban_id,
+          imdbId: (item as unknown as { imdbId?: string })?.imdbId,
+          episodesCount,
+        });
+        return;
+      }
+
+      const mergedEpisodes = Math.max(existing.episodesCount, episodesCount);
+      const mergedPoster = existing.poster || item.poster;
+      const mergedRate = existing.rate || item.rate;
+      const mergedYear = existing.year || item.year;
+      const mergedTitle = existing.title || item.title;
+      const mergedOriginal = existing.original_title || item.original_title;
+      const mergedDouban = existing.douban_id || item.douban_id;
+
+      map.set(key, {
+        ...existing,
+        poster: mergedPoster,
+        rate: mergedRate,
+        year: mergedYear,
+        title: mergedTitle,
+        original_title: mergedOriginal,
+        douban_id: mergedDouban,
+        episodesCount: mergedEpisodes,
+      });
+    });
+
+    return Array.from(map.values());
+  }, [searchResults]);
 
   return (
     <PageLayout activePath='/search'>
@@ -221,7 +299,7 @@ function HomeClient() {
                 </p>
               )}
 
-            {searchResults.length > 0 && (
+            {aggregatedResults.length > 0 && (
               <div className='mt-8'>
                 <div className='flex items-center justify-between mb-4'>
                   <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
@@ -229,26 +307,27 @@ function HomeClient() {
                   </h2>
                   <span className='text-sm text-gray-500 dark:text-gray-400'>
                     {tt(
-                      `Total ${searchResults.length}`,
-                      `共 ${searchResults.length} 条`,
-                      `共 ${searchResults.length} 筆`
+                      `Total ${aggregatedResults.length}`,
+                      `共 ${aggregatedResults.length} 条`,
+                      `共 ${aggregatedResults.length} 筆`
                     )}
                   </span>
                 </div>
                 <div className='grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
-                  {searchResults.map((item, index) => (
+                  {aggregatedResults.map((item) => (
                     <VideoCard
-                      key={`${item.source}-${item.id}-${index}`}
+                      key={item.key}
                       id={item.id}
-                      source={item.source}
+                      source={undefined}
                       title={item.title}
                       poster={item.poster}
                       douban_id={item.douban_id}
                       rate={item.rate}
                       year={item.year}
-                      episodes={item.episodes?.length}
-                      source_name={item.source_name}
+                      episodes={item.episodesCount}
+                      source_name={undefined}
                       query={item.title}
+                      isAggregate
                       from='search'
                     />
                   ))}

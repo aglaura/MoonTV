@@ -12,7 +12,12 @@ import React, {
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
-import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
+import {
+  getQualityRank,
+  getVideoResolutionFromM3u8,
+  parseSpeedToKBps,
+  processImageUrl,
+} from '@/lib/utils';
 
 // 定义视频信息类型
 interface VideoInfo {
@@ -380,6 +385,117 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   }, [availableSources, currentId, currentSource]);
 
   const groupedSources = useMemo(() => {
+    const qualityRankToScore = (rank?: number) => {
+      switch (rank) {
+        case 4:
+          return 100;
+        case 3:
+          return 85;
+        case 2:
+          return 75;
+        case 1:
+          return 60;
+        default:
+          return 0;
+      }
+    };
+
+    const sortSourcesWithinProvider = (sources: SearchResult[]) => {
+      if (sources.length <= 1) return sources;
+
+      const metrics = sources.map((source, index) => {
+        const key = `${source.source}-${source.id}`;
+        const info = videoInfoMap.get(key);
+        const qualityRank = getQualityRank(info?.quality ?? source.quality);
+        const speedValue =
+          info?.speedValue ??
+          parseSpeedToKBps(info?.loadSpeed ?? source.loadSpeed);
+        const rawPing = info?.pingTime ?? source.pingTime;
+        const pingTime =
+          typeof rawPing === 'number' && rawPing > 0
+            ? rawPing
+            : Number.MAX_SAFE_INTEGER;
+        const hasInfo =
+          qualityRank > 0 ||
+          (speedValue !== undefined && speedValue > 0) ||
+          pingTime < Number.MAX_SAFE_INTEGER;
+
+        return {
+          source,
+          index,
+          qualityRank,
+          speedValue: speedValue ?? 0,
+          pingTime,
+          hasInfo,
+        };
+      });
+
+      if (!metrics.some((m) => m.hasInfo)) {
+        return sources;
+      }
+
+      const maxSpeed = Math.max(...metrics.map((m) => m.speedValue || 0), 0);
+      const pingValues = metrics
+        .map((m) => m.pingTime)
+        .filter((v) => v < Number.MAX_SAFE_INTEGER);
+      const minPing =
+        pingValues.length > 0 ? Math.min(...pingValues) : Number.NaN;
+      const maxPing =
+        pingValues.length > 0 ? Math.max(...pingValues) : Number.NaN;
+
+      const scored = metrics.map((m) => {
+        const qualityScore = qualityRankToScore(m.qualityRank);
+        const speedScore =
+          maxSpeed > 0 && m.speedValue > 0
+            ? Math.min(100, Math.max(0, (m.speedValue / maxSpeed) * 100))
+            : 0;
+        let pingScore = 0;
+        if (m.pingTime < Number.MAX_SAFE_INTEGER) {
+          if (
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing > minPing
+          ) {
+            pingScore = Math.min(
+              100,
+              Math.max(0, ((maxPing - m.pingTime) / (maxPing - minPing)) * 100)
+            );
+          } else if (
+            Number.isFinite(minPing) &&
+            Number.isFinite(maxPing) &&
+            maxPing === minPing
+          ) {
+            pingScore = 100;
+          }
+        }
+
+        const QUALITY_WEIGHT = 0.6;
+        const SPEED_WEIGHT = 0.15;
+        const PING_WEIGHT = 0.25;
+        const score =
+          qualityScore * QUALITY_WEIGHT +
+          speedScore * SPEED_WEIGHT +
+          pingScore * PING_WEIGHT;
+        return { ...m, score };
+      });
+
+      scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if ((b.qualityRank ?? 0) !== (a.qualityRank ?? 0)) {
+          return (b.qualityRank ?? 0) - (a.qualityRank ?? 0);
+        }
+        if ((b.speedValue ?? 0) !== (a.speedValue ?? 0)) {
+          return (b.speedValue ?? 0) - (a.speedValue ?? 0);
+        }
+        if (a.pingTime !== b.pingTime) {
+          return a.pingTime - b.pingTime;
+        }
+        return a.index - b.index;
+      });
+
+      return scored.map((m) => m.source);
+    };
+
     const groups = new Map<string, SearchResult[]>();
     for (const source of sortedSources) {
       const groupKey = source.source?.toString() ?? '';
@@ -392,9 +508,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     }
     return Array.from(groups.entries()).map(([key, sources]) => ({
       key,
-      sources,
+      sources: sortSourcesWithinProvider(sources),
     }));
-  }, [sortedSources]);
+  }, [sortedSources, videoInfoMap]);
 
   const currentStart = currentPage * episodesPerPage + 1;
   const currentEnd = Math.min(
@@ -582,11 +698,88 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         source.id?.toString() === currentId?.toString()
                     );
 
-                    const primaryKey = `${primary.source}-${primary.id}`;
-                    const primaryVideoInfo = videoInfoMap.get(primaryKey);
+                    const providerMetrics = group.sources.map((source) => {
+                      const key = `${source.source}-${source.id}`;
+                      const info = videoInfoMap.get(key);
+                      const quality = info?.quality ?? source.quality ?? '';
+                      const loadSpeed =
+                        info?.hasError === true
+                          ? ''
+                          : info?.loadSpeed ?? source.loadSpeed ?? '';
+                      const speedValue =
+                        info?.hasError === true
+                          ? 0
+                          : info?.speedValue ??
+                            parseSpeedToKBps(loadSpeed) ??
+                            0;
+                      const rawPing = info?.hasError ? undefined : info?.pingTime ?? source.pingTime;
+                      const pingTime =
+                        typeof rawPing === 'number' && rawPing > 0
+                          ? rawPing
+                          : undefined;
+                      return {
+                        quality,
+                        loadSpeed,
+                        speedValue,
+                        pingTime,
+                        qualityRank: getQualityRank(quality),
+                        hasError: info?.hasError,
+                      };
+                    });
 
-                    const qualityCandidate =
-                      primaryVideoInfo?.quality ?? primary.quality;
+                    const bestQualityEntry = providerMetrics.reduce(
+                      (best, curr) =>
+                        !best || (curr.qualityRank ?? 0) > (best.qualityRank ?? 0)
+                          ? curr
+                          : best,
+                      undefined as
+                        | {
+                            quality: string;
+                            loadSpeed: string;
+                            speedValue?: number;
+                            pingTime?: number;
+                            qualityRank: number;
+                            hasError?: boolean;
+                          }
+                        | undefined
+                    );
+                    const bestSpeedEntry = providerMetrics.reduce(
+                      (best, curr) =>
+                        (curr.speedValue ?? 0) > (best?.speedValue ?? 0)
+                          ? curr
+                          : best,
+                      undefined as
+                        | {
+                            quality: string;
+                            loadSpeed: string;
+                            speedValue?: number;
+                            pingTime?: number;
+                            qualityRank: number;
+                            hasError?: boolean;
+                          }
+                        | undefined
+                    );
+                    const bestPingEntry = providerMetrics.reduce(
+                      (best, curr) => {
+                        if (typeof curr.pingTime !== 'number') return best;
+                        if (!best || typeof best.pingTime !== 'number') {
+                          return curr;
+                        }
+                        return curr.pingTime < best.pingTime ? curr : best;
+                      },
+                      undefined as
+                        | {
+                            quality: string;
+                            loadSpeed: string;
+                            speedValue?: number;
+                            pingTime?: number;
+                            qualityRank: number;
+                            hasError?: boolean;
+                          }
+                        | undefined
+                    );
+
+                    const qualityCandidate = bestQualityEntry?.quality ?? '';
                     const qualityText =
                       qualityCandidate &&
                       qualityCandidate !== '未知' &&
@@ -604,24 +797,21 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         ? 'text-green-600 dark:text-green-400'
                         : 'text-yellow-600 dark:text-yellow-400';
 
-                    const loadSpeedCandidate =
-                      primaryVideoInfo && !primaryVideoInfo.hasError
-                        ? primaryVideoInfo.loadSpeed
-                        : primary.loadSpeed;
+                    const loadSpeedCandidate = bestSpeedEntry?.loadSpeed ?? '';
                     const loadSpeedText =
                       loadSpeedCandidate &&
                       loadSpeedCandidate !== '未知' &&
                       loadSpeedCandidate !== ''
                         ? loadSpeedCandidate
                         : '';
-                    const pingCandidate =
-                      primaryVideoInfo && !primaryVideoInfo.hasError
-                        ? primaryVideoInfo.pingTime
-                        : primary.pingTime;
+                    const pingCandidate = bestPingEntry?.pingTime;
                     const pingText =
                       typeof pingCandidate === 'number' && pingCandidate > 0
                         ? `${pingCandidate}ms`
                         : '';
+                    const providerHasError =
+                      providerMetrics.length > 0 &&
+                      providerMetrics.every((m) => m.hasError);
 
                     return (
                       <div
@@ -650,7 +840,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                             </div>
                           </div>
                           <div className='flex items-center gap-2 flex-shrink-0'>
-                            {primaryVideoInfo?.hasError ? (
+                            {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                                 檢測失敗
                               </div>
