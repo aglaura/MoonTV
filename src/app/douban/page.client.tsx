@@ -26,11 +26,13 @@ export interface DoubanPageClientProps {
     primarySelection: string;
     secondarySelection: string;
   };
+  featuredItems?: DoubanItem[];
 }
 
 function DoubanPageContent({
   initialData = [],
   initialSnapshot,
+  featuredItems = [],
 }: DoubanPageClientProps) {
   const searchParams = useSearchParams();
   const [doubanData, setDoubanData] = useState<DoubanItem[]>([]);
@@ -545,6 +547,45 @@ function DoubanPageContent({
               {getPageDescription()}
             </p>
           </div>
+
+          {featuredItems.length > 0 && (
+            <div className='bg-gradient-to-r from-green-50 via-white to-green-50 dark:from-green-900/20 dark:via-gray-900 dark:to-green-900/10 border border-green-100/70 dark:border-green-900/40 rounded-2xl p-4 sm:p-6 shadow-sm'>
+              <div className='flex items-center justify-between mb-3 sm:mb-4'>
+                <div>
+                  <p className='text-xs uppercase tracking-[0.2em] text-green-700 dark:text-green-400'>
+                    {type === 'movie'
+                      ? tt('Featured movies', '精选电影', '精選電影')
+                      : type === 'tv'
+                      ? tt('Featured series', '精选剧集', '精選劇集')
+                      : type === 'anime'
+                      ? tt('Featured anime', '精选动画', '精選動畫')
+                      : tt('Featured variety', '精选综艺', '精選綜藝')}
+                  </p>
+                  <h3 className='text-lg sm:text-xl font-semibold text-gray-900 dark:text-white'>
+                    {tt(
+                      'Tap a card to search providers and play',
+                      '点击卡片即可搜索来源并播放',
+                      '點擊卡片即可搜尋來源並播放'
+                    )}
+                  </h3>
+                </div>
+              </div>
+              <div className='grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4'>
+                {featuredItems.slice(0, 10).map((item, idx) => (
+                  <VideoCard
+                    key={`${item.id}-${idx}`}
+                    from='douban'
+                    title={item.title}
+                    poster={item.poster}
+                    douban_id={Number(item.id)}
+                    rate={item.rate}
+                    year={item.year}
+                    type={type === 'movie' ? 'movie' : undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className='bg-white/60 dark:bg-gray-800/40 rounded-2xl p-4 sm:p-6 border border-gray-200/30 dark:border-gray-700/30 backdrop-blur-sm'>
             <DoubanSelector

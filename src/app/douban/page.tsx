@@ -73,9 +73,34 @@ export default async function DoubanPage({
       initialParams as { kind: 'tv' | 'movie'; category: string; type: string }
     ));
 
+  let featuredItems: DoubanItem[] = [];
+  try {
+    const base = getBaseUrl();
+    const res = await fetch(`${base}/api/douban/home`, {
+      next: { revalidate: 600 },
+    });
+    if (res.ok) {
+      const home = (await res.json()) as {
+        movies?: DoubanItem[];
+        tv?: DoubanItem[];
+        variety?: DoubanItem[];
+      };
+      if (type === 'movie' && Array.isArray(home?.movies)) {
+        featuredItems = home.movies;
+      } else if (type === 'tv' && Array.isArray(home?.tv)) {
+        featuredItems = home.tv;
+      } else if (type === 'show' && Array.isArray(home?.variety)) {
+        featuredItems = home.variety;
+      }
+    }
+  } catch {
+    /* swallow prefetch errors */
+  }
+
   return (
     <DoubanPageClient
       initialData={initialData ?? []}
+      featuredItems={featuredItems}
       initialSnapshot={
         initialParams
           ? {
