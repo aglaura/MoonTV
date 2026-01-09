@@ -388,7 +388,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       | 'cancelAdmin'
       | 'setAvatar'
       | 'changePassword'
-      | 'deleteUser',
+      | 'deleteUser'
+      | 'setGroup',
     targetUsername: string,
     targetPassword?: string,
     avatar?: string,
@@ -736,11 +737,26 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
-                          <span className='px-2 py-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'>
-                            {((user as any)?.group || 'family') === 'guest'
-                              ? tt('Guest', '访客', '訪客')
-                              : tt('Family', '家庭', '家庭')}
-                          </span>
+                          <select
+                            className='px-2 py-1 text-xs rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
+                            value={((user as any)?.group || 'family') === 'guest' ? 'guest' : 'family'}
+                            onChange={(e) =>
+                              handleUserAction(
+                                'setGroup',
+                                user.username,
+                                undefined,
+                                undefined,
+                                e.target.value === 'guest' ? 'guest' : 'family'
+                              )
+                            }
+                          >
+                            <option value='family'>
+                              {tt('Family', '家庭', '家庭')}
+                            </option>
+                            <option value='guest'>
+                              {tt('Guest', '访客', '訪客')}
+                            </option>
+                          </select>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span
