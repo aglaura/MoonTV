@@ -10,7 +10,8 @@ interface AuthCookiePayload {
 
 export async function ensureAdminUser(
   username: string | undefined,
-  config: AdminConfig
+  config: AdminConfig,
+  group?: string
 ): Promise<void> {
   if (
     !username ||
@@ -28,16 +29,19 @@ export async function ensureAdminUser(
     user = {
       username,
       role: 'admin',
-      group: 'family',
+      group: group && group.trim().length > 0 ? group.trim() : 'family',
     };
     config.UserConfig.Users.push(user);
     changed = true;
-  } else if (user.role !== 'owner' && user.role !== 'admin') {
-    user.role = 'admin';
-    changed = true;
-  } else if (!user.group) {
-    user.group = 'family';
-    changed = true;
+  } else {
+    if (user.role !== 'owner' && user.role !== 'admin') {
+      user.role = 'admin';
+      changed = true;
+    }
+    if (!user.group && group) {
+      user.group = group;
+      changed = true;
+    }
   }
 
   if (changed) {

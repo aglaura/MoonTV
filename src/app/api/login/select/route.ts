@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
     }
 
-    await ensureAdminUser(username, config);
+    await ensureAdminUser(username, config, normalizedGroup);
 
     const response = NextResponse.json({ ok: true });
     const cookieValue = await generateAuthCookie(

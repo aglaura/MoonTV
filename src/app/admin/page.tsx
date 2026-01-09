@@ -750,28 +750,25 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
-                          <div className='flex items-center gap-2'>
-                            <input
-                              type='text'
-                              list={`group-options-${user.username}`}
-                              defaultValue={(user as any)?.group || 'family'}
-                              onBlur={(e) =>
-                                handleUserAction(
-                                  'setGroup',
-                                  user.username,
-                                  undefined,
-                                  undefined,
-                                  e.target.value?.trim() || 'family'
-                                )
-                              }
-                              className='px-2 py-1 text-xs rounded-md border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 focus:outline-none focus:ring-2 focus:ring-green-500'
-                            />
-                            <datalist id={`group-options-${user.username}`}>
-                              {groupOptions.map((opt) => (
-                                <option key={opt} value={opt} />
-                              ))}
-                            </datalist>
-                          </div>
+                          <select
+                            className='px-3 py-1.5 text-xs rounded-md border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 focus:outline-none focus:ring-2 focus:ring-green-500'
+                            value={(user as any)?.group || 'family'}
+                            onChange={(e) =>
+                              handleUserAction(
+                                'setGroup',
+                                user.username,
+                                undefined,
+                                undefined,
+                                e.target.value?.trim() || 'family'
+                              )
+                            }
+                          >
+                            {groupOptions.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span

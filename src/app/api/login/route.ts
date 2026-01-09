@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      await ensureAdminUser(username, config);
+      await ensureAdminUser(username, config, normalizedGroup);
 
       const response = NextResponse.json({ ok: true });
       const cookieValue = await generateAuthCookie(
