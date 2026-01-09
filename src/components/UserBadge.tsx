@@ -46,7 +46,6 @@ export default function UserBadge() {
   const { userLocale } = useUserLanguage();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const lastTouchToggleRef = useRef<number>(0);
 
   useEffect(() => {
     const read = () => {
@@ -132,15 +131,15 @@ export default function UserBadge() {
   };
 
   useEffect(() => {
-    const onClickOutside = (e: MouseEvent) => {
+    const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node;
       const inMenu =
         (dropdownRef.current && dropdownRef.current.contains(target)) ||
         (wrapperRef.current && wrapperRef.current.contains(target));
       if (!inMenu) setShowLogout(false);
     };
-    document.addEventListener('click', onClickOutside);
-    return () => document.removeEventListener('click', onClickOutside);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
   }, []);
 
   if (!username) return null;
@@ -151,17 +150,7 @@ export default function UserBadge() {
       className='relative max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none'
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
       tabIndex={0}
-      onClick={() => {
-        const now = Date.now();
-        if (now - lastTouchToggleRef.current < 400) return;
-        toggleMenu();
-      }}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        lastTouchToggleRef.current = Date.now();
-        toggleMenu();
-      }}
+      onClick={toggleMenu}
       onKeyDown={handleKeyDown}
       aria-expanded={showLogout}
       role='button'
