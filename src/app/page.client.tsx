@@ -112,65 +112,6 @@ function HomeClient() {
 
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
-  const animeList = useMemo(() => {
-    if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
-    const items: DoubanItem[] = [];
-    bangumiCalendarData.forEach((day) => {
-      day.items.forEach((anime) => {
-        items.push({
-          id: anime.id?.toString() || '',
-          title: anime.name_cn || anime.name,
-          poster:
-            anime.images?.large ||
-            anime.images?.common ||
-            anime.images?.medium ||
-            anime.images?.small ||
-            anime.images?.grid,
-          rate: anime.rating?.score ? anime.rating.score.toFixed(1) : '',
-          year: anime.air_date?.split('-')?.[0] || '',
-        });
-      });
-    });
-    return items.slice(0, 40);
-  }, [bangumiCalendarData]);
-
-  const categoryItems = useMemo(() => {
-    const toCards = (items: DoubanItem[]) =>
-      items.map((item) => ({
-        key: `douban-${item.id}`,
-        title: item.title,
-        poster: item.poster,
-        rate: item.rate,
-        year: item.year,
-        douban_id: Number(item.id),
-        query: item.title,
-      }));
-
-    if (activeCategory === 'movie') return toCards(hotMovies);
-    if (activeCategory === 'tv') return toCards(hotTvShows);
-    if (activeCategory === 'variety') return toCards(hotVarietyShows);
-    if (activeCategory === 'anime')
-      return animeList.map((anime) => ({
-        key: `anime-${anime.id}`,
-        title: anime.title,
-        poster: anime.poster,
-        rate: anime.rate,
-        year: anime.year,
-        douban_id: Number(anime.id),
-        isBangumi: true,
-        query: anime.title,
-      }));
-    return imdbList.map((item) => ({
-      key: `imdb-${item.imdbId}`,
-      title: item.title,
-      poster: item.poster,
-      rate: '',
-      year: item.year,
-      query: item.title,
-      source_name: 'IMDb',
-    }));
-  }, [activeCategory, animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
-
   useEffect(() => {
     const fetchRecommendData = async () => {
       try {
