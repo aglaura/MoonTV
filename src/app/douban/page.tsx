@@ -5,6 +5,10 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
+// Cache the shell for 10 minutes; list data still fetched client-side.
+export const revalidate = 600;
+export const dynamic = 'force-static';
+
 import {
   BangumiCalendarData,
   GetBangumiCalendarData,

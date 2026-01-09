@@ -6,6 +6,10 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 
+// Cache the shell for 10 minutes to speed up initial paint; data still fetched on client.
+export const revalidate = 600;
+export const dynamic = 'force-static';
+
 import {
   BangumiCalendarData,
   GetBangumiCalendarData,
