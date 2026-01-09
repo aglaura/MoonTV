@@ -46,6 +46,7 @@ export default function UserBadge() {
   const { userLocale } = useUserLanguage();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const touchToggleRef = useRef(false);
 
   useEffect(() => {
     const read = () => {
@@ -150,9 +151,17 @@ export default function UserBadge() {
       className='relative max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none'
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
       tabIndex={0}
-      onClick={toggleMenu}
+      onClick={() => {
+        if (touchToggleRef.current) {
+          touchToggleRef.current = false;
+          return;
+        }
+        toggleMenu();
+      }}
       onTouchStart={(e) => {
+        e.preventDefault();
         e.stopPropagation();
+        touchToggleRef.current = true;
         toggleMenu();
       }}
       onKeyDown={handleKeyDown}
