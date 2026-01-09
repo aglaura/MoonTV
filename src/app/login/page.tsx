@@ -65,6 +65,7 @@ function LoginPageClient() {
     useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [autoSelectPending, setAutoSelectPending] = useState(false);
+  const [stage, setStage] = useState<'group' | 'password'>('group');
 
   useEffect(() => {
     // Changing group resets selection flow
@@ -79,6 +80,7 @@ function LoginPageClient() {
     } else {
       setUsername('');
     }
+    setStage('password');
   }, [group]);
 
   useEffect(() => {
@@ -322,6 +324,7 @@ function LoginPageClient() {
                   setGroup(key);
                   setError(null);
                   setRequiresSelection(false);
+                  setStage('password');
                 }}
                 className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
                   active
@@ -334,56 +337,72 @@ function LoginPageClient() {
             );
           })}
         </div>
-        <form onSubmit={handleSubmit} className='space-y-6'>
-          <div>
-            <label htmlFor='password' className='sr-only'>
-              {tt('Password', '密码', '密碼')}
-            </label>
-            <input
-              id='password'
-              type='password'
-              autoComplete='current-password'
-              disabled={requiresSelection}
-              className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
-              placeholder={
-                group === 'guest'
-                  ? tt(
-                      'Enter guest password (PASSWORD2)…',
-                      '输入访客密码（PASSWORD2）…',
-                      '輸入訪客密碼（PASSWORD2）…'
-                    )
-                  : tt(
-                      'Enter family password…',
-                      '输入家庭共享密码…',
-                      '輸入家庭共享密碼...'
-                    )
-              }
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-              {tt(
-                'Family uses PASSWORD; Guest uses PASSWORD2.',
-                '家庭使用 PASSWORD；访客使用 PASSWORD2。',
-                '家庭使用 PASSWORD；訪客使用 PASSWORD2。'
-              )}
-            </p>
+        {stage === 'group' && (
+          <div className='text-sm text-gray-600 dark:text-gray-300 mb-4'>
+            {tt(
+              'Select a group to continue.',
+              '请选择组别后再继续。',
+              '請先選擇組別後再繼續。'
+            )}
           </div>
+        )}
 
-          {error && (
-            <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
-          )}
+        <form onSubmit={handleSubmit} className='space-y-6'>
+          {stage === 'password' && (
+            <>
+              <div>
+                <label htmlFor='password' className='sr-only'>
+                  {tt('Password', '密码', '密碼')}
+                </label>
+                <input
+                  id='password'
+                  type='password'
+                  autoComplete='current-password'
+                  disabled={requiresSelection}
+                  className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
+                  placeholder={
+                    group === 'guest'
+                      ? tt(
+                          'Enter guest password (PASSWORD2)…',
+                          '输入访客密码（PASSWORD2）…',
+                          '輸入訪客密碼（PASSWORD2）…'
+                        )
+                      : tt(
+                          'Enter family password…',
+                          '输入家庭共享密码…',
+                          '輸入家庭共享密碼...'
+                        )
+                  }
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+                  {tt(
+                    'Family uses PASSWORD; Guest uses PASSWORD2.',
+                    '家庭使用 PASSWORD；访客使用 PASSWORD2。',
+                    '家庭使用 PASSWORD；訪客使用 PASSWORD2。'
+                  )}
+                </p>
+              </div>
 
-          {!requiresSelection && (
-            <button
-              type='submit'
-              disabled={!password || loading}
-              className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50'
-            >
-              {loading
-                ? tt('Logging in…', '登录中…', '登入中...')
-                : tt('Log in', '登录', '登入')}
-            </button>
+              {error && (
+                <p className='text-sm text-red-600 dark:text-red-400'>
+                  {error}
+                </p>
+              )}
+
+              {!requiresSelection && (
+                <button
+                  type='submit'
+                  disabled={!password || loading}
+                  className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50'
+                >
+                  {loading
+                    ? tt('Logging in…', '登录中…', '登入中...')
+                    : tt('Log in', '登录', '登入')}
+                </button>
+              )}
+            </>
           )}
         </form>
 
