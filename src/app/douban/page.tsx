@@ -46,14 +46,17 @@ async function fetchInitialList(params: {
   });
 
   const base = getBaseUrl();
-  const res = await fetch(`${base}/api/douban/categories?${qs.toString()}`, {
-    next: { revalidate: 600 },
-    cache: 'force-cache',
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data?.code !== 200 || !Array.isArray(data.list)) return null;
-  return data.list;
+  try {
+    const res = await fetch(`${base}/api/douban/categories?${qs.toString()}`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.code !== 200 || !Array.isArray(data.list)) return null;
+    return data.list;
+  } catch (err) {
+    return null;
+  }
 }
 
 export default async function DoubanPage({

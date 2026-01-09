@@ -4,7 +4,7 @@
 
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 import {
   BangumiCalendarData,
@@ -78,9 +78,6 @@ function HomeClient() {
     BangumiCalendarData[]
   >([]);
   const [imdbList, setImdbList] = useState<ImdbListItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<
-    'movie' | 'tv' | 'variety' | 'anime' | 'imdb'
-  >('movie');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { announcement } = useSite();
@@ -160,28 +157,6 @@ function HomeClient() {
 
     fetchRecommendData();
   }, []);
-
-  const animeList = useMemo(() => {
-    if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
-    const items: DoubanItem[] = [];
-    bangumiCalendarData.forEach((day) => {
-      day.items.forEach((anime) => {
-        items.push({
-          id: anime.id?.toString() || '',
-          title: anime.name_cn || anime.name,
-          poster:
-            anime.images?.large ||
-            anime.images?.common ||
-            anime.images?.medium ||
-            anime.images?.small ||
-            anime.images?.grid,
-          rate: anime.rating?.score ? anime.rating.score.toFixed(1) : '',
-          year: anime.air_date?.split('-')?.[0] || '',
-        });
-      });
-    });
-    return items.slice(0, 40);
-  }, [bangumiCalendarData]);
 
   // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
