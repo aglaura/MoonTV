@@ -46,7 +46,7 @@ export default function UserBadge() {
   const { userLocale } = useUserLanguage();
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const touchToggleRef = useRef(false);
+  const lastTouchToggleRef = useRef<number>(0);
 
   useEffect(() => {
     const read = () => {
@@ -152,16 +152,14 @@ export default function UserBadge() {
       title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
       tabIndex={0}
       onClick={() => {
-        if (touchToggleRef.current) {
-          touchToggleRef.current = false;
-          return;
-        }
+        const now = Date.now();
+        if (now - lastTouchToggleRef.current < 400) return;
         toggleMenu();
       }}
       onTouchStart={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        touchToggleRef.current = true;
+        lastTouchToggleRef.current = Date.now();
         toggleMenu();
       }}
       onKeyDown={handleKeyDown}
