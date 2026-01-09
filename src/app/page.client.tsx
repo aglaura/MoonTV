@@ -33,6 +33,7 @@ type ImdbListItem = {
   title: string;
   year: string;
   poster: string;
+  originalTitle?: string;
 };
 
 type CardItem = {
