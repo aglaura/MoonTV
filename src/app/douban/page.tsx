@@ -9,6 +9,16 @@ type SearchParams = {
   [key: string]: string | string[] | undefined;
 };
 
+function getBaseUrl() {
+  if (typeof process !== 'undefined') {
+    const envUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '');
+    if (envUrl) return envUrl;
+  }
+  return 'http://localhost:3000';
+}
+
 function buildInitialParams(type: string) {
   if (type === 'movie') {
     return { kind: 'movie', category: '热门', type: '全部' };
@@ -35,8 +45,10 @@ async function fetchInitialList(params: {
     start: '0',
   });
 
-  const res = await fetch(`/api/douban/categories?${qs.toString()}`, {
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/api/douban/categories?${qs.toString()}`, {
     next: { revalidate: 600 },
+    cache: 'force-cache',
   });
   if (!res.ok) return null;
   const data = await res.json();
