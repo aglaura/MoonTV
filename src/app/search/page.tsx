@@ -40,7 +40,7 @@ function HomeClient() {
   };
 
   return (
-    <PageLayout>
+    <PageLayout activePath='/search'>
       <div className='px-2 sm:px-10 pt-16 sm:pt-12 pb-4 sm:pb-8 overflow-visible'>
         <section className='mb-10'>
           <form

@@ -119,7 +119,7 @@ export default function UserBadge() {
   if (!username) return null;
 
   return (
-    <Menu as='div' className='relative z-[3000]'>
+    <Menu as='div' className='relative z-[99999]'>
       <Menu.Button
         title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
         className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'
@@ -144,7 +144,7 @@ export default function UserBadge() {
         leaveFrom='opacity-100 translate-y-0'
         leaveTo='opacity-0 translate-y-1'
       >
-        <Menu.Items className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[9rem] space-y-2 focus:outline-none'>
+        <Menu.Items className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] min-w-[9rem] space-y-2 focus:outline-none'>
           <Menu.Item>
             {({ active }) => (
               <button
