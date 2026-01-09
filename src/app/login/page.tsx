@@ -475,7 +475,7 @@ function LoginPageClient() {
           )}
         </form>
 
-        {requiresSelection && group === 'family' && (
+        {requiresSelection && (
           <div className='mt-6 space-y-4'>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
               {tt(
