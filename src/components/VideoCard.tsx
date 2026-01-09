@@ -111,14 +111,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
   ) {
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showMobileActions, setShowMobileActions] = useState(false);
-    const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
-      null
-    ); // 搜索结果的收藏状态
-    const [englishTitle, setEnglishTitle] = useState<string | undefined>(
-      undefined
-    );
+  const [isLoading, setIsLoading] = useState(false);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+  const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
+    null
+  ); // 搜索结果的收藏状态
+  const [resolvedQuery, setResolvedQuery] = useState<string>(query || '');
+  const [englishTitle, setEnglishTitle] = useState<string | undefined>(
+    undefined
+  );
     const [imdbIdState, setImdbIdState] = useState<string | undefined>(
       imdb_id
     );
@@ -145,6 +146,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     useEffect(() => {
       setDynamicDoubanId(douban_id);
     }, [douban_id]);
+    
+    useEffect(() => {
+      setResolvedQuery(query || '');
+    }, [query]);
 
     useImperativeHandle(ref, () => ({
       setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
@@ -269,7 +274,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const actualDoubanId = dynamicDoubanId;
     const actualEpisodes = dynamicEpisodes;
     const actualYear = year;
-    const actualQuery = query || '';
+    const actualQuery = resolvedQuery || '';
     const actualSearchType = isAggregate
       ? actualEpisodes && actualEpisodes === 1
         ? 'movie'
@@ -311,6 +316,40 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       () => convertToTraditional(actualTitle),
       [actualTitle]
     );
+    const hasChinese = useCallback(
+      (value?: string) => (value ? /[\u4e00-\u9fff]/.test(value) : false),
+      []
+    );
+
+    useEffect(() => {
+      if (hasChinese(resolvedQuery)) return;
+      const isTmdb =
+        (source_name || '').toLowerCase() === 'tmdb' ||
+        (actualId || '').toString().startsWith('tmdb:');
+      if (!isTmdb) return;
+      let cancelled = false;
+      const run = async () => {
+        try {
+          const res = await fetch(
+            `/api/title-convert?title=${encodeURIComponent(
+              actualTitle || resolvedQuery
+            )}`,
+            { cache: 'force-cache' }
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data?.title && !cancelled) {
+            setResolvedQuery(data.title);
+          }
+        } catch (err) {
+          // ignore
+        }
+      };
+      run();
+      return () => {
+        cancelled = true;
+      };
+    }, [resolvedQuery, source_name, actualId, actualTitle, hasChinese]);
     const placeholderPoster = useMemo(() => {
       const text = (traditionalTitle || actualTitle || 'No Image').slice(0, 18);
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="26" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
