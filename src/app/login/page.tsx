@@ -81,7 +81,7 @@ function LoginPageClient() {
     } else {
       setUsername('');
     }
-    setStage('password');
+    setStage('group');
   }, [group]);
 
   useEffect(() => {
