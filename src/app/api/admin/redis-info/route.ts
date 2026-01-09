@@ -69,9 +69,11 @@ export async function GET() {
         available !== undefined ? formatBytes(available) : null,
       policy: parsed.maxmemory_policy || '—',
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message =
+      err instanceof Error ? err.message : 'Failed to query Redis';
     return NextResponse.json(
-      { error: err?.message || 'Failed to query Redis' },
+      { error: message },
       { status: 500 }
     );
   } finally {

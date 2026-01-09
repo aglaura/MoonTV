@@ -119,7 +119,7 @@ export default function UserBadge() {
   if (!username) return null;
 
   return (
-    <Menu as='div' className='relative'>
+    <Menu as='div' className='relative z-[3000]'>
       <Menu.Button
         title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
         className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'

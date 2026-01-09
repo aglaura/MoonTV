@@ -46,7 +46,7 @@ function HomeClient() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              let trimmed = searchQuery.trim();
+              const trimmed = searchQuery.trim();
               const originalQuery = trimmed;
               if (!trimmed) {
                 setSearchResults([]);

@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
 import { searchFromApi } from '@/lib/downstream';
-import { convertToSimplified } from '@/lib/locale';
 import { fetchJsonWithRetry, fetchWithRetry } from '@/lib/fetchRetry.server';
+import { convertToSimplified } from '@/lib/locale';
 import { convertResultsArray } from '@/lib/responseTrad';
 import { SearchResult } from '@/lib/types';
 
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
   const dedupeResults = (items: SearchResult[]) => {
     const seen = new Set<string>();
     return items.filter((item) => {
-      const altId = (item as any)._id;
+      const altId = (item as { _id?: string })._id;
       const key = `${item.source || ''}-${item.id || altId || ''}`;
       if (seen.has(key)) return false;
       seen.add(key);
