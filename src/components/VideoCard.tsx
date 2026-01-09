@@ -330,6 +330,23 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       let cancelled = false;
       const run = async () => {
         try {
+          // Prefer Douban suggest to get Chinese title
+          const suggestRes = await fetch(
+            `/api/douban/suggest?q=${encodeURIComponent(
+              actualTitle || resolvedQuery
+            )}`,
+            { cache: 'no-store' }
+          );
+          if (suggestRes.ok) {
+            const data = await suggestRes.json();
+            const first = Array.isArray(data?.items) ? data.items[0] : null;
+            const cn = first?.title;
+            if (cn && !cancelled) {
+              setResolvedQuery(cn);
+              return;
+            }
+          }
+          // Fallback to wiki convert
           const res = await fetch(
             `/api/title-convert?title=${encodeURIComponent(
               actualTitle || resolvedQuery
