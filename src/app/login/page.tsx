@@ -69,6 +69,61 @@ function LoginPageClient() {
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const [groupOptions, setGroupOptions] = useState<string[]>(['family', 'guest']);
 
+  const colorThemes = [
+    {
+      circleActive: 'bg-emerald-500 text-white',
+      circleIdle: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200',
+      textActive: 'text-emerald-700 dark:text-emerald-200',
+      textIdle: 'text-gray-800 hover:text-emerald-600 dark:text-gray-100 dark:hover:text-emerald-300',
+      border: 'border-emerald-500/40',
+    },
+    {
+      circleActive: 'bg-sky-500 text-white',
+      circleIdle: 'bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200',
+      textActive: 'text-sky-700 dark:text-sky-200',
+      textIdle: 'text-gray-800 hover:text-sky-600 dark:text-gray-100 dark:hover:text-sky-300',
+      border: 'border-sky-500/40',
+    },
+    {
+      circleActive: 'bg-amber-500 text-white',
+      circleIdle: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+      textActive: 'text-amber-700 dark:text-amber-200',
+      textIdle: 'text-gray-800 hover:text-amber-600 dark:text-gray-100 dark:hover:text-amber-300',
+      border: 'border-amber-500/40',
+    },
+    {
+      circleActive: 'bg-fuchsia-500 text-white',
+      circleIdle: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900 dark:text-fuchsia-200',
+      textActive: 'text-fuchsia-700 dark:text-fuchsia-200',
+      textIdle: 'text-gray-800 hover:text-fuchsia-600 dark:text-gray-100 dark:hover:text-fuchsia-300',
+      border: 'border-fuchsia-500/40',
+    },
+    {
+      circleActive: 'bg-lime-500 text-gray-900',
+      circleIdle: 'bg-lime-100 text-lime-700 dark:bg-lime-900 dark:text-lime-200',
+      textActive: 'text-lime-700 dark:text-lime-200',
+      textIdle: 'text-gray-800 hover:text-lime-600 dark:text-gray-100 dark:hover:text-lime-300',
+      border: 'border-lime-500/40',
+    },
+    {
+      circleActive: 'bg-rose-500 text-white',
+      circleIdle: 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-200',
+      textActive: 'text-rose-700 dark:text-rose-200',
+      textIdle: 'text-gray-800 hover:text-rose-600 dark:text-gray-100 dark:hover:text-rose-300',
+      border: 'border-rose-500/40',
+    },
+  ];
+
+  const themeForKey = (key: string) => {
+    const idx =
+      Math.abs(
+        Array.from(key || '')
+          .map((c) => c.charCodeAt(0))
+          .reduce((sum, v) => sum + v, 0)
+      ) % colorThemes.length;
+    return colorThemes[idx];
+  };
+
   useEffect(() => {
     // Changing group resets selection flow
     setError(null);
@@ -395,11 +450,7 @@ function LoginPageClient() {
                   : key === 'family'
                   ? tt('Family group', '家庭组', '家庭組')
                   : key;
-              const desc = tt(
-                'Shared password required',
-                '需要共享密码',
-                '需要共享密碼'
-              );
+              const theme = themeForKey(key);
               return (
                 <button
                   key={key}
@@ -414,25 +465,18 @@ function LoginPageClient() {
                     setStage('password');
                   }}
                   className={`flex flex-col items-center gap-3 text-sm font-semibold transition focus:outline-none ${
-                    active
-                      ? 'text-green-700 dark:text-green-200'
-                      : 'text-gray-800 hover:text-green-600 dark:text-gray-100 dark:hover:text-green-300'
+                    active ? theme.textActive : theme.textIdle
                   }`}
                 >
                   <span
-                    className={`w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shadow-inner transition-transform ${
-                      active
-                        ? 'bg-green-500 text-white scale-105'
-                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                    className={`w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shadow-inner transition-transform border ${theme.border} ${
+                      active ? `${theme.circleActive} scale-105` : theme.circleIdle
                     }`}
                   >
                     {(key || '?').charAt(0).toUpperCase()}
                   </span>
                   <span className='text-base leading-tight text-center'>
                     {label}
-                  </span>
-                  <span className='text-[11px] text-gray-500 dark:text-gray-400'>
-                    {desc}
                   </span>
                 </button>
               );
@@ -535,6 +579,7 @@ function LoginPageClient() {
               {availableUsers.map((user) => {
                 const thumbnail = userThumbnails[user];
                 const isPending = pendingUser === user && loading;
+                const theme = themeForKey(user);
                 return (
                   <button
                     key={user}
@@ -546,7 +591,13 @@ function LoginPageClient() {
                     className='relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent bg-gray-100 text-gray-700 px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
                   >
                     <div className='flex items-center gap-4'>
-                      <span className='block w-14 h-14 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-lg font-semibold text-green-600 dark:text-green-400 border border-green-500/30 shadow-inner'>
+                      <span
+                        className={`block w-14 h-14 rounded-full overflow-hidden flex items-center justify-center text-lg font-semibold border shadow-inner ${
+                          thumbnail
+                            ? ''
+                            : `${theme.circleIdle} ${theme.border}`
+                        }`}
+                      >
                         {thumbnail ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
