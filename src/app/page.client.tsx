@@ -4,7 +4,7 @@
 
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import {
   BangumiCalendarData,
@@ -22,7 +22,6 @@ import { DoubanItem } from '@/lib/types';
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
 import PageLayout from '@/components/PageLayout';
-import ScrollableRow from '@/components/ScrollableRow';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
@@ -34,6 +33,19 @@ type ImdbListItem = {
   year: string;
   poster: string;
 };
+
+type CardItem = {
+  title: string;
+  poster?: string;
+  rate?: string;
+  year?: string;
+  douban_id?: number;
+  type?: string;
+  query?: string;
+  source_name?: string;
+};
+
+type CategoryKey = 'movie' | 'tv' | 'variety' | 'anime' | 'imdb';
 
 function resolveUiLocale(): UiLocale {
   try {
@@ -80,6 +92,10 @@ function HomeClient() {
   const [imdbList, setImdbList] = useState<ImdbListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [category, setCategory] = useState<CategoryKey>('movie');
+  const [screenMode, setScreenMode] = useState<'tv' | 'desktop' | 'mobile'>(
+    'desktop'
+  );
   const { announcement } = useSite();
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
@@ -158,6 +174,107 @@ function HomeClient() {
     fetchRecommendData();
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === 'undefined') return;
+      const w = window.innerWidth;
+      if (w >= 1600) {
+        setScreenMode('tv');
+      } else if (w >= 768) {
+        setScreenMode('desktop');
+      } else {
+        setScreenMode('mobile');
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const animeList = useMemo(() => {
+    if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
+    const items: CardItem[] = [];
+    bangumiCalendarData.forEach((day) => {
+      day.items.forEach((anime) => {
+        items.push({
+          title: anime.name_cn || anime.name,
+          poster:
+            anime.images?.large ||
+            anime.images?.common ||
+            anime.images?.medium ||
+            anime.images?.small ||
+            anime.images?.grid,
+          rate: anime.rating?.score ? anime.rating.score.toFixed(1) : '',
+          year: anime.air_date?.split('-')?.[0] || '',
+          douban_id: anime.id,
+          type: 'tv',
+        });
+      });
+    });
+    return items.slice(0, 48);
+  }, [bangumiCalendarData]);
+
+  const categoryData = useMemo<
+    Record<
+      CategoryKey,
+      { label: string; items: CardItem[]; seeMore?: string; hint: string }
+    >
+  >(() => {
+    const mapDouban = (items: DoubanItem[], type?: string): CardItem[] =>
+      (items || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: item.rate,
+        year: item.year,
+        douban_id: Number(item.id),
+        type,
+      }));
+
+    return {
+      movie: {
+        label: tt('Movies', '电影', '電影'),
+        items: mapDouban(hotMovies, 'movie'),
+        seeMore: '/douban?type=movie',
+        hint: tt('Cinema picks for today', '今日影院精选', '今日影院精選'),
+      },
+      tv: {
+        label: tt('TV Series', '剧集', '劇集'),
+        items: mapDouban(hotTvShows, 'tv'),
+        seeMore: '/douban?type=tv',
+        hint: tt('Binge-worthy shows', '值得追的剧', '值得追的劇'),
+      },
+      variety: {
+        label: tt('Variety', '综艺', '綜藝'),
+        items: mapDouban(hotVarietyShows, 'show'),
+        seeMore: '/douban?type=show',
+        hint: tt('Light entertainment', '轻松综艺', '輕鬆綜藝'),
+      },
+      anime: {
+        label: tt('Anime', '新番', '新番'),
+        items: animeList,
+        seeMore: '/douban?type=anime',
+        hint: tt('Fresh episodes', '最新更新', '最新更新'),
+      },
+      imdb: {
+        label: 'IMDb',
+        items: (imdbList || []).map(
+          (item) =>
+            ({
+              title: item.title,
+              poster: item.poster,
+              rate: '',
+              year: item.year,
+              type: 'movie',
+              query: item.title,
+              source_name: 'IMDb',
+            } as CardItem)
+        ),
+        seeMore: '/imdb',
+        hint: tt('Global top picks', '全球口碑榜', '全球口碑榜'),
+      },
+    };
+  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
+
   // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
     const allPlayRecords = await getAllPlayRecords();
@@ -216,6 +333,8 @@ function HomeClient() {
     setShowAnnouncement(false);
     localStorage.setItem('hasSeenAnnouncement', announcement); // 记录已查看弹窗
   };
+
+  const currentCategory = categoryData[category];
 
   return (
     <PageLayout>
@@ -303,302 +422,110 @@ function HomeClient() {
                 </div>
               )}
 
-              {/* 熱門電影 */}
-              <section className='mb-8'>
-                <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    {tt('Hot movies', '热门电影', '熱門電影')}
-                  </h2>
-                  <Link
-                    href='/douban?type=movie'
-                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  >
-                    {tt('See more', '查看更多', '查看更多')}
-                    <ChevronRight className='w-4 h-4 ml-1' />
-                  </Link>
-                </div>
-                <ScrollableRow>
-                  {loading
-                    ? // 加載狀態顯示灰色占位數據
-                      Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                            <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
-                          </div>
-                          <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                        </div>
-                      ))
-                    : error || hotMovies.length === 0
-                    ? // 显示空状态或错误状态
-                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error
-                          ? tt(
-                              'Failed to load data',
-                              '数据加载失败',
-                              '資料載入失敗'
-                            )
-                          : tt('No data', '暂无数据', '暫無資料')}
-                      </div>
-                    : // 顯示真實數據
-                      hotMovies.map((movie, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <VideoCard
-                            from='douban'
-                            title={movie.title}
-                            poster={movie.poster}
-                            douban_id={Number(movie.id)}
-                            rate={movie.rate}
-                            year={movie.year}
-                            type='movie'
-                          />
-                        </div>
-                      ))}
-                </ScrollableRow>
-              </section>
-
-              {/* 熱門劇集 */}
-              <section className='mb-8'>
-                <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    {tt('Hot TV shows', '热门剧集', '熱門劇集')}
-                  </h2>
-                  <Link
-                    href='/douban?type=tv'
-                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  >
-                    {tt('See more', '查看更多', '查看更多')}
-                    <ChevronRight className='w-4 h-4 ml-1' />
-                  </Link>
-                </div>
-                <ScrollableRow>
-                  {loading
-                    ? // 加載狀態顯示灰色占位數據
-                      Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                            <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
-                          </div>
-                          <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                        </div>
-                      ))
-                    : error || hotTvShows.length === 0
-                    ? // 显示空状态或错误状态
-                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error
-                          ? tt(
-                              'Failed to load data',
-                              '数据加载失败',
-                              '資料載入失敗'
-                            )
-                          : tt('No data', '暂无数据', '暫無資料')}
-                      </div>
-                    : // 顯示真實數據
-                      hotTvShows.map((show, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <VideoCard
-                            from='douban'
-                            title={show.title}
-                            poster={show.poster}
-                            douban_id={Number(show.id)}
-                            rate={show.rate}
-                            year={show.year}
-                          />
-                        </div>
-                      ))}
-                </ScrollableRow>
-              </section>
-
-              {/* 每日新番放送 */}
-              <section className='mb-8'>
-                <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    {tt('Airing today', '新番放送', '新番放送')}
-                  </h2>
-                  <Link
-                    href='/douban?type=anime'
-                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  >
-                    {tt('See more', '查看更多', '查看更多')}
-                    <ChevronRight className='w-4 h-4 ml-1' />
-                  </Link>
-                </div>
-                <ScrollableRow>
-                  {loading
-                    ? // 加載狀態顯示灰色占位數據
-                      Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                            <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
-                          </div>
-                          <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                        </div>
-                      ))
-                    : // 展示當前日期的番劇
-                      (() => {
-                        // 獲取當前日期對應的星期
-                        const today = new Date();
-                        const weekdays = [
-                          'Sun',
-                          'Mon',
-                          'Tue',
-                          'Wed',
-                          'Thu',
-                          'Fri',
-                          'Sat',
-                        ];
-                        const currentWeekday = weekdays[today.getDay()];
-
-                        // 找到當前星期對應的番劇數據
-                        const todayAnimes =
-                          bangumiCalendarData.find(
-                            (item) => item.weekday.en === currentWeekday
-                          )?.items || [];
-
-                        return todayAnimes.length === 0
-                          ? // 显示空状态
-                            <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                              {tt(
-                                'No anime data for today',
-                                '暂无番剧数据',
-                                '暫無番劇資料'
-                              )}
-                            </div>
-                          : todayAnimes.map((anime, index) => (
-                              <div
-                                key={`${anime.id}-${index}`}
-                                className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                              >
-                                <VideoCard
-                                  from='douban'
-                                  title={anime.name_cn || anime.name}
-                                  poster={
-                                    anime.images.large ||
-                                    anime.images.common ||
-                                    anime.images.medium ||
-                                    anime.images.small ||
-                                    anime.images.grid
-                                  }
-                                  douban_id={anime.id}
-                                  rate={anime.rating?.score?.toFixed(1) || ''}
-                                  year={anime.air_date?.split('-')?.[0] || ''}
-                                  isBangumi={true}
-                                />
-                              </div>
-                            ));
-                      })()}
-                </ScrollableRow>
-              </section>
-
-              {/* 熱門綜藝 */}
-              <section className='mb-8'>
-                <div className='mb-4 flex items-center justify-between'>
-                  <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                    {tt('Hot variety shows', '热门综艺', '熱門綜藝')}
-                  </h2>
-                  <Link
-                    href='/douban?type=show'
-                    className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                  >
-                    {tt('See more', '查看更多', '查看更多')}
-                    <ChevronRight className='w-4 h-4 ml-1' />
-                  </Link>
-                </div>
-                <ScrollableRow>
-                  {loading
-                    ? // 加載狀態顯示灰色占位數據
-                      Array.from({ length: 8 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                            <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
-                          </div>
-                          <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                        </div>
-                      ))
-                    : error || hotVarietyShows.length === 0
-                    ? // 显示空状态或错误状态
-                      <div className='text-center text-gray-500 py-8 dark:text-gray-400 w-full'>
-                        {error
-                          ? tt(
-                              'Failed to load data',
-                              '数据加载失败',
-                              '資料載入失敗'
-                            )
-                          : tt('No data', '暂无数据', '暫無資料')}
-                      </div>
-                    : // 顯示真實數據
-                      hotVarietyShows.map((show, index) => (
-                        <div
-                          key={index}
-                          className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                        >
-                          <VideoCard
-                            from='douban'
-                            title={show.title}
-                            poster={show.poster}
-                            douban_id={Number(show.id)}
-                            rate={show.rate}
-                            year={show.year}
-                          />
-                        </div>
-                      ))}
-                </ScrollableRow>
-              </section>
-
-              {imdbList.length > 0 && (
-                <section className='mb-12'>
-                  <div className='mb-4 flex items-center justify-between'>
-                    <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
-                      IMDb Top Picks
+              {/* Grid-first minimal layout */}
+              <section className='mb-4'>
+                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
+                  <div>
+                    <p className='text-xs uppercase tracking-[0.2em] text-green-600 dark:text-green-400'>
+                      {screenMode === 'mobile'
+                        ? tt('Mobile stack', '手机竖屏', '手機豎屏')
+                        : screenMode === 'tv'
+                        ? tt('TV wall', '电视瀑布流', '電視瀑布流')
+                        : tt('Desktop grid', '桌面网格', '桌面網格')}
+                    </p>
+                    <h2 className='text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white'>
+                      {tt('Discover now', '发现好片', '發現好片')}
                     </h2>
+                    <p className='text-sm text-gray-600 dark:text-gray-400'>
+                      {tt(
+                        'Swipe the pills to switch sources. Grid adapts to TV, desktop, and mobile.',
+                        '点按上方标签切换来源，网格随电视、桌面与手机自适应。',
+                        '點按上方標籤切換來源，網格隨電視、桌面與手機自適應。'
+                      )}
+                    </p>
+                  </div>
+                  <div className='flex flex-wrap gap-2'>
+                    {(
+                      [
+                        'movie',
+                        'tv',
+                        'variety',
+                        'anime',
+                        'imdb',
+                      ] as const
+                    ).map((key) => {
+                      const cfg = categoryData[key];
+                      const active = category === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setCategory(key)}
+                          className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                            active
+                              ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                              : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-500'
+                          }`}
+                        >
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className='mt-3 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400'>
+                  <span>{currentCategory?.hint}</span>
+                  {currentCategory?.seeMore && (
                     <Link
-                      href='https://www.imdb.com/chart/top'
-                      target='_blank'
-                      className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      href={currentCategory.seeMore}
+                      className='inline-flex items-center text-green-700 dark:text-green-400 hover:underline'
                     >
                       {tt('See more', '查看更多', '查看更多')}
                       <ChevronRight className='w-4 h-4 ml-1' />
                     </Link>
-                  </div>
-                  <ScrollableRow>
-                    {imdbList.map((item) => (
+                  )}
+                </div>
+              </section>
+
+              <section className='mb-12'>
+                <div
+                  className={`grid ${
+                    screenMode === 'mobile'
+                      ? 'grid-cols-2 gap-4'
+                      : 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-5 sm:gap-6'
+                  }`}
+                >
+                  {loading &&
+                    Array.from({ length: 12 }).map((_, idx) => (
                       <div
-                        key={item.imdbId}
-                        className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
-                      >
-                        <VideoCard
-                          from='douban'
-                          title={item.title}
-                          poster={item.poster}
-                          rate=''
-                          year={item.year}
-                          type='movie'
-                          douban_id={undefined}
-                          query={item.title}
-                          source_name='IMDb'
-                        />
-                      </div>
+                        key={idx}
+                        className='relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
+                      ></div>
                     ))}
-                  </ScrollableRow>
-                </section>
-              )}
+
+                  {!loading &&
+                    !error &&
+                    (currentCategory?.items || []).map((item, index) => (
+                      <VideoCard
+                        key={`${item.title}-${index}-${item.douban_id ?? ''}`}
+                        from='douban'
+                        title={item.title}
+                        poster={item.poster}
+                        douban_id={item.douban_id}
+                        rate={item.rate}
+                        year={item.year}
+                        type={item.type}
+                        query={item.query}
+                        source_name={item.source_name}
+                      />
+                    ))}
+                </div>
+
+                {!loading && !error && currentCategory?.items?.length === 0 && (
+                  <div className='text-center text-gray-500 dark:text-gray-400 py-10'>
+                    {tt('No data', '暂无数据', '暫無資料')}
+                  </div>
+                )}
+              </section>
             </>
           )}
         </div>
