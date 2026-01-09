@@ -42,7 +42,8 @@ const FALLBACK_ITEMS = [
 ];
 
 export async function GET() {
-  const apiKey = process.env.TMDB_API_KEY;
+  const apiKey =
+    process.env.TMDB_API_KEY || '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
   try {
     let items = FALLBACK_ITEMS;
