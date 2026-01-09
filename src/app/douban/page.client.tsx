@@ -19,7 +19,19 @@ import DoubanSelector from '@/components/DoubanSelector';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
-function DoubanPageClient() {
+interface DoubanPageClientProps {
+  initialData?: DoubanItem[];
+  initialSnapshot?: {
+    type: string;
+    primarySelection: string;
+    secondarySelection: string;
+  };
+}
+
+function DoubanPageClient({
+  initialData = [],
+  initialSnapshot,
+}: DoubanPageClientProps) {
   const searchParams = useSearchParams();
   const [doubanData, setDoubanData] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,6 +83,8 @@ function DoubanPageClient() {
     currentPage: 0,
   });
 
+  const initialHydratedRef = useRef(false);
+
   useEffect(() => {
     currentParamsRef.current = {
       type,
@@ -96,9 +110,31 @@ function DoubanPageClient() {
 
   useEffect(() => {
     setSelectorsReady(false);
-    setLoading(true);
     setSelectedWeekday('');
-  }, [type]);
+    // If we have initial data and it matches the snapshot, hydrate immediately.
+    if (
+      initialSnapshot &&
+      initialSnapshot.type === type &&
+      initialSnapshot.primarySelection === primarySelection &&
+      initialSnapshot.secondarySelection === secondarySelection &&
+      initialData.length > 0 &&
+      !initialHydratedRef.current
+    ) {
+      initialHydratedRef.current = true;
+      setDoubanData(initialData);
+      setLoading(false);
+      setHasMore(initialData.length !== 0);
+      setCurrentPage(0);
+      return;
+    }
+    setLoading(true);
+  }, [
+    type,
+    primarySelection,
+    secondarySelection,
+    initialData,
+    initialSnapshot,
+  ]);
 
   const skeletonData = Array.from({ length: 25 }, (_, index) => index);
 
@@ -269,7 +305,30 @@ function DoubanPageClient() {
     if (!selectorsReady) return;
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
 
-    debounceTimeoutRef.current = setTimeout(() => loadInitialData(), 100);
+    debounceTimeoutRef.current = setTimeout(() => {
+      const snapshot = {
+        type,
+        primarySelection,
+        secondarySelection,
+        multiLevelSelection: multiLevelValues,
+        selectedWeekday,
+        currentPage: 0,
+      };
+      if (
+        initialHydratedRef.current &&
+        initialSnapshot &&
+        isSnapshotEqual(snapshot, {
+          ...initialSnapshot,
+          multiLevelSelection: multiLevelValues,
+          selectedWeekday,
+          currentPage: 0,
+        })
+      ) {
+        // Already hydrated from initial data; skip redundant fetch.
+        return;
+      }
+      loadInitialData();
+    }, 100);
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
