@@ -4,7 +4,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { FormEvent } from 'react';
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import LanguageSelector from '@/components/LanguageSelector';
 import { useSite } from '@/components/SiteProvider';
@@ -66,6 +66,7 @@ function LoginPageClient() {
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [autoSelectPending, setAutoSelectPending] = useState(false);
   const [stage, setStage] = useState<'group' | 'password'>('group');
+  const passwordRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     // Changing group resets selection flow
@@ -80,7 +81,7 @@ function LoginPageClient() {
     } else {
       setUsername('');
     }
-    setStage('group');
+    setStage('password');
   }, [group]);
 
   useEffect(() => {
@@ -142,6 +143,12 @@ function LoginPageClient() {
     setUsername(availableUsers[0]);
     setStage('password');
   }, [availableUsers, requiresSelection, username, group]);
+
+  useEffect(() => {
+    if (stage === 'password' && passwordRef.current) {
+      passwordRef.current.focus();
+    }
+  }, [stage]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -390,6 +397,7 @@ function LoginPageClient() {
                   type='password'
                   autoComplete='current-password'
                   disabled={requiresSelection}
+                  ref={passwordRef}
                   className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
                   placeholder={
                     group === 'guest'
