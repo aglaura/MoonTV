@@ -67,6 +67,7 @@ export interface VideoCardProps {
   from: 'playrecord' | 'favorite' | 'search' | 'douban';
   currentEpisode?: number;
   douban_id?: number;
+  imdb_id?: string;
   onDelete?: () => void;
   rate?: string;
   type?: string;
@@ -98,6 +99,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       from,
       currentEpisode,
       douban_id,
+      imdb_id,
       onDelete,
       rate,
       type = '',
@@ -118,7 +120,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       undefined
     );
     const [imdbIdState, setImdbIdState] = useState<string | undefined>(
-      undefined
+      imdb_id
     );
 
     // 可外部修改的可控字段
@@ -314,6 +316,71 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="26" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
       return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     }, [actualTitle, traditionalTitle]);
+
+    const posterCacheKey = useMemo(() => {
+      if (dynamicDoubanId && Number(dynamicDoubanId) > 0) {
+        return `douban:${dynamicDoubanId}`;
+      }
+      if (imdbIdState) {
+        return `imdb:${imdbIdState}`;
+      }
+      return undefined;
+    }, [dynamicDoubanId, imdbIdState]);
+
+    const [posterSrc, setPosterSrc] = useState<string>(
+      actualPoster ? processImageUrl(actualPoster) : placeholderPoster
+    );
+
+    useEffect(() => {
+      let cancelled = false;
+      let objectUrl: string | undefined;
+
+      const loadPoster = async () => {
+        if (!actualPoster) {
+          setPosterSrc(placeholderPoster);
+          return;
+        }
+
+        const processedUrl = processImageUrl(actualPoster);
+
+        if (typeof window !== 'undefined' && 'caches' in window && posterCacheKey) {
+          try {
+            const cache = await caches.open('moontv-poster-cache');
+            const match = await cache.match(posterCacheKey);
+            if (match) {
+              const blob = await match.blob();
+              objectUrl = URL.createObjectURL(blob);
+              if (!cancelled) setPosterSrc(objectUrl);
+              return;
+            }
+
+            const response = await fetch(processedUrl, { cache: 'force-cache' });
+            if (response.ok) {
+              cache.put(posterCacheKey, response.clone());
+              const blob = await response.blob();
+              objectUrl = URL.createObjectURL(blob);
+              if (!cancelled) setPosterSrc(objectUrl);
+              return;
+            }
+          } catch (err) {
+            console.warn('poster cache fetch failed', err);
+          }
+        }
+
+        if (!cancelled) {
+          setPosterSrc(processedUrl || placeholderPoster);
+        }
+      };
+
+      loadPoster();
+
+      return () => {
+        cancelled = true;
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      };
+    }, [actualPoster, placeholderPoster, posterCacheKey]);
 
     // 获取收藏状态（搜索结果页面不检查）
     useEffect(() => {
@@ -831,7 +898,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
             {/* 图片 */}
             <Image
-              src={actualPoster ? processImageUrl(actualPoster) : placeholderPoster}
+              src={posterSrc || placeholderPoster}
               alt={traditionalTitle || actualTitle}
               fill
               className={origin === 'live' ? 'object-contain' : 'object-cover'}
@@ -844,7 +911,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 if (!img.dataset.retried && actualPoster) {
                   img.dataset.retried = 'true';
                   setTimeout(() => {
-                    img.src = processImageUrl(actualPoster);
+                    img.src = posterSrc || placeholderPoster;
                   }, 1200);
                 } else {
                   img.src = placeholderPoster;

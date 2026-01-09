@@ -13,6 +13,13 @@ interface MobileBottomNavProps {
   activePath?: string;
 }
 
+type NavItem = {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  href: string;
+  matchTypes?: string[];
+};
+
 const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const pathname = usePathname();
   const { userLocale } = useUserLanguage();
@@ -27,43 +34,37 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   // 当前激活路径：优先使用传入的 activePath，否则回退到浏览器地址
   const currentActive = activePath ?? pathname;
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { icon: Home, label: t('Home', '首页', '首頁'), href: '/' },
     { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
     {
       icon: Film,
-      label: t('Movies', '电影', '電影'),
+      label: t('Movies · TV', '电影 · 剧集', '電影 · 劇集'),
       href: '/douban?type=movie',
-    },
-    {
-      icon: Tv,
-      label: t('TV', '剧集', '劇集'),
-      href: '/douban?type=tv',
-    },
-    {
-      icon: Clover,
-      label: t('Variety', '综艺', '綜藝'),
-      href: '/douban?type=show',
+      matchTypes: ['movie', 'tv', 'show', 'anime'],
     },
     {
       icon: Sparkles,
-      label: t('Anime', '动漫', '動漫'),
-      href: '/douban?type=anime',
+      label: 'IMDb',
+      href: '/imdb',
     },
   ];
 
   const isActive = (href: string) => {
-    const typeMatch = href.match(/type=([^&]+)/)?.[1];
-
     // 解码URL以进行正确的比较
     const decodedActive = decodeURIComponent(currentActive);
     const decodedItemHref = decodeURIComponent(href);
+    const activeType = decodedActive.match(/type=([^&]+)/)?.[1];
 
-    return (
-      decodedActive === decodedItemHref ||
-      (decodedActive.startsWith('/douban') &&
-        decodedActive.includes(`type=${typeMatch}`))
-    );
+    if (decodedActive === decodedItemHref) return true;
+    if (href.startsWith('/douban') && activeType) {
+      return (
+        navItems.find((item) => item.href === href)?.matchTypes?.some((t) =>
+          decodedActive.includes(`type=${t}`)
+        ) || false
+      );
+    }
+    return false;
   };
 
   return (
@@ -79,7 +80,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
         {navItems.map((item) => {
           const active = isActive(item.href);
           return (
-            <li key={item.href} className='flex-shrink-0 w-1/6'>
+            <li key={item.href} className='flex-shrink-0 flex-1'>
               <Link
                 href={item.href}
                 className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs'
