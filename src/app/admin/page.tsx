@@ -737,7 +737,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span className='px-2 py-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'>
-                            {user.group === 'guest'
+                            {((user as any)?.group || 'family') === 'guest'
                               ? tt('Guest', '访客', '訪客')
                               : tt('Family', '家庭', '家庭')}
                           </span>
