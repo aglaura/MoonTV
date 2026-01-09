@@ -43,6 +43,7 @@ type CardItem = {
   type?: string;
   query?: string;
   source_name?: string;
+  id?: string | number;
 };
 
 type CategoryKey = 'movie' | 'tv' | 'variety' | 'anime' | 'imdb';
@@ -81,6 +82,60 @@ function tt(en: string, zhHans: string, zhHant: string): string {
   return en;
 }
 
+function ContentRail({
+  title,
+  href,
+  items,
+}: {
+  title: string;
+  href?: string;
+  items: CardItem[];
+}) {
+  return (
+    <div className='rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-3 sm:p-4'>
+      <div className='flex items-center justify-between mb-3'>
+        <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+          {title}
+        </h3>
+        {href && (
+          <Link
+            href={href}
+            className='text-sm text-green-700 dark:text-green-400 hover:underline inline-flex items-center gap-1'
+          >
+            {tt('See more', '查看更多', '查看更多')}
+            <ChevronRight className='w-4 h-4' />
+          </Link>
+        )}
+      </div>
+      <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:'none'] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.length === 0 && (
+          <div className='text-sm text-gray-500 dark:text-gray-400 py-4'>
+            {tt('No data', '暂无数据', '暫無資料')}
+          </div>
+        )}
+        {items.map((item, idx) => (
+          <div
+            key={`${item.title}-${item.douban_id ?? item.id ?? idx}`}
+            className='min-w-[140px] w-36 sm:min-w-[180px] sm:w-44'
+          >
+            <VideoCard
+              from='douban'
+              title={item.title}
+              poster={item.poster}
+              douban_id={item.douban_id}
+              rate={item.rate}
+              year={item.year}
+              type={item.type}
+              query={item.query}
+              source_name={item.source_name}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function HomeClient() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
@@ -96,6 +151,10 @@ function HomeClient() {
   const [screenMode, setScreenMode] = useState<'tv' | 'desktop' | 'mobile'>(
     'desktop'
   );
+  const [sortMode, setSortMode] = useState<'trending' | 'newest' | 'rating'>(
+    'trending'
+  );
+  const [heroIndex, setHeroIndex] = useState(0);
   const { announcement } = useSite();
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
@@ -275,6 +334,34 @@ function HomeClient() {
     };
   }, [animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
 
+  const currentCategory = categoryData[category];
+
+  useEffect(() => {
+    setHeroIndex(0);
+  }, [category]);
+
+  const sortedItems = useMemo(() => {
+    if (!currentCategory?.items) return [];
+    const items = [...currentCategory.items];
+    if (sortMode === 'newest') {
+      items.sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+    } else if (sortMode === 'rating') {
+      items.sort(
+        (a, b) => (parseFloat(b.rate || '0') || 0) - (parseFloat(a.rate || '0') || 0)
+      );
+    }
+    return items;
+  }, [currentCategory, sortMode]);
+
+  const heroItems = useMemo(
+    () => (currentCategory?.items || []).slice(0, 10),
+    [currentCategory]
+  );
+  const currentHero =
+    heroItems.length > 0 && heroIndex >= 0
+      ? heroItems[Math.abs(heroIndex) % heroItems.length]
+      : undefined;
+
   // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
     const allPlayRecords = await getAllPlayRecords();
@@ -334,13 +421,11 @@ function HomeClient() {
     localStorage.setItem('hasSeenAnnouncement', announcement); // 记录已查看弹窗
   };
 
-  const currentCategory = categoryData[category];
-
   return (
     <PageLayout>
-      <div className='px-2 sm:px-10 py-4 sm:py-8 overflow-visible'>
+      <div className='px-2 sm:px-8 lg:px-12 py-4 sm:py-8 overflow-visible max-w-screen-2xl mx-auto'>
         {/* 顶部 Tab 切换 */}
-        <div className='mb-8 flex justify-center'>
+        <div className='mb-6 sm:mb-8 flex justify-center'>
           <CapsuleSwitch
             options={[
               { label: tt('Home', '首页', '首頁'), value: 'home' },
@@ -399,133 +484,349 @@ function HomeClient() {
           ) : (
             // 首頁視圖
             <>
-              {/* 继续观看 */}
-              <ContinueWatching />
+              {/* 主视图：主栏 + 侧栏 */}
+              <div className='grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] gap-6 xl:gap-8'>
+                <div className='flex flex-col gap-6 sm:gap-8'>
+                  {/* 继续观看 */}
+                  <ContinueWatching />
 
-              {/* 错误提示 */}
-              {error && (
-                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
-                  <p className="font-bold">
-                    {tt(
-                      '⚠️ Data load issue',
-                      '⚠️ 数据加载异常',
-                      '⚠️ 資料載入異常'
-                    )}
-                  </p>
-                  <p>
-                    {tt(
-                      'Unable to fetch data from Douban and other third-party APIs. Check your network and try again later.',
-                      '无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。',
-                      '無法從豆瓣等第三方介面取得資料，請檢查網路連線或稍後再試。'
-                    )}
-                  </p>
-                </div>
-              )}
+                  {/* 错误提示 */}
+                  {error && (
+                    <div className="mb-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                      <p className="font-bold">
+                        {tt(
+                          '⚠️ Data load issue',
+                          '⚠️ 数据加载异常',
+                          '⚠️ 資料載入異常'
+                        )}
+                      </p>
+                      <p>
+                        {tt(
+                          'Unable to fetch data from Douban and other third-party APIs. Check your network and try again later.',
+                          '无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。',
+                          '無法從豆瓣等第三方介面取得資料，請檢查網路連線或稍後再試。'
+                        )}
+                      </p>
+                    </div>
+                  )}
 
-              {/* Grid-first minimal layout */}
-              <section className='mb-4'>
-                <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4'>
-                  <div>
-                    <p className='text-xs uppercase tracking-[0.2em] text-green-600 dark:text-green-400'>
-                      {screenMode === 'mobile'
-                        ? tt('Mobile stack', '手机竖屏', '手機豎屏')
-                        : screenMode === 'tv'
-                        ? tt('TV wall', '电视瀑布流', '電視瀑布流')
-                        : tt('Desktop grid', '桌面网格', '桌面網格')}
-                    </p>
-                    <h2 className='text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white'>
-                      {tt('Discover now', '发现好片', '發現好片')}
-                    </h2>
-                    <p className='text-sm text-gray-600 dark:text-gray-400'>
-                      {tt(
-                        'Swipe the pills to switch sources. Grid adapts to TV, desktop, and mobile.',
-                        '点按上方标签切换来源，网格随电视、桌面与手机自适应。',
-                        '點按上方標籤切換來源，網格隨電視、桌面與手機自適應。'
-                      )}
-                    </p>
-                  </div>
-                  <div className='flex flex-wrap gap-2'>
-                    {(
-                      [
-                        'movie',
-                        'tv',
-                        'variety',
-                        'anime',
-                        'imdb',
-                      ] as const
-                    ).map((key) => {
-                      const cfg = categoryData[key];
-                      const active = category === key;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setCategory(key)}
-                          className={`px-3 py-1.5 rounded-full border text-sm transition ${
-                            active
-                              ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                              : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-500'
-                          }`}
+                  {/* Hero 区域 */}
+                  <section className='relative overflow-hidden rounded-2xl border border-gray-200/40 dark:border-gray-800 shadow-lg bg-gray-900/70'>
+                    {currentHero?.poster && (
+                      <div
+                        className='absolute inset-0 bg-cover bg-center blur-sm scale-105'
+                        style={{ backgroundImage: `url(${currentHero.poster})` }}
+                      ></div>
+                    )}
+                    <div className='absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20'></div>
+                    <div className='relative grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8'>
+                      <div className='flex flex-col gap-4 sm:gap-5'>
+                        <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-300'>
+                          <span>{currentCategory.label}</span>
+                          <span className='w-1 h-1 rounded-full bg-green-400'></span>
+                          <span>
+                            {screenMode === 'mobile'
+                              ? tt('Mobile stack', '手机竖屏', '手機豎屏')
+                              : screenMode === 'tv'
+                              ? tt('TV wall', '电视瀑布流', '電視瀑布流')
+                              : tt('Desktop grid', '桌面网格', '桌面網格')}
+                          </span>
+                        </div>
+                        <div className='flex flex-col gap-2 max-w-2xl'>
+                          <h2 className='text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight line-clamp-2'>
+                            {currentHero?.title || tt('Discover now', '发现好片', '發現好片')}
+                          </h2>
+                          <p className='text-sm sm:text-base text-gray-200/80 line-clamp-3'>
+                            {tt(
+                              'Tap play to start with the first provider, or open details to explore more sources.',
+                              '直接播放将从第一个来源开始，详情可查看更多来源。',
+                              '直接播放將從第一個來源開始，詳情可查看更多來源。'
+                            )}
+                          </p>
+                          <div className='text-gray-300 text-sm'>
+                            {currentHero?.year || ''}
+                            {currentHero?.rate ? ` · ${currentHero.rate}` : ''}
+                          </div>
+                        </div>
+                        <div className='flex flex-wrap gap-3'>
+                          {currentHero && (
+                            <VideoCard
+                              from='douban'
+                              title={currentHero.title}
+                              poster={currentHero.poster}
+                              douban_id={currentHero.douban_id}
+                              rate={currentHero.rate}
+                              year={currentHero.year}
+                              type={currentHero.type}
+                              query={currentHero.query}
+                              source_name={currentHero.source_name}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className='bg-black/30 border border-white/10 rounded-xl p-3 sm:p-4 h-full'>
+                        <div className='flex items-center justify-between mb-3 text-sm text-gray-200'>
+                          <span>{tt('Top picks', '精选', '精選')}</span>
+                          <span className='text-gray-400'>
+                            {tt('Tap to preview', '点击切换预览', '點擊切換預覽')}
+                          </span>
+                        </div>
+                        <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2'>
+                          {heroItems.slice(0, 6).map((item, idx) => {
+                            const active = heroIndex % heroItems.length === idx;
+                            return (
+                              <button
+                                key={`${item.title}-${idx}`}
+                                onClick={() => setHeroIndex(idx)}
+                                className={`text-left rounded-lg overflow-hidden border transition ${
+                                  active
+                                    ? 'border-green-400 ring-2 ring-green-300/60'
+                                    : 'border-white/10 hover:border-green-300/50'
+                                }`}
+                              >
+                                <div className='aspect-[2/3] bg-gray-700'>
+                                  {item.poster && (
+                                    <img
+                                      src={item.poster}
+                                      alt={item.title}
+                                      className='w-full h-full object-cover'
+                                    />
+                                  )}
+                                </div>
+                                <div className='p-2 text-xs text-gray-100 line-clamp-2'>
+                                  {item.title}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* 分类切换 + 排序 */}
+                  <section className='rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-3 sm:p-4'>
+                    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                      <div className='flex flex-wrap gap-2'>
+                        {(Object.keys(categoryData) as CategoryKey[]).map((key) => {
+                          const cfg = categoryData[key];
+                          const active = category === key;
+                          return (
+                            <button
+                              key={key}
+                              onClick={() => setCategory(key)}
+                              className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                                active
+                                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                                  : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-500'
+                              }`}
+                            >
+                              {cfg.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className='flex items-center gap-2 text-sm'>
+                        {(['trending', 'newest', 'rating'] as const).map((mode) => {
+                          const active = sortMode === mode;
+                          const labels: Record<typeof mode, string> = {
+                            trending: tt('Trending', '热度', '熱度'),
+                            newest: tt('Newest', '最新', '最新'),
+                            rating: tt('Rating', '评分', '評分'),
+                          };
+                          return (
+                            <button
+                              key={mode}
+                              onClick={() => setSortMode(mode)}
+                              className={`px-3 py-1 rounded-full border transition ${
+                                active
+                                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 border-transparent'
+                                  : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-green-500'
+                              }`}
+                            >
+                              {labels[mode]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className='mt-2 text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between'>
+                      <span>{currentCategory?.hint}</span>
+                      {currentCategory?.seeMore && (
+                        <Link
+                          href={currentCategory.seeMore}
+                          className='inline-flex items-center text-green-700 dark:text-green-400 hover:underline'
                         >
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className='mt-3 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400'>
-                  <span>{currentCategory?.hint}</span>
-                  {currentCategory?.seeMore && (
-                    <Link
-                      href={currentCategory.seeMore}
-                      className='inline-flex items-center text-green-700 dark:text-green-400 hover:underline'
+                          {tt('See more', '查看更多', '查看更多')}
+                          <ChevronRight className='w-4 h-4 ml-1' />
+                        </Link>
+                      )}
+                    </div>
+                  </section>
+
+                  {/* Spotlight Grid */}
+                  <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-3 sm:p-4'>
+                    <div
+                      className={`grid ${
+                        screenMode === 'mobile'
+                          ? 'grid-cols-2 gap-3'
+                          : 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5'
+                      }`}
                     >
-                      {tt('See more', '查看更多', '查看更多')}
-                      <ChevronRight className='w-4 h-4 ml-1' />
-                    </Link>
+                      {loading &&
+                        Array.from({ length: 12 }).map((_, idx) => (
+                          <div
+                            key={idx}
+                            className='relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
+                          ></div>
+                        ))}
+
+                      {!loading &&
+                        !error &&
+                        sortedItems.map((item, index) => {
+                          const isSpotlight =
+                            screenMode !== 'mobile' && index % 7 === 0;
+                          return (
+                            <div
+                              key={`${item.title}-${index}-${item.douban_id ?? ''}`}
+                              className={isSpotlight ? 'col-span-2' : ''}
+                            >
+                              <VideoCard
+                                from='douban'
+                                title={item.title}
+                                poster={item.poster}
+                                douban_id={item.douban_id}
+                                rate={item.rate}
+                                year={item.year}
+                                type={item.type}
+                                query={item.query}
+                                source_name={item.source_name}
+                              />
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {!loading && !error && sortedItems.length === 0 && (
+                      <div className='text-center text-gray-500 dark:text-gray-400 py-10'>
+                        {tt('No data', '暂无数据', '暫無資料')}
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Rails */}
+                  <section className='space-y-6'>
+                    <ContentRail
+                      title={tt('Hot movies', '热门电影', '熱門電影')}
+                      href='/douban?type=movie'
+                      items={hotMovies.map((movie) => ({
+                        title: movie.title,
+                        poster: movie.poster,
+                        rate: movie.rate,
+                        year: movie.year,
+                        douban_id: Number(movie.id),
+                        type: 'movie',
+                      }))}
+                    />
+                    <ContentRail
+                      title={tt('Hot TV shows', '热门剧集', '熱門劇集')}
+                      href='/douban?type=tv'
+                      items={hotTvShows.map((show) => ({
+                        title: show.title,
+                        poster: show.poster,
+                        rate: show.rate,
+                        year: show.year,
+                        douban_id: Number(show.id),
+                        type: 'tv',
+                      }))}
+                    />
+                    <ContentRail
+                      title={tt('Hot variety shows', '热门综艺', '熱門綜藝')}
+                      href='/douban?type=show'
+                      items={hotVarietyShows.map((show) => ({
+                        title: show.title,
+                        poster: show.poster,
+                        rate: show.rate,
+                        year: show.year,
+                        douban_id: Number(show.id),
+                        type: 'tv',
+                      }))}
+                    />
+                    {imdbList.length > 0 && (
+                      <ContentRail
+                        title='IMDb Top Picks'
+                        href='/imdb'
+                        items={imdbList.map((item) => ({
+                          title: item.title,
+                          poster: item.poster,
+                          rate: '',
+                          year: item.year,
+                          query: item.title,
+                          source_name: 'IMDb',
+                          type: 'movie',
+                        }))}
+                      />
+                    )}
+                  </section>
+                </div>
+
+                {/* 侧栏 */}
+                <div className='hidden xl:flex flex-col gap-6'>
+                  {announcement && (
+                    <div className='rounded-2xl border border-green-200/60 dark:border-green-900/50 bg-green-50 dark:bg-green-900/15 p-4 shadow-sm'>
+                      <h3 className='text-sm font-semibold text-green-800 dark:text-green-300 mb-2'>
+                        {tt('Notice', '提示', '提示')}
+                      </h3>
+                      <p className='text-sm text-green-900/90 dark:text-green-100'>
+                        {announcement}
+                      </p>
+                    </div>
+                  )}
+                  {imdbList.length > 0 && (
+                    <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
+                      <div className='flex items-center justify-between mb-3'>
+                        <h3 className='text-base font-semibold text-gray-900 dark:text-gray-100'>
+                          IMDb
+                        </h3>
+                        <Link
+                          href='/imdb'
+                          className='text-xs text-green-700 dark:text-green-400 hover:underline'
+                        >
+                          {tt('See more', '查看更多', '查看更多')}
+                        </Link>
+                      </div>
+                      <div className='space-y-3'>
+                        {imdbList.slice(0, 6).map((item, idx) => (
+                          <Link
+                            key={`${item.imdbId}-${idx}`}
+                            href='/imdb'
+                            className='flex gap-3 items-center group'
+                          >
+                            <div className='w-12 h-16 rounded-md overflow-hidden bg-gray-200 dark:bg-gray-800'>
+                              {item.poster && (
+                                <img
+                                  src={item.poster}
+                                  alt={item.title}
+                                  className='w-full h-full object-cover'
+                                />
+                              )}
+                            </div>
+                            <div className='flex-1 min-w-0'>
+                              <p className='text-sm text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-green-700 dark:group-hover:text-green-400'>
+                                {item.title}
+                              </p>
+                              <p className='text-xs text-gray-500 dark:text-gray-400'>
+                                {item.year}
+                              </p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
-              </section>
-
-              <section className='mb-12'>
-                <div
-                  className={`grid ${
-                    screenMode === 'mobile'
-                      ? 'grid-cols-2 gap-4'
-                      : 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-5 sm:gap-6'
-                  }`}
-                >
-                  {loading &&
-                    Array.from({ length: 12 }).map((_, idx) => (
-                      <div
-                        key={idx}
-                        className='relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
-                      ></div>
-                    ))}
-
-                  {!loading &&
-                    !error &&
-                    (currentCategory?.items || []).map((item, index) => (
-                      <VideoCard
-                        key={`${item.title}-${index}-${item.douban_id ?? ''}`}
-                        from='douban'
-                        title={item.title}
-                        poster={item.poster}
-                        douban_id={item.douban_id}
-                        rate={item.rate}
-                        year={item.year}
-                        type={item.type}
-                        query={item.query}
-                        source_name={item.source_name}
-                      />
-                    ))}
-                </div>
-
-                {!loading && !error && currentCategory?.items?.length === 0 && (
-                  <div className='text-center text-gray-500 dark:text-gray-400 py-10'>
-                    {tt('No data', '暂无数据', '暫無資料')}
-                  </div>
-                )}
-              </section>
+              </div>
             </>
           )}
         </div>
