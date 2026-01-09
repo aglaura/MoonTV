@@ -80,7 +80,7 @@ function LoginPageClient() {
     } else {
       setUsername('');
     }
-    setStage('password');
+    setStage('group');
   }, [group]);
 
   useEffect(() => {
@@ -338,13 +338,25 @@ function LoginPageClient() {
           })}
         </div>
         {stage === 'group' && (
-          <div className='text-sm text-gray-600 dark:text-gray-300 mb-4'>
-            {tt(
-              'Select a group to continue.',
-              '请选择组别后再继续。',
-              '請先選擇組別後再繼續。'
-            )}
-          </div>
+          <>
+            <div className='text-sm text-gray-600 dark:text-gray-300 mb-3'>
+              {tt(
+                'Select a group to continue.',
+                '请选择组别后再继续。',
+                '請先選擇組別後再繼續。'
+              )}
+            </div>
+            <button
+              type='button'
+              onClick={() => {
+                setError(null);
+                setStage('password');
+              }}
+              className='w-full rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700'
+            >
+              {tt('Continue', '继续', '繼續')}
+            </button>
+          </>
         )}
 
         <form onSubmit={handleSubmit} className='space-y-6'>
