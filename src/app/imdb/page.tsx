@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { tt } from '@/lib/i18n.client';
+import { convertToTraditional } from '@/lib/locale';
 
 import PageLayout from '@/components/PageLayout';
 import { useSite } from '@/components/SiteProvider';
@@ -22,6 +23,14 @@ export default function ImdbPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { announcement } = useSite();
+  const announcementText =
+    typeof window !== 'undefined' &&
+    (window.localStorage.getItem('userLocale') === 'zh-Hant' ||
+      navigator?.language?.toLowerCase().includes('zh-hant') ||
+      navigator?.language?.toLowerCase().includes('zh-tw') ||
+      navigator?.language?.toLowerCase().includes('zh-hk'))
+      ? convertToTraditional(announcement || '')
+      : announcement;
 
   useEffect(() => {
     const load = async () => {
@@ -67,9 +76,9 @@ export default function ImdbPage() {
           </Link>
         </div>
 
-        {announcement && (
+        {announcementText && (
           <div className='mb-4 text-sm text-gray-700 dark:text-gray-300'>
-            {announcement}
+            {announcementText}
           </div>
         )}
 

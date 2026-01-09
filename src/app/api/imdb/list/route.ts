@@ -4,13 +4,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-static';
 export const revalidate = 3600; // cache for 1 hour
 
-// Very light IMDb list scrape for a curated chart URL (default: Top 250).
-// Only returns title, imdbId, year, and poster.
-// Adjust the TARGET_URL if you want a different list.
-const TARGET_URL =
-  'https://www.imdb.com/chart/top';
-
-const itemRegex = /<li class="ipc-metadata-list-summary-item.*?<a href="\/title\/(tt\d{5,})\/"[^>]*>\s*<div[^>]*>\s*<img[^>]*?alt="([^"]+)"[^>]*?src="([^"]+)"[^>]*?>[\s\S]*?<span class="cli-title-metadata-item">(\d{4})<\/span>/gi;
+// IMDb Top list endpoint. Uses the JSON-LD block on the page to avoid brittle HTML scraping.
+const TARGET_URL = 'https://www.imdb.com/chart/top';
 
 export async function GET() {
   try {
@@ -32,18 +27,39 @@ export async function GET() {
     }
 
     const html = await response.text();
-    const items: Array<{ imdbId: string; title: string; year: string; poster: string }> = [];
-    let match: RegExpExecArray | null;
+    const ldMatch = html.match(
+      /<script type="application\/ld\+json">([^<]+)<\/script>/
+    );
 
-    while ((match = itemRegex.exec(html)) !== null) {
-      const imdbId = match[1];
-      const title = match[2]?.trim() || '';
-      const poster = match[3]?.trim() || '';
-      const year = match[4]?.trim() || '';
-      if (!imdbId || !title) continue;
-      items.push({ imdbId, title, year, poster });
-      if (items.length >= 50) break; // cap to keep payload small
+    const items: Array<{ imdbId: string; title: string; year: string; poster: string }> =
+      [];
+
+    if (ldMatch && ldMatch[1]) {
+      try {
+        const json = JSON.parse(ldMatch[1]);
+        const list = json?.itemListElement ?? [];
+        for (const entry of list) {
+          const item = entry?.item;
+          const url: string | undefined = item?.url;
+          const imdbId = url?.match(/title\/(tt\d+)/)?.[1];
+          const title = item?.name ?? '';
+          const poster = item?.image ?? '';
+          const year = item?.datePublished ?? '';
+          if (!imdbId || !title) continue;
+          items.push({
+            imdbId,
+            title: title.trim(),
+            year: year?.toString() ?? '',
+            poster: poster?.trim() ?? '',
+          });
+          if (items.length >= 50) break;
+        }
+      } catch (err) {
+        // ignore parse errors and return empty list
+      }
     }
+
+    // Fallback: keep payload empty but return 200 to avoid crashing pages.
 
     return NextResponse.json(
       { items },

@@ -17,6 +17,7 @@ import {
   getAllPlayRecords,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { convertToTraditional } from '@/lib/locale';
 import { DoubanItem } from '@/lib/types';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
@@ -361,6 +362,15 @@ function HomeClient() {
     heroItems.length > 0 && heroIndex >= 0
       ? heroItems[Math.abs(heroIndex) % heroItems.length]
       : undefined;
+
+  const formattedAnnouncement = useMemo(() => {
+    if (!announcement) return '';
+    const locale = resolveUiLocale();
+    if (locale === 'zh-Hant') {
+      return convertToTraditional(announcement);
+    }
+    return announcement;
+  }, [announcement]);
 
   // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
@@ -779,7 +789,7 @@ function HomeClient() {
                         {tt('Notice', '提示', '提示')}
                       </h3>
                       <p className='text-sm text-green-900/90 dark:text-green-100'>
-                        {announcement}
+                        {formattedAnnouncement}
                       </p>
                     </div>
                   )}
@@ -883,7 +893,7 @@ function HomeClient() {
               <div className='relative overflow-hidden rounded-lg mb-4 bg-green-50 dark:bg-green-900/20'>
                 <div className='absolute inset-y-0 left-0 w-1.5 bg-green-500 dark:bg-green-400'></div>
                 <p className='ml-4 text-gray-600 dark:text-gray-300 leading-relaxed'>
-                  {announcement}
+                  {formattedAnnouncement}
                 </p>
               </div>
             </div>

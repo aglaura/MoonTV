@@ -14,6 +14,22 @@ import VideoCard from '@/components/VideoCard';
 
 function HomeClient() {
   const { announcement } = useSite();
+  const announcementText = useMemo(() => {
+    if (!announcement) return '';
+    if (typeof window !== 'undefined') {
+      const saved = window.localStorage.getItem('userLocale');
+      const nav = navigator?.language?.toLowerCase() || '';
+      if (
+        saved === 'zh-Hant' ||
+        nav.includes('zh-hant') ||
+        nav.includes('zh-tw') ||
+        nav.includes('zh-hk')
+      ) {
+        return convertToTraditional(announcement);
+      }
+    }
+    return announcement;
+  }, [announcement]);
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -421,7 +437,7 @@ function HomeClient() {
           </div>
         )}
       </div>
-      {announcement && showAnnouncement && (
+      {announcementText && showAnnouncement && (
         <div
           className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm dark:bg-black/70 p-4 transition-opacity duration-300 ${
             showAnnouncement ? '' : 'opacity-0 pointer-events-none'
@@ -460,7 +476,7 @@ function HomeClient() {
                 {tt('Notice', '提示', '提示')}
               </h3>
               <button
-                onClick={() => handleCloseAnnouncement(announcement)}
+                onClick={() => handleCloseAnnouncement(announcement || '')}
                 className='text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-white transition-colors'
                 aria-label={tt('Close', '关闭', '關閉')}
               ></button>
@@ -469,12 +485,12 @@ function HomeClient() {
               <div className='relative overflow-hidden rounded-lg mb-4 bg-green-50 dark:bg-green-900/20'>
                 <div className='absolute inset-y-0 left-0 w-1.5 bg-green-500 dark:bg-green-400'></div>
                 <p className='ml-4 text-gray-600 dark:text-gray-300 leading-relaxed'>
-                  {convertToTraditional(announcement)}
+                  {announcementText}
                 </p>
               </div>
             </div>
             <button
-              onClick={() => handleCloseAnnouncement(announcement)}
+              onClick={() => handleCloseAnnouncement(announcement || '')}
               className='w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 text-white font-medium shadow-md hover:shadow-lg hover:from-green-700 hover:to-green-800 dark:from-green-600 dark:to-green-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 transform hover:-translate-y-0.5'
             >
               {tt('Got it', '我知道了', '我知道了')}

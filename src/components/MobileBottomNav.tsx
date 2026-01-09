@@ -1,6 +1,6 @@
 'use client';
 
-import { Clover, Film, Home, Search, Sparkles, Tv } from 'lucide-react';
+import { Film, Home, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
