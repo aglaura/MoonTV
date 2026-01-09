@@ -783,19 +783,9 @@ function HomeClient() {
 
                 {/* 侧栏 */}
                 <div className='hidden xl:flex flex-col gap-6'>
-                  {announcement && (
-                    <div className='rounded-2xl border border-green-200/60 dark:border-green-900/50 bg-green-50 dark:bg-green-900/15 p-4 shadow-sm'>
-                      <h3 className='text-sm font-semibold text-green-800 dark:text-green-300 mb-2'>
-                        {tt('Notice', '提示', '提示')}
-                      </h3>
-                      <p className='text-sm text-green-900/90 dark:text-green-100'>
-                        {formattedAnnouncement}
-                      </p>
-                    </div>
-                  )}
-                  {imdbList.length > 0 && (
-                    <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
-                      <div className='flex items-center justify-between mb-3'>
+                {imdbList.length > 0 && (
+                  <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
+                    <div className='flex items-center justify-between mb-3'>
                         <h3 className='text-base font-semibold text-gray-900 dark:text-gray-100'>
                           IMDb
                         </h3>

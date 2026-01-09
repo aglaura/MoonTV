@@ -23,14 +23,6 @@ export default function ImdbPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { announcement } = useSite();
-  const announcementText =
-    typeof window !== 'undefined' &&
-    (window.localStorage.getItem('userLocale') === 'zh-Hant' ||
-      navigator?.language?.toLowerCase().includes('zh-hant') ||
-      navigator?.language?.toLowerCase().includes('zh-tw') ||
-      navigator?.language?.toLowerCase().includes('zh-hk'))
-      ? convertToTraditional(announcement || '')
-      : announcement;
 
   useEffect(() => {
     const load = async () => {
@@ -75,12 +67,6 @@ export default function ImdbPage() {
             IMDb Top 250
           </Link>
         </div>
-
-        {announcementText && (
-          <div className='mb-4 text-sm text-gray-700 dark:text-gray-300'>
-            {announcementText}
-          </div>
-        )}
 
         {error && (
           <div className='p-4 rounded-lg bg-red-50 text-red-700 border border-red-200 mb-4'>
