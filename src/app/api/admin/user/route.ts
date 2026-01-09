@@ -20,6 +20,7 @@ const ACTIONS = [
   'setAvatar',
   'changePassword',
   'deleteUser',
+  'setGroup',
 ] as const;
 
 export async function POST(request: NextRequest) {
@@ -42,10 +43,11 @@ export async function POST(request: NextRequest) {
     }
     const username = authInfo.username;
 
-    const { targetUsername, allowRegister, avatar, action } = body as {
+    const { targetUsername, allowRegister, avatar, action, group } = body as {
       targetUsername?: string;
       allowRegister?: boolean;
       avatar?: string;
+      group?: 'family' | 'guest';
       action?: (typeof ACTIONS)[number];
     };
 
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest) {
       action !== 'changePassword' &&
       action !== 'setAvatar' &&
       action !== 'deleteUser' &&
+      action !== 'setGroup' &&
       username === targetUsername
     ) {
       return NextResponse.json(
@@ -134,11 +137,41 @@ export async function POST(request: NextRequest) {
           adminConfig.UserConfig.Users.push({
             username: targetUsername!,
             role: 'user',
+            group: group === 'guest' ? 'guest' : 'family',
           });
           targetEntry =
             adminConfig.UserConfig.Users[
               adminConfig.UserConfig.Users.length - 1
             ];
+          break;
+        }
+        case 'setGroup': {
+          if (!targetEntry) {
+            return NextResponse.json(
+              { error: '目标用户不存在' },
+              { status: 404 }
+            );
+          }
+          if (targetEntry.role === 'owner') {
+            return NextResponse.json(
+              { error: '无法修改站长组别' },
+              { status: 400 }
+            );
+          }
+          if (isTargetAdmin && operatorRole !== 'owner') {
+            return NextResponse.json(
+              { error: '仅站长可修改管理员组别' },
+              { status: 401 }
+            );
+          }
+          if (group !== 'guest' && group !== 'family') {
+            return NextResponse.json(
+              { error: '组别参数错误' },
+              { status: 400 }
+            );
+          }
+          const normalizedGroup = group === 'guest' ? 'guest' : 'family';
+          targetEntry.group = normalizedGroup;
           break;
         }
         case 'setAvatar': {

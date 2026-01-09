@@ -309,30 +309,54 @@ function LoginPageClient() {
         <h1 className='text-green-600 tracking-tight text-center text-3xl font-extrabold mb-8 bg-clip-text drop-shadow-sm'>
           {siteName}
         </h1>
-        <div className='flex gap-2 mb-4'>
+        <div
+          className='grid grid-cols-2 gap-4 mb-4'
+          role='radiogroup'
+          aria-label={tt('Choose group', '选择组别', '選擇組別')}
+        >
           {(['family', 'guest'] as const).map((key) => {
             const active = group === key;
             const label =
               key === 'family'
                 ? tt('Family group', '家庭组', '家庭組')
                 : tt('Guest group', '访客组', '訪客組');
+            const desc =
+              key === 'family'
+                ? tt('PASSWORD', '使用 PASSWORD', '使用 PASSWORD')
+                : tt('PASSWORD2', '使用 PASSWORD2', '使用 PASSWORD2');
             return (
               <button
                 key={key}
                 type='button'
+                role='radio'
+                aria-checked={active}
+                tabIndex={0}
                 onClick={() => {
                   setGroup(key);
                   setError(null);
                   setRequiresSelection(false);
-                  setStage('password');
                 }}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900 ${
                   active
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-700'
+                    ? 'border-green-500 bg-green-50 text-green-800 dark:border-green-400 dark:bg-green-900/30 dark:text-green-100 shadow-sm'
+                    : 'border-gray-200 bg-white text-gray-800 hover:border-green-300 hover:bg-green-50/60 dark:border-gray-700 dark:bg-zinc-800 dark:text-gray-100 dark:hover:border-green-500/60 dark:hover:bg-green-900/10'
                 }`}
               >
-                {label}
+                <span
+                  className={`w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shadow-inner ${
+                    active
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
+                  }`}
+                >
+                  {key === 'family' ? 'F' : 'G'}
+                </span>
+                <span className='text-base leading-tight text-center'>
+                  {label}
+                </span>
+                <span className='text-[11px] text-gray-500 dark:text-gray-400'>
+                  {desc}
+                </span>
               </button>
             );
           })}

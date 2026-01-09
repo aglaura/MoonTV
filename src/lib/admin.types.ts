@@ -13,6 +13,7 @@ export interface AdminConfig {
       role: 'user' | 'admin' | 'owner';
       avatar?: string;
       banned?: boolean;
+      group?: 'family' | 'guest';
     }[];
   };
   SourceConfig: {

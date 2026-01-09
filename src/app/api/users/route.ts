@@ -15,7 +15,10 @@ export async function GET() {
     username: string;
     role: 'owner';
     avatar?: string;
-  }> = ownerUser ? [{ username: ownerUser, role: 'owner' }] : [];
+    group?: 'family' | 'guest';
+  }> = ownerUser
+    ? [{ username: ownerUser, role: 'owner', group: 'family' }]
+    : [];
 
   if (storageType === 'localstorage') {
     return NextResponse.json(
@@ -34,11 +37,13 @@ export async function GET() {
       username: string;
       role: 'user' | 'admin' | 'owner';
       avatar?: string;
+      group?: 'family' | 'guest';
     }> =
       config.UserConfig.Users?.map((user) => ({
         username: user.username,
         role: (user.role as 'user' | 'admin' | 'owner') ?? 'user',
         avatar: user.avatar,
+        group: user.group === 'guest' ? 'guest' : 'family',
       })) ?? [];
 
     fallbackOwner.forEach((owner) => {

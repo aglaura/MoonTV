@@ -38,7 +38,13 @@ type NormalizedConfigUser = {
 type BasicConfigUser = {
   username: string;
   role: 'user' | 'admin';
+  group?: UserGroup;
 };
+
+type UserGroup = 'family' | 'guest';
+
+const normalizeGroup = (group?: string): UserGroup =>
+  group === 'guest' ? 'guest' : 'family';
 
 function normalizeConfigUsers(
   users?: ConfigFileUser[]
@@ -121,10 +127,13 @@ function buildAdminConfigFromFile(
     }
   });
 
-  const orderedUsers: { username: string; role: 'user' | 'admin' | 'owner' }[] =
-    [];
+  const orderedUsers: {
+    username: string;
+    role: 'user' | 'admin' | 'owner';
+    group?: UserGroup;
+  }[] = [];
   uniqueUsers.forEach((role, username) => {
-    orderedUsers.push({ username, role });
+    orderedUsers.push({ username, role, group: 'family' });
   });
 
   const ownerUser = process.env.USERNAME?.trim();
@@ -135,6 +144,7 @@ function buildAdminConfigFromFile(
     orderedUsers.unshift({
       username: ownerUser,
       role: 'owner',
+      group: 'family',
     });
   }
 
@@ -258,13 +268,14 @@ async function initConfig() {
 
         adminConfig.UserConfig.Users = (adminConfig.UserConfig.Users || []).map(
           (user) => {
+            const normalizedGroup = normalizeGroup((user as any)?.group);
             if (user.role === 'owner') {
-              return user;
+              return { ...user, group: normalizedGroup };
             }
             const targetRole = configUserRoleMap.get(user.username);
             return targetRole && user.role !== targetRole
-              ? { ...user, role: targetRole }
-              : user;
+              ? { ...user, role: targetRole, group: normalizedGroup }
+              : { ...user, group: normalizedGroup };
           }
         );
 
@@ -277,6 +288,7 @@ async function initConfig() {
             adminConfig!.UserConfig.Users.push({
               username: cfg.username,
               role: cfg.role,
+              group: 'family',
             });
             existedUsers.add(cfg.username);
           }
@@ -287,6 +299,7 @@ async function initConfig() {
             adminConfig!.UserConfig.Users.push({
               username: uname,
               role: configUserRoleMap.get(uname) ?? 'user',
+              group: 'family',
             });
             existedUsers.add(uname);
           }
@@ -302,6 +315,7 @@ async function initConfig() {
           adminConfig!.UserConfig.Users.unshift({
             username: ownerUser,
             role: 'owner',
+            group: normalizeGroup(existingOwner?.group),
             ...(existingOwner?.avatar ? { avatar: existingOwner.avatar } : {}),
           });
         }
@@ -309,9 +323,11 @@ async function initConfig() {
         let allUsers: {
           username: string;
           role: 'user' | 'admin' | 'owner';
+          group?: UserGroup;
         }[] = userNames.map((uname) => ({
           username: uname,
           role: (configUserRoleMap.get(uname) ?? 'user') as 'user' | 'admin',
+          group: 'family',
         }));
         const ownerUser = process.env.USERNAME;
         if (ownerUser) {
@@ -319,6 +335,7 @@ async function initConfig() {
           allUsers.unshift({
             username: ownerUser,
             role: 'owner',
+            group: 'family',
           });
         }
         adminConfig = {
@@ -363,6 +380,7 @@ async function initConfig() {
       ).map((username) => ({
         username,
         role: configUserRoleMap.get(username) ?? 'user',
+        group: 'family',
       }));
       cachedConfig = buildAdminConfigFromFile(fileConfig, fallbackUsers);
     }
@@ -388,6 +406,11 @@ export async function getConfig(): Promise<AdminConfig> {
     adminConfig = await (storage as any).getAdminConfig();
   }
   if (adminConfig) {
+    adminConfig.UserConfig.Users =
+      adminConfig.UserConfig.Users?.map((user) => ({
+        ...user,
+        group: normalizeGroup((user as any)?.group),
+      })) ?? [];
     adminConfig.SiteConfig.SiteName = process.env.SITE_NAME || 'EssaouiraTV';
     adminConfig.SiteConfig.Announcement =
       process.env.ANNOUNCEMENT ||

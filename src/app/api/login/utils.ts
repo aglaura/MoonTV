@@ -28,11 +28,15 @@ export async function ensureAdminUser(
     user = {
       username,
       role: 'admin',
+      group: 'family',
     };
     config.UserConfig.Users.push(user);
     changed = true;
   } else if (user.role !== 'owner' && user.role !== 'admin') {
     user.role = 'admin';
+    changed = true;
+  } else if (!user.group) {
+    user.group = 'family';
     changed = true;
   }
 
