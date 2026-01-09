@@ -84,7 +84,7 @@ function LoginPageClient() {
   }, [group]);
 
   useEffect(() => {
-    if (!requiresSelection || group === 'guest') return;
+    if (!requiresSelection) return;
 
     let cancelled = false;
     const fetchUsers = async () => {
@@ -123,15 +123,24 @@ function LoginPageClient() {
             (entry: { group: 'family' | 'guest' }) => entry.group === group
           );
 
+          const finalList =
+            filtered.length > 0
+              ? filtered
+              : group === 'guest'
+              ? [{ username: 'guest', avatar: '', group: 'guest' as const }]
+              : filtered;
+
           setAvailableUsers(
-            filtered.map((entry: { username: string }) => entry.username)
+            finalList.map((entry: { username: string }) => entry.username)
           );
           const thumbnailMap: Record<string, string> = {};
-          filtered.forEach((entry: { username: string; avatar?: string }) => {
+          finalList.forEach(
+            (entry: { username: string; avatar?: string }) => {
             if (entry.avatar) {
               thumbnailMap[entry.username] = entry.avatar;
             }
-          });
+            }
+          );
           setUserThumbnails(thumbnailMap);
         }
       } catch (err) {
@@ -146,7 +155,7 @@ function LoginPageClient() {
   }, [requiresSelection, group]);
 
   useEffect(() => {
-    if (!requiresSelection || group === 'guest') return;
+    if (!requiresSelection) return;
     if (availableUsers.length === 0) return;
     if (username && username.trim().length > 0) return;
     setUsername(availableUsers[0]);
@@ -293,6 +302,23 @@ function LoginPageClient() {
     },
     [router, searchParams]
   );
+
+  useEffect(() => {
+    if (!requiresSelection) return;
+    if (loading) return;
+    if (pendingUser) return;
+    if (availableUsers.length === 1) {
+      const target = availableUsers[0];
+      setUsername(target);
+      void handleUserSelect(target);
+    }
+  }, [
+    requiresSelection,
+    availableUsers,
+    loading,
+    pendingUser,
+    handleUserSelect,
+  ]);
 
   useEffect(() => {
     if (
