@@ -47,6 +47,7 @@ function HomeClient() {
             onSubmit={async (e) => {
               e.preventDefault();
               let trimmed = searchQuery.trim();
+              const originalQuery = trimmed;
               if (!trimmed) {
                 setSearchResults([]);
                 setHasSearched(false);
@@ -66,32 +67,11 @@ function HomeClient() {
                   ch === '\t'
                 );
               });
-              
-              if (isLikelyEnglish) {
-                try {
-                  // Try to convert English title to Chinese using Wikipedia
-                  const response = await fetch(
-                    `/api/title-convert?title=${encodeURIComponent(trimmed)}`
-                  );
-                  if (response.ok) {
-                    const data = await response.json();
-                    if (data.title) {
-                      // Use the Chinese title for search
-                      trimmed = data.title;
-                    }
-                  }
-                } catch (error) {
-                  // If conversion fails, continue with original English title
-                  console.warn('Failed to convert English title to Chinese:', error);
-                }
-              }
 
               const performSearch = async () => {
-                try {
-                  setSearching(true);
-                  setSearchError(null);
+                const searchOnce = async (query: string) => {
                   const response = await fetch(
-                    `/api/search?q=${encodeURIComponent(trimmed)}`
+                    `/api/search?q=${encodeURIComponent(query)}`
                   );
                   if (!response.ok) {
                     throw new Error(
@@ -105,7 +85,54 @@ function HomeClient() {
                   const data = (await response.json()) as {
                     results?: SearchResult[];
                   };
-                  setSearchResults(data.results ?? []);
+                  return data.results ?? [];
+                };
+
+                const dedupe = (items: SearchResult[]) => {
+                  const seen = new Set<string>();
+                  return items.filter((item) => {
+                    const key = `${item.source}-${item.id}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                  });
+                };
+
+                try {
+                  setSearching(true);
+                  setSearchError(null);
+                  const primaryResults = await searchOnce(trimmed);
+                  let combinedResults = primaryResults;
+
+                  if (isLikelyEnglish) {
+                    let converted = trimmed;
+                    try {
+                      const response = await fetch(
+                        `/api/title-convert?title=${encodeURIComponent(originalQuery)}`
+                      );
+                      if (response.ok) {
+                        const data = await response.json();
+                        if (data.title) {
+                          converted = data.title;
+                        }
+                      }
+                    } catch (error) {
+                      console.warn(
+                        'Failed to convert English title to Chinese:',
+                        error
+                      );
+                    }
+
+                    if (converted !== trimmed) {
+                      const translatedResults = await searchOnce(converted);
+                      combinedResults = dedupe([
+                        ...primaryResults,
+                        ...translatedResults,
+                      ]);
+                    }
+                  }
+
+                  setSearchResults(combinedResults);
                   setHasSearched(true);
                 } catch (err) {
                   setSearchError(
