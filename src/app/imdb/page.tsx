@@ -25,12 +25,17 @@ export default function ImdbPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/imdb/list', { cache: 'force-cache' });
+        const res = await fetch('/api/imdb/list', { cache: 'no-store' });
         if (!res.ok) {
           throw new Error(`Failed to load TMDB list (${res.status})`);
         }
-        const data = (await res.json()) as { items?: TmdbItem[] };
+        const data = (await res.json()) as { items?: TmdbItem[]; error?: string };
         setItems(Array.isArray(data.items) ? data.items : []);
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setError(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load');
       } finally {

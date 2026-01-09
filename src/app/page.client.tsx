@@ -213,7 +213,7 @@ function HomeClient() {
         setBangumiCalendarData(bangumiCalendarData);
 
         try {
-          const res = await fetch('/api/imdb/list', { cache: 'force-cache' });
+          const res = await fetch('/api/imdb/list', { cache: 'no-store' });
           if (res.ok) {
             const data = (await res.json()) as { items?: ImdbListItem[] };
             if (Array.isArray(data.items)) {

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-static';
-export const revalidate = 3600; // cache for 1 hour
+export const dynamic = 'force-dynamic';
+export const revalidate = 1800; // cache for 30 minutes (best-effort; dynamic fetch)
 
 // TMDB "Most Popular" movies (page 1)
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -46,6 +46,7 @@ export async function GET() {
 
   try {
     let items = FALLBACK_ITEMS;
+    let fetchError: string | null = null;
 
     if (apiKey) {
       const url = `${TMDB_BASE}/movie/popular?api_key=${encodeURIComponent(
@@ -70,11 +71,15 @@ export async function GET() {
         if (fetched.length > 0) {
           items = fetched;
         }
+      } else {
+        fetchError = `TMDB responded with ${response.status}`;
       }
+    } else {
+      fetchError = 'TMDB_API_KEY not configured';
     }
 
     return NextResponse.json(
-      { items },
+      { items, error: fetchError ?? undefined },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
