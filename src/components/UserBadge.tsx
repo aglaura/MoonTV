@@ -1,8 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps, simple-import-sort/imports */
 'use client';
 
-import { Menu, Transition } from '@headlessui/react';
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -44,7 +43,9 @@ export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const { userLocale } = useUserLanguage();
+  const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [menuStyle, setMenuStyle] = useState<{
     top: number;
     left: number;
@@ -122,38 +123,51 @@ export default function UserBadge() {
     window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
   };
 
-  if (!username) return null;
+  useLayoutEffect(() => {
+    if (!isOpen || !buttonRef.current) return;
+    const updatePosition = () => {
+      if (!buttonRef.current) return;
+      const rect = buttonRef.current.getBoundingClientRect();
+      const minWidth = Math.max(rect.width + 16, 144);
+      setMenuStyle({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.right + window.scrollX - minWidth,
+        minWidth,
+      });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
 
-  return (
-    <Menu as='div' className='relative z-[99999]'>
-      {({ open }) => {
-        useLayoutEffect(() => {
-          if (!open || !buttonRef.current) return;
-          const updatePosition = () => {
-            if (!buttonRef.current) return;
-            const rect = buttonRef.current.getBoundingClientRect();
-            const minWidth = Math.max(rect.width + 16, 144);
-            setMenuStyle({
-              top: rect.bottom + window.scrollY + 6,
-              left: rect.right + window.scrollX - minWidth,
-              minWidth,
-            });
-          };
-          updatePosition();
-          window.addEventListener('resize', updatePosition);
-          window.addEventListener('scroll', updatePosition, true);
-          return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-          };
-        }, [open]);
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (
+        (dropdownRef.current && dropdownRef.current.contains(target)) ||
+        (buttonRef.current && buttonRef.current.contains(target))
+      ) {
+        return;
+      }
+      setIsOpen(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
 
-        return (
-          <>
-            <Menu.Button
-              ref={buttonRef}
+  return username ? (
+    <div className='relative z-[99999]'>
+      <button
+        ref={buttonRef}
         title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
         className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        aria-haspopup='menu'
       >
         <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
           {avatar ? (
@@ -164,58 +178,33 @@ export default function UserBadge() {
           )}
         </span>
         <span className='truncate hidden sm:inline'>{username}</span>
-            </Menu.Button>
+      </button>
 
-            <Transition
-              as={Fragment}
-              enter='transition ease-out duration-150'
-              enterFrom='opacity-0 translate-y-1'
-              enterTo='opacity-100 translate-y-0'
-              leave='transition ease-in duration-100'
-              leaveFrom='opacity-100 translate-y-0'
-              leaveTo='opacity-0 translate-y-1'
-            >
-              <Menu.Items
-                className='fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] space-y-2 focus:outline-none'
-                style={{
-                  top: menuStyle.top,
-                  left: menuStyle.left,
-                  minWidth: menuStyle.minWidth ?? 144,
-                }}
-              >
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={handleSwitchUser}
-                      className={`w-full text-left text-xs ${
-                        active
-                          ? 'text-green-700 dark:text-green-300'
-                          : 'text-gray-700 dark:text-gray-200'
-                      }`}
-                    >
-                      {switchUserLabel(userLocale || 'en')}
-                    </button>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={handleLogout}
-                      className={`w-full text-left text-xs ${
-                        active
-                          ? 'text-red-700 dark:text-red-300'
-                          : 'text-red-600 dark:text-red-400'
-                      }`}
-                    >
-                      {logoutLabel(userLocale || 'en')}
-                    </button>
-                  )}
-                </Menu.Item>
-              </Menu.Items>
-            </Transition>
-          </>
-        );
-      }}
-    </Menu>
-  );
+      {isOpen && (
+        <div
+          ref={dropdownRef}
+          className='fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] space-y-2 focus:outline-none'
+          style={{
+            top: menuStyle.top,
+            left: menuStyle.left,
+            minWidth: menuStyle.minWidth ?? 144,
+          }}
+          role='menu'
+        >
+          <button
+            onClick={handleSwitchUser}
+            className='w-full text-left text-xs text-gray-700 hover:text-green-700 dark:text-gray-200 dark:hover:text-green-300'
+          >
+            {switchUserLabel(userLocale || 'en')}
+          </button>
+          <button
+            onClick={handleLogout}
+            className='w-full text-left text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
+          >
+            {logoutLabel(userLocale || 'en')}
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null;
 }
