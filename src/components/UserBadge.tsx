@@ -2,7 +2,7 @@
 'use client';
 
 import { Menu, Transition } from '@headlessui/react';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -44,6 +44,12 @@ export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const { userLocale } = useUserLanguage();
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [menuStyle, setMenuStyle] = useState<{
+    top: number;
+    left: number;
+    minWidth?: number;
+  }>({ top: 0, left: 0 });
 
   useEffect(() => {
     const read = () => {
@@ -120,7 +126,32 @@ export default function UserBadge() {
 
   return (
     <Menu as='div' className='relative z-[99999]'>
-      <Menu.Button
+      {({ open }) => {
+        useLayoutEffect(() => {
+          if (!open || !buttonRef.current) return;
+          const updatePosition = () => {
+            if (!buttonRef.current) return;
+            const rect = buttonRef.current.getBoundingClientRect();
+            const minWidth = Math.max(rect.width + 16, 144);
+            setMenuStyle({
+              top: rect.bottom + window.scrollY + 6,
+              left: rect.right + window.scrollX - minWidth,
+              minWidth,
+            });
+          };
+          updatePosition();
+          window.addEventListener('resize', updatePosition);
+          window.addEventListener('scroll', updatePosition, true);
+          return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+          };
+        }, [open]);
+
+        return (
+          <>
+            <Menu.Button
+              ref={buttonRef}
         title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
         className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'
       >
@@ -133,48 +164,58 @@ export default function UserBadge() {
           )}
         </span>
         <span className='truncate hidden sm:inline'>{username}</span>
-      </Menu.Button>
+            </Menu.Button>
 
-      <Transition
-        as={Fragment}
-        enter='transition ease-out duration-150'
-        enterFrom='opacity-0 translate-y-1'
-        enterTo='opacity-100 translate-y-0'
-        leave='transition ease-in duration-100'
-        leaveFrom='opacity-100 translate-y-0'
-        leaveTo='opacity-0 translate-y-1'
-      >
-        <Menu.Items className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] min-w-[9rem] space-y-2 focus:outline-none'>
-          <Menu.Item>
-            {({ active }) => (
-              <button
-                onClick={handleSwitchUser}
-                className={`w-full text-left text-xs ${
-                  active
-                    ? 'text-green-700 dark:text-green-300'
-                    : 'text-gray-700 dark:text-gray-200'
-                }`}
+            <Transition
+              as={Fragment}
+              enter='transition ease-out duration-150'
+              enterFrom='opacity-0 translate-y-1'
+              enterTo='opacity-100 translate-y-0'
+              leave='transition ease-in duration-100'
+              leaveFrom='opacity-100 translate-y-0'
+              leaveTo='opacity-0 translate-y-1'
+            >
+              <Menu.Items
+                className='fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-[99999] space-y-2 focus:outline-none'
+                style={{
+                  top: menuStyle.top,
+                  left: menuStyle.left,
+                  minWidth: menuStyle.minWidth ?? 144,
+                }}
               >
-                {switchUserLabel(userLocale || 'en')}
-              </button>
-            )}
-          </Menu.Item>
-          <Menu.Item>
-            {({ active }) => (
-              <button
-                onClick={handleLogout}
-                className={`w-full text-left text-xs ${
-                  active
-                    ? 'text-red-700 dark:text-red-300'
-                    : 'text-red-600 dark:text-red-400'
-                }`}
-              >
-                {logoutLabel(userLocale || 'en')}
-              </button>
-            )}
-          </Menu.Item>
-        </Menu.Items>
-      </Transition>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={handleSwitchUser}
+                      className={`w-full text-left text-xs ${
+                        active
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {switchUserLabel(userLocale || 'en')}
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={handleLogout}
+                      className={`w-full text-left text-xs ${
+                        active
+                          ? 'text-red-700 dark:text-red-300'
+                          : 'text-red-600 dark:text-red-400'
+                      }`}
+                    >
+                      {logoutLabel(userLocale || 'en')}
+                    </button>
+                  )}
+                </Menu.Item>
+              </Menu.Items>
+            </Transition>
+          </>
+        );
+      }}
     </Menu>
   );
 }
