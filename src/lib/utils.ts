@@ -33,7 +33,14 @@ export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
   const proxyUrl = getImageProxyUrl();
-  if (!proxyUrl) return originalUrl;
+  if (!proxyUrl) {
+    // Default to built-in proxy to avoid hotlink blocks
+    if (originalUrl.startsWith('/api/image-proxy')) return originalUrl;
+    if (originalUrl.startsWith('http')) {
+      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+    }
+    return originalUrl;
+  }
 
   return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
 }
