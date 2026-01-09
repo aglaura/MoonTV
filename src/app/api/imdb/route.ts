@@ -28,6 +28,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // If IMDb redirects (e.g., invalid id) to a generic page, reject.
+    const finalUrl = response.url || targetUrl;
+    if (!finalUrl.includes(`/title/${imdbId}/`)) {
+      return NextResponse.json(
+        { error: 'IMDb did not return a title page for this id' },
+        { status: 404 }
+      );
+    }
+
     if (!response.ok) {
       return NextResponse.json(
         { error: `Failed to fetch IMDb page: ${response.status}` },
@@ -37,20 +46,19 @@ export async function GET(request: NextRequest) {
 
     const html = await response.text();
     const match = imdbTitleRegex.exec(html);
-    let title = match?.[1]?.trim() ?? '';
+    const rawTitle = match?.[1]?.trim() ?? '';
+    const cleaned = titleCleanupRegex.test(rawTitle)
+      ? rawTitle.replace(titleCleanupRegex, '').trim()
+      : rawTitle;
 
-    if (titleCleanupRegex.test(title)) {
-      title = title.replace(titleCleanupRegex, '').trim();
-    }
-
-    if (!title) {
+    if (!cleaned) {
       return NextResponse.json(
         { error: 'Unable to extract IMDb title' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ title });
+    return NextResponse.json({ title: cleaned });
   } catch (error) {
     return NextResponse.json(
       {

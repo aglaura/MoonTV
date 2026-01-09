@@ -28,7 +28,7 @@ export interface DoubanPageClientProps {
   };
 }
 
-function DoubanPageClient({
+function DoubanPageContent({
   initialData = [],
   initialSnapshot,
 }: DoubanPageClientProps) {
@@ -615,10 +615,10 @@ function DoubanPageClient({
   );
 }
 
-export default function DoubanPage() {
+export default function DoubanPageClient(props: DoubanPageClientProps) {
   return (
     <Suspense>
-      <DoubanPageClient />
+      <DoubanPageContent {...props} />
     </Suspense>
   );
 }

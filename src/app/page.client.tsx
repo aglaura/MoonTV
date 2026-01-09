@@ -28,6 +28,13 @@ import VideoCard from '@/components/VideoCard';
 
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
+type ImdbListItem = {
+  imdbId: string;
+  title: string;
+  year: string;
+  poster: string;
+};
+
 function resolveUiLocale(): UiLocale {
   try {
     const saved =
@@ -70,6 +77,7 @@ function HomeClient() {
   const [bangumiCalendarData, setBangumiCalendarData] = useState<
     BangumiCalendarData[]
   >([]);
+  const [imdbList, setImdbList] = useState<ImdbListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { announcement } = useSite();
@@ -127,6 +135,18 @@ function HomeClient() {
           Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
         );
         setBangumiCalendarData(bangumiCalendarData);
+
+        try {
+          const res = await fetch('/api/imdb/list', { cache: 'force-cache' });
+          if (res.ok) {
+            const data = (await res.json()) as { items?: ImdbListItem[] };
+            if (Array.isArray(data.items)) {
+              setImdbList(data.items);
+            }
+          }
+        } catch {
+          /* ignore imdb list errors */
+        }
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
         setError(true);
@@ -541,6 +561,44 @@ function HomeClient() {
                       ))}
                 </ScrollableRow>
               </section>
+
+              {imdbList.length > 0 && (
+                <section className='mb-12'>
+                  <div className='mb-4 flex items-center justify-between'>
+                    <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+                      IMDb Top Picks
+                    </h2>
+                    <Link
+                      href='https://www.imdb.com/chart/top'
+                      target='_blank'
+                      className='flex items-center text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    >
+                      {tt('See more', '查看更多', '查看更多')}
+                      <ChevronRight className='w-4 h-4 ml-1' />
+                    </Link>
+                  </div>
+                  <ScrollableRow>
+                    {imdbList.map((item) => (
+                      <div
+                        key={item.imdbId}
+                        className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
+                      >
+                        <VideoCard
+                          from='douban'
+                          title={item.title}
+                          poster={item.poster}
+                          rate=''
+                          year={item.year}
+                          type='movie'
+                          douban_id={undefined}
+                          query={item.title}
+                          source_name='IMDb'
+                        />
+                      </div>
+                    ))}
+                  </ScrollableRow>
+                </section>
+              )}
             </>
           )}
         </div>
