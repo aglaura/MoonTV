@@ -9,15 +9,15 @@ import { tt } from '@/lib/i18n.client';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
-type ImdbItem = {
-  imdbId: string;
+type TmdbItem = {
+  tmdbId: string;
   title: string;
   year: string;
   poster: string;
 };
 
 export default function ImdbPage() {
-  const [items, setItems] = useState<ImdbItem[]>([]);
+  const [items, setItems] = useState<TmdbItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,9 +27,9 @@ export default function ImdbPage() {
         setLoading(true);
         const res = await fetch('/api/imdb/list', { cache: 'force-cache' });
         if (!res.ok) {
-          throw new Error(`Failed to load IMDb list (${res.status})`);
+          throw new Error(`Failed to load TMDB list (${res.status})`);
         }
-        const data = (await res.json()) as { items?: ImdbItem[] };
+        const data = (await res.json()) as { items?: TmdbItem[] };
         setItems(Array.isArray(data.items) ? data.items : []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load');
@@ -46,22 +46,22 @@ export default function ImdbPage() {
         <div className='flex items-center justify-between mb-4'>
           <div>
             <h1 className='text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white'>
-              IMDb Top Picks
+              TMDB Most Popular
             </h1>
             <p className='text-sm text-gray-600 dark:text-gray-400'>
               {tt(
-                'Curated from IMDb charts. Tap a card to search all providers and play.',
-                '来自 IMDb 排行的精选，点击卡片会重新搜索来源播放。',
-                '來自 IMDb 排行的精選，點擊卡片會重新搜尋來源播放。'
+                'Most popular movies from The Movie Database. Tap a card to search all providers and play.',
+                '来自 TMDB 的热门电影，点击卡片会重新搜索来源播放。',
+                '來自 TMDB 的熱門電影，點擊卡片會重新搜尋來源播放。'
               )}
             </p>
           </div>
           <Link
-            href='https://www.imdb.com/chart/top'
+            href='https://www.themoviedb.org/movie?language=en-US&sort_by=popularity.desc'
             target='_blank'
             className='text-sm text-green-700 dark:text-green-400 hover:underline'
           >
-            IMDb Top 250
+            TMDB Popular
           </Link>
         </div>
 
@@ -88,14 +88,14 @@ export default function ImdbPage() {
           {!loading &&
             items.map((item) => (
               <VideoCard
-                key={item.imdbId}
+                key={item.tmdbId}
                 from='douban'
                 title={item.title}
                 poster={item.poster}
                 rate=''
                 year={item.year}
                 query={item.title}
-                source_name='IMDb'
+                source_name='TMDB'
               />
             ))}
         </div>

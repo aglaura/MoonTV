@@ -29,7 +29,7 @@ import VideoCard from '@/components/VideoCard';
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
 type ImdbListItem = {
-  imdbId: string;
+  tmdbId: string;
   title: string;
   year: string;
   poster: string;
@@ -316,7 +316,7 @@ function HomeClient() {
         hint: tt('Fresh episodes', '最新更新', '最新更新'),
       },
       imdb: {
-        label: 'IMDb',
+        label: 'TMDB',
         items: (imdbList || []).map(
           (item) =>
             ({
@@ -326,11 +326,12 @@ function HomeClient() {
               year: item.year,
               type: 'movie',
               query: item.title,
-              source_name: 'IMDb',
+              source_name: 'TMDB',
+              id: item.tmdbId,
             } as CardItem)
         ),
         seeMore: '/imdb',
-        hint: tt('Global top picks', '全球口碑榜', '全球口碑榜'),
+        hint: tt('Most popular movies', '热门电影', '熱門電影'),
       },
     };
   }, [animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
@@ -762,44 +763,44 @@ function HomeClient() {
                         douban_id: Number(show.id),
                         type: 'tv',
                       }))}
-                    />
-                    {imdbList.length > 0 && (
-                      <ContentRail
-                        title='IMDb Top Picks'
-                        href='/imdb'
-                        items={imdbList.map((item) => ({
-                          title: item.title,
-                          poster: item.poster,
-                          rate: '',
-                          year: item.year,
-                          query: item.title,
-                          source_name: 'IMDb',
-                          type: 'movie',
-                        }))}
-                      />
-                    )}
-                  </section>
-                </div>
-
-                {/* 侧栏 */}
-                <div className='hidden xl:flex flex-col gap-6'>
+                />
                 {imdbList.length > 0 && (
-                  <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
-                    <div className='flex items-center justify-between mb-3'>
-                        <h3 className='text-base font-semibold text-gray-900 dark:text-gray-100'>
-                          IMDb
-                        </h3>
-                        <Link
-                          href='/imdb'
-                          className='text-xs text-green-700 dark:text-green-400 hover:underline'
-                        >
+                  <ContentRail
+                    title='TMDB Popular'
+                    href='/imdb'
+                    items={imdbList.map((item) => ({
+                      title: item.title,
+                      poster: item.poster,
+                      rate: '',
+                      year: item.year,
+                      query: item.title,
+                      source_name: 'TMDB',
+                      type: 'movie',
+                    }))}
+                  />
+                )}
+              </section>
+            </div>
+
+            {/* 侧栏 */}
+            <div className='hidden xl:flex flex-col gap-6'>
+            {imdbList.length > 0 && (
+              <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
+                <div className='flex items-center justify-between mb-3'>
+                    <h3 className='text-base font-semibold text-gray-900 dark:text-gray-100'>
+                      TMDB
+                    </h3>
+                    <Link
+                      href='/imdb'
+                      className='text-xs text-green-700 dark:text-green-400 hover:underline'
+                    >
                           {tt('See more', '查看更多', '查看更多')}
                         </Link>
                       </div>
                       <div className='space-y-3'>
                         {imdbList.slice(0, 6).map((item, idx) => (
                           <Link
-                            key={`${item.imdbId}-${idx}`}
+                            key={`${item.tmdbId}-${idx}`}
                             href='/imdb'
                             className='flex gap-3 items-center group'
                           >

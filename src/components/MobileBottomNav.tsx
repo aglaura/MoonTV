@@ -43,12 +43,12 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
     },
-    {
-      icon: Sparkles,
-      label: 'IMDb',
-      href: '/imdb',
-    },
-  ];
+  {
+    icon: Sparkles,
+    label: 'TMDB',
+    href: '/imdb',
+  },
+];
 
   const isActive = (href: string) => {
     // 解码URL以进行正确的比较

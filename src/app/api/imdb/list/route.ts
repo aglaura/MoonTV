@@ -4,65 +4,44 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-static';
 export const revalidate = 3600; // cache for 1 hour
 
-// IMDb Top list endpoint. Uses __NEXT_DATA__ JSON to avoid brittle scraping.
-const TARGET_URL = 'https://www.imdb.com/chart/top';
+// TMDB "Most Popular" movies (page 1)
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
 
 export async function GET() {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'TMDB_API_KEY is not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
-    const response = await fetch(TARGET_URL, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      },
-      next: { revalidate: 3600 },
-    });
+    const url = `${TMDB_BASE}/movie/popular?api_key=${encodeURIComponent(
+      apiKey
+    )}&language=en-US&page=1`;
+    const response = await fetch(url, { next: { revalidate: 3600 } });
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: `Failed to fetch IMDb list: ${response.status}` },
+        { error: `Failed to fetch TMDB popular list: ${response.status}` },
         { status: 502 }
       );
     }
 
-    const html = await response.text();
-    const nextMatch = html.match(
-      /<script id="__NEXT_DATA__" type="application\/json">([^<]+)<\/script>/
-    );
+    const json = await response.json();
+    const results = Array.isArray(json?.results) ? json.results : [];
 
-    const items: Array<{ imdbId: string; title: string; year: string; poster: string }> = [];
-
-    if (nextMatch && nextMatch[1]) {
-      try {
-        const json = JSON.parse(nextMatch[1]);
-        const edges =
-          json?.props?.pageProps?.pageData?.chartTitles?.edges ||
-          json?.props?.pageProps?.pageData?.chartTitles ||
-          [];
-        for (const edge of edges) {
-          const node = edge?.node ?? edge;
-          const imdbId: string | undefined = node?.id;
-          const title: string | undefined =
-            node?.originalTitleText?.text || node?.titleText?.text;
-          const poster: string | undefined = node?.primaryImage?.url;
-          const year: string | undefined =
-            node?.releaseYear?.year?.toString() ||
-            node?.releaseYear?.endYear?.toString() ||
-            '';
-          if (!imdbId || !title) continue;
-          items.push({
-            imdbId,
-            title: title.trim(),
-            year: year ?? '',
-            poster: poster?.trim() ?? '',
-          });
-          if (items.length >= 50) break;
-        }
-      } catch {
-        // ignore parse errors
-      }
-    }
+    const items = results
+      .map((item: any) => ({
+        tmdbId: `tmdb:${item?.id ?? ''}`,
+        title: (item?.title || item?.original_title || '').trim(),
+        year: (item?.release_date || '').toString().slice(0, 4),
+        poster: item?.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : '',
+      }))
+      .filter((item: any) => item.tmdbId && item.title)
+      .slice(0, 50);
 
     return NextResponse.json(
       { items },
@@ -75,7 +54,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       {
-        error: 'Unexpected error fetching IMDb list',
+        error: 'Unexpected error fetching TMDB list',
         details: error instanceof Error ? error.message : String(error),
       },
       { status: 500 }

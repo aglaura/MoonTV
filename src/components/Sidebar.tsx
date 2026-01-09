@@ -152,13 +152,13 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       ),
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
-    },
-    {
-      icon: Sparkles,
-      label: 'IMDb',
-      href: '/imdb',
-    },
-  ];
+  },
+  {
+    icon: Sparkles,
+    label: 'TMDB',
+    href: '/imdb',
+  },
+];
 
   return (
     <SidebarContext.Provider value={contextValue}>
