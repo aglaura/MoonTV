@@ -1,7 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps, simple-import-sort/imports */
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Menu, Transition } from '@headlessui/react';
+import { Fragment, useEffect, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -42,10 +43,7 @@ const switchUserLabel = (locale: string) => {
 export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [showLogout, setShowLogout] = useState(false);
   const { userLocale } = useUserLanguage();
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const read = () => {
@@ -118,71 +116,65 @@ export default function UserBadge() {
     window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
   };
 
-  const toggleMenu = () => setShowLogout((prev) => !prev);
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      toggleMenu();
-    }
-    if (e.key === 'Escape') {
-      setShowLogout(false);
-    }
-  };
-
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      const inMenu =
-        (dropdownRef.current && dropdownRef.current.contains(target)) ||
-        (wrapperRef.current && wrapperRef.current.contains(target));
-      if (!inMenu) setShowLogout(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    return () => document.removeEventListener('pointerdown', onPointerDown);
-  }, []);
-
   if (!username) return null;
 
   return (
-    <div
-      ref={wrapperRef}
-      className='relative max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none'
-      title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
-      tabIndex={0}
-      onClick={toggleMenu}
-      onKeyDown={handleKeyDown}
-      aria-expanded={showLogout}
-      role='button'
-    >
-      <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt={username} className='w-full h-full object-cover' />
-        ) : (
-          username.charAt(0).toUpperCase()
-        )}
-      </span>
-      <span className='truncate hidden sm:inline'>{username}</span>
-      {showLogout && (
-        <div
-          ref={dropdownRef}
-          className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[8rem] space-y-2'
-        >
-          <button
-            onClick={handleSwitchUser}
-            className='w-full text-left text-xs text-gray-700 hover:text-green-600 dark:text-gray-200 dark:hover:text-green-400'
-          >
-            {switchUserLabel(userLocale || 'en')}
-          </button>
-          <button
-            onClick={handleLogout}
-            className='w-full text-left text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
-          >
-            {logoutLabel(userLocale || 'en')}
-          </button>
-        </div>
-      )}
-    </div>
+    <Menu as='div' className='relative'>
+      <Menu.Button
+        title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
+        className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1'
+      >
+        <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt={username} className='w-full h-full object-cover' />
+          ) : (
+            username.charAt(0).toUpperCase()
+          )}
+        </span>
+        <span className='truncate hidden sm:inline'>{username}</span>
+      </Menu.Button>
+
+      <Transition
+        as={Fragment}
+        enter='transition ease-out duration-150'
+        enterFrom='opacity-0 translate-y-1'
+        enterTo='opacity-100 translate-y-0'
+        leave='transition ease-in duration-100'
+        leaveFrom='opacity-100 translate-y-0'
+        leaveTo='opacity-0 translate-y-1'
+      >
+        <Menu.Items className='absolute top-full right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-2 py-2 z-50 min-w-[9rem] space-y-2 focus:outline-none'>
+          <Menu.Item>
+            {({ active }) => (
+              <button
+                onClick={handleSwitchUser}
+                className={`w-full text-left text-xs ${
+                  active
+                    ? 'text-green-700 dark:text-green-300'
+                    : 'text-gray-700 dark:text-gray-200'
+                }`}
+              >
+                {switchUserLabel(userLocale || 'en')}
+              </button>
+            )}
+          </Menu.Item>
+          <Menu.Item>
+            {({ active }) => (
+              <button
+                onClick={handleLogout}
+                className={`w-full text-left text-xs ${
+                  active
+                    ? 'text-red-700 dark:text-red-300'
+                    : 'text-red-600 dark:text-red-400'
+                }`}
+              >
+                {logoutLabel(userLocale || 'en')}
+              </button>
+            )}
+          </Menu.Item>
+        </Menu.Items>
+      </Transition>
+    </Menu>
   );
 }
