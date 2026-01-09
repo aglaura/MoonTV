@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line simple-import-sort/imports
-import { Clover, Film, Home, Menu, Search, Sparkles, Tv } from 'lucide-react';
+import { Film, Home, Menu, Search, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -52,6 +52,13 @@ declare global {
     __sidebarCollapsed?: boolean;
   }
 }
+
+type NavItem = {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  href: string;
+  matchTypes?: string[];
+};
 
 const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const { userLocale } = useUserLanguage();
@@ -135,26 +142,21 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     isCollapsed,
   };
 
-  const menuItems = [
+  const menuItems: NavItem[] = [
     {
       icon: Film,
-      label: t('Movies', '电影', '電影'),
+      label: t(
+        'Movies · TV · Variety · Anime',
+        '电影 · 电视剧 · 综艺 · 动漫',
+        '電影 · 電視劇 · 綜藝 · 動漫',
+      ),
       href: '/douban?type=movie',
-    },
-    {
-      icon: Tv,
-      label: t('TV Shows', '电视剧', '電視劇'),
-      href: '/douban?type=tv',
-    },
-    {
-      icon: Clover,
-      label: t('Variety', '综艺', '綜藝'),
-      href: '/douban?type=show',
+      matchTypes: ['movie', 'tv', 'show', 'anime'],
     },
     {
       icon: Sparkles,
-      label: t('Anime', '动漫', '動漫'),
-      href: '/douban?type=anime',
+      label: 'IMDb',
+      href: '/imdb',
     },
   ];
 
@@ -240,20 +242,16 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
             <div className='flex-1 overflow-y-auto px-2 pt-4'>
               <div className='space-y-1'>
                 {menuItems.map((item) => {
-                  // 检查当前路径是否匹配这个菜单项
-                  const typeMatch = item.href.match(/type=([^&]+)/)?.[1];
-                  const tagMatch = item.href.match(/tag=([^&]+)/)?.[1];
-
                   // 解码URL以进行正确的比较
                   const decodedActive = decodeURIComponent(active);
                   const decodedItemHref = decodeURIComponent(item.href);
+                  const activeType = decodedActive.match(/type=([^&]+)/)?.[1];
 
                   const isActive =
                     decodedActive === decodedItemHref ||
-                    (decodedActive.startsWith('/douban') &&
-                      decodedActive.includes(`type=${typeMatch}`) &&
-                      tagMatch &&
-                      decodedActive.includes(`tag=${tagMatch}`));
+                    (!!activeType &&
+                      item.matchTypes?.some((t) => decodedActive.includes(`type=${t}`)));
+
                   const Icon = item.icon;
                   return (
                     <Link
