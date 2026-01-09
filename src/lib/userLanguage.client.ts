@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
+import { getAuthInfoFromBrowserCookie } from './auth';
 
 const normalizeLocale = (raw?: string | null): string => {
   const val = (raw || '').toLowerCase();
@@ -20,13 +22,26 @@ interface ErrorData {
   error?: string;
 }
 
-// Client-side hook for managing user language preferences
+const getStorageKey = (username?: string | null) =>
+  username && username.trim().length > 0
+    ? `userLocale:${username.trim()}`
+    : 'userLocale';
+
+// Client-side hook for managing user language preferences (per-user)
 export function useUserLanguage() {
+  const username = useMemo(() => {
+    try {
+      return getAuthInfoFromBrowserCookie()?.username || null;
+    } catch {
+      return null;
+    }
+  }, []);
+  const storageKey = useMemo(() => getStorageKey(username), [username]);
   const [userLocale, setUserLocale] = useState<string | null>(() => {
     try {
       const saved =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem('userLocale')
+          ? window.localStorage.getItem(storageKey)
           : null;
       if (saved) return normalizeLocale(saved);
       if (typeof navigator !== 'undefined') {
@@ -48,7 +63,7 @@ export function useUserLanguage() {
 
         // Prefer locally saved locale first (works even before login)
         try {
-          const savedLocale = localStorage.getItem('userLocale');
+          const savedLocale = localStorage.getItem(storageKey);
           if (savedLocale) {
               const normalized = normalizeLocale(savedLocale);
               setUserLocale(normalized);
@@ -59,7 +74,6 @@ export function useUserLanguage() {
           // ignore localStorage failures
         }
 
-        // Use a named variable for the URL for better readability
         const response = await fetch('/api/change-language');
 
         // Not logged in: keep local/previous selection without showing errors
@@ -81,7 +95,7 @@ export function useUserLanguage() {
     };
 
     loadUserLanguage();
-  }, []);
+  }, [storageKey]);
 
   // Function to change user's language preference
   const changeLanguage = async (locale: string) => {
@@ -99,7 +113,7 @@ export function useUserLanguage() {
       // Not logged in: fall back to local selection
       if (response.status === 401) {
         setUserLocale(normalizeLocale(locale));
-        localStorage.setItem('userLocale', locale);
+        localStorage.setItem(storageKey, locale);
         window.location.reload();
         return;
       }
@@ -113,7 +127,7 @@ export function useUserLanguage() {
       setUserLocale(normalizeLocale(locale));
       
       // Persist the language preference locally
-      localStorage.setItem('userLocale', locale);
+      localStorage.setItem(storageKey, locale);
       
       // Reload the page to apply the new locale
       // This is needed because next-intl uses server-side locale detection
@@ -126,11 +140,11 @@ export function useUserLanguage() {
 
   // Check localStorage for a saved preference on initial load
   useEffect(() => {
-    const savedLocale = localStorage.getItem('userLocale');
+    const savedLocale = localStorage.getItem(storageKey);
     if (savedLocale) {
       setUserLocale(normalizeLocale(savedLocale));
     }
-  }, []);
+  }, [storageKey]);
 
   return {
     userLocale,
