@@ -19,7 +19,7 @@ import DoubanSelector from '@/components/DoubanSelector';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 
-interface DoubanPageClientProps {
+export interface DoubanPageClientProps {
   initialData?: DoubanItem[];
   initialSnapshot?: {
     type: string;

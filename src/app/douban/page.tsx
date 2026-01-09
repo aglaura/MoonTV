@@ -1,3 +1,5 @@
+import { DoubanItem } from '@/lib/types';
+
 import DoubanPageClient from './page.client';
 
 export const revalidate = 600;
@@ -24,7 +26,7 @@ async function fetchInitialList(params: {
   kind: 'tv' | 'movie';
   category: string;
   type: string;
-}) {
+}): Promise<DoubanItem[] | null> {
   const qs = new URLSearchParams({
     kind: params.kind,
     category: params.category,
@@ -51,7 +53,10 @@ export default async function DoubanPage({
   const initialParams = buildInitialParams(type);
 
   const initialData =
-    initialParams && (await fetchInitialList(initialParams as { kind: 'tv' | 'movie'; category: string; type: string }));
+    initialParams &&
+    (await fetchInitialList(
+      initialParams as { kind: 'tv' | 'movie'; category: string; type: string }
+    ));
 
   return (
     <DoubanPageClient
