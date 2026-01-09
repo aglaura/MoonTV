@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { tt } from '@/lib/i18n.client';
 import { convertToTraditional } from '@/lib/locale';
@@ -16,6 +16,7 @@ function HomeClient() {
   const { announcement } = useSite();
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && announcement) {
@@ -33,6 +34,154 @@ function HomeClient() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const initializedHistoryRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || initializedHistoryRef.current) return;
+    initializedHistoryRef.current = true;
+    try {
+      const stored = localStorage.getItem('searchHistory');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSearchHistory(parsed.filter((v) => typeof v === 'string'));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveHistory = useCallback((terms: string[]) => {
+    setSearchHistory(terms);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('searchHistory', JSON.stringify(terms));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const addToHistory = useCallback(
+    (term: string) => {
+      const cleaned = term.trim();
+      if (!cleaned) return;
+      setSearchHistory((prev) => {
+        const next = [cleaned, ...prev.filter((item) => item !== cleaned)].slice(
+          0,
+          10
+        );
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('searchHistory', JSON.stringify(next));
+          } catch {
+            /* ignore */
+          }
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const runSearch = useCallback(
+    async (input: string) => {
+      const trimmed = input.trim();
+      const originalQuery = trimmed;
+      if (!trimmed) {
+        setSearchResults([]);
+        setHasSearched(false);
+        setSearchError(null);
+        return;
+      }
+
+      const isLikelyEnglish = Array.from(trimmed).every((ch) => {
+        const code = ch.charCodeAt(0);
+        return (
+          (code >= 32 && code <= 127) ||
+          ch === '\n' ||
+          ch === '\r' ||
+          ch === '\t'
+        );
+      });
+
+      const performSearch = async () => {
+        const searchOnce = async (query: string) => {
+          const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+          if (!response.ok) {
+            throw new Error(
+              tt(
+                `Search failed (${response.status})`,
+                `搜索失败 (${response.status})`,
+                `搜尋失敗 (${response.status})`
+              )
+            );
+          }
+          const data = (await response.json()) as {
+            results?: SearchResult[];
+          };
+          return data.results ?? [];
+        };
+
+        const dedupe = (items: SearchResult[]) => {
+          const seen = new Set<string>();
+          return items.filter((item) => {
+            const key = `${item.source}-${item.id}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        };
+
+        try {
+          setSearching(true);
+          setSearchError(null);
+          const primaryResults = await searchOnce(trimmed);
+          let combinedResults = primaryResults;
+
+          if (isLikelyEnglish) {
+            let converted = trimmed;
+            try {
+              const response = await fetch(
+                `/api/title-convert?title=${encodeURIComponent(originalQuery)}`
+              );
+              if (response.ok) {
+                const data = await response.json();
+                if (data.title) {
+                  converted = data.title;
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to convert English title to Chinese:', error);
+            }
+
+            if (converted !== trimmed) {
+              const translatedResults = await searchOnce(converted);
+              combinedResults = dedupe([...primaryResults, ...translatedResults]);
+            }
+          }
+
+          setSearchResults(combinedResults);
+          setHasSearched(true);
+          addToHistory(originalQuery);
+        } catch (err) {
+          setSearchError(
+            err instanceof Error
+              ? err.message
+              : tt('Search failed', '搜索失败', '搜尋失敗')
+          );
+          setSearchResults([]);
+          setHasSearched(true);
+        } finally {
+          setSearching(false);
+        }
+      };
+
+      void performSearch();
+    },
+    [addToHistory, tt]
+  );
 
   const handleCloseAnnouncement = (announcement: string) => {
     setShowAnnouncement(false);
@@ -124,108 +273,7 @@ function HomeClient() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              const trimmed = searchQuery.trim();
-              const originalQuery = trimmed;
-              if (!trimmed) {
-                setSearchResults([]);
-                setHasSearched(false);
-                setSearchError(null);
-                return;
-              }
-
-              // Check if the query looks like an English title (mostly ASCII characters)
-              // Avoid control characters in regex to satisfy ESLint/no-control-regex.
-              const isLikelyEnglish = Array.from(trimmed).every((ch) => {
-                const code = ch.charCodeAt(0);
-                // treat printable ASCII (space .. DEL) and common whitespace as English
-                return (
-                  (code >= 32 && code <= 127) ||
-                  ch === '\n' ||
-                  ch === '\r' ||
-                  ch === '\t'
-                );
-              });
-
-              const performSearch = async () => {
-                const searchOnce = async (query: string) => {
-                  const response = await fetch(
-                    `/api/search?q=${encodeURIComponent(query)}`
-                  );
-                  if (!response.ok) {
-                    throw new Error(
-                      tt(
-                        `Search failed (${response.status})`,
-                        `搜索失败 (${response.status})`,
-                        `搜尋失敗 (${response.status})`
-                      )
-                    );
-                  }
-                  const data = (await response.json()) as {
-                    results?: SearchResult[];
-                  };
-                  return data.results ?? [];
-                };
-
-                const dedupe = (items: SearchResult[]) => {
-                  const seen = new Set<string>();
-                  return items.filter((item) => {
-                    const key = `${item.source}-${item.id}`;
-                    if (seen.has(key)) return false;
-                    seen.add(key);
-                    return true;
-                  });
-                };
-
-                try {
-                  setSearching(true);
-                  setSearchError(null);
-                  const primaryResults = await searchOnce(trimmed);
-                  let combinedResults = primaryResults;
-
-                  if (isLikelyEnglish) {
-                    let converted = trimmed;
-                    try {
-                      const response = await fetch(
-                        `/api/title-convert?title=${encodeURIComponent(originalQuery)}`
-                      );
-                      if (response.ok) {
-                        const data = await response.json();
-                        if (data.title) {
-                          converted = data.title;
-                        }
-                      }
-                    } catch (error) {
-                      console.warn(
-                        'Failed to convert English title to Chinese:',
-                        error
-                      );
-                    }
-
-                    if (converted !== trimmed) {
-                      const translatedResults = await searchOnce(converted);
-                      combinedResults = dedupe([
-                        ...primaryResults,
-                        ...translatedResults,
-                      ]);
-                    }
-                  }
-
-                  setSearchResults(combinedResults);
-                  setHasSearched(true);
-                } catch (err) {
-                  setSearchError(
-                    err instanceof Error
-                      ? err.message
-                      : tt('Search failed', '搜索失败', '搜尋失敗')
-                  );
-                  setSearchResults([]);
-                  setHasSearched(true);
-                } finally {
-                  setSearching(false);
-                }
-              };
-
-              void performSearch();
+              void runSearch(searchQuery);
             }}
             className='max-w-3xl mx-auto'
           >
@@ -267,6 +315,32 @@ function HomeClient() {
               </div>
             </div>
           </form>
+
+          {searchHistory.length > 0 && (
+            <div className='mt-3 max-w-3xl mx-auto flex items-center flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300'>
+              <span className='text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400'>
+                {tt('Recent', '最近', '最近')}
+              </span>
+              {searchHistory.map((term) => (
+                <button
+                  key={term}
+                  className='px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/15 transition-colors'
+                  onClick={() => {
+                    setSearchQuery(term);
+                    void runSearch(term);
+                  }}
+                >
+                  {term}
+                </button>
+              ))}
+              <button
+                className='ml-auto text-[11px] text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400'
+                onClick={() => saveHistory([])}
+              >
+                {tt('Clear', '清空', '清空')}
+              </button>
+            </div>
+          )}
 
           <div className='mt-6'>
             {searchError && (
