@@ -645,6 +645,12 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                   scope='col'
                   className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
                 >
+                  {tt('Group', '组别', '組別')}
+                </th>
+                <th
+                  scope='col'
+                  className='px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider'
+                >
                   {tt('Status', '状态', '狀態')}
                 </th>
                 <th
@@ -727,6 +733,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                               : user.role === 'admin'
                               ? tt('Admin', '管理员', '管理員')
                               : tt('User', '普通用户', '一般用戶')}
+                          </span>
+                        </td>
+                        <td className='px-6 py-4 whitespace-nowrap'>
+                          <span className='px-2 py-1 text-xs rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'>
+                            {user.group === 'guest'
+                              ? tt('Guest', '访客', '訪客')
+                              : tt('Family', '家庭', '家庭')}
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
