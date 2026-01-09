@@ -17,6 +17,18 @@ const STORAGE_TYPE =
 export async function POST(req: NextRequest) {
   try {
     const sharedPasswords = getSharedPasswords();
+    const { username, password, group } = (await req.json()) as {
+      username?: string;
+      password?: string;
+      group?: 'family' | 'guest';
+    };
+
+    if (group !== 'family' && group !== 'guest') {
+      return NextResponse.json({ error: '缺少或不合法的组别' }, { status: 400 });
+    }
+
+    const expectedPassword =
+      group === 'guest' ? process.env.PASSWORD2 : process.env.PASSWORD;
 
     // 本地 / localStorage 模式——仅校验固定密码
     if (STORAGE_TYPE === 'localstorage') {
@@ -38,12 +50,18 @@ export async function POST(req: NextRequest) {
         return response;
       }
 
-      const { password } = await req.json();
       if (typeof password !== 'string') {
         return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
       }
 
-      if (!sharedPasswords.includes(password)) {
+      if (!expectedPassword) {
+        return NextResponse.json(
+          { ok: false, error: '服務器未設定對應組別密碼' },
+          { status: 500 }
+        );
+      }
+
+      if (password !== expectedPassword) {
         return NextResponse.json(
           { ok: false, error: '密码错误' },
           { status: 401 }
@@ -68,11 +86,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 数据库 / redis 模式——共享密码，登录后再选择用户
-    const { username, password } = (await req.json()) as {
-      username?: string;
-      password?: string;
-    };
-
     if (!password || typeof password !== 'string') {
       return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
     }
@@ -84,9 +97,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const matchedPassword = sharedPasswords.find(
-      (secret) => secret === password
-    );
+    if (!expectedPassword) {
+      return NextResponse.json(
+        { error: '服務器未設定對應組別密碼' },
+        { status: 500 }
+      );
+    }
+
+    const matchedPassword = password === expectedPassword ? password : null;
 
     if (!matchedPassword) {
       return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
@@ -94,7 +112,7 @@ export async function POST(req: NextRequest) {
 
     if (!username || typeof username !== 'string') {
       const response = NextResponse.json({ ok: true, requiresSelection: true });
-      const cookieValue = await generateAuthCookie(undefined, password, true);
+      const cookieValue = await generateAuthCookie(undefined, matchedPassword, true);
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
 

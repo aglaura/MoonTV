@@ -37,9 +37,28 @@ export async function POST(req: NextRequest) {
     const targetUser = config.UserConfig.Users.find(
       (u) => u.username === username
     );
+    const targetGroup =
+      targetUser?.group === 'guest'
+        ? 'guest'
+        : username === 'guest'
+        ? 'guest'
+        : 'family';
+    const expectedPassword =
+      targetGroup === 'guest' ? process.env.PASSWORD2 : process.env.PASSWORD;
+
+    if (!expectedPassword) {
+      return NextResponse.json(
+        { error: '服務器未設定對應組別密碼' },
+        { status: 500 }
+      );
+    }
 
     if (targetUser && targetUser.banned) {
       return NextResponse.json({ error: '用户被封禁' }, { status: 401 });
+    }
+
+    if (matchedPassword !== expectedPassword) {
+      return NextResponse.json({ error: '用户名或密码错误' }, { status: 401 });
     }
 
     await ensureAdminUser(username, config);
