@@ -140,11 +140,17 @@ function LoginPageClient() {
     if (availableUsers.length === 0) return;
     if (username && username.trim().length > 0) return;
     setUsername(availableUsers[0]);
+    setStage('password');
   }, [availableUsers, requiresSelection, username, group]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
+
+      if (stage === 'group') {
+        setStage('password');
+        return;
+      }
 
       if (!password) {
         setError(
@@ -232,7 +238,7 @@ function LoginPageClient() {
         setLoading(false);
       }
     },
-    [password, group, router, searchParams, storageRequiresSelection]
+    [password, group, router, searchParams, storageRequiresSelection, stage]
   );
 
   const handleUserSelect = useCallback(
@@ -362,25 +368,13 @@ function LoginPageClient() {
           })}
         </div>
         {stage === 'group' && (
-          <>
-            <div className='text-sm text-gray-600 dark:text-gray-300 mb-3'>
-              {tt(
-                'Select a group to continue.',
-                '请选择组别后再继续。',
-                '請先選擇組別後再繼續。'
-              )}
-            </div>
-            <button
-              type='button'
-              onClick={() => {
-                setError(null);
-                setStage('password');
-              }}
-              className='w-full rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700'
-            >
-              {tt('Continue', '继续', '繼續')}
-            </button>
-          </>
+          <div className='text-sm text-gray-600 dark:text-gray-300 mb-3'>
+            {tt(
+              'Select a group to continue.',
+              '请选择组别后再继续。',
+              '請先選擇組別後再繼續。'
+            )}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className='space-y-6'>
