@@ -20,15 +20,18 @@ export async function POST(req: NextRequest) {
     const { username, password, group } = (await req.json()) as {
       username?: string;
       password?: string;
-      group?: 'family' | 'guest';
+      group?: string;
     };
 
-    if (group !== 'family' && group !== 'guest') {
-      return NextResponse.json({ error: '缺少或不合法的组别' }, { status: 400 });
-    }
+    const normalizedGroup =
+      typeof group === 'string' && group.trim().length > 0
+        ? group.trim()
+        : 'family';
 
     const expectedPassword =
-      group === 'guest' ? process.env.PASSWORD2 : process.env.PASSWORD;
+      normalizedGroup === 'guest'
+        ? process.env.PASSWORD2
+        : process.env.PASSWORD;
 
     // 本地 / localStorage 模式——仅校验固定密码
     if (STORAGE_TYPE === 'localstorage') {

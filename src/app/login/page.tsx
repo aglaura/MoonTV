@@ -51,7 +51,7 @@ function LoginPageClient() {
   const searchParams = useSearchParams();
   const { siteName } = useSite();
 
-  const [group, setGroup] = useState<'family' | 'guest'>('family');
+  const [group, setGroup] = useState<string>('family');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +67,7 @@ function LoginPageClient() {
   const [autoSelectPending, setAutoSelectPending] = useState(false);
   const [stage, setStage] = useState<'group' | 'password'>('group');
   const passwordRef = useRef<HTMLInputElement | null>(null);
+  const [groupOptions, setGroupOptions] = useState<string[]>(['family', 'guest']);
 
   useEffect(() => {
     // Changing group resets selection flow
@@ -82,6 +83,36 @@ function LoginPageClient() {
       setUsername('');
     }
   }, [group]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadGroups = async () => {
+      try {
+        const resp = await fetch('/api/users', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const groups =
+          Array.isArray(data?.users) && data.users.length > 0
+            ? data.users
+                .map(
+                  (u: { group?: string }) =>
+                    (typeof u?.group === 'string' && u.group.trim()) || ''
+                )
+                .filter(Boolean)
+            : [];
+        const merged = Array.from(
+          new Set(['family', 'guest', ...groups].filter(Boolean))
+        );
+        if (!cancelled) setGroupOptions(merged);
+      } catch {
+        // ignore
+      }
+    };
+    loadGroups();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!requiresSelection) return;
@@ -356,16 +387,18 @@ function LoginPageClient() {
             role='radiogroup'
             aria-label={tt('Choose group', '选择组别', '選擇組別')}
           >
-            {(['family', 'guest'] as const).map((key) => {
+            {groupOptions.map((key) => {
               const active = group === key;
               const label =
-                key === 'family'
+                key === 'guest'
+                  ? tt('Guest group', '访客组', '訪客組')
+                  : key === 'family'
                   ? tt('Family group', '家庭组', '家庭組')
-                  : tt('Guest group', '访客组', '訪客組');
+                  : key;
               const desc =
-                key === 'family'
-                  ? tt('PASSWORD', '使用 PASSWORD', '使用 PASSWORD')
-                  : tt('PASSWORD2', '使用 PASSWORD2', '使用 PASSWORD2');
+                key === 'guest'
+                  ? tt('PASSWORD2', '使用 PASSWORD2', '使用 PASSWORD2')
+                  : tt('PASSWORD', '使用 PASSWORD', '使用 PASSWORD');
               return (
                 <button
                   key={key}
@@ -392,7 +425,7 @@ function LoginPageClient() {
                         : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'
                     }`}
                   >
-                    {key === 'family' ? 'F' : 'G'}
+                    {(key || '?').charAt(0).toUpperCase()}
                   </span>
                   <span className='text-base leading-tight text-center'>
                     {label}

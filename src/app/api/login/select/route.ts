@@ -37,14 +37,14 @@ export async function POST(req: NextRequest) {
     const targetUser = config.UserConfig.Users.find(
       (u) => u.username === username
     );
-    const targetGroup =
-      targetUser?.group === 'guest'
-        ? 'guest'
+    const normalizedGroup =
+      typeof targetUser?.group === 'string' && targetUser.group.trim().length > 0
+        ? targetUser.group.trim()
         : username === 'guest'
         ? 'guest'
         : 'family';
     const expectedPassword =
-      targetGroup === 'guest' ? process.env.PASSWORD2 : process.env.PASSWORD;
+      normalizedGroup === 'guest' ? process.env.PASSWORD2 : process.env.PASSWORD;
 
     if (!expectedPassword) {
       return NextResponse.json(

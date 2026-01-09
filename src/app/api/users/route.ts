@@ -15,7 +15,7 @@ export async function GET() {
     username: string;
     role: 'owner';
     avatar?: string;
-    group?: 'family' | 'guest';
+    group?: string;
   }> = ownerUser
     ? [{ username: ownerUser, role: 'owner', group: 'family' }]
     : [];
@@ -37,13 +37,16 @@ export async function GET() {
       username: string;
       role: 'user' | 'admin' | 'owner';
       avatar?: string;
-      group?: 'family' | 'guest';
+      group?: string;
     }> =
       config.UserConfig.Users?.map((user) => ({
         username: user.username,
         role: (user.role as 'user' | 'admin' | 'owner') ?? 'user',
         avatar: user.avatar,
-        group: user.group === 'guest' ? 'guest' : 'family',
+        group:
+          typeof user.group === 'string' && user.group.trim().length > 0
+            ? user.group.trim()
+            : 'family',
       })) ?? [];
 
     fallbackOwner.forEach((owner) => {

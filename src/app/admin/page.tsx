@@ -393,7 +393,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     targetUsername: string,
     targetPassword?: string,
     avatar?: string,
-    group?: 'family' | 'guest'
+    group?: string
   ) => {
     try {
       const res = await fetch('/api/admin/user', {
@@ -697,6 +697,19 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                       role === 'owner' ||
                       user.username === currentUsername ||
                       (role === 'admin' && user.role === 'user');
+                    const groupOptions = Array.from(
+                      new Set(
+                        (config?.UserConfig?.Users || [])
+                          .map((u) =>
+                            typeof (u as any)?.group === 'string' &&
+                            (u as any).group?.trim()
+                              ? (u as any).group.trim()
+                              : ''
+                          )
+                          .concat(['family', 'guest'])
+                          .filter((g) => g && g.length > 0)
+                      )
+                    );
                     return (
                       <tr
                         key={user.username}
@@ -737,26 +750,28 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
-                          <select
-                            className='px-2 py-1 text-xs rounded-full border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-                            value={((user as any)?.group || 'family') === 'guest' ? 'guest' : 'family'}
-                            onChange={(e) =>
-                              handleUserAction(
-                                'setGroup',
-                                user.username,
-                                undefined,
-                                undefined,
-                                e.target.value === 'guest' ? 'guest' : 'family'
-                              )
-                            }
-                          >
-                            <option value='family'>
-                              {tt('Family', '家庭', '家庭')}
-                            </option>
-                            <option value='guest'>
-                              {tt('Guest', '访客', '訪客')}
-                            </option>
-                          </select>
+                          <div className='flex items-center gap-2'>
+                            <input
+                              type='text'
+                              list={`group-options-${user.username}`}
+                              defaultValue={(user as any)?.group || 'family'}
+                              onBlur={(e) =>
+                                handleUserAction(
+                                  'setGroup',
+                                  user.username,
+                                  undefined,
+                                  undefined,
+                                  e.target.value?.trim() || 'family'
+                                )
+                              }
+                              className='px-2 py-1 text-xs rounded-md border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 focus:outline-none focus:ring-2 focus:ring-green-500'
+                            />
+                            <datalist id={`group-options-${user.username}`}>
+                              {groupOptions.map((opt) => (
+                                <option key={opt} value={opt} />
+                              ))}
+                            </datalist>
+                          </div>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <span

@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       targetUsername?: string;
       allowRegister?: boolean;
       avatar?: string;
-      group?: 'family' | 'guest';
+      group?: string;
       action?: (typeof ACTIONS)[number];
     };
 
@@ -134,10 +134,14 @@ export async function POST(request: NextRequest) {
           }
           await storage.registerUser(targetUsername!, sharedPassword);
           // 更新配置
+          const normalizedGroup =
+            typeof group === 'string' && group.trim().length > 0
+              ? group.trim()
+              : 'family';
           adminConfig.UserConfig.Users.push({
             username: targetUsername!,
             role: 'user',
-            group: group === 'guest' ? 'guest' : 'family',
+            group: normalizedGroup,
           });
           targetEntry =
             adminConfig.UserConfig.Users[
@@ -164,13 +168,10 @@ export async function POST(request: NextRequest) {
               { status: 401 }
             );
           }
-          if (group !== 'guest' && group !== 'family') {
-            return NextResponse.json(
-              { error: '组别参数错误' },
-              { status: 400 }
-            );
-          }
-          const normalizedGroup = group === 'guest' ? 'guest' : 'family';
+          const normalizedGroup =
+            typeof group === 'string' && group.trim().length > 0
+              ? group.trim()
+              : 'family';
           targetEntry.group = normalizedGroup;
           break;
         }

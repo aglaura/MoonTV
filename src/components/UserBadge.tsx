@@ -49,7 +49,7 @@ const tt = (en: string, zhHans: string, zhHant: string, locale: string) => {
 type SimpleUser = {
   username: string;
   avatar?: string | null;
-  group: 'family' | 'guest';
+  group?: string | null;
 };
 
 export default function UserBadge() {
@@ -99,7 +99,11 @@ export default function UserBadge() {
             return {
               username: (u?.username || '').trim(),
               avatar: avatarValue,
-              group: u?.group === 'guest' ? 'guest' : 'family',
+              group:
+                typeof (u as any)?.group === 'string' &&
+                (u as any)?.group?.trim()?.length > 0
+                  ? (u as any).group.trim()
+                  : 'family',
             };
           })
           .filter((u: SimpleUser) => u.username.length > 0);

@@ -38,7 +38,7 @@ type NormalizedConfigUser = {
 type BasicConfigUser = {
   username: string;
   role: 'user' | 'admin';
-  group?: UserGroup;
+  group?: UserGroup | string;
 };
 
 type UserGroup = 'family' | 'guest';
@@ -268,7 +268,11 @@ async function initConfig() {
 
         adminConfig.UserConfig.Users = (adminConfig.UserConfig.Users || []).map(
           (user) => {
-            const normalizedGroup = normalizeGroup((user as any)?.group);
+            const normalizedGroup =
+              typeof (user as any)?.group === 'string' &&
+              (user as any)?.group?.trim()
+                ? (user as any).group.trim()
+                : normalizeGroup((user as any)?.group);
             if (user.role === 'owner') {
               return { ...user, group: normalizedGroup };
             }
