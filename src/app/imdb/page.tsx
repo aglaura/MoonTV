@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { tt } from '@/lib/i18n.client';
-import { convertToTraditional } from '@/lib/locale';
 
 import PageLayout from '@/components/PageLayout';
-import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
 type ImdbItem = {
@@ -22,7 +20,6 @@ export default function ImdbPage() {
   const [items, setItems] = useState<ImdbItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { announcement } = useSite();
 
   useEffect(() => {
     const load = async () => {

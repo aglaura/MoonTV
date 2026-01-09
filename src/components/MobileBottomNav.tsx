@@ -39,7 +39,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
     { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
     {
       icon: Film,
-      label: t('Movies · TV', '电影 · 剧集', '電影 · 劇集'),
+      label: t('Category', '分类', '分類'),
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
     },

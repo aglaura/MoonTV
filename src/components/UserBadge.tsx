@@ -1,8 +1,8 @@
 /* eslint-disable react-hooks/exhaustive-deps, simple-import-sort/imports */
 'use client';
 
-import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -40,10 +40,23 @@ const switchUserLabel = (locale: string) => {
   }
 };
 
+const tt = (en: string, zhHans: string, zhHant: string, locale: string) => {
+  if (locale === 'zh-Hans') return zhHans;
+  if (locale === 'zh-Hant') return zhHant;
+  return en;
+};
+
+type SimpleUser = {
+  username: string;
+  avatar?: string | null;
+  group: 'family' | 'guest';
+};
+
 export default function UserBadge() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const { userLocale } = useUserLanguage();
+  const locale = userLocale || 'en';
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -53,6 +66,7 @@ export default function UserBadge() {
     minWidth?: number;
   }>({ top: 0, left: 0 });
   const [portalReady, setPortalReady] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<SimpleUser[]>([]);
 
   useEffect(() => {
     const read = () => {
@@ -68,6 +82,44 @@ export default function UserBadge() {
       document.removeEventListener('visibilitychange', read);
     };
   }, []);
+
+  useEffect(() => {
+    if (!username) return;
+    let cancelled = false;
+    const loadUsers = async () => {
+      try {
+        const resp = await fetch('/api/users', { cache: 'no-store' });
+        if (!resp.ok) return;
+        const data = await resp.json().catch(() => ({}));
+        const users = Array.isArray(data?.users) ? data.users : [];
+        const normalized: SimpleUser[] = users
+          .map((u: SimpleUser) => {
+            const avatarValue =
+              typeof u?.avatar === 'string' ? u.avatar.trim() : u?.avatar || null;
+            return {
+              username: (u?.username || '').trim(),
+              avatar: avatarValue,
+              group: u?.group === 'guest' ? 'guest' : 'family',
+            };
+          })
+          .filter((u: SimpleUser) => u.username.length > 0);
+        const current = normalized.find((u) => u.username === username);
+        const group = current?.group || 'family';
+        const members = normalized.filter((u) => u.group === group);
+        if (!cancelled) {
+          setGroupMembers(members);
+        }
+      } catch {
+        if (!cancelled) {
+          setGroupMembers([]);
+        }
+      }
+    };
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
 
   useEffect(() => {
     if (!username) {
@@ -118,12 +170,17 @@ export default function UserBadge() {
     window.location.reload();
   };
 
-  const handleSwitchUser = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await performLogout();
-    const redirect = typeof window !== 'undefined' ? window.location.href : '/';
-    // Always send to login for re-selection; ensure navigation even if logout API fails.
-    window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`;
+  const handleSelectUser = async (targetUser: string) => {
+    try {
+      await fetch('/api/login/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: targetUser }),
+      });
+      window.location.reload();
+    } catch {
+      window.location.href = '/login';
+    }
   };
 
   useLayoutEffect(() => {
@@ -170,7 +227,7 @@ export default function UserBadge() {
     <div className='relative z-[1200000]'>
       <button
         ref={buttonRef}
-        title={`${t('loggedInAs', userLocale || 'en')} ${username}`}
+        title={`${t('loggedInAs', locale)} ${username}`}
         className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000]'
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
@@ -207,12 +264,12 @@ export default function UserBadge() {
                   role='menu'
                 >
                   <div className='text-[11px] text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide'>
-                    {switchUserLabel(userLocale || 'en')}
+                    {switchUserLabel(locale)}
                   </div>
                   <div className='space-y-2 max-h-64 overflow-y-auto'>
                     {groupMembers.length === 0 && (
                       <div className='text-xs text-gray-500 dark:text-gray-400'>
-                        {tt('No members', '没有成员', '沒有成員')}
+                        {tt('No members', '没有成员', '沒有成員', locale)}
                       </div>
                     )}
                     {groupMembers.map((member) => {
@@ -224,7 +281,6 @@ export default function UserBadge() {
                             e.stopPropagation();
                             setIsOpen(false);
                             if (!active) {
-                              void handleSwitchUser(e);
                               void handleSelectUser(member.username);
                             }
                           }}
@@ -249,7 +305,7 @@ export default function UserBadge() {
                           <span className='truncate'>{member.username}</span>
                           {active && (
                             <span className='ml-auto text-[10px] text-green-600 dark:text-green-300'>
-                              {tt('Current', '当前', '當前')}
+                              {tt('Current', '当前', '當前', locale)}
                             </span>
                           )}
                         </button>
@@ -265,7 +321,7 @@ export default function UserBadge() {
                       }}
                       className='w-full text-left text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
                     >
-                      {logoutLabel(userLocale || 'en')}
+                      {logoutLabel(locale)}
                     </button>
                   </div>
                 </div>

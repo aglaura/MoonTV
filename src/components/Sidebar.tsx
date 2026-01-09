@@ -146,9 +146,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     {
       icon: Film,
       label: t(
-        'Movies · TV · Variety · Anime',
-        '电影 · 电视剧 · 综艺 · 动漫',
-        '電影 · 電視劇 · 綜藝 · 動漫',
+        'Category',
+        '分类',
+        '分類',
       ),
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
