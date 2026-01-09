@@ -2978,7 +2978,7 @@ function PlayPageClient() {
         refreshActualPlaybackInfo();
       }
 
-      // Fallback timeout: if the video doesn't become playable in 10s, switch source
+      // Fallback timeout: if the video doesn't become playable in 20s, switch source
       if (loadTimeoutRef.current) {
         clearTimeout(loadTimeoutRef.current);
       }
@@ -2998,7 +2998,7 @@ function PlayPageClient() {
           setIsVideoLoading(false);
           trySwitchToNextSource();
         }
-      }, 10000);
+      }, 20000);
     } catch (err) {
       console.error('建立播放器失敗:', err);
       reportError(
