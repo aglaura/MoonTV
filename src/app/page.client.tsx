@@ -2,6 +2,7 @@
 
 'use client';
 
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
@@ -21,6 +22,7 @@ import { DoubanItem } from '@/lib/types';
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
 import PageLayout from '@/components/PageLayout';
+import ScrollableRow from '@/components/ScrollableRow';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
@@ -180,43 +182,6 @@ function HomeClient() {
     });
     return items.slice(0, 40);
   }, [bangumiCalendarData]);
-
-  const categoryItems = useMemo(() => {
-    const toCards = (items: DoubanItem[]) =>
-      items.map((item) => ({
-        key: `douban-${item.id}`,
-        title: item.title,
-        poster: item.poster,
-        rate: item.rate,
-        year: item.year,
-        douban_id: Number(item.id),
-        query: item.title,
-      }));
-
-    if (activeCategory === 'movie') return toCards(hotMovies);
-    if (activeCategory === 'tv') return toCards(hotTvShows);
-    if (activeCategory === 'variety') return toCards(hotVarietyShows);
-    if (activeCategory === 'anime')
-      return animeList.map((anime) => ({
-        key: `anime-${anime.id}`,
-        title: anime.title,
-        poster: anime.poster,
-        rate: anime.rate,
-        year: anime.year,
-        douban_id: Number(anime.id),
-        isBangumi: true,
-        query: anime.title,
-      }));
-    return imdbList.map((item) => ({
-      key: `imdb-${item.imdbId}`,
-      title: item.title,
-      poster: item.poster,
-      rate: '',
-      year: item.year,
-      query: item.title,
-      source_name: 'IMDb',
-    }));
-  }, [activeCategory, animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
 
   // 处理收藏数据更新的函数
   const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
