@@ -430,7 +430,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         router.push(url);
       } else if (
         from === 'douban' ||
-        (isAggregate && !actualSource && !actualId)
+        isAggregate ||
+        !actualSource ||
+        !actualId
       ) {
         const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${
           actualYear ? `&year=${actualYear}` : ''
@@ -483,7 +485,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         window.open(url, '_blank');
       } else if (
         from === 'douban' ||
-        (isAggregate && !actualSource && !actualId)
+        isAggregate ||
+        !actualSource ||
+        !actualId
       ) {
         const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${
           actualYear ? `&year=${actualYear}` : ''
