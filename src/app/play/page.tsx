@@ -1339,6 +1339,10 @@ function PlayPageClient() {
   const displayTitleWithEnglish = englishVideoTitle
     ? `${displayTitleText} (${englishVideoTitle})`
     : displayTitleText;
+  const imdbLink =
+    imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
+      ? `https://www.imdb.com/title/${imdbVideoId}/`
+      : null;
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
 
@@ -3469,59 +3473,166 @@ function PlayPageClient() {
         <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
           {/* 文字区 */}
           <div className='md:col-span-3'>
-            <div className='p-6 flex flex-col min-h-0'>
+            <div className='p-6 flex flex-col min-h-0 space-y-4 bg-white/70 dark:bg-gray-900/60 rounded-xl border border-gray-200/60 dark:border-gray-800 shadow-sm'>
               {/* 标题 */}
-              <h1 className='text-3xl font-bold mb-2 tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
-                <span>
-                  {displayTitleText}
-                  {englishVideoTitle && (
-                    <span className='ml-2 text-xl font-normal text-gray-500 dark:text-gray-400'>
-                      ({englishVideoTitle})
+              <div className='flex items-start justify-between gap-3 flex-wrap'>
+                <div className='min-w-0'>
+                  <h1 className='text-3xl font-bold tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
+                    <span className='truncate'>
+                      {displayTitleText}
+                      {englishVideoTitle && (
+                        <span className='ml-2 text-xl font-normal text-gray-500 dark:text-gray-400'>
+                          ({englishVideoTitle})
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
+                  </h1>
+                  <div className='mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
+                    {(detail?.year || videoYear) && (
+                      <span className='px-2 py-[2px] rounded-full bg-gray-200/70 dark:bg-white/10'>
+                        {detail?.year || videoYear}
+                      </span>
+                    )}
+                    {detail?.class && (
+                      <span className='px-2 py-[2px] rounded-full bg-green-500/10 text-green-700 dark:bg-green-500/15 dark:text-green-300'>
+                        {convertToTraditional(detail.class) || detail.class}
+                      </span>
+                    )}
+                    {detail?.type_name && (
+                      <span className='px-2 py-[2px] rounded-full bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200'>
+                        {convertToTraditional(detail.type_name) ||
+                          detail.type_name}
+                      </span>
+                    )}
+                    {detail?.source_name && (
+                      <span className='px-2 py-[2px] rounded-full bg-gray-500/10 text-gray-700 dark:bg-gray-500/20 dark:text-gray-200'>
+                        {convertToTraditional(detail.source_name) ||
+                          detail.source_name}
+                      </span>
+                    )}
+                    {imdbVideoId && (
+                      <a
+                        href={imdbLink || '#'}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='px-2 py-[2px] rounded-full bg-yellow-500/10 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-300 hover:underline'
+                        title={imdbVideoTitle || imdbVideoId}
+                      >
+                        IMDb {imdbVideoId}
+                      </a>
+                    )}
+                    {detail?.douban_id && (
+                      <span className='px-2 py-[2px] rounded-full bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'>
+                        Douban {detail.douban_id}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleToggleFavorite();
                   }}
-                  className='ml-3 flex-shrink-0 hover:opacity-80 transition-opacity'
+                  className='ml-auto flex-shrink-0 hover:opacity-80 transition-opacity'
+                  aria-label={tt('Favorite', '收藏', '收藏')}
                 >
                   <FavoriteIcon filled={favorited} />
                 </button>
-              </h1>
-
-              {/* 关键信息行 */}
-              <div className='flex flex-wrap items-center gap-3 text-base mb-4 opacity-80 flex-shrink-0'>
-                {detail?.class && (
-                  <span className='text-green-600 font-semibold'>
-                    {convertToTraditional(detail.class) || detail.class}
-                  </span>
-                )}
-                {(detail?.year || videoYear) && (
-                  <span>{detail?.year || videoYear}</span>
-                )}
-                {detail?.source_name && (
-                  <span className='border border-gray-500/60 px-2 py-[1px] rounded'>
-                    {convertToTraditional(detail.source_name) ||
-                      detail.source_name}
-                  </span>
-                )}
-                {detail?.type_name && (
-                  <span>
-                    {convertToTraditional(detail.type_name) || detail.type_name}
-                  </span>
-                )}
               </div>
-              {/* 剧情简介 */}
-              {detail?.desc && (
-                <div
-                  className='mt-0 text-base leading-relaxed opacity-90 overflow-y-auto pr-2 flex-1 min-h-0 scrollbar-hide'
-                  style={{ whiteSpace: 'pre-line' }}
-                >
-                  {convertToTraditional(detail.desc) || detail.desc}
+
+              {/* 简介 + 重点信息 */}
+              <div className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 min-h-0'>
+                <div className='min-h-0'>
+                  {detail?.desc ? (
+                    <div
+                      className='text-base leading-relaxed opacity-90 overflow-y-auto pr-2 flex-1 min-h-0 scrollbar-hide'
+                      style={{ whiteSpace: 'pre-line' }}
+                    >
+                      {convertToTraditional(detail.desc) || detail.desc}
+                    </div>
+                  ) : (
+                    <div className='text-sm text-gray-500 dark:text-gray-400'>
+                      {tt(
+                        'No synopsis available',
+                        '暂无剧情简介',
+                        '暫無劇情簡介'
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className='bg-gray-100/80 dark:bg-white/5 rounded-lg p-4 border border-gray-200/70 dark:border-gray-800 space-y-3 text-sm text-gray-700 dark:text-gray-200'>
+                  <div className='font-semibold text-gray-800 dark:text-gray-100'>
+                    {tt('Metadata', '影片信息', '影片資訊')}
+                  </div>
+                  <div className='space-y-2'>
+                    {englishVideoTitle && (
+                      <div className='flex justify-between gap-3'>
+                        <span className='text-gray-500 dark:text-gray-400'>
+                          IMDb Title
+                        </span>
+                        <span className='font-medium text-right'>
+                          {englishVideoTitle}
+                        </span>
+                      </div>
+                    )}
+                    {(imdbVideoId || detail?.douban_id) && (
+                      <div className='flex justify-between gap-3'>
+                        <span className='text-gray-500 dark:text-gray-400'>
+                          IDs
+                        </span>
+                        <span className='font-medium text-right space-x-2'>
+                          {imdbVideoId && (
+                            <a
+                              href={imdbLink || '#'}
+                              target='_blank'
+                              rel='noreferrer'
+                              className='underline decoration-dotted hover:text-yellow-600 dark:hover:text-yellow-400'
+                            >
+                              IMDb: {imdbVideoId}
+                            </a>
+                          )}
+                          {detail?.douban_id && (
+                            <span>Douban: {detail.douban_id}</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {(detail?.class || detail?.type_name) && (
+                      <div className='flex justify-between gap-3'>
+                        <span className='text-gray-500 dark:text-gray-400'>
+                          {tt('Category', '类型', '類型')}
+                        </span>
+                        <span className='font-medium text-right'>
+                          {convertToTraditional(detail?.type_name || detail?.class || '') ||
+                            detail?.type_name ||
+                            detail?.class}
+                        </span>
+                      </div>
+                    )}
+                    {(detail?.year || videoYear) && (
+                      <div className='flex justify-between gap-3'>
+                        <span className='text-gray-500 dark:text-gray-400'>
+                          {tt('Year', '年份', '年份')}
+                        </span>
+                        <span className='font-medium text-right'>
+                          {detail?.year || videoYear}
+                        </span>
+                      </div>
+                    )}
+                    {detail?.source_name && (
+                      <div className='flex justify-between gap-3'>
+                        <span className='text-gray-500 dark:text-gray-400'>
+                          {tt('Initial source', '初始来源', '初始來源')}
+                        </span>
+                        <span className='font-medium text-right'>
+                          {convertToTraditional(detail.source_name) ||
+                            detail.source_name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
