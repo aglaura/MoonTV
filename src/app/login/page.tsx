@@ -341,6 +341,7 @@ function LoginPageClient() {
                   setGroup(key);
                   setError(null);
                   setRequiresSelection(false);
+                  setStage('password');
                 }}
                 className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900 ${
                   active
