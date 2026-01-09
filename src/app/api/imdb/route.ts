@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 const imdbTitleRegex = /<meta\s+property="og:title"\s+content="([^"]+)"/i;
+const imdbDescRegex =
+  /<meta\s+(?:name|property)=["']og:description["']\s+content=["']([^"']+)["']/i;
 const titleCleanupRegex = /\s*-\s*IMDb\s*$/i;
 
 export async function GET(request: NextRequest) {
@@ -45,11 +47,14 @@ export async function GET(request: NextRequest) {
     }
 
     const html = await response.text();
-    const match = imdbTitleRegex.exec(html);
-    const rawTitle = match?.[1]?.trim() ?? '';
+    const titleMatch = imdbTitleRegex.exec(html);
+    const rawTitle = titleMatch?.[1]?.trim() ?? '';
     const cleaned = titleCleanupRegex.test(rawTitle)
       ? rawTitle.replace(titleCleanupRegex, '').trim()
       : rawTitle;
+
+    const descMatch = imdbDescRegex.exec(html);
+    const description = descMatch?.[1]?.trim() ?? '';
 
     if (!cleaned) {
       return NextResponse.json(
@@ -58,7 +63,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ title: cleaned });
+    return NextResponse.json({ title: cleaned, description });
   } catch (error) {
     return NextResponse.json(
       {

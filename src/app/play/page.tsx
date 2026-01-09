@@ -1136,6 +1136,9 @@ function PlayPageClient() {
   const [imdbVideoId, setImdbVideoId] = useState<string | undefined>(
     undefined
   );
+  const [imdbDescription, setImdbDescription] = useState<string | undefined>(
+    undefined
+  );
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
@@ -1345,6 +1348,32 @@ function PlayPageClient() {
       : null;
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchImdbDesc = async () => {
+      if (!imdbVideoId || !/^tt\d{5,}$/i.test(imdbVideoId)) {
+        setImdbDescription(undefined);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/imdb?id=${encodeURIComponent(imdbVideoId)}`, {
+          cache: 'force-cache',
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { description?: string };
+        if (!cancelled) {
+          setImdbDescription(data.description?.trim() || undefined);
+        }
+      } catch {
+        if (!cancelled) setImdbDescription(undefined);
+      }
+    };
+    void fetchImdbDesc();
+    return () => {
+      cancelled = true;
+    };
+  }, [imdbVideoId]);
 
   // -----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------
@@ -3628,6 +3657,14 @@ function PlayPageClient() {
                           {convertToTraditional(detail.source_name) ||
                             detail.source_name}
                         </span>
+                      </div>
+                    )}
+                    {imdbDescription && (
+                      <div className='pt-2 border-t border-gray-200 dark:border-gray-800 text-sm leading-relaxed text-gray-700 dark:text-gray-300'>
+                        <div className='text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1'>
+                          IMDb
+                        </div>
+                        <div>{imdbDescription}</div>
                       </div>
                     )}
                   </div>

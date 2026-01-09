@@ -879,52 +879,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 currentSource?.toString() &&
                               source.id?.toString() === currentId?.toString();
 
-                            const sourceKey = `${source.source}-${source.id}`;
-                            const videoInfo = videoInfoMap.get(sourceKey);
-
-                            const itemQualityCandidate =
-                              videoInfo?.quality ?? source.quality;
-                            const itemQualityText =
-                              itemQualityCandidate &&
-                              itemQualityCandidate !== '未知' &&
-                              itemQualityCandidate !== ''
-                                ? itemQualityCandidate
-                                : 'NA';
-                            const itemIsUltraHigh = ['4K', '2K'].includes(
-                              itemQualityText
-                            );
-                            const itemIsHigh = ['1080p', '720p'].includes(
-                              itemQualityText
-                            );
-                            const itemQualityTextColor =
-                              itemQualityText === 'NA'
-                                ? 'text-gray-500 dark:text-gray-400'
-                                : itemIsUltraHigh
-                                ? 'text-purple-600 dark:text-purple-400'
-                                : itemIsHigh
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-yellow-600 dark:text-yellow-400';
-
-                            const itemLoadSpeedCandidate =
-                              videoInfo && !videoInfo.hasError
-                                ? videoInfo.loadSpeed
-                                : source.loadSpeed;
-                            const itemLoadSpeedText =
-                              itemLoadSpeedCandidate &&
-                              itemLoadSpeedCandidate !== '未知' &&
-                              itemLoadSpeedCandidate !== ''
-                                ? itemLoadSpeedCandidate
-                                : '';
-                            const itemPingCandidate =
-                              videoInfo && !videoInfo.hasError
-                                ? videoInfo.pingTime
-                                : source.pingTime;
-                            const itemPingText =
-                              typeof itemPingCandidate === 'number' &&
-                              itemPingCandidate > 0
-                                ? `${itemPingCandidate}ms`
-                                : '';
-
                             return (
                               <div
                                 key={`${source.source}-${source.id}`}
@@ -953,64 +907,35 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                           }}
                                         />
                                       )}
-                                  </div>
+                                    </div>
 
-                                  <div className='min-w-0 flex-1'>
-                                    <div className='flex items-start justify-between gap-3'>
-                                      <div className='min-w-0'>
-                                        <div
-                                          className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'
-                                          title={displaySourceTitle}
-                                        >
-                                          {displaySourceTitle}
-                                        </div>
-                                        {englishSourceTitle && (
+                                    <div className='min-w-0 flex-1'>
+                                      <div className='flex items-start justify-between gap-3'>
+                                        <div className='min-w-0'>
                                           <div
-                                            className='text-xs text-gray-500 dark:text-gray-400 truncate'
-                                            title={englishSourceTitle}
+                                            className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'
+                                            title={displaySourceTitle}
                                           >
-                                            {englishSourceTitle}
+                                            {displaySourceTitle}
                                           </div>
-                                        )}
+                                          {englishSourceTitle && (
+                                            <div
+                                              className='text-xs text-gray-500 dark:text-gray-400 truncate'
+                                              title={englishSourceTitle}
+                                            >
+                                              {englishSourceTitle}
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
 
-                                      {videoInfo?.hasError ? (
-                                        <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400 flex-shrink-0'>
-                                          檢測失敗
+                                        <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
+                                          {source.episodes.length > 1 && (
+                                            <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
+                                              {source.episodes.length} 集
+                                            </div>
+                                          )}
                                         </div>
-                                      ) : (
-                                        <div
-                                          className={`text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${itemQualityTextColor} flex-shrink-0`}
-                                        >
-                                          {itemQualityText}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
-                                      {source.episodes.length > 1 && (
-                                        <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
-                                          {source.episodes.length} 集
-                                        </div>
-                                      )}
-                                      {itemLoadSpeedText && (
-                                        <div className='px-2 py-0.5 rounded-full bg-green-500/10 dark:bg-green-500/15 text-green-700 dark:text-green-300'>
-                                          {itemLoadSpeedText}
-                                        </div>
-                                      )}
-                                      {itemPingText && (
-                                        <div className='px-2 py-0.5 rounded-full bg-orange-500/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'>
-                                          {itemPingText}
-                                        </div>
-                                      )}
-                                      {!itemLoadSpeedText &&
-                                        !itemPingText &&
-                                        videoInfo?.hasError && (
-                                          <div className='text-red-500/90 dark:text-red-400'>
-                                            無測速數據
-                                          </div>
-                                        )}
-                                    </div>
 
                                     {source.verifyReason && (
                                       <div className='mt-1 text-xs text-gray-500 dark:text-gray-400 break-words'>
