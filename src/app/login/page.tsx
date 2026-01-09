@@ -51,6 +51,7 @@ function LoginPageClient() {
   const searchParams = useSearchParams();
   const { siteName } = useSite();
 
+  const [group, setGroup] = useState<'family' | 'guest'>('family');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -66,13 +67,22 @@ function LoginPageClient() {
   const [autoSelectPending, setAutoSelectPending] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const type = (window as any).RUNTIME_CONFIG?.STORAGE_TYPE;
-    setStorageRequiresSelection(Boolean(type && type !== 'localstorage'));
-  }, []);
+    // Changing group resets selection flow
+    setError(null);
+    setRequiresSelection(false);
+    setAvailableUsers([]);
+    setUserThumbnails({});
+    setPendingUser(null);
+    setAutoSelectPending(false);
+    if (group === 'guest') {
+      setUsername('guest');
+    } else {
+      setUsername('');
+    }
+  }, [group]);
 
   useEffect(() => {
-    if (!storageRequiresSelection) return;
+    if (!requiresSelection || group === 'guest') return;
 
     let cancelled = false;
     const fetchUsers = async () => {
@@ -121,14 +131,14 @@ function LoginPageClient() {
     return () => {
       cancelled = true;
     };
-  }, [storageRequiresSelection]);
+  }, [requiresSelection, group]);
 
   useEffect(() => {
-    if (!requiresSelection) return;
+    if (!requiresSelection || group === 'guest') return;
     if (availableUsers.length === 0) return;
     if (username && username.trim().length > 0) return;
     setUsername(availableUsers[0]);
-  }, [availableUsers, requiresSelection, username]);
+  }, [availableUsers, requiresSelection, username, group]);
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -153,7 +163,10 @@ function LoginPageClient() {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
+          body: JSON.stringify({
+            password,
+            username: group === 'guest' ? 'guest' : undefined,
+          }),
         });
 
         const data = (await res.json().catch(() => ({}))) as {
@@ -184,12 +197,19 @@ function LoginPageClient() {
         const redirectTarget = searchParams.get('redirect') || '/';
         const requiresUserSelection = Boolean(data?.requiresSelection);
 
-        if (requiresUserSelection) {
+        if (requiresUserSelection && group === 'family') {
           setRequiresSelection(true);
           if (!storageRequiresSelection) {
             setStorageRequiresSelection(true);
           }
           setAutoSelectPending(redirectTarget.startsWith('/admin'));
+          return;
+        }
+
+        if (group === 'guest') {
+          setRequiresSelection(false);
+          setAutoSelectPending(false);
+          router.replace(redirectTarget);
           return;
         }
 
@@ -210,7 +230,7 @@ function LoginPageClient() {
         setLoading(false);
       }
     },
-    [password, router, searchParams, storageRequiresSelection]
+    [password, group, router, searchParams, storageRequiresSelection]
   );
 
   const handleUserSelect = useCallback(
@@ -287,6 +307,33 @@ function LoginPageClient() {
         <h1 className='text-green-600 tracking-tight text-center text-3xl font-extrabold mb-8 bg-clip-text drop-shadow-sm'>
           {siteName}
         </h1>
+        <div className='flex gap-2 mb-4'>
+          {(['family', 'guest'] as const).map((key) => {
+            const active = group === key;
+            const label =
+              key === 'family'
+                ? tt('Family group', '家庭组', '家庭組')
+                : tt('Guest group', '访客组', '訪客組');
+            return (
+              <button
+                key={key}
+                type='button'
+                onClick={() => {
+                  setGroup(key);
+                  setError(null);
+                  setRequiresSelection(false);
+                }}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                  active
+                    ? 'bg-green-600 text-white border-green-600'
+                    : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-700'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
         <form onSubmit={handleSubmit} className='space-y-6'>
           <div>
             <label htmlFor='password' className='sr-only'>
@@ -298,14 +345,29 @@ function LoginPageClient() {
               autoComplete='current-password'
               disabled={requiresSelection}
               className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
-              placeholder={tt(
-                'Enter shared password…',
-                '输入共享密码…',
-                '輸入共享密碼...'
-              )}
+              placeholder={
+                group === 'guest'
+                  ? tt(
+                      'Enter guest password (PASSWORD2)…',
+                      '输入访客密码（PASSWORD2）…',
+                      '輸入訪客密碼（PASSWORD2）…'
+                    )
+                  : tt(
+                      'Enter family password…',
+                      '输入家庭共享密码…',
+                      '輸入家庭共享密碼...'
+                    )
+              }
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+              {tt(
+                'Family uses PASSWORD; Guest uses PASSWORD2.',
+                '家庭使用 PASSWORD；访客使用 PASSWORD2。',
+                '家庭使用 PASSWORD；訪客使用 PASSWORD2。'
+              )}
+            </p>
           </div>
 
           {error && (
@@ -325,7 +387,7 @@ function LoginPageClient() {
           )}
         </form>
 
-        {requiresSelection && (
+        {requiresSelection && group === 'family' && (
           <div className='mt-6 space-y-4'>
             <p className='text-sm text-gray-600 dark:text-gray-300'>
               {tt(

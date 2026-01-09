@@ -3,6 +3,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -35,6 +36,7 @@ function DoubanPageContent({
   featuredItems = [],
 }: DoubanPageClientProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [doubanData, setDoubanData] = useState<DoubanItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -546,6 +548,34 @@ function DoubanPageContent({
             <p className='text-sm sm:text-base text-gray-600 dark:text-gray-400'>
               {getPageDescription()}
             </p>
+          </div>
+
+          <div className='flex flex-wrap gap-2'>
+            {[
+              { key: 'movie', label: tt('Movies', '电影', '電影') },
+              { key: 'tv', label: tt('TV', '剧集', '劇集') },
+              { key: 'show', label: tt('Variety', '综艺', '綜藝') },
+              { key: 'anime', label: tt('Anime', '动漫', '動漫') },
+            ].map((tab) => {
+              const active = type === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => {
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.set('type', tab.key);
+                    router.push(`/douban?${params.toString()}`);
+                  }}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                    active
+                      ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                      : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-500'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           {featuredItems.length > 0 && (

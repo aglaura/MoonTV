@@ -238,6 +238,9 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     username: '',
     password: '',
   });
+  const [newUserGroup, setNewUserGroup] = useState<'family' | 'guest'>(
+    'family'
+  );
   const [changePasswordUser, setChangePasswordUser] = useState({
     username: '',
     password: '',
@@ -327,8 +330,15 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
   const handleAddUser = async () => {
     if (!newUser.username || !newUser.password) return;
-    await handleUserAction('add', newUser.username, newUser.password);
+    await handleUserAction(
+      'add',
+      newUser.username,
+      newUser.password,
+      undefined,
+      newUserGroup
+    );
     setNewUser({ username: '', password: '' });
+    setNewUserGroup('family');
     setShowAddUserForm(false);
   };
 
@@ -381,7 +391,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       | 'deleteUser',
     targetUsername: string,
     targetPassword?: string,
-    avatar?: string
+    avatar?: string,
+    group?: 'family' | 'guest'
   ) => {
     try {
       const res = await fetch('/api/admin/user', {
@@ -391,6 +402,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
           targetUsername,
           ...(targetPassword ? { targetPassword } : {}),
           ...(typeof avatar === 'string' ? { avatar } : {}),
+          ...(group ? { group } : {}),
           action,
         }),
       });
@@ -535,6 +547,22 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 }
                 className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
               />
+              <select
+                className='px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                value={newUserGroup}
+                onChange={(e) =>
+                  setNewUserGroup(
+                    e.target.value === 'guest' ? 'guest' : 'family'
+                  )
+                }
+              >
+                <option value='family'>
+                  {tt('Family group (PASSWORD)', '家庭组 (PASSWORD)', '家庭組 (PASSWORD)')}
+                </option>
+                <option value='guest'>
+                  {tt('Guest group (PASSWORD2)', '访客组 (PASSWORD2)', '訪客組 (PASSWORD2)')}
+                </option>
+              </select>
               <button
                 onClick={handleAddUser}
                 disabled={!newUser.username || !newUser.password}

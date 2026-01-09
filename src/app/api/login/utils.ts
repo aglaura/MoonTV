@@ -14,6 +14,7 @@ export async function ensureAdminUser(
 ): Promise<void> {
   if (
     !username ||
+    username.toLowerCase() === 'guest' ||
     username === process.env.USERNAME ||
     (process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage') === 'localstorage'
   ) {
