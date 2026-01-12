@@ -21,14 +21,39 @@ if (fs.existsSync(oldRuntimePath)) {
   console.log('旧的 runtime.ts 已删除');
 }
 
-// Read and parse config.json
+// Read and parse config.json (support remote CONFIGJSON)
+const remoteConfigBase = (process.env.CONFIGJSON || '').trim();
 let rawConfig;
-try {
-  rawConfig = fs.readFileSync(configPath, 'utf8');
-} catch (err) {
-  console.error(`无法读取 ${configPath}:`, err);
-  process.exit(1);
+
+async function loadConfig() {
+  if (remoteConfigBase) {
+    const remoteConfigUrl = /\.json($|\?)/i.test(remoteConfigBase)
+      ? remoteConfigBase
+      : `${remoteConfigBase.replace(/\/+$/, '')}/config.json`;
+    try {
+      const resp = await fetch(remoteConfigUrl);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      return await resp.text();
+    } catch (err) {
+      console.warn(`从 CONFIGJSON 加载失败 (${remoteConfigUrl}):`, err);
+    }
+  }
+
+  try {
+    return fs.readFileSync(configPath, 'utf8');
+  } catch (err) {
+    console.warn(`未找到本地 config.json（${configPath}），跳过生成 runtime.ts`);
+    return null;
+  }
 }
+
+(async () => {
+  rawConfig = await loadConfig();
+  if (!rawConfig) {
+    process.exit(0);
+  }
 
 let config;
 try {
@@ -59,3 +84,5 @@ try {
   console.error('写入 runtime.ts 失败:', err);
   process.exit(1);
 }
+
+})();

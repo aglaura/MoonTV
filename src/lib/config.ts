@@ -7,6 +7,17 @@ import runtimeConfig from './runtime';
 import { IStorage } from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
 
+const DEFAULT_ANNOUNCEMENT =
+  '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
+
+function buildRemoteConfigUrl(raw?: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (/\.json($|\?)/i.test(trimmed)) return trimmed;
+  return `${trimmed.replace(/\/+$/, '')}/config.json`;
+}
+
 export interface ApiSite {
   key: string;
   name: string;
@@ -153,9 +164,7 @@ function buildAdminConfigFromFile(
   return {
     SiteConfig: {
       SiteName: process.env.SITE_NAME || 'EssaouiraTV',
-      Announcement:
-        process.env.ANNOUNCEMENT ||
-        '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
+      Announcement: DEFAULT_ANNOUNCEMENT,
       SearchDownstreamMaxPage:
         Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
       SiteInterfaceCacheTime: config?.cache_time || 7200,
@@ -182,7 +191,7 @@ async function initConfig() {
     return;
   }
 
-  const remoteConfigUrl = process.env.CONFIGJSON?.trim();
+  const remoteConfigUrl = buildRemoteConfigUrl(process.env.CONFIGJSON);
   if (remoteConfigUrl) {
     try {
       const resp = await fetch(remoteConfigUrl);
@@ -362,9 +371,7 @@ async function initConfig() {
         adminConfig = {
           SiteConfig: {
             SiteName: process.env.SITE_NAME || 'EssaouiraTV',
-            Announcement:
-              process.env.ANNOUNCEMENT ||
-              '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
+            Announcement: DEFAULT_ANNOUNCEMENT,
             SearchDownstreamMaxPage:
               Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
             SiteInterfaceCacheTime: fileConfig.cache_time || 7200,
@@ -433,9 +440,7 @@ export async function getConfig(): Promise<AdminConfig> {
         group: normalizeGroup((user as any)?.group),
       })) ?? [];
     adminConfig.SiteConfig.SiteName = process.env.SITE_NAME || 'EssaouiraTV';
-    adminConfig.SiteConfig.Announcement =
-      process.env.ANNOUNCEMENT ||
-      '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
+    adminConfig.SiteConfig.Announcement = DEFAULT_ANNOUNCEMENT;
     adminConfig.UserConfig.AllowRegister =
       process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
     adminConfig.SiteConfig.ImageProxy =
@@ -534,9 +539,7 @@ export async function resetConfig() {
   const adminConfig = {
     SiteConfig: {
       SiteName: process.env.SITE_NAME || 'EssaouiraTV',
-      Announcement:
-        process.env.ANNOUNCEMENT ||
-        '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。',
+      Announcement: DEFAULT_ANNOUNCEMENT,
       SearchDownstreamMaxPage:
         Number(process.env.NEXT_PUBLIC_SEARCH_MAX_PAGE) || 5,
       SiteInterfaceCacheTime: fileConfig.cache_time || 7200,

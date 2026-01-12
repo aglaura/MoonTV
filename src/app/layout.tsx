@@ -93,14 +93,15 @@ export default async function RootLayout({
   const locale = await resolveLocale();
   let siteName = process.env.SITE_NAME || 'Esmee TV';
   let announcement =
-    process.env.ANNOUNCEMENT ||
-    (DEFAULT_ANNOUNCEMENTS[locale] ?? DEFAULT_ANNOUNCEMENTS.en);
+    DEFAULT_ANNOUNCEMENTS[locale] ?? DEFAULT_ANNOUNCEMENTS.en;
   let enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
   let imageProxy = process.env.NEXT_PUBLIC_IMAGE_PROXY || '';
   if (process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1') {
     const config = await getConfig();
     siteName = config.SiteConfig.SiteName;
-    announcement = config.SiteConfig.Announcement;
+    // Always prefer hardcoded, locale-aware announcement
+    announcement =
+      DEFAULT_ANNOUNCEMENTS[locale] ?? DEFAULT_ANNOUNCEMENTS.en;
     enableRegister = config.UserConfig.AllowRegister;
     imageProxy = config.SiteConfig.ImageProxy;
   }
