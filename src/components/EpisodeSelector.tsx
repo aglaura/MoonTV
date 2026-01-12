@@ -402,57 +402,68 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       }
     };
 
-    const sortSourcesWithinProvider = (sources: SearchResult[]) => {
-      if (sources.length <= 1) return sources;
+    const QUALITY_WEIGHT = 0.6;
+    const SPEED_WEIGHT = 0.15;
+    const PING_WEIGHT = 0.25;
 
-      const metrics = sources.map((source, index) => {
+    const buildMetricsWithScore = (sources: SearchResult[]) => {
+      const baseMetrics = sources.map((source, index) => {
         const key = `${source.source}-${source.id}`;
         const info = videoInfoMap.get(key);
-        const qualityRank = getQualityRank(info?.quality ?? source.quality);
+        const quality = info?.quality ?? source.quality ?? '';
+        const qualityRank = getQualityRank(quality);
+        const loadSpeed =
+          info?.hasError === true
+            ? ''
+            : info?.loadSpeed ?? source.loadSpeed ?? '';
         const speedValue =
-          info?.speedValue ??
-          parseSpeedToKBps(info?.loadSpeed ?? source.loadSpeed);
-        const rawPing = info?.pingTime ?? source.pingTime;
+          info?.hasError === true
+            ? 0
+            : info?.speedValue ?? parseSpeedToKBps(loadSpeed) ?? 0;
+        const rawPing = info?.hasError ? undefined : info?.pingTime ?? source.pingTime;
         const pingTime =
-          typeof rawPing === 'number' && rawPing > 0
-            ? rawPing
-            : Number.MAX_SAFE_INTEGER;
-        const hasInfo =
-          qualityRank > 0 ||
-          (speedValue !== undefined && speedValue > 0) ||
-          pingTime < Number.MAX_SAFE_INTEGER;
+          typeof rawPing === 'number' && rawPing > 0 ? rawPing : undefined;
 
         return {
           source,
           index,
+          quality,
           qualityRank,
-          speedValue: speedValue ?? 0,
+          loadSpeed,
+          speedValue,
           pingTime,
-          hasInfo,
+          hasError: info?.hasError,
         };
       });
 
-      if (!metrics.some((m) => m.hasInfo)) {
-        return sources;
+      if (
+        !baseMetrics.some(
+          (m) =>
+            m.qualityRank > 0 ||
+            m.speedValue > 0 ||
+            typeof m.pingTime === 'number'
+        )
+      ) {
+        return baseMetrics.map((m) => ({ ...m, score: 0 }));
       }
 
-      const maxSpeed = Math.max(...metrics.map((m) => m.speedValue || 0), 0);
-      const pingValues = metrics
+      const maxSpeed = Math.max(...baseMetrics.map((m) => m.speedValue || 0), 0);
+      const pingValues = baseMetrics
         .map((m) => m.pingTime)
-        .filter((v) => v < Number.MAX_SAFE_INTEGER);
+        .filter((v): v is number => typeof v === 'number');
       const minPing =
         pingValues.length > 0 ? Math.min(...pingValues) : Number.NaN;
       const maxPing =
         pingValues.length > 0 ? Math.max(...pingValues) : Number.NaN;
 
-      const scored = metrics.map((m) => {
+      return baseMetrics.map((m) => {
         const qualityScore = qualityRankToScore(m.qualityRank);
         const speedScore =
           maxSpeed > 0 && m.speedValue > 0
             ? Math.min(100, Math.max(0, (m.speedValue / maxSpeed) * 100))
             : 0;
         let pingScore = 0;
-        if (m.pingTime < Number.MAX_SAFE_INTEGER) {
+        if (typeof m.pingTime === 'number') {
           if (
             Number.isFinite(minPing) &&
             Number.isFinite(maxPing) &&
@@ -471,17 +482,20 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           }
         }
 
-        const QUALITY_WEIGHT = 0.6;
-        const SPEED_WEIGHT = 0.15;
-        const PING_WEIGHT = 0.25;
         const score =
           qualityScore * QUALITY_WEIGHT +
           speedScore * SPEED_WEIGHT +
           pingScore * PING_WEIGHT;
         return { ...m, score };
       });
+    };
 
-      scored.sort((a, b) => {
+    const sortSourcesWithinProvider = (sources: SearchResult[]) => {
+      if (sources.length <= 1) return sources;
+
+      const metrics = buildMetricsWithScore(sources);
+
+      metrics.sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         if ((b.qualityRank ?? 0) !== (a.qualityRank ?? 0)) {
           return (b.qualityRank ?? 0) - (a.qualityRank ?? 0);
@@ -489,13 +503,19 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         if ((b.speedValue ?? 0) !== (a.speedValue ?? 0)) {
           return (b.speedValue ?? 0) - (a.speedValue ?? 0);
         }
-        if (a.pingTime !== b.pingTime) {
-          return a.pingTime - b.pingTime;
+        if (
+          (a.pingTime ?? Number.MAX_SAFE_INTEGER) !==
+          (b.pingTime ?? Number.MAX_SAFE_INTEGER)
+        ) {
+          return (
+            (a.pingTime ?? Number.MAX_SAFE_INTEGER) -
+            (b.pingTime ?? Number.MAX_SAFE_INTEGER)
+          );
         }
         return a.index - b.index;
       });
 
-      return scored.map((m) => m.source);
+      return metrics.map((m) => m.source);
     };
 
     const groups = new Map<string, SearchResult[]>();
@@ -508,11 +528,101 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         groups.set(groupKey, [source]);
       }
     }
-    return Array.from(groups.entries()).map(([key, sources]) => ({
-      key,
-      sources: sortSourcesWithinProvider(sources),
-    }));
-  }, [sortedSources, videoInfoMap]);
+
+    const enrichedGroups = Array.from(groups.entries()).map(
+      ([key, sources], index) => {
+        const sorted = sortSourcesWithinProvider(sources);
+        const metrics = buildMetricsWithScore(sorted);
+
+        const bestQualityEntry = metrics.reduce(
+          (best, curr) =>
+            !best || (curr.qualityRank ?? 0) > (best.qualityRank ?? 0)
+              ? curr
+              : best,
+          undefined as typeof metrics[number] | undefined
+        );
+        const bestSpeedEntry = metrics.reduce(
+          (best, curr) =>
+            (curr.speedValue ?? 0) > (best?.speedValue ?? 0) ? curr : best,
+          undefined as typeof metrics[number] | undefined
+        );
+        const bestPingEntry = metrics.reduce(
+          (best, curr) => {
+            if (typeof curr.pingTime !== 'number') return best;
+            if (!best || typeof best.pingTime !== 'number') {
+              return curr;
+            }
+            return curr.pingTime < best.pingTime ? curr : best;
+          },
+          undefined as typeof metrics[number] | undefined
+        );
+
+        const bestOverall = metrics.reduce((best, curr) => {
+          if (!best) return curr;
+          if (curr.score !== best.score) return curr.score > best.score ? curr : best;
+          if ((curr.qualityRank ?? 0) !== (best.qualityRank ?? 0)) {
+            return (curr.qualityRank ?? 0) > (best.qualityRank ?? 0) ? curr : best;
+          }
+          if ((curr.speedValue ?? 0) !== (best.speedValue ?? 0)) {
+            return (curr.speedValue ?? 0) > (best.speedValue ?? 0) ? curr : best;
+          }
+          if (
+            (curr.pingTime ?? Number.MAX_SAFE_INTEGER) !==
+            (best.pingTime ?? Number.MAX_SAFE_INTEGER)
+          ) {
+            return (curr.pingTime ?? Number.MAX_SAFE_INTEGER) <
+              (best.pingTime ?? Number.MAX_SAFE_INTEGER)
+              ? curr
+              : best;
+          }
+          return best;
+        }, undefined as typeof metrics[number] | undefined);
+
+        const hasCurrent = sorted.some(
+          (source) =>
+            source.source?.toString() === currentSource?.toString() &&
+            source.id?.toString() === currentId?.toString()
+        );
+
+        return {
+          key,
+          sources: sorted,
+          metrics,
+          bestQualityEntry,
+          bestSpeedEntry,
+          bestPingEntry,
+          bestOverall,
+          hasCurrent,
+          originalIndex: index,
+        };
+      }
+    );
+
+    enrichedGroups.sort((a, b) => {
+      if (a.hasCurrent && !b.hasCurrent) return -1;
+      if (!a.hasCurrent && b.hasCurrent) return 1;
+
+      const aScore = a.bestOverall?.score ?? -1;
+      const bScore = b.bestOverall?.score ?? -1;
+      if (bScore !== aScore) return bScore - aScore;
+
+      const aQuality = a.bestOverall?.qualityRank ?? 0;
+      const bQuality = b.bestOverall?.qualityRank ?? 0;
+      if (bQuality !== aQuality) return bQuality - aQuality;
+
+      const aSpeed = a.bestOverall?.speedValue ?? 0;
+      const bSpeed = b.bestOverall?.speedValue ?? 0;
+      if (bSpeed !== aSpeed) return bSpeed - aSpeed;
+
+      const aPing = a.bestOverall?.pingTime ?? Number.MAX_SAFE_INTEGER;
+      const bPing = b.bestOverall?.pingTime ?? Number.MAX_SAFE_INTEGER;
+      if (aPing !== bPing) return aPing - bPing;
+
+      return a.originalIndex - b.originalIndex;
+    });
+
+    return enrichedGroups;
+  }, [sortedSources, videoInfoMap, currentId, currentSource]);
 
   const currentStart = currentPage * episodesPerPage + 1;
   const currentEnd = Math.min(
@@ -694,92 +804,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                       primary.source_name;
                     const providerCode = primary.source?.toString() ?? '';
 
-                    const groupHasCurrent = group.sources.some(
-                      (source) =>
-                        source.source?.toString() === currentSource?.toString() &&
-                        source.id?.toString() === currentId?.toString()
-                    );
+                    const groupHasCurrent = group.hasCurrent;
 
-                    const providerMetrics = group.sources.map((source) => {
-                      const key = `${source.source}-${source.id}`;
-                      const info = videoInfoMap.get(key);
-                      const quality = info?.quality ?? source.quality ?? '';
-                      const loadSpeed =
-                        info?.hasError === true
-                          ? ''
-                          : info?.loadSpeed ?? source.loadSpeed ?? '';
-                      const speedValue =
-                        info?.hasError === true
-                          ? 0
-                          : info?.speedValue ??
-                            parseSpeedToKBps(loadSpeed) ??
-                            0;
-                      const rawPing = info?.hasError ? undefined : info?.pingTime ?? source.pingTime;
-                      const pingTime =
-                        typeof rawPing === 'number' && rawPing > 0
-                          ? rawPing
-                          : undefined;
-                      return {
-                        quality,
-                        loadSpeed,
-                        speedValue,
-                        pingTime,
-                        qualityRank: getQualityRank(quality),
-                        hasError: info?.hasError,
-                      };
-                    });
-
-                    const bestQualityEntry = providerMetrics.reduce(
-                      (best, curr) =>
-                        !best || (curr.qualityRank ?? 0) > (best.qualityRank ?? 0)
-                          ? curr
-                          : best,
-                      undefined as
-                        | {
-                            quality: string;
-                            loadSpeed: string;
-                            speedValue?: number;
-                            pingTime?: number;
-                            qualityRank: number;
-                            hasError?: boolean;
-                          }
-                        | undefined
-                    );
-                    const bestSpeedEntry = providerMetrics.reduce(
-                      (best, curr) =>
-                        (curr.speedValue ?? 0) > (best?.speedValue ?? 0)
-                          ? curr
-                          : best,
-                      undefined as
-                        | {
-                            quality: string;
-                            loadSpeed: string;
-                            speedValue?: number;
-                            pingTime?: number;
-                            qualityRank: number;
-                            hasError?: boolean;
-                          }
-                        | undefined
-                    );
-                    const bestPingEntry = providerMetrics.reduce(
-                      (best, curr) => {
-                        if (typeof curr.pingTime !== 'number') return best;
-                        if (!best || typeof best.pingTime !== 'number') {
-                          return curr;
-                        }
-                        return curr.pingTime < best.pingTime ? curr : best;
-                      },
-                      undefined as
-                        | {
-                            quality: string;
-                            loadSpeed: string;
-                            speedValue?: number;
-                            pingTime?: number;
-                            qualityRank: number;
-                            hasError?: boolean;
-                          }
-                        | undefined
-                    );
+                    const providerMetrics = group.metrics;
+                    const bestQualityEntry = group.bestQualityEntry;
+                    const bestSpeedEntry = group.bestSpeedEntry;
+                    const bestPingEntry = group.bestPingEntry;
 
                     const qualityCandidate = bestQualityEntry?.quality ?? '';
                     const qualityText =
