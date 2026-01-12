@@ -239,12 +239,20 @@ export class DbManager {
         const priorityOnly =
           hasPriorityUpdate && !hasQuality && !hasSpeed && !hasPing;
 
+        const previousCountRaw = Number(existing?.sampleCount);
+        const previousCount =
+          Number.isFinite(previousCountRaw) && previousCountRaw > 0
+            ? previousCountRaw
+            : 0;
+        const incomingCountRaw = Number(valuation.sampleCount);
         const incomingCount =
-          typeof valuation.sampleCount === 'number' && valuation.sampleCount > 0
-            ? Math.round(valuation.sampleCount)
+          Number.isFinite(incomingCountRaw) && incomingCountRaw > 0
+            ? Math.round(incomingCountRaw)
             : 1;
         const increment =
-          hasQuality || hasSpeed || hasPing || hasPriorityUpdate ? incomingCount : incomingCount;
+          hasQuality || hasSpeed || hasPing || hasPriorityUpdate
+            ? incomingCount
+            : incomingCount;
         const combinedCount = previousCount + increment;
 
         const blendedQualityRank = priorityOnly
