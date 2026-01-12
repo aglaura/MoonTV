@@ -239,8 +239,12 @@ export class DbManager {
         const priorityOnly =
           hasPriorityUpdate && !hasQuality && !hasSpeed && !hasPing;
 
+        const incomingCount =
+          typeof valuation.sampleCount === 'number' && valuation.sampleCount > 0
+            ? Math.round(valuation.sampleCount)
+            : 1;
         const increment =
-          hasQuality || hasSpeed || hasPing || hasPriorityUpdate ? 1 : 0;
+          hasQuality || hasSpeed || hasPing || hasPriorityUpdate ? incomingCount : incomingCount;
         const combinedCount = previousCount + increment;
 
         const blendedQualityRank = priorityOnly
@@ -282,8 +286,7 @@ export class DbManager {
             : existing?.loadSpeed ?? valuation.loadSpeed ?? '未知';
 
         // Always bump sample count when we see a new write, even if it's priority-only.
-        const aggregateCount =
-          (existing?.sampleCount ?? 0) + (increment > 0 ? 1 : 1);
+        const aggregateCount = previousCount + incomingCount;
 
         const payload: SourceValuation = {
           key: trimmedKey,
