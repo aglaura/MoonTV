@@ -405,9 +405,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       }
     };
 
-    const QUALITY_WEIGHT = 0.6;
-    const SPEED_WEIGHT = 0.15;
-    const PING_WEIGHT = 0.25;
+    const QUALITY_WEIGHT = 0.8;
+    const SPEED_WEIGHT = 0.1;
+    const PING_WEIGHT = 0.1;
 
     const buildMetricsWithScore = (sources: SearchResult[]) => {
       const baseMetrics = sources.map((source, index) => {

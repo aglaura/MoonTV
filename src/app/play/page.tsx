@@ -484,10 +484,10 @@ function PlayPageClient() {
           }
         }
 
-        // Provider valuation weights: prioritize quality, de-emphasize speed.
-        const QUALITY_WEIGHT = 0.6;
-        const SPEED_WEIGHT = 0.15;
-        const PING_WEIGHT = 0.25;
+        // Provider valuation weights: heavily prioritize resolution/quality.
+        const QUALITY_WEIGHT = 0.8;
+        const SPEED_WEIGHT = 0.1;
+        const PING_WEIGHT = 0.1;
         const score =
           qualityScore * QUALITY_WEIGHT +
           speedScore * SPEED_WEIGHT +
