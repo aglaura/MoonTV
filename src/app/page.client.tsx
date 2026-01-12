@@ -166,6 +166,13 @@ function HomeClient() {
     'trending'
   );
   const [heroIndex, setHeroIndex] = useState(0);
+  useEffect(() => {
+    if (!heroItems.length) return;
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => prev + 1);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [heroItems.length]);
   const { announcement } = useSite();
   const { isKidsMode } = useKidsMode();
   const applyKidsFilter = useMemo(
@@ -630,31 +637,10 @@ function HomeClient() {
                     </div>
                   </section>
 
-                  {/* Hero 区域 */}
-                  <section
-                    className={`relative overflow-hidden rounded-2xl border border-gray-200/40 dark:border-gray-800 shadow-lg ${
-                      isTV
-                        ? 'bg-gradient-to-br from-black via-gray-900 to-emerald-900/50'
-                        : 'bg-gray-900/70'
-                    }`}
-                  >
-                    {currentHero?.poster && (
-                      <div
-                        className={`absolute inset-0 bg-cover bg-center blur-sm scale-105 ${
-                          isTV ? 'opacity-60' : 'opacity-50'
-                        }`}
-                        style={{ backgroundImage: `url(${currentHero.poster})` }}
-                      ></div>
-                    )}
-                    <div className='absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10'></div>
-                    <div
-                      className={`relative grid ${
-                        isTV
-                          ? 'grid-cols-1 gap-6 p-6 lg:p-10'
-                          : 'grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)] gap-4 sm:gap-6 p-4 sm:p-6 lg:p-8'
-                      }`}
-                    >
-                      <div className='flex flex-col gap-4 sm:gap-5'>
+                  {/* Hero Row */}
+                  <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 dark:from-black dark:via-gray-900 dark:to-gray-800 shadow-lg overflow-hidden'>
+                    <div className='grid lg:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)] gap-0'>
+                      <div className='p-4 sm:p-6 lg:p-8 flex flex-col gap-4 sm:gap-5'>
                         <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-300'>
                           <span>{currentCategory.label}</span>
                           <span className='w-1 h-1 rounded-full bg-green-700 dark:bg-green-500'></span>
@@ -666,84 +652,100 @@ function HomeClient() {
                               : tt('Desktop grid', '桌面网格', '桌面網格')}
                           </span>
                         </div>
-                        <div className='flex flex-col gap-2 max-w-3xl'>
-                          <h2
-                            className={`font-bold text-white leading-tight line-clamp-2 ${
-                              isTV
-                                ? 'text-4xl lg:text-5xl'
-                                : 'text-2xl sm:text-3xl lg:text-4xl'
-                            }`}
-                          >
-                            {currentHero?.title || tt('Discover now', '发现好片', '發現好片')}
-                          </h2>
-                          <p
-                            className={`text-gray-200/80 line-clamp-3 ${
-                              isTV ? 'text-lg' : 'text-sm sm:text-base'
-                            }`}
-                          >
-                            {tt(
-                              'Tap play to start with the first provider, or open details to explore more sources.',
-                              '直接播放将从第一个来源开始，详情可查看更多来源。',
-                              '直接播放將從第一個來源開始，詳情可查看更多來源。'
+                        <div className='flex flex-col lg:flex-row gap-4 items-start lg:items-center'>
+                          <div className='relative w-40 sm:w-48 flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10'>
+                            {currentHero?.poster ? (
+                              <img
+                                src={currentHero.poster}
+                                alt={currentHero.title}
+                                className='w-full h-full object-cover'
+                              />
+                            ) : (
+                              <div className='aspect-[2/3] bg-gray-700'></div>
                             )}
-                          </p>
-                          <div className='text-gray-300 text-sm'>
-                            {currentHero?.year || ''}
-                            {currentHero?.rate ? ` · ${currentHero.rate}` : ''}
+                            <div className='absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent'></div>
+                          </div>
+                          <div className='flex-1 flex flex-col gap-2 max-w-3xl'>
+                            <h2
+                              className={`font-bold text-white leading-tight line-clamp-2 ${
+                                isTV
+                                  ? 'text-4xl lg:text-5xl'
+                                  : 'text-2xl sm:text-3xl lg:text-4xl'
+                              }`}
+                            >
+                              {currentHero?.title || tt('Discover now', '发现好片', '發現好片')}
+                            </h2>
+                            <p
+                              className={`text-gray-200/80 line-clamp-3 ${
+                                isTV ? 'text-lg' : 'text-sm sm:text-base'
+                              }`}
+                            >
+                              {tt(
+                                'Tap play to start with the first provider, or open details to explore more sources.',
+                                '直接播放将从第一个来源开始，详情可查看更多来源。',
+                                '直接播放將從第一個來源開始，詳情可查看更多來源。'
+                              )}
+                            </p>
+                            <div className='text-gray-300 text-sm'>
+                              {currentHero?.year || ''}
+                              {currentHero?.rate ? ` · ${currentHero.rate}` : ''}
+                            </div>
+                            <div className='flex flex-wrap gap-3 mt-2'>
+                              {currentHero && (
+                                <VideoCard
+                                  from='douban'
+                                  title={currentHero.title}
+                                  poster={currentHero.poster}
+                                  douban_id={currentHero.douban_id}
+                                  rate={currentHero.rate}
+                                  year={currentHero.year}
+                                  type={currentHero.type}
+                                  query={currentHero.query}
+                                  source_name={currentHero.source_name}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className='flex flex-wrap gap-3'>
-                          {currentHero && (
-                            <VideoCard
-                              from='douban'
-                              title={currentHero.title}
-                              poster={currentHero.poster}
-                              douban_id={currentHero.douban_id}
-                              rate={currentHero.rate}
-                              year={currentHero.year}
-                              type={currentHero.type}
-                              query={currentHero.query}
-                              source_name={currentHero.source_name}
-                            />
-                          )}
-                        </div>
                       </div>
-
-                      <div className='bg-black/30 border border-white/10 rounded-xl p-3 sm:p-4 h-full'>
+                      <div className='bg-black/20 border-l border-white/5 p-3 sm:p-4 h-full'>
                         <div className='flex items-center justify-between mb-3 text-sm text-gray-200'>
                           <span>{tt('Top picks', '精选', '精選')}</span>
                           <span className='text-gray-400'>
                             {tt('Tap to preview', '点击切换预览', '點擊切換預覽')}
                           </span>
                         </div>
-                        <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2'>
-                          {heroItems.slice(0, 6).map((item, idx) => {
-                            const active = heroIndex % heroItems.length === idx;
-                            return (
-                              <button
-                                key={`${item.title}-${idx}`}
-                                onClick={() => setHeroIndex(idx)}
-                                className={`text-left rounded-lg overflow-hidden border transition ${
-                                  active
-                                    ? 'border-green-400 ring-2 ring-green-300/60'
-                                    : 'border-white/10 hover:border-green-300/50'
-                                }`}
-                              >
-                                <div className='aspect-[2/3] bg-gray-700'>
-                                  {item.poster && (
-                                    <img
-                                      src={item.poster}
-                                      alt={item.title}
-                                      className='w-full h-full object-cover'
-                                    />
-                                  )}
-                                </div>
-                                <div className='p-2 text-xs text-gray-100 line-clamp-2'>
-                                  {item.title}
-                                </div>
-                              </button>
-                            );
-                          })}
+                        <div className='relative'>
+                          <div className='flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:\"none\"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                            {heroItems.slice(0, 10).map((item, idx) => {
+                              const active = heroIndex % heroItems.length === idx;
+                              return (
+                                <button
+                                  key={`${item.title}-${idx}`}
+                                  onClick={() => setHeroIndex(idx)}
+                                  className={`relative flex-shrink-0 w-28 sm:w-32 rounded-2xl overflow-hidden transition ${
+                                    active
+                                      ? 'ring-2 ring-green-300/70 border border-green-400/70'
+                                      : 'border border-white/10 hover:border-green-300/50'
+                                  }`}
+                                  style={{ scrollSnapAlign: 'start' }}
+                                >
+                                  <div className='aspect-[2/3] bg-gray-700'>
+                                    {item.poster && (
+                                      <img
+                                        src={item.poster}
+                                        alt={item.title}
+                                        className='w-full h-full object-cover'
+                                      />
+                                    )}
+                                  </div>
+                                  <div className='p-2 text-[11px] text-gray-100 line-clamp-2 text-left bg-black/50'>
+                                    {item.title}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     </div>
