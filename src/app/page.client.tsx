@@ -570,6 +570,66 @@ function HomeClient() {
                     </div>
                   )}
 
+                  {/* 分类切换 + 排序 (moved directly under Continue Watching) */}
+                  <section className='rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/80 dark:bg-gray-900/70 p-3 sm:p-4 shadow-sm'>
+                    <div className='flex flex-col gap-3'>
+                      <div className='flex flex-wrap gap-2'>
+                        {(Object.keys(categoryData) as CategoryKey[]).map((key) => {
+                          const cfg = categoryData[key];
+                          const active = category === key;
+                          return (
+                            <button
+                              key={key}
+                              onClick={() => setCategory(key)}
+                              className={`relative px-4 py-2 rounded-full text-sm font-semibold transition focus:outline-none ${
+                                active
+                                  ? 'bg-gradient-to-r from-emerald-900 to-green-700 text-white shadow-md shadow-emerald-900/30'
+                                  : 'bg-white/80 dark:bg-gray-800/70 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 hover:border-green-500'
+                              }`}
+                            >
+                              {cfg.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className='flex flex-wrap items-center gap-2 text-xs sm:text-sm'>
+                        {(['trending', 'newest', 'rating'] as const).map((mode) => {
+                          const active = sortMode === mode;
+                          const labels: Record<typeof mode, string> = {
+                            trending: tt('Trending', '热度', '熱度'),
+                            newest: tt('Newest', '最新', '最新'),
+                            rating: tt('Rating', '评分', '評分'),
+                          };
+                          return (
+                            <button
+                              key={mode}
+                              onClick={() => setSortMode(mode)}
+                              className={`px-3 py-1.5 rounded-full border transition ${
+                                active
+                                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 border-transparent shadow-sm'
+                                  : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-green-500'
+                              }`}
+                            >
+                              {labels[mode]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className='text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between'>
+                        <span>{currentCategory?.hint}</span>
+                        {currentCategory?.seeMore && (
+                          <Link
+                            href={currentCategory.seeMore}
+                            className='inline-flex items-center text-green-700 dark:text-green-400 hover:underline'
+                          >
+                            {tt('See more', '查看更多', '查看更多')}
+                            <ChevronRight className='w-4 h-4 ml-1' />
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
                   {/* Hero 区域 */}
                   <section
                     className={`relative overflow-hidden rounded-2xl border border-gray-200/40 dark:border-gray-800 shadow-lg ${
@@ -686,66 +746,6 @@ function HomeClient() {
                           })}
                         </div>
                       </div>
-                    </div>
-                  </section>
-
-                  {/* 分类切换 + 排序 */}
-                  <section className='rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-3 sm:p-4'>
-                    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                      <div className='flex flex-wrap gap-2'>
-                        {(Object.keys(categoryData) as CategoryKey[]).map((key) => {
-                          const cfg = categoryData[key];
-                          const active = category === key;
-                          return (
-                            <button
-                              key={key}
-                              onClick={() => setCategory(key)}
-                              className={`px-3 py-1.5 rounded-full border text-sm transition ${
-                                active
-                                  ? 'bg-green-800 text-white border-green-800 shadow-sm'
-                                  : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-700 dark:hover:border-green-500'
-                              }`}
-                            >
-                              {cfg.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className='flex items-center gap-2 text-sm'>
-                        {(['trending', 'newest', 'rating'] as const).map((mode) => {
-                          const active = sortMode === mode;
-                          const labels: Record<typeof mode, string> = {
-                            trending: tt('Trending', '热度', '熱度'),
-                            newest: tt('Newest', '最新', '最新'),
-                            rating: tt('Rating', '评分', '評分'),
-                          };
-                          return (
-                            <button
-                              key={mode}
-                              onClick={() => setSortMode(mode)}
-                              className={`px-3 py-1 rounded-full border transition ${
-                                active
-                                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 border-transparent'
-                                  : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-green-500'
-                              }`}
-                            >
-                              {labels[mode]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className='mt-2 text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between'>
-                      <span>{currentCategory?.hint}</span>
-                      {currentCategory?.seeMore && (
-                        <Link
-                          href={currentCategory.seeMore}
-                          className='inline-flex items-center text-green-700 dark:text-green-400 hover:underline'
-                        >
-                          {tt('See more', '查看更多', '查看更多')}
-                          <ChevronRight className='w-4 h-4 ml-1' />
-                        </Link>
-                      )}
                     </div>
                   </section>
 

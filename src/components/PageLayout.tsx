@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+'use client';
+
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
 import MobileBottomNav from './MobileBottomNav';
@@ -6,6 +9,7 @@ import { SettingsButton } from './SettingsButton';
 import Sidebar from './Sidebar';
 import { ThemeToggle } from './ThemeToggle';
 import UserBadge from './UserBadge';
+import { useEffect, useRef } from 'react';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -13,6 +17,44 @@ interface PageLayoutProps {
 }
 
 const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
+  const startYRef = useRef<number | null>(null);
+  const refreshingRef = useRef(false);
+
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.innerWidth >= 1024) return; // only mobile/tablet
+      if (window.scrollY > 0) return;
+      const touch = e.touches[0];
+      startYRef.current = touch.clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (refreshingRef.current) return;
+      if (startYRef.current === null) return;
+      if (window.scrollY > 0) return;
+      const currentY = e.touches[0].clientY;
+      const delta = currentY - startYRef.current;
+      if (delta > 90) {
+        refreshingRef.current = true;
+        window.location.reload();
+      }
+    };
+
+    const handleTouchEnd = () => {
+      startYRef.current = null;
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   return (
     <div className='w-full min-h-screen'>
       {/* 移动端头部 */}
