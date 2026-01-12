@@ -166,13 +166,6 @@ function HomeClient() {
     'trending'
   );
   const [heroIndex, setHeroIndex] = useState(0);
-  useEffect(() => {
-    if (!heroItems.length) return;
-    const timer = setInterval(() => {
-      setHeroIndex((prev) => prev + 1);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [heroItems.length]);
   const { announcement } = useSite();
   const { isKidsMode } = useKidsMode();
   const applyKidsFilter = useMemo(
@@ -400,6 +393,13 @@ function HomeClient() {
     () => (currentCategory?.items || []).slice(0, 10),
     [currentCategory]
   );
+  useEffect(() => {
+    if (!heroItems.length) return;
+    const timer = setInterval(() => {
+      setHeroIndex((prev) => prev + 1);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [heroItems.length]);
   const currentHero =
     heroItems.length > 0 && heroIndex >= 0
       ? heroItems[Math.abs(heroIndex) % heroItems.length]
