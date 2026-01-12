@@ -1,30 +1,18 @@
-/* TV + Desktop ContentRail (FULL VERSION) */
+/* FULL ContentRail with 3 modes:
+   - TV vertical + remote
+   - Tablet/PC horizontal + arrows
+   - Mobile swipe + snap
+*/
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import VideoCard from "@/components/VideoCard";
-import { tt } from "@/lib/localeFunctions"; // <--- same tt() you use
 import { useSite } from "@/components/SiteProvider";
 
-type CardItem = {
-  title: string;
-  poster?: string;
-  rate?: string;
-  year?: string;
-  douban_id?: number;
-  type?: string;
-  query?: string;
-  source_name?: string;
-  id?: string | number;
-};
-
-/* ---------------------------
-   TV Navigation Hook
----------------------------- */
+/* TV Navigation hook */
 function useTVNavigation(max: number) {
   const [index, setIndex] = useState(0);
-
   const move = (dir: number) => {
     setIndex((prev) => {
       let next = prev + dir;
@@ -33,34 +21,24 @@ function useTVNavigation(max: number) {
       return next;
     });
   };
-
   return { index, move, setIndex };
 }
 
-/* ===========================================================
-   MAIN COMPONENT  — COMPLETE VERSION
-=========================================================== */
-export default function ContentRail({
-  title,
-  href,
-  items,
-}: {
-  title: string;
-  href?: string;
-  items: CardItem[];
-}) {
+export default function ContentRail({ title, href, items }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const onSelectItemRef = useRef<(item: CardItem) => void>(() => {});
-
   const { screenMode } = useSite();
+
   const isTV = screenMode === "tv";
+  const isMobile = screenMode === "mobile";
+  const isTabletPC = !isTV && !isMobile;
+
   const noData = items.length === 0;
 
-  /* TV Focus Navigation */
-  const { index: focusIndex, move: moveFocus, setIndex: setFocusIndex } =
-    useTVNavigation(items.length);
+  /* ===========================================================
+     TV MODE: Remote Navigation + Focus Highlight
+  ============================================================ */
+  const { index: focusIndex, move: moveFocus } = useTVNavigation(items.length);
 
-  /* Keyboard event handler for TV mode */
   useEffect(() => {
     if (!isTV) return;
 
@@ -72,9 +50,10 @@ export default function ContentRail({
         moveFocus(-1);
         e.preventDefault();
       } else if (e.key === "Enter") {
-        const item = items[focusIndex];
-        if (item) onSelectItemRef.current(item);
-        e.preventDefault();
+        const it = items[focusIndex];
+        if (it) {
+          window.location.href = `/douban/${it.douban_id}`;
+        }
       }
     };
 
@@ -82,7 +61,7 @@ export default function ContentRail({
     return () => window.removeEventListener("keydown", onKey);
   }, [isTV, items.length, focusIndex]);
 
-  /* Auto-scroll to keep focused item visible */
+  /* TV auto-scroll to focused item */
   useEffect(() => {
     if (!isTV || !scrollRef.current) return;
 
@@ -90,106 +69,80 @@ export default function ContentRail({
     const target = container.children[focusIndex] as HTMLElement;
     if (!target) return;
 
-    const targetTop = target.offsetTop;
-    const containerTop = container.scrollTop;
-    const containerHeight = container.clientHeight;
+    const top = target.offsetTop;
+    const ct = container.scrollTop;
+    const ch = container.clientHeight;
 
-    // Adjust view to keep focused card in center-ish
-    if (targetTop < containerTop + 40) {
-      container.scrollTo({ top: targetTop - 40, behavior: "smooth" });
-    } else if (targetTop + 200 > containerTop + containerHeight) {
-      container.scrollTo({
-        top: targetTop - containerHeight + 260,
-        behavior: "smooth",
-      });
+    if (top < ct + 40) {
+      container.scrollTo({ top: top - 40, behavior: "smooth" });
+    } else if (top + 200 > ct + ch) {
+      container.scrollTo({ top: top - ch + 260, behavior: "smooth" });
     }
   }, [focusIndex, isTV]);
 
-  /* Horizontal scroll for desktop/mobile */
+  /* ===========================================================
+     PC/Tablet horizontal scroll
+  ============================================================ */
   const scrollHorizontal = (offset: number) => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollBy({
-      left: offset,
-      behavior: "smooth",
-    });
+    scrollRef.current?.scrollBy({ left: offset, behavior: "smooth" });
   };
 
-  /* Vertical scroll for TV */
-  const scrollVertical = (offset: number) => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollBy({
-      top: offset,
-      behavior: "smooth",
-    });
-  };
+  /* ===========================================================
+     MOBILE MODE — swipe, snap, momentum
+  ============================================================ */
+  const mobileScrollClass = isMobile
+    ? `
+      snap-x snap-mandatory
+      scroll-pl-4 pr-6
+      touch-pan-x overflow-x-auto
+      overscroll-x-contain
+      `
+    : "";
 
-  /* ---------------- TV MODE ---------------- */
+  const mobileCardClass = isMobile
+    ? "snap-start min-w-[47%]"
+    : "min-w-[140px] sm:min-w-[180px]";
+
+  /* ===========================================================
+     RENDER — TV MODE
+  ============================================================ */
   if (isTV) {
     return (
       <div
         className="
-          relative rounded-2xl border border-gray-200/50 dark:border-gray-800
-          bg-white/60 dark:bg-gray-900/50 p-4 overflow-hidden
-          group
-        "
-        style={{ height: "480px" }}
+        relative rounded-2xl border border-gray-200/50 dark:border-gray-800
+        bg-white/60 dark:bg-gray-900/50 p-4 overflow-hidden group
+      "
+        style={{ height: "500px" }}
       >
         {/* Title */}
         <div className="flex items-center justify-between mb-3 px-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {title}
           </h3>
+
           {href && (
             <Link
               href={href}
-              className="text-sm text-green-700 dark:text-green-400 hover:underline inline-flex items-center gap-1"
+              className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1"
             >
-              {tt("See more", "查看更多", "查看更多")}
-              <ChevronRight className="w-4 h-4" />
+              See more <ChevronRight className="w-4 h-4" />
             </Link>
           )}
         </div>
 
-        {/* Up Arrow */}
-        <button
-          onClick={() => scrollVertical(-300)}
-          className="
-            absolute top-2 left-1/2 -translate-x-1/2 z-20
-            opacity-0 group-hover:opacity-100 transition
-            p-2 rounded-full bg-black/40 hover:bg-black/70 text-white shadow
-          "
-        >
-          ▲
-        </button>
+        {/* Fade overlays */}
+        <div className="pointer-events-none absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-black/70 to-transparent z-10" />
+        <div className="pointer-events-none absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-black/70 to-transparent z-10" />
 
-        {/* Down Arrow */}
-        <button
-          onClick={() => scrollVertical(300)}
-          className="
-            absolute bottom-2 left-1/2 -translate-x-1/2 z-20
-            opacity-0 group-hover:opacity-100 transition
-            p-2 rounded-full bg-black/40 hover:bg-black/70 text-white shadow
-          "
-        >
-          ▼
-        </button>
-
-        {/* Fade gradients top/bottom */}
-        <div className="pointer-events-none absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-white/80 dark:from-black/80 to-transparent z-10" />
-        <div className="pointer-events-none absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-white/80 dark:from-black/80 to-transparent z-10" />
-
-        {/* Scrollable vertical list */}
+        {/* Vertical list */}
         <div
           ref={scrollRef}
-          className="
-            flex flex-col gap-4 overflow-y-auto pt-2 pb-10
-            [-ms-overflow-style:'none'] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-          "
+          className="flex flex-col gap-5 overflow-y-auto pb-10 pt-2
+            [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {noData && (
-            <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
-              {tt("No data", "暂无数据", "暫無資料")}
-            </div>
+            <div className="text-gray-500 text-center py-4">No data</div>
           )}
 
           {items.map((item, idx) => {
@@ -197,26 +150,13 @@ export default function ContentRail({
             return (
               <div
                 key={idx}
-                className={`
-                  w-full transition-all duration-200
-                  ${
-                    focused
-                      ? "scale-[1.05] ring-4 ring-green-400 shadow-xl z-20 opacity-100"
-                      : "opacity-60"
-                  }
-                `}
+                className={`transition-all duration-200 ${
+                  focused
+                    ? "scale-[1.08] ring-4 ring-green-400 shadow-xl opacity-100 z-20"
+                    : "opacity-60"
+                }`}
               >
-                <VideoCard
-                  from="douban"
-                  title={item.title}
-                  poster={item.poster}
-                  douban_id={item.douban_id}
-                  rate={item.rate}
-                  year={item.year}
-                  type={item.type}
-                  query={item.query}
-                  source_name={item.source_name}
-                />
+                <VideoCard {...item} from="douban" />
               </div>
             );
           })}
@@ -225,79 +165,127 @@ export default function ContentRail({
     );
   }
 
-  /* ------------- DESKTOP / MOBILE MODE (Horizontal) ------------- */
+  /* ===========================================================
+     RENDER — TABLET / PC MODE
+  ============================================================ */
+  if (isTabletPC) {
+    return (
+      <div
+        className="
+      relative rounded-2xl border border-gray-200/50 dark:border-gray-800
+      bg-white/60 dark:bg-gray-900/50 p-4 overflow-hidden group
+    "
+      >
+        {/* Title */}
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            {title}
+          </h3>
+
+          {href && (
+            <Link
+              href={href}
+              className="text-sm text-green-700 dark:text-green-400 hover:underline flex items-center gap-1"
+            >
+              See more <ChevronRight className="w-4 h-4" />
+            </Link>
+          )}
+        </div>
+
+        {/* Desktop arrows */}
+        <button
+          onClick={() => scrollHorizontal(-450)}
+          className="
+          absolute left-0 top-1/2 -translate-y-1/2 z-20
+          hidden md:flex opacity-0 group-hover:opacity-100
+          p-3 bg-black/40 hover:bg-black/70 text-white rounded-full shadow-lg
+        "
+        >
+          ‹
+        </button>
+
+        <button
+          onClick={() => scrollHorizontal(450)}
+          className="
+          absolute right-0 top-1/2 -translate-y-1/2 z-20
+          hidden md:flex opacity-0 group-hover:opacity-100
+          p-3 bg-black/40 hover:bg-black/70 text-white rounded-full shadow-lg
+        "
+        >
+          ›
+        </button>
+
+        {/* Fade edges */}
+        <div className="pointer-events-none absolute left-0 top-0 h-full w-16 bg-gradient-to-r from-black/60 to-transparent z-10"></div>
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-black/60 to-transparent z-10"></div>
+
+        {/* Horizontal list */}
+        <div
+          ref={scrollRef}
+          className="
+            flex gap-4 overflow-x-auto pb-3 px-1 scroll-smooth
+            [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+          "
+        >
+          {noData && (
+            <div className="text-gray-500 py-4 w-full text-center">No data</div>
+          )}
+
+          {items.map((item, idx) => (
+            <div
+              key={idx}
+              className="min-w-[180px] transform transition hover:scale-105"
+            >
+              <VideoCard {...item} from="douban" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ===========================================================
+     RENDER — MOBILE MODE
+  ============================================================ */
   return (
     <div
       className="
-        relative rounded-2xl border border-gray-200/50 dark:border-gray-800
-        bg-white/60 dark:bg-gray-900/50 p-3 sm:p-4 overflow-hidden group
-      "
+      relative rounded-2xl border border-gray-200/50 dark:border-gray-800
+      bg-white/60 dark:bg-gray-900/50 p-3 overflow-hidden
+    "
     >
       {/* Title */}
-      <div className="flex items-center justify-between mb-3 px-1">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {title}
         </h3>
+
         {href && (
           <Link
             href={href}
-            className="text-sm text-green-700 dark:text-green-400 hover:underline inline-flex items-center gap-1"
+            className="text-sm text-green-700 dark:text-green-400 flex items-center gap-1"
           >
-            {tt("See more", "查看更多", "查看更多")}
-            <ChevronRight className="w-4 h-4" />
+            See more <ChevronRight className="w-4 h-4" />
           </Link>
         )}
       </div>
 
-      {/* Left Arrow */}
-      <button
-        onClick={() => scrollHorizontal(-450)}
-        className="
-          absolute left-0 top-1/2 -translate-y-1/2 z-20
-          hidden sm:flex opacity-0 group-hover:opacity-100 transition
-          p-3 rounded-full bg-black/40 hover:bg-black/60 text-white shadow-lg
-        "
-      >
-        ‹
-      </button>
-
-      {/* Right Arrow */}
-      <button
-        onClick={() => scrollHorizontal(450)}
-        className="
-          absolute right-0 top-1/2 -translate-y-1/2 z-20
-          hidden sm:flex opacity-0 group-hover:opacity-100 transition
-          p-3 rounded-full bg-black/40 hover:bg-black/60 text-white shadow-lg
-        "
-      >
-        ›
-      </button>
-
-      {/* Fade left/right */}
-      <div className="pointer-events-none absolute left-0 top-0 h-full w-16 bg-gradient-to-r from-white/80 dark:from-black/60 to-transparent z-10"></div>
-      <div className="pointer-events-none absolute right-0 top-0 h-full w-16 bg-gradient-to-l from-white/80 dark:from-black/60 to-transparent z-10"></div>
-
-      {/* Horizontal list */}
       <div
         ref={scrollRef}
-        className="
-          flex gap-3 overflow-x-auto pb-3 px-1 scroll-smooth
-          [-ms-overflow-style:'none'] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-        "
+        className={`
+          flex gap-3 overflow-x-auto pb-3 px-1
+          scroll-smooth
+          [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
+          ${mobileScrollClass}
+        `}
       >
-        {noData && (
-          <div className="text-sm text-gray-500 dark:text-gray-400 py-4">
-            {tt("No data", "暂无数据", "暫無資料")}
-          </div>
-        )}
-
         {items.map((item, idx) => (
           <div
             key={idx}
-            className="
-              min-w-[140px] w-36 sm:min-w-[180px] sm:w-44
-              transform transition duration-200 hover:scale-105
-            "
+            className={`
+            ${mobileCardClass}
+            active:scale-[0.97] transition-transform
+          `}
           >
             <VideoCard {...item} from="douban" />
           </div>
