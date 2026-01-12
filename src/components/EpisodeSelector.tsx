@@ -912,8 +912,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         key={group.key}
                         className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
                       >
-                        <div className='flex items-center justify-between gap-2 px-3 py-2 bg-black/5 dark:bg-white/5'>
-                          <div className='min-w-0'>
+                        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 bg-black/5 dark:bg-white/5'>
+                          <div className='min-w-0 sm:flex-1'>
                             <div className='flex items-center gap-2 min-w-0'>
                               <div
                                 className='text-xs font-medium text-gray-900 dark:text-gray-100 truncate'
@@ -933,7 +933,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               )}
                             </div>
                           </div>
-                          <div className='flex items-center gap-2 flex-shrink-0'>
+                          <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
                             {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                                 檢測失敗
@@ -958,8 +958,8 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='p-2 space-y-2'>
-                          {group.sources.map((source) => {
+                        <div className='p-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3'>
+                          {group.sources.map((source, idx) => {
                             const displaySourceTitle =
                               convertToTraditional(source.title) || source.title;
                             const englishSourceTitle =
@@ -977,15 +977,19 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`rounded-lg border px-2.5 py-2 transition-all select-none duration-200
+                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-sm hover:shadow-md
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
-                                      : 'bg-white/40 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-gray-200/40 dark:hover:bg-white/10 cursor-pointer'
+                                      : 'bg-white/70 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-gray-200/60 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
+                                style={{
+                                  zIndex: group.sources.length - idx,
+                                  marginTop: idx === 0 ? 0 : -10,
+                                }}
                               >
                                 <div className='flex items-start gap-3'>
-                                  <div className='flex-shrink-0 w-12 h-20 bg-gray-300 dark:bg-gray-600 rounded-md overflow-hidden'>
+                                  <div className='flex-shrink-0 w-14 h-24 bg-gray-300 dark:bg-gray-600 rounded-md overflow-hidden'>
                                     {source.episodes &&
                                       source.episodes.length > 0 && (
                                         <img
@@ -1019,15 +1023,20 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                             </div>
                                           )}
                                         </div>
+                                        {idx === 0 && (
+                                          <div className='text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200'>
+                                            最佳
+                                          </div>
+                                        )}
                                       </div>
 
-                                        <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
-                                          {source.episodes.length > 1 && (
-                                            <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
-                                              {source.episodes.length} 集
-                                            </div>
-                                          )}
-                                        </div>
+                                      <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
+                                        {source.episodes.length > 1 && (
+                                          <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
+                                            {source.episodes.length} 集
+                                          </div>
+                                        )}
+                                      </div>
 
                                     {source.verifyReason && (
                                       <div className='mt-1 text-xs text-gray-500 dark:text-gray-400 break-words'>
