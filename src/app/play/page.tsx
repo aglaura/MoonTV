@@ -1974,12 +1974,13 @@ function PlayPageClient() {
           if (grouped.size > 0) {
             const next = [...firstPlayCandidatesRef.current];
             grouped.forEach((items, key) => {
-              if (next.length >= FIRST_PLAY_CANDIDATE_LIMIT) return;
               if (firstPlayProviderSetRef.current.has(key)) return;
               const bestFromProvider = pickBestInitialCandidate(items);
               if (!bestFromProvider) return;
               firstPlayProviderSetRef.current.add(key);
-              next.push(bestFromProvider);
+              if (next.length < FIRST_PLAY_CANDIDATE_LIMIT) {
+                next.push(bestFromProvider);
+              }
             });
             if (next.length !== firstPlayCandidatesRef.current.length) {
               const limited = next.slice(0, FIRST_PLAY_CANDIDATE_LIMIT);
@@ -1988,9 +1989,12 @@ function PlayPageClient() {
             }
           }
 
+          const providerThresholdReached =
+            firstPlayProviderSetRef.current.size >= FIRST_PLAY_CANDIDATE_LIMIT;
           const candidatesNow = firstPlayCandidatesRef.current;
           if (
-            candidatesNow.length >= FIRST_PLAY_CANDIDATE_LIMIT &&
+            providerThresholdReached &&
+            candidatesNow.length > 0 &&
             !initialPlaybackChosenRef.current
           ) {
             const picked = pickFirstPlayCandidate(

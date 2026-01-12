@@ -533,6 +533,10 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       ([key, sources], index) => {
         const sorted = sortSourcesWithinProvider(sources);
         const metrics = buildMetricsWithScore(sorted);
+        const maxEpisodes = Math.max(
+          ...sorted.map((s) => (Array.isArray(s.episodes) ? s.episodes.length : 0)),
+          0
+        );
 
         const bestQualityEntry = metrics.reduce(
           (best, curr) =>
@@ -593,6 +597,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           bestPingEntry,
           bestOverall,
           hasCurrent,
+          maxEpisodes,
           originalIndex: index,
         };
       }
@@ -601,6 +606,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     enrichedGroups.sort((a, b) => {
       if (a.hasCurrent && !b.hasCurrent) return -1;
       if (!a.hasCurrent && b.hasCurrent) return 1;
+
+      // Prefer more episodes before other metrics.
+      const aEpisodes = a.maxEpisodes ?? 0;
+      const bEpisodes = b.maxEpisodes ?? 0;
+      if (bEpisodes !== aEpisodes) {
+        return bEpisodes - aEpisodes;
+      }
 
       const aScore = a.bestOverall?.score ?? -1;
       const bScore = b.bestOverall?.score ?? -1;
