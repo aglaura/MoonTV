@@ -281,11 +281,9 @@ export class DbManager {
             ? formatSpeedFromKBps(blendedSpeedValue)
             : existing?.loadSpeed ?? valuation.loadSpeed ?? '未知';
 
-        const aggregateCount = Math.max(
-          combinedCount,
-          increment > 0 ? combinedCount : previousCount,
-          1
-        );
+        // Always bump sample count when we see a new write, even if it's priority-only.
+        const aggregateCount =
+          (existing?.sampleCount ?? 0) + (increment > 0 ? 1 : 1);
 
         const payload: SourceValuation = {
           key: trimmedKey,
@@ -305,7 +303,7 @@ export class DbManager {
           speedValue: priorityOnly
             ? existingSpeedValue
             : Math.round(blendedSpeedValue),
-          sampleCount: priorityOnly ? previousCount || 1 : aggregateCount,
+          sampleCount: aggregateCount,
           priorityScore:
             typeof valuation.priorityScore === 'number'
               ? valuation.priorityScore
