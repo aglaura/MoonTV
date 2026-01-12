@@ -1099,18 +1099,28 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   <div className='flex-shrink-0 w-14 h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
                                     {source.episodes &&
                                       source.episodes.length > 0 && (
-                                        <img
-                                          src={processImageUrl(source.poster)}
-                                          alt={displaySourceTitle}
-                                          className='w-full h-full object-cover'
-                                          onError={(e) => {
-                                            const target =
-                                              e.target as HTMLImageElement;
-                                            target.style.display = 'none';
-                                          }}
-                                        />
+                                        <div className='relative w-full h-full'>
+                                          <img
+                                            src={processImageUrl(source.poster)}
+                                            alt={displaySourceTitle}
+                                            className='w-full h-full object-cover rounded-md'
+                                            onError={(e) => {
+                                              const target =
+                                                e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                            }}
+                                          />
+                                          {group.sources.length > 1 && !expandedProviders.has(group.key) && idx === 0 && (
+                                            <>
+                                              <div className='absolute top-1 left-1 w-[90%] h-[90%] rounded-md border border-white/20 bg-white/5 translate-x-1 translate-y-1'></div>
+                                              <div className='absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full shadow'>
+                                                +{group.sources.length - 1}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
                                       )}
-                                    </div>
+                                  </div>
 
                                     <div className='min-w-0 flex-1'>
                                       <div className='flex items-start justify-between gap-3'>
