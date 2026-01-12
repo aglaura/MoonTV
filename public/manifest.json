@@ -1,7 +1,7 @@
 {
   "name": "Esmee TV",
   "short_name": "Esmee TV",
-  "description": "影视聚合",
+  "description": "Esmee TV · 影视聚合",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

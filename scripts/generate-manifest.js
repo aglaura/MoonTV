@@ -17,7 +17,7 @@ const siteName = process.env.SITE_NAME || 'Esmee TV';
 const manifestTemplate = {
   name: siteName,
   short_name: siteName,
-  description: '影视聚合',
+  description: `${siteName} · 影视聚合`,
   start_url: '/',
   scope: '/',
   display: 'standalone',

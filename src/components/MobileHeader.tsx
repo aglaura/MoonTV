@@ -27,9 +27,16 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
         {/* 中间：站点名称（自动截断，避免与右侧重叠） */}
         <Link
           href='/'
-          className='min-w-0 justify-self-center max-w-full truncate text-lg font-bold text-green-600 tracking-tight hover:opacity-80 transition-opacity'
+          className='min-w-0 justify-self-center max-w-full flex items-center gap-2 truncate text-lg font-bold text-green-600 tracking-tight hover:opacity-80 transition-opacity'
         >
-          {siteName}
+          <div className='w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 flex-shrink-0'>
+            <img
+              src='/logo.png'
+              alt={siteName}
+              className='w-full h-full object-cover'
+            />
+          </div>
+          <span className='truncate'>{siteName}</span>
         </Link>
 
         {/* 右侧按钮 */}
