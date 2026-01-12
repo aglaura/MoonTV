@@ -597,7 +597,7 @@ function HomeClient() {
                       <div className='flex flex-col gap-4 sm:gap-5'>
                         <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-300'>
                           <span>{currentCategory.label}</span>
-                          <span className='w-1 h-1 rounded-full bg-green-400'></span>
+                          <span className='w-1 h-1 rounded-full bg-green-700 dark:bg-green-500'></span>
                           <span>
                             {screenMode === 'mobile'
                               ? tt('Mobile stack', '手机竖屏', '手機豎屏')
@@ -702,8 +702,8 @@ function HomeClient() {
                               onClick={() => setCategory(key)}
                               className={`px-3 py-1.5 rounded-full border text-sm transition ${
                                 active
-                                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                                  : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-500'
+                                  ? 'bg-green-800 text-white border-green-800 shadow-sm'
+                                  : 'border-gray-300 text-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-green-700 dark:hover:border-green-500'
                               }`}
                             >
                               {cfg.label}
@@ -875,8 +875,8 @@ function HomeClient() {
               </button>
             </div>
             <div className='mb-6'>
-              <div className='relative overflow-hidden rounded-lg mb-4 bg-green-50 dark:bg-green-900/20'>
-                <div className='absolute inset-y-0 left-0 w-1.5 bg-green-500 dark:bg-green-400'></div>
+                      <div className='relative overflow-hidden rounded-lg mb-4 bg-green-100 dark:bg-green-900/30'>
+                        <div className='absolute inset-y-0 left-0 w-1.5 bg-green-700 dark:bg-green-400'></div>
                 <p className='ml-4 text-gray-600 dark:text-gray-300 leading-relaxed'>
                   {formattedAnnouncement || announcement}
                 </p>

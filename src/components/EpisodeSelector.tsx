@@ -801,7 +801,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                   className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
                     ${
                       isActive
-                        ? 'bg-green-500 text-white shadow-lg shadow-green-500/25 dark:bg-green-600'
+                        ? 'bg-green-800 text-white shadow-lg shadow-green-800/25 dark:bg-green-700'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
                     }`.trim()}
                 >
@@ -1005,7 +1005,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 </div>
                               )}
                               {groupHasCurrent && (
-                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-500/15 dark:bg-green-500/20 text-green-700 dark:text-green-300'>
+                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
                                   Playing
                                 </div>
                               )}
@@ -1026,7 +1026,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   return next;
                                 });
                               }}
-                              className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20 transition'
+                              className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition'
                             >
                               {group.sources.length} sources
                             </button>
@@ -1042,7 +1042,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               </div>
                             )}
                             {loadSpeedText && (
-                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-500/10 dark:bg-green-500/15 text-green-700 dark:text-green-300'>
+                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
                                 {loadSpeedText}
                               </div>
                             )}

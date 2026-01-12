@@ -306,7 +306,7 @@ export default function UserBadge() {
                           }}
                           className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs ${
                             active
-                              ? 'bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                              ? 'bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100'
                               : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
                           }`}
                         >

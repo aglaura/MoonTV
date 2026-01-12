@@ -182,7 +182,24 @@ async function initConfig() {
     return;
   }
 
-  if (process.env.DOCKER_ENV === 'true') {
+  const remoteConfigUrl = process.env.CONFIGJSON?.trim();
+  if (remoteConfigUrl) {
+    try {
+      const resp = await fetch(remoteConfigUrl);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+      fileConfig = (await resp.json()) as ConfigFileStruct;
+      console.log(`Loaded config.json from ${remoteConfigUrl}`);
+    } catch (error) {
+      console.warn(
+        `Failed to load CONFIGJSON (${remoteConfigUrl}), falling back to local config:`,
+        error
+      );
+    }
+  }
+
+  if (!fileConfig && process.env.DOCKER_ENV === 'true') {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const _require = eval('require') as NodeRequire;
     const fs = _require('fs') as typeof import('fs');
@@ -192,7 +209,7 @@ async function initConfig() {
     const raw = fs.readFileSync(configPath, 'utf-8');
     fileConfig = JSON.parse(raw) as ConfigFileStruct;
     console.log('load dynamic config success');
-  } else {
+  } else if (!fileConfig) {
     fileConfig = runtimeConfig as unknown as ConfigFileStruct;
   }
 
