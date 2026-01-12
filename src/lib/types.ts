@@ -45,6 +45,8 @@ export interface SourceValuation {
   qualityRank?: number;
   speedValue?: number;
   sampleCount?: number;
+  /** Higher value means higher priority based on latest sorting */
+  priorityScore?: number;
   updated_at: number;
 }
 

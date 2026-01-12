@@ -564,7 +564,7 @@ async function sortApiSitesByValuations(base: ApiSite[]): Promise<ApiSite[]> {
     }
     const valMap = new Map<
       string,
-      { qualityRank: number; speedValue: number; pingTime: number }
+      { qualityRank: number; speedValue: number; pingTime: number; priorityScore: number }
     >();
     valuations.forEach((v: any) => {
       const key = (v.key || v.source || '').trim();
@@ -574,7 +574,10 @@ async function sortApiSitesByValuations(base: ApiSite[]): Promise<ApiSite[]> {
       const pingTime = Number.isFinite(v.pingTime)
         ? v.pingTime
         : Number.MAX_SAFE_INTEGER;
-      valMap.set(key, { qualityRank, speedValue, pingTime });
+      const priorityScore = Number.isFinite(v.priorityScore)
+        ? Number(v.priorityScore)
+        : 0;
+      valMap.set(key, { qualityRank, speedValue, pingTime, priorityScore });
     });
 
     const scored = base.map((site, index) => {
@@ -587,11 +590,15 @@ async function sortApiSitesByValuations(base: ApiSite[]): Promise<ApiSite[]> {
         qualityRank: val?.qualityRank ?? 0,
         speedValue: val?.speedValue ?? 0,
         pingTime: val?.pingTime ?? Number.MAX_SAFE_INTEGER,
+        priorityScore: val?.priorityScore ?? 0,
         index,
       };
     });
 
     scored.sort((a, b) => {
+      if ((b.priorityScore ?? 0) !== (a.priorityScore ?? 0)) {
+        return (b.priorityScore ?? 0) - (a.priorityScore ?? 0);
+      }
       if (b.qualityRank !== a.qualityRank) return b.qualityRank - a.qualityRank;
       if (b.speedValue !== a.speedValue) return b.speedValue - a.speedValue;
       if (a.pingTime !== b.pingTime) return a.pingTime - b.pingTime;

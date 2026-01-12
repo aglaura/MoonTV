@@ -11,7 +11,7 @@ import React, {
 
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
-import { SearchResult } from '@/lib/types';
+import { SearchResult, SourceValuation } from '@/lib/types';
 import {
   getQualityRank,
   getVideoResolutionFromM3u8,
@@ -623,6 +623,56 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
 
     return enrichedGroups;
   }, [sortedSources, videoInfoMap, currentId, currentSource]);
+
+  // Persist provider valuations using the best entry per provider and the current priority order.
+  useEffect(() => {
+    if (!groupedSources.length) return;
+
+    const entries = groupedSources
+      .map<SourceValuation | null>((group, idx) => {
+        const sample = group.sources[0];
+        if (!sample) return null;
+        const key = sample.source?.toString().trim();
+        if (!key) return null;
+        const best = group.bestOverall;
+        const quality = best?.quality ?? sample.quality ?? '未知';
+        const loadSpeed = best?.loadSpeed ?? sample.loadSpeed ?? '未知';
+        const pingTime =
+          typeof best?.pingTime === 'number' && best.pingTime > 0
+            ? best.pingTime
+            : typeof sample.pingTime === 'number' && sample.pingTime > 0
+            ? sample.pingTime
+            : Number.MAX_SAFE_INTEGER;
+        const qualityRank = best?.qualityRank ?? getQualityRank(quality);
+        const speedValue =
+          best?.speedValue ?? parseSpeedToKBps(loadSpeed) ?? 0;
+        const priorityScore = groupedSources.length - idx;
+
+        return {
+          key,
+          source: sample.source,
+          quality,
+          loadSpeed,
+          pingTime,
+          qualityRank,
+          speedValue,
+          sampleCount: 1,
+          priorityScore,
+          updated_at: Date.now(),
+        };
+      })
+      .filter((entry): entry is SourceValuation => Boolean(entry));
+
+    if (entries.length === 0) return;
+    // Fire and forget; no user-facing impact if it fails.
+    void fetch('/api/source/valuation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valuations: entries }),
+    }).catch((error) => {
+      console.warn('Failed to persist provider priority valuations', error);
+    });
+  }, [groupedSources]);
 
   const currentStart = currentPage * episodesPerPage + 1;
   const currentEnd = Math.min(
