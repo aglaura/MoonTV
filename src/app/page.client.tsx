@@ -19,6 +19,7 @@ import {
 } from '@/lib/db.client';
 import { convertToTraditional } from '@/lib/locale';
 import { DoubanItem } from '@/lib/types';
+import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
@@ -82,6 +83,14 @@ function tt(en: string, zhHans: string, zhHant: string): string {
   if (locale === 'zh-Hans') return zhHans;
   if (locale === 'zh-Hant') return zhHant;
   return en;
+}
+
+function isKidSafeCard(item: CardItem) {
+  return isKidSafeContent({
+    title: item.title,
+    desc: item.rate || item.type || '',
+    type: item.type,
+  });
 }
 
 function ContentRail({
@@ -158,6 +167,12 @@ function HomeClient() {
   );
   const [heroIndex, setHeroIndex] = useState(0);
   const { announcement } = useSite();
+  const { isKidsMode } = useKidsMode();
+  const applyKidsFilter = useMemo(
+    () => (items: CardItem[]) =>
+      isKidsMode ? items.filter((item) => isKidSafeCard(item)) : items,
+    [isKidsMode]
+  );
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
 
@@ -172,6 +187,13 @@ function HomeClient() {
       }
     }
   }, [announcement]);
+
+  // In kids mode default to the safest lane.
+  useEffect(() => {
+    if (isKidsMode && category !== 'anime') {
+      setCategory('anime');
+    }
+  }, [isKidsMode, category]);
 
   // 收藏夹数据
   type FavoriteItem = {
@@ -323,30 +345,30 @@ function HomeClient() {
     return {
       movie: {
         label: tt('Movies', '电影', '電影'),
-        items: mergedMovies,
+        items: applyKidsFilter(mergedMovies),
         seeMore: '/douban?type=movie',
         hint: tt('Cinema picks for today', '今日影院精选', '今日影院精選'),
       },
       tv: {
         label: tt('TV Series', '剧集', '劇集'),
-        items: mapDouban(hotTvShows, 'tv'),
+        items: applyKidsFilter(mapDouban(hotTvShows, 'tv')),
         seeMore: '/douban?type=tv',
         hint: tt('Binge-worthy shows', '值得追的剧', '值得追的劇'),
       },
       variety: {
         label: tt('Variety', '综艺', '綜藝'),
-        items: mapDouban(hotVarietyShows, 'show'),
+        items: applyKidsFilter(mapDouban(hotVarietyShows, 'show')),
         seeMore: '/douban?type=show',
         hint: tt('Light entertainment', '轻松综艺', '輕鬆綜藝'),
       },
       anime: {
         label: tt('Anime', '新番', '新番'),
-        items: animeList,
+        items: applyKidsFilter(animeList),
         seeMore: '/douban?type=anime',
         hint: tt('Fresh episodes', '最新更新', '最新更新'),
       },
     };
-  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, tmdbList]);
+  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, tmdbList, applyKidsFilter]);
 
   const currentCategory = categoryData[category];
 
@@ -455,6 +477,13 @@ function HomeClient() {
   return (
     <PageLayout>
       <div className='px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full'>
+        {isKidsMode && (
+          <div className='mb-3 flex justify-center'>
+            <span className='px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold dark:bg-amber-900/60 dark:text-amber-50 border border-amber-200 dark:border-amber-700'>
+              {tt('Kids mode is on', '少儿模式已开启', '少兒模式已開啟')}
+            </span>
+          </div>
+        )}
         {/* 顶部 Tab 切换 */}
         <div className='mb-6 sm:mb-8 flex justify-center'>
           <CapsuleSwitch

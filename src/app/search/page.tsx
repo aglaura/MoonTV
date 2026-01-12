@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { tt } from '@/lib/i18n.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
+import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
 
 import PageLayout from '@/components/PageLayout';
 import { useSite } from '@/components/SiteProvider';
@@ -51,6 +52,7 @@ function HomeClient() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const initializedHistoryRef = useRef(false);
+  const { isKidsMode } = useKidsMode();
 
   useEffect(() => {
     if (typeof window === 'undefined' || initializedHistoryRef.current) return;
@@ -178,7 +180,17 @@ function HomeClient() {
             }
           }
 
-          setSearchResults(combinedResults);
+          const filtered = isKidsMode
+            ? combinedResults.filter((item) =>
+                isKidSafeContent({
+                  title: item.title,
+                  desc: item.original_title || item.type_name || '',
+                  type: item.type_name || '',
+                })
+              )
+            : combinedResults;
+
+          setSearchResults(filtered);
           setHasSearched(true);
           addToHistory(originalQuery);
         } catch (err) {
@@ -196,7 +208,7 @@ function HomeClient() {
 
       void performSearch();
     },
-    [addToHistory, tt]
+    [addToHistory, tt, isKidsMode]
   );
 
   const handleCloseAnnouncement = (announcement: string) => {
@@ -285,6 +297,13 @@ function HomeClient() {
   return (
     <PageLayout activePath='/search'>
       <div className='px-2 sm:px-10 pt-16 sm:pt-12 pb-4 sm:pb-8 overflow-visible'>
+        {isKidsMode && (
+          <div className='mb-3 flex justify-center'>
+            <span className='px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold dark:bg-amber-900/60 dark:text-amber-50 border border-amber-200 dark:border-amber-700'>
+              {tt('Kids mode is on', '少儿模式已开启', '少兒模式已開啟')}
+            </span>
+          </div>
+        )}
         <section className='mb-10'>
           <form
             onSubmit={async (e) => {

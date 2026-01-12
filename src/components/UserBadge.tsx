@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { useKidsMode } from '@/lib/kidsMode.client';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
 const t = (key: 'loggedInAs', locale: string) => {
@@ -57,6 +58,12 @@ export default function UserBadge() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const { userLocale } = useUserLanguage();
   const locale = userLocale || 'en';
+  const {
+    isKidsMode,
+    ready: kidsReady,
+    disableKidsMode,
+    enableKidsMode,
+  } = useKidsMode();
   const [isOpen, setIsOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -232,7 +239,11 @@ export default function UserBadge() {
       <button
         ref={buttonRef}
         title={`${t('loggedInAs', locale)} ${username}`}
-        className='max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border border-gray-200/70 dark:border-gray-700/60 text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000]'
+        className={`max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000] ${
+          isKidsMode
+            ? 'border-amber-300 dark:border-amber-400/70 ring-amber-200/60'
+            : 'border-gray-200/70 dark:border-gray-700/60'
+        }`.trim()}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-haspopup='menu'
@@ -246,6 +257,11 @@ export default function UserBadge() {
           )}
         </span>
         <span className='truncate hidden sm:inline'>{username}</span>
+        {isKidsMode && (
+          <span className='text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100'>
+            {tt('Kids', '少儿', '少兒', locale)}
+          </span>
+        )}
       </button>
 
       {isOpen &&
@@ -315,6 +331,41 @@ export default function UserBadge() {
                         </button>
                       );
                     })}
+                  </div>
+                  <div className='pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2'>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        if (isKidsMode) {
+                          disableKidsMode();
+                        } else {
+                          enableKidsMode();
+                        }
+                      }}
+                      disabled={!kidsReady}
+                      className={`w-full flex items-center justify-between rounded-lg px-2 py-2 text-xs transition ${
+                        isKidsMode
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-100 border border-amber-200 dark:border-amber-700'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600 hover:border-green-400'
+                      } ${!kidsReady ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      <span className='flex items-center gap-2'>
+                        <span
+                          className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                            isKidsMode ? 'bg-amber-500' : 'bg-gray-400'
+                          }`}
+                        />
+                        {isKidsMode
+                          ? tt('Exit Kids mode', '退出少儿模式', '退出少兒模式', locale)
+                          : tt('Enter Kids mode', '进入少儿模式', '進入少兒模式', locale)}
+                      </span>
+                      {isKidsMode && (
+                        <span className='text-[10px] text-amber-600 dark:text-amber-200'>
+                          {tt('On', '开启', '開啟', locale)}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <div className='pt-1 border-t border-gray-200 dark:border-gray-700'>
                     <button
