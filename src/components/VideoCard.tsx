@@ -386,6 +386,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [posterSrc, setPosterSrc] = useState<string>(
       actualPoster ? processImageUrl(actualPoster) : placeholderPoster
     );
+    const uploadInFlightRef = useRef(false);
 
     useEffect(() => {
       let cancelled = false;
@@ -425,6 +426,28 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
         if (!cancelled) {
           setPosterSrc(processedUrl || placeholderPoster);
+        }
+
+        // Client-side attempt to backfill remote cache if missing and allowed.
+        if (!uploadInFlightRef.current && actualPoster) {
+          uploadInFlightRef.current = true;
+          try {
+            const url = new URL(processedUrl, window.location.href);
+            const params = url.searchParams;
+            if (!params.has('doubanId') && dynamicDoubanId) {
+              params.set('doubanId', dynamicDoubanId.toString());
+              url.search = params.toString();
+            }
+            if (!params.has('imdbId') && imdbIdState) {
+              params.set('imdbId', imdbIdState);
+              url.search = params.toString();
+            }
+            await fetch(url.toString(), { cache: 'no-store' }).catch(() => {});
+          } catch {
+            // ignore
+          } finally {
+            uploadInFlightRef.current = false;
+          }
         }
       };
 
