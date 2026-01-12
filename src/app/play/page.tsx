@@ -632,7 +632,8 @@ function PlayPageClient() {
         resumeTimeRef.current = record.play_time ?? 0;
         setCurrentEpisodeIndex(clampedIndex);
         currentEpisodeIndexRef.current = clampedIndex;
-        return matchByDouban;
+        // Do not lock to the previous provider; let sorting pick the best.
+        return null;
       }
     }
 
@@ -671,7 +672,8 @@ function PlayPageClient() {
     resumeTimeRef.current = record.play_time ?? 0;
     setCurrentEpisodeIndex(clampedIndex);
     currentEpisodeIndexRef.current = clampedIndex;
-    return match;
+    // Let source selection pick the best provider; only restore progress.
+    return null;
   }, [normalizeTitle, searchTitle]);
 
   useEffect(() => {
