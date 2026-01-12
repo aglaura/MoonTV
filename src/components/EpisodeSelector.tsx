@@ -1009,11 +1009,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   Playing
                                 </div>
                               )}
-                              {!expandedProviders.has(group.key) && (
-                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-200'>
-                                  Tap to play best · Double tap to expand
-                                </div>
-                              )}
                             </div>
                           </div>
                             <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
@@ -1083,7 +1078,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg
+                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg overflow-visible
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
@@ -1095,6 +1090,14 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   transform: `translateY(${-idx * 6}px) translateX(${idx * 3}px) rotate(${idx === 0 ? 0 : idx % 2 === 0 ? -1.2 : 1.2}deg)`,
                                 }}
                               >
+                                {group.sources.length > 1 &&
+                                  !expandedProviders.has(group.key) &&
+                                  idx === 0 && (
+                                    <div
+                                      className='absolute inset-0 -z-10 translate-y-2 -translate-x-2 rounded-xl border border-white/20 bg-white/10 dark:bg-white/5'
+                                      aria-hidden
+                                    ></div>
+                                  )}
                                 <div className='flex items-start gap-3'>
                                   <div className='flex-shrink-0 w-14 h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
                                     {source.episodes &&
@@ -1110,14 +1113,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                               target.style.display = 'none';
                                             }}
                                           />
-                                          {group.sources.length > 1 && !expandedProviders.has(group.key) && idx === 0 && (
-                                            <>
-                                              <div className='absolute top-1 left-1 w-[90%] h-[90%] rounded-md border border-white/20 bg-white/5 translate-x-1 translate-y-1'></div>
+                                          {group.sources.length > 1 &&
+                                            !expandedProviders.has(group.key) &&
+                                            idx === 0 && (
                                               <div className='absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full shadow'>
                                                 +{group.sources.length - 1}
                                               </div>
-                                            </>
-                                          )}
+                                            )}
                                         </div>
                                       )}
                                   </div>
