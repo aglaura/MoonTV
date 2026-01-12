@@ -967,26 +967,24 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         key={group.key}
                         className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
                         onClick={() => {
-                          if (expandedProviders.has(group.key)) return;
-                          const best = bestSource || group.sources[0];
-                          if (
-                            best &&
-                            !(
-                              best.source?.toString() ===
-                                currentSource?.toString() &&
-                              best.id?.toString() === currentId?.toString()
-                            )
-                          ) {
-                            handleSourceClick(best);
-                          }
-                        }}
-                        onDoubleClick={() => {
+                          // Toggle expand/collapse on tap. If collapsed, also play best.
                           setExpandedProviders((prev) => {
                             const next = new Set(prev);
                             if (next.has(group.key)) {
                               next.delete(group.key);
                             } else {
                               next.add(group.key);
+                              const best = bestSource || group.sources[0];
+                              if (
+                                best &&
+                                !(
+                                  best.source?.toString() ===
+                                    currentSource?.toString() &&
+                                  best.id?.toString() === currentId?.toString()
+                                )
+                              ) {
+                                handleSourceClick(best);
+                              }
                             }
                             return next;
                           });
@@ -1018,10 +1016,25 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               )}
                             </div>
                           </div>
-                          <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
-                            <div className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'>
+                            <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
+                            <button
+                              type='button'
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedProviders((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(group.key)) {
+                                    next.delete(group.key);
+                                  } else {
+                                    next.add(group.key);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-500/20 transition'
+                            >
                               {group.sources.length} sources
-                            </div>
+                            </button>
                             {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                                 檢測失敗

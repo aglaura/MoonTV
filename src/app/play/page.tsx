@@ -1144,6 +1144,7 @@ function PlayPageClient() {
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
+  const [inlineFullscreen, setInlineFullscreen] = useState(false);
   const [clockText, setClockText] = useState(() => {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -1350,6 +1351,7 @@ function PlayPageClient() {
       : null;
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
+  const rotateFullscreenRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2886,7 +2888,10 @@ function PlayPageClient() {
             tooltip: tt('Rotate (iOS inline)', '旋转（iOS 内联）', '旋轉（iOS 內聯）'),
             click: () => {
               if (!isIOS) return;
-              setForceRotate((prev) => !prev);
+              const next = !forceRotate;
+              setForceRotate(next);
+              setInlineFullscreen(next);
+              rotateFullscreenRef.current = next;
             },
           },
           {
@@ -3029,17 +3034,24 @@ function PlayPageClient() {
       artPlayerRef.current.on('fullscreenCancel', () => {
         setIsFullscreen(false);
         unlockScreenOrientation();
+        setInlineFullscreen(false);
+        setForceRotate(false);
       });
 
       // Web fullscreen mode (fullscreen within page / Fullscreen API wrapper)
       artPlayerRef.current.on('fullscreenWeb', () => {
         setIsFullscreen(true);
         void autoRotateToFit();
+        setInlineFullscreen(false);
+        rotateFullscreenRef.current = false;
       });
 
       artPlayerRef.current.on('fullscreenWebCancel', () => {
         setIsFullscreen(false);
         unlockScreenOrientation();
+        setInlineFullscreen(false);
+        setForceRotate(false);
+        rotateFullscreenRef.current = false;
       });
 
       if (artPlayerRef.current?.video) {
@@ -3120,6 +3132,12 @@ function PlayPageClient() {
       void autoRotateToFit();
     } else {
       unlockScreenOrientation();
+      if (document.fullscreenElement && rotateFullscreenRef.current) {
+        document.exitFullscreen?.().catch(() => {});
+        rotateFullscreenRef.current = false;
+        setInlineFullscreen(false);
+        setForceRotate(false);
+      }
     }
   }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
 
@@ -3459,11 +3477,11 @@ function PlayPageClient() {
                   </div>
                 </div>
               )}
-              <div
-                ref={artRef}
-                className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
-                  forceRotate ? 'forced-rotate-player' : ''
-                }`}
+        <div
+          ref={artRef}
+          className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
+            forceRotate ? 'forced-rotate-player' : ''
+          }`}
               ></div>
 
                 {/* 换源加载蒙层 */}
