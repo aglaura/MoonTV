@@ -236,25 +236,34 @@ export class DbManager {
         const hasPing = isFailureSample ? true : measurementPingTime > 0;
         const hasPriorityUpdate =
           typeof valuation.priorityScore === 'number';
+        const priorityOnly =
+          hasPriorityUpdate && !hasQuality && !hasSpeed && !hasPing;
+
         const increment =
           hasQuality || hasSpeed || hasPing || hasPriorityUpdate ? 1 : 0;
         const combinedCount = previousCount + increment;
 
-        const blendedQualityRank = hasQuality
+        const blendedQualityRank = priorityOnly
+          ? existingQualityRank
+          : hasQuality
           ? previousCount > 0
             ? (existingQualityRank * previousCount + measurementQualityRank) /
               (previousCount + 1)
             : measurementQualityRank
           : existingQualityRank;
 
-        const blendedSpeedValue = hasSpeed
+        const blendedSpeedValue = priorityOnly
+          ? existingSpeedValue
+          : hasSpeed
           ? previousCount > 0
             ? (existingSpeedValue * previousCount + measurementSpeedValue) /
               (previousCount + 1)
             : measurementSpeedValue
           : existingSpeedValue;
 
-        const blendedPingTime = hasPing
+        const blendedPingTime = priorityOnly
+          ? existingPingTime
+          : hasPing
           ? previousCount > 0
             ? (existingPingTime * previousCount + measurementPingTime) /
               (previousCount + 1)
@@ -281,15 +290,22 @@ export class DbManager {
         const payload: SourceValuation = {
           key: trimmedKey,
           source: trimmedSource,
-          quality: qualityLabel,
-          loadSpeed: formattedSpeed,
-          pingTime:
-            blendedPingTime > 0 || previousCount > 0
-              ? Math.round(blendedPingTime)
-              : measurementPingTime,
-          qualityRank: roundedQualityRank,
-          speedValue: Math.round(blendedSpeedValue),
-          sampleCount: aggregateCount,
+          quality: priorityOnly
+            ? existing?.quality ?? qualityLabel
+            : qualityLabel,
+          loadSpeed: priorityOnly
+            ? existing?.loadSpeed ?? formattedSpeed
+            : formattedSpeed,
+          pingTime: priorityOnly
+            ? existing?.pingTime ?? measurementPingTime
+            : blendedPingTime > 0 || previousCount > 0
+            ? Math.round(blendedPingTime)
+            : measurementPingTime,
+          qualityRank: priorityOnly ? existingQualityRank : roundedQualityRank,
+          speedValue: priorityOnly
+            ? existingSpeedValue
+            : Math.round(blendedSpeedValue),
+          sampleCount: priorityOnly ? previousCount || 1 : aggregateCount,
           priorityScore:
             typeof valuation.priorityScore === 'number'
               ? valuation.priorityScore

@@ -91,6 +91,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   const [attemptedSources, setAttemptedSources] = useState<Set<string>>(
     new Set()
   );
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
+    new Set()
+  );
 
   // 使用 ref 来避免闭包问题
   const attemptedSourcesRef = useRef<Set<string>>(new Set());
@@ -911,6 +914,31 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                       <div
                         key={group.key}
                         className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
+                        onClick={() => {
+                          if (expandedProviders.has(group.key)) return;
+                          const best = group.sources[0];
+                          if (
+                            best &&
+                            !(
+                              best.source?.toString() ===
+                                currentSource?.toString() &&
+                              best.id?.toString() === currentId?.toString()
+                            )
+                          ) {
+                            handleSourceClick(best);
+                          }
+                        }}
+                        onDoubleClick={() => {
+                          setExpandedProviders((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(group.key)) {
+                              next.delete(group.key);
+                            } else {
+                              next.add(group.key);
+                            }
+                            return next;
+                          });
+                        }}
                       >
                         <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 bg-black/5 dark:bg-white/5'>
                           <div className='min-w-0 sm:flex-1'>
@@ -929,6 +957,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               {groupHasCurrent && (
                                 <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-500/15 dark:bg-green-500/20 text-green-700 dark:text-green-300'>
                                   Playing
+                                </div>
+                              )}
+                              {!expandedProviders.has(group.key) && (
+                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-700 dark:text-blue-200'>
+                                  Tap to play best · Double tap to expand
                                 </div>
                               )}
                             </div>
@@ -959,7 +992,10 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         </div>
 
                         <div className='p-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3'>
-                          {group.sources.map((source, idx) => {
+                          {(expandedProviders.has(group.key)
+                            ? group.sources
+                            : group.sources.slice(0, 1)
+                          ).map((source, idx) => {
                             const displaySourceTitle =
                               convertToTraditional(source.title) || source.title;
                             const englishSourceTitle =
