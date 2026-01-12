@@ -869,25 +869,47 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           ? s.episodes.length
                           : 0,
                       }));
+
+                      const isYearMismatch = (item: (typeof withEpisodes)[number]) =>
+                        item.s.verifyReason?.includes('年份') ||
+                        item.s.verifyReason?.toLowerCase().includes('year');
+
                       const eligible = withEpisodes.filter(
                         (item) =>
                           !item.s.verifyReason &&
                           item.episodes > 0 &&
                           (item.s.title?.trim().length || 0) > 1
                       );
+                      const fallbackWithYear = withEpisodes.filter(
+                        (item) =>
+                          !isYearMismatch(item) &&
+                          item.episodes > 0 &&
+                          (item.s.title?.trim().length || 0) > 1
+                      );
                       const pool =
                         eligible.length > 0
                           ? eligible
+                          : fallbackWithYear.length > 0
+                          ? fallbackWithYear
                           : withEpisodes.filter((item) => item.episodes > 0) ||
                             withEpisodes;
                       if (!pool || pool.length === 0) return null;
-                      return pool.reduce((best, curr) => {
-                        if (!best) return curr;
-                        if (curr.episodes !== best.episodes) {
-                          return curr.episodes > best.episodes ? curr : best;
-                        }
-                        return curr.idx < best.idx ? curr : best;
-                      }, null as (typeof pool)[number] | null)?.s || null;
+
+                      const maxEpisodes = Math.max(
+                        ...pool.map((item) => item.episodes || 0)
+                      );
+                      const topByEpisodes = pool.filter(
+                        (item) => item.episodes === maxEpisodes
+                      );
+
+                      const best =
+                        topByEpisodes.length > 0
+                          ? topByEpisodes.reduce((best, curr) =>
+                              curr.idx < best.idx ? curr : best
+                            )
+                          : pool[0];
+
+                      return best?.s || null;
                     };
 
                     const bestSource = pickBestSource();
@@ -998,7 +1020,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                           <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
                             <div className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'>
-                              {group.sources.length} {tt('sources', '条来源', '條來源')}
+                              {group.sources.length}{' '}
+                              {uiLocale === 'zh-Hans'
+                                ? '条来源'
+                                : uiLocale === 'zh-Hant'
+                                ? '條來源'
+                                : 'sources'}
                             </div>
                             {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
