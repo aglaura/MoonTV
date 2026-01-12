@@ -2749,7 +2749,7 @@ function PlayPageClient() {
         flip: false,
         playbackRate: true,
         aspectRatio: false,
-        fullscreen: true,
+        fullscreen: !isIOS, // disable native fullscreen on iOS so we can rotate inline
         fullscreenWeb: true,
         subtitleOffset: false,
         miniProgressBar: false,
@@ -2879,6 +2879,43 @@ function PlayPageClient() {
           },
         ],
         controls: [
+          {
+            position: 'left',
+            index: 9,
+            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">↻ 90°</div>',
+            tooltip: tt('Rotate (iOS inline)', '旋转（iOS 内联）', '旋轉（iOS 內聯）'),
+            click: () => {
+              if (!isIOS) return;
+              setForceRotate((prev) => !prev);
+            },
+          },
+          {
+            position: 'left',
+            index: 10,
+            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">⏪ 10s</div>',
+            tooltip: tt('Rewind 10s', '后退 10 秒', '後退 10 秒'),
+            click: () => {
+              if (isIOSDevice()) return;
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.max(0, player.currentTime - 10);
+            },
+          },
+          {
+            position: 'left',
+            index: 11,
+            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">⏩ 10s</div>',
+            tooltip: tt('Forward 10s', '前进 10 秒', '前進 10 秒'),
+            click: () => {
+              if (isIOSDevice()) return;
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.min(
+                player.duration || Number.MAX_SAFE_INTEGER,
+                player.currentTime + 10
+              );
+            },
+          },
           {
             position: 'left',
             index: 13,

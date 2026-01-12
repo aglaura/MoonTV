@@ -986,6 +986,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 style={{
                                   zIndex: group.sources.length - idx,
                                   marginTop: idx === 0 ? 0 : -10,
+                                  transform: `translateY(${-idx * 6}px) translateX(${idx * 3}px) rotate(${idx === 0 ? 0 : idx % 2 === 0 ? -1.2 : 1.2}deg)`,
                                 }}
                               >
                                 <div className='flex items-start gap-3'>
