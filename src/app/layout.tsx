@@ -68,7 +68,7 @@ const DEFAULT_DESCRIPTIONS: Record<Locale, string> = {
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await resolveLocale();
-  let siteName = process.env.SITE_NAME || 'EssaouiraTV';
+  let siteName = process.env.SITE_NAME || 'Esmee TV';
   if (process.env.NEXT_PUBLIC_STORAGE_TYPE !== 'd1') {
     const config = await getConfig();
     siteName = config.SiteConfig.SiteName;
@@ -91,7 +91,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await resolveLocale();
-  let siteName = process.env.SITE_NAME || 'EssaouiraTV';
+  let siteName = process.env.SITE_NAME || 'Esmee TV';
   let announcement =
     process.env.ANNOUNCEMENT ||
     (DEFAULT_ANNOUNCEMENTS[locale] ?? DEFAULT_ANNOUNCEMENTS.en);

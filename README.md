@@ -1,10 +1,10 @@
-# MoonTV
+# Esmee TV
 
 <div align="center">
   <img src="public/logo.png" alt="LibreTV Logo" width="120">
 </div>
 
-> 🎬 **MoonTV** 是一個開箱即用的、跨平台的影視聚合播放器。它基於 **Next.js 14** + **Tailwind&nbsp;CSS** + **TypeScript** 建構，支援多資源搜尋、線上播放、收藏同步、播放記錄、本地/雲端儲存，讓你可以隨時隨地暢享海量免費影視內容。
+> 🎬 **Esmee TV** 是一個開箱即用的、跨平台的影視聚合播放器。它基於 **Next.js 14** + **Tailwind&nbsp;CSS** + **TypeScript** 建構，支援多資源搜尋、線上播放、收藏同步、播放記錄、本地/雲端儲存，讓你可以隨時隨地暢享海量免費影視內容。
 
 <div align="center">
 

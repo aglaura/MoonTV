@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     
     const response = await fetch(wikipediaApiUrl, {
       headers: {
-        'User-Agent': 'EssaouiraTV/1.0 (https://github.com/LibreSpark/MoonTV)',
+        'User-Agent': 'EsmeeTV/1.0',
       },
     });
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     
     const searchResponse = await fetch(searchUrl, {
       headers: {
-        'User-Agent': 'EssaouiraTV/1.0 (https://github.com/LibreSpark/MoonTV)',
+        'User-Agent': 'EsmeeTV/1.0',
       },
     });
 
