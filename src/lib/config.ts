@@ -631,6 +631,30 @@ export async function getAvailableApiSites(): Promise<ApiSite[]> {
   if (!apiSiteOrderInitialized) {
     apiSiteOrderInitialized = true;
     sortedApiSitesCache = await sortApiSitesByValuations(base);
+    // Auto-disable providers with 0 score/priority to avoid repeated slow hits.
+    try {
+      const disabledKeys = new Set<string>();
+      const enriched = await db.getAllSourceValuations();
+      enriched.forEach((v) => {
+        const score =
+          (v.qualityRank ?? 0) * 0.6 +
+          (v.speedValue ?? 0) * 0.15 +
+          ((v.pingTime && v.pingTime < Number.MAX_SAFE_INTEGER
+            ? 100 - Math.min(100, v.pingTime / 100)
+            : 0) *
+            0.25 || 0);
+        if ((v.priorityScore ?? 0) <= 0 && score <= 0) {
+          disabledKeys.add((v.key || v.source || '').trim());
+        }
+      });
+      if (disabledKeys.size > 0) {
+        sortedApiSitesCache = sortedApiSitesCache.filter(
+          (s) => !disabledKeys.has(s.key) && !disabledKeys.has(s.name)
+        );
+      }
+    } catch (error) {
+      console.warn('Auto-disable zero-score providers failed:', error);
+    }
   }
 
   return sortedApiSitesCache || base;
