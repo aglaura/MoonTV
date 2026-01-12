@@ -198,8 +198,6 @@ export class DbManager {
           }
         }
 
-        const previousCount = existing?.sampleCount ?? 0;
-
         const isFailureSample =
           valuation.qualityRank === -1 ||
           valuation.pingTime >= Number.MAX_SAFE_INTEGER / 2 ||
