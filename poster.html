@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Poster Uploader</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #0b1220;
+      color: #e2e8f0;
+      margin-bottom: 14px;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin-bottom: 14px;
+      color: #e2e8f0;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #0f766e, #0ea5e9);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      min-height: 20px;
+    }
+    .hint {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="margin-top:0;margin-bottom:10px;">Poster Uploader</h2>
+    <p class="hint">
+      Set <strong>Base URL</strong> to your CONFIGJSON site (e.g. https://example.com or https://example.com/config.json → use https://example.com).<br>
+      Files are uploaded to <code>{BaseURL}/posters/&lt;filename&gt;</code> via HTTP PUT. Ensure the server allows PUT/CORS and writes to that folder. The app will auto-upload posters there when missing.
+    </p>
+    <label for="base">Base URL</label>
+    <input id="base" type="text" placeholder="https://your-domain.example" />
+
+    <label for="file">Choose poster/cover image</label>
+    <input id="file" type="file" accept="image/*" />
+
+    <label for="douban">Douban ID (optional)</label>
+    <input id="douban" type="text" placeholder="e.g. 1234567 (auto-fills filename as douban-1234567.jpg)" />
+
+    <label for="name">Filename (optional)</label>
+    <input id="name" type="text" placeholder="e.g. douban-12345.jpg (auto-uses selected file name if empty)" />
+
+    <button id="upload">Upload</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    const baseInput = document.getElementById('base');
+    const fileInput = document.getElementById('file');
+    const nameInput = document.getElementById('name');
+    const doubanInput = document.getElementById('douban');
+    const uploadBtn = document.getElementById('upload');
+    const statusEl = document.getElementById('status');
+
+    function setStatus(text, ok = true) {
+      statusEl.textContent = text;
+      statusEl.style.color = ok ? '#34d399' : '#f87171';
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      const base = (baseInput.value || '').trim().replace(/\/+$/, '');
+      const file = fileInput.files?.[0];
+      const explicitName = (nameInput.value || '').trim();
+      const doubanId = (doubanInput.value || '').trim();
+
+      let filename = explicitName || file?.name || '';
+      if (!filename && doubanId) {
+        filename = `douban-${doubanId}.jpg`;
+      }
+      if (!explicitName && doubanId && file) {
+        filename = `douban-${doubanId}${file.name.toLowerCase().endsWith('.png') ? '.png' : '.jpg'}`;
+      }
+
+      if (!base) {
+        setStatus('Please enter Base URL.', false);
+        return;
+      }
+      if (!file) {
+        setStatus('Please choose a file.', false);
+        return;
+      }
+
+      const destName = filename || file.name;
+      const destUrl = `${base}/posters/${encodeURIComponent(destName)}`;
+
+      uploadBtn.disabled = true;
+      setStatus('Uploading...');
+      try {
+        const resp = await fetch(destUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
+        });
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}`);
+        }
+        setStatus(`Uploaded to ${destUrl}`);
+      } catch (err) {
+        setStatus(`Upload failed: ${err.message || err}`, false);
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
