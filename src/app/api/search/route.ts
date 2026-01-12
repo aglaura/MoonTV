@@ -6,6 +6,7 @@ import { fetchJsonWithRetry, fetchWithRetry } from '@/lib/fetchRetry.server';
 import { convertToSimplified } from '@/lib/locale';
 import { convertResultsArray } from '@/lib/responseTrad';
 import { SearchResult } from '@/lib/types';
+import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
@@ -223,6 +224,42 @@ export async function GET(request: Request) {
     const cacheTime = await getCacheTime();
 
     const transformed = convertResultsArray(flattenedResults);
+
+    // Update provider valuations based on search visibility so recency reflects active providers.
+    if (transformed.length > 0) {
+      const seen = new Set<string>();
+      const providerValuations = transformed
+        .filter((item) => {
+          const key = (item.source || '').trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map((item, idx, arr) => {
+          const key = (item.source || '').trim();
+          const priorityScore = arr.length - idx;
+          return {
+            key,
+            source: key,
+            quality: item.quality || '未知',
+            loadSpeed: item.loadSpeed || '未知',
+            pingTime: Number.isFinite(item.pingTime || 0) ? item.pingTime || 0 : 0,
+            qualityRank: 0,
+            speedValue: 0,
+            sampleCount: 1,
+            priorityScore,
+            updated_at: Date.now(),
+          };
+        });
+
+      if (providerValuations.length) {
+        try {
+          await db.saveSourceValuations(providerValuations);
+        } catch (error) {
+          console.warn('Failed to refresh provider valuations from search:', error);
+        }
+      }
+    }
 
     return NextResponse.json(
       { results: transformed },
