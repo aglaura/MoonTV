@@ -861,6 +861,36 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                 </div>
                 <div className='space-y-3'>
                   {groupedSources.map((group) => {
+                    const pickBestSource = () => {
+                      const withEpisodes = group.sources.map((s, idx) => ({
+                        s,
+                        idx,
+                        episodes: Array.isArray(s.episodes)
+                          ? s.episodes.length
+                          : 0,
+                      }));
+                      const eligible = withEpisodes.filter(
+                        (item) =>
+                          !item.s.verifyReason &&
+                          item.episodes > 0 &&
+                          (item.s.title?.trim().length || 0) > 1
+                      );
+                      const pool =
+                        eligible.length > 0
+                          ? eligible
+                          : withEpisodes.filter((item) => item.episodes > 0) ||
+                            withEpisodes;
+                      if (!pool || pool.length === 0) return null;
+                      return pool.reduce((best, curr) => {
+                        if (!best) return curr;
+                        if (curr.episodes !== best.episodes) {
+                          return curr.episodes > best.episodes ? curr : best;
+                        }
+                        return curr.idx < best.idx ? curr : best;
+                      }, null as (typeof pool)[number] | null)?.s || null;
+                    };
+
+                    const bestSource = pickBestSource();
                     const primary = group.sources[0];
                     if (!primary) return null;
 
@@ -916,7 +946,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                         className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
                         onClick={() => {
                           if (expandedProviders.has(group.key)) return;
-                          const best = group.sources[0];
+                          const best = bestSource || group.sources[0];
                           if (
                             best &&
                             !(
@@ -940,7 +970,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           });
                         }}
                       >
-                        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 bg-black/5 dark:bg-white/5'>
+                        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 bg-gradient-to-r from-emerald-50/80 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
                           <div className='min-w-0 sm:flex-1'>
                             <div className='flex items-center gap-2 min-w-0'>
                               <div
@@ -967,6 +997,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                             </div>
                           </div>
                           <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
+                            <div className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'>
+                              {group.sources.length} {tt('sources', '条来源', '條來源')}
+                            </div>
                             {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                                 檢測失敗
@@ -991,9 +1024,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='p-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3'>
+                        <div className='p-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
+                            : bestSource
+                            ? [bestSource]
                             : group.sources.slice(0, 1)
                           ).map((source, idx) => {
                             const displaySourceTitle =
@@ -1013,11 +1048,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-sm hover:shadow-md
+                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
-                                      : 'bg-white/70 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-gray-200/60 dark:hover:bg-white/10 cursor-pointer'
+                                      : 'bg-white/80 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
                                 style={{
                                   zIndex: group.sources.length - idx,
@@ -1026,7 +1061,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 }}
                               >
                                 <div className='flex items-start gap-3'>
-                                  <div className='flex-shrink-0 w-14 h-24 bg-gray-300 dark:bg-gray-600 rounded-md overflow-hidden'>
+                                  <div className='flex-shrink-0 w-14 h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
                                     {source.episodes &&
                                       source.episodes.length > 0 && (
                                         <img
