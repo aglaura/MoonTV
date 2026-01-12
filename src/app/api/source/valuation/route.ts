@@ -44,6 +44,10 @@ export async function POST(request: Request) {
             typeof item.sampleCount === 'number' && item.sampleCount > 0
               ? Math.round(item.sampleCount)
               : 1,
+          priorityScore:
+            typeof item.priorityScore === 'number'
+              ? item.priorityScore
+              : undefined,
           updated_at: item.updated_at ?? Date.now(),
         };
       });
@@ -93,6 +97,10 @@ export async function GET(request: Request) {
         qualityRank,
         speedValue,
         sampleCount,
+        priorityScore:
+          typeof item.priorityScore === 'number'
+            ? item.priorityScore
+            : undefined,
       };
     });
 

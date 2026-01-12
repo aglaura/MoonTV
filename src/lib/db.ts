@@ -289,6 +289,10 @@ export class DbManager {
           qualityRank: roundedQualityRank,
           speedValue: Math.round(blendedSpeedValue),
           sampleCount: aggregateCount,
+          priorityScore:
+            typeof valuation.priorityScore === 'number'
+              ? valuation.priorityScore
+              : existing?.priorityScore,
           updated_at: Date.now(),
         };
 
