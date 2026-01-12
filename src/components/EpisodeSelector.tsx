@@ -1020,12 +1020,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                           <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
                             <div className='text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-200'>
-                              {group.sources.length}{' '}
-                              {uiLocale === 'zh-Hans'
-                                ? '条来源'
-                                : uiLocale === 'zh-Hant'
-                                ? '條來源'
-                                : 'sources'}
+                              {group.sources.length} sources
                             </div>
                             {providerHasError ? (
                               <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
