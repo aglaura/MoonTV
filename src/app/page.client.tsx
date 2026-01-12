@@ -904,7 +904,7 @@ function HomeClient() {
                           </span>
                         </div>
                         <div className='flex flex-col lg:flex-row gap-4 items-start lg:items-center'>
-                          <div className='relative w-40 sm:w-48 flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-gray-800'>
+                          <div className={`relative flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-gray-800 ${screenMode === 'mobile' ? 'w-32' : 'w-40 sm:w-48'}`}>
                             {currentHero?.poster && (
                               <img
                                 src={currentHero.poster}
@@ -919,6 +919,8 @@ function HomeClient() {
                               className={`font-bold text-white leading-tight line-clamp-2 ${
                                 screenMode === 'tv'
                                   ? 'text-4xl lg:text-5xl'
+                                  : screenMode === 'mobile'
+                                  ? 'text-xl'
                                   : 'text-2xl sm:text-3xl lg:text-4xl'
                               }`}
                             >
@@ -926,7 +928,11 @@ function HomeClient() {
                             </h2>
                             <p
                               className={`text-gray-200/80 line-clamp-3 ${
-                                screenMode === 'tv' ? 'text-lg' : 'text-sm sm:text-base'
+                                screenMode === 'tv'
+                                  ? 'text-lg'
+                                  : screenMode === 'mobile'
+                                  ? 'text-xs'
+                                  : 'text-sm sm:text-base'
                               }`}
                             >
                               {tt(
@@ -966,7 +972,7 @@ function HomeClient() {
                         </div>
                         <div
                           className='flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-                          style={{ perspective: '900px' }}
+                          style={{ perspective: screenMode === 'mobile' ? undefined : '900px' }}
                         >
                           {heroItems.slice(0, 10).map((item, idx) => {
                             const safeLength = heroItems.length || 1;
@@ -974,14 +980,14 @@ function HomeClient() {
                               ((heroIndex % safeLength) + safeLength) % safeLength;
                             const delta = idx - activeIndex;
                             const clampedDelta = Math.max(Math.min(delta, 2), -2);
-                            const angle = clampedDelta * 12;
-                            const depth = -Math.abs(clampedDelta) * 60;
+                            const angle = screenMode === 'mobile' ? 0 : clampedDelta * 12;
+                            const depth = screenMode === 'mobile' ? 0 : -Math.abs(clampedDelta) * 60;
                             const active = delta === 0;
                             return (
                               <button
                                 key={`${item.title}-${idx}`}
                                 onClick={() => setHeroIndex(idx)}
-                                className={`relative flex-shrink-0 w-28 sm:w-32 rounded-2xl overflow-hidden transition ${
+                                className={`relative flex-shrink-0 ${screenMode === 'mobile' ? 'w-24' : 'w-28 sm:w-32'} rounded-2xl overflow-hidden transition ${
                                   active
                                     ? 'ring-2 ring-green-300/70 border border-green-400/70'
                                     : 'border border-white/10 hover:border-green-300/50'
