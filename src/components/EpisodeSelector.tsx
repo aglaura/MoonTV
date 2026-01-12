@@ -965,7 +965,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white/40 dark:bg-white/5 overflow-hidden'
+                        className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white dark:bg-gray-900/30 overflow-hidden shadow-sm'
                         onClick={() => {
                           // Toggle expand/collapse on tap. If collapsed, also play best.
                           setExpandedProviders((prev) => {
@@ -1082,7 +1082,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
-                                      : 'bg-white/80 dark:bg-white/5 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
+                                      : 'border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
                                 style={{
                                   zIndex: group.sources.length - idx,
