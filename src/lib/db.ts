@@ -234,7 +234,10 @@ export class DbManager {
         const hasQuality = isFailureSample ? true : measurementQualityRank > 0;
         const hasSpeed = isFailureSample ? true : measurementSpeedValue > 0;
         const hasPing = isFailureSample ? true : measurementPingTime > 0;
-        const increment = hasQuality || hasSpeed || hasPing ? 1 : 0;
+        const hasPriorityUpdate =
+          typeof valuation.priorityScore === 'number';
+        const increment =
+          hasQuality || hasSpeed || hasPing || hasPriorityUpdate ? 1 : 0;
         const combinedCount = previousCount + increment;
 
         const blendedQualityRank = hasQuality
@@ -271,11 +274,9 @@ export class DbManager {
 
         const aggregateCount = Math.max(
           combinedCount,
-          increment > 0 ? combinedCount : previousCount
+          increment > 0 ? combinedCount : previousCount,
+          1
         );
-        if (aggregateCount === 0) {
-          continue;
-        }
 
         const payload: SourceValuation = {
           key: trimmedKey,
