@@ -1082,19 +1082,19 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
-                                      : 'border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
+                                      : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
                                 style={{
                                   zIndex: group.sources.length - idx,
-                                  marginTop: idx === 0 ? 0 : -10,
-                                  transform: `translateY(${-idx * 6}px) translateX(${idx * 3}px) rotate(${idx === 0 ? 0 : idx % 2 === 0 ? -1.2 : 1.2}deg)`,
+                                  marginTop: idx === 0 ? 0 : -6,
+                                  transform: `translateY(${-idx * 4}px) translateX(${idx * 2}px)`,
                                 }}
                               >
                                 {group.sources.length > 1 &&
                                   !expandedProviders.has(group.key) &&
                                   idx === 0 && (
                                     <div
-                                      className='absolute inset-0 -z-10 translate-y-2 -translate-x-2 rounded-xl border border-white/20 bg-white/10 dark:bg-white/5'
+                                      className='absolute inset-0 -z-10 translate-y-1 translate-x-0 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
                                       aria-hidden
                                     ></div>
                                   )}

@@ -238,7 +238,7 @@ export class DbManager {
           hasPriorityUpdate && !hasQuality && !hasSpeed && !hasPing;
 
         const previousCountRaw = Number(existing?.sampleCount);
-        const previousCount =
+        const prevCount =
           Number.isFinite(previousCountRaw) && previousCountRaw > 0
             ? previousCountRaw
             : 0;
@@ -251,32 +251,32 @@ export class DbManager {
           hasQuality || hasSpeed || hasPing || hasPriorityUpdate
             ? incomingCount
             : incomingCount;
-        const combinedCount = previousCount + increment;
+        const combinedCount = prevCount + increment;
 
         const blendedQualityRank = priorityOnly
           ? existingQualityRank
           : hasQuality
-          ? previousCount > 0
-            ? (existingQualityRank * previousCount + measurementQualityRank) /
-              (previousCount + 1)
+          ? prevCount > 0
+            ? (existingQualityRank * prevCount + measurementQualityRank) /
+              (prevCount + 1)
             : measurementQualityRank
           : existingQualityRank;
 
         const blendedSpeedValue = priorityOnly
           ? existingSpeedValue
           : hasSpeed
-          ? previousCount > 0
-            ? (existingSpeedValue * previousCount + measurementSpeedValue) /
-              (previousCount + 1)
+          ? prevCount > 0
+            ? (existingSpeedValue * prevCount + measurementSpeedValue) /
+              (prevCount + 1)
             : measurementSpeedValue
           : existingSpeedValue;
 
         const blendedPingTime = priorityOnly
           ? existingPingTime
           : hasPing
-          ? previousCount > 0
-            ? (existingPingTime * previousCount + measurementPingTime) /
-              (previousCount + 1)
+          ? prevCount > 0
+            ? (existingPingTime * prevCount + measurementPingTime) /
+              (prevCount + 1)
             : measurementPingTime
           : existingPingTime;
 
@@ -292,7 +292,7 @@ export class DbManager {
             : existing?.loadSpeed ?? valuation.loadSpeed ?? '未知';
 
         // Always bump sample count when we see a new write, even if it's priority-only.
-        const aggregateCount = previousCount + incomingCount;
+        const aggregateCount = prevCount + incomingCount;
 
         const payload: SourceValuation = {
           key: trimmedKey,
@@ -305,7 +305,7 @@ export class DbManager {
             : formattedSpeed,
           pingTime: priorityOnly
             ? existing?.pingTime ?? measurementPingTime
-            : blendedPingTime > 0 || previousCount > 0
+            : blendedPingTime > 0 || prevCount > 0
             ? Math.round(blendedPingTime)
             : measurementPingTime,
           qualityRank: priorityOnly ? existingQualityRank : roundedQualityRank,
