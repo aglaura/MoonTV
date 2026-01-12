@@ -181,16 +181,33 @@ export class DbManager {
       return;
     }
 
+    const keys = valuations
+      .map((v) => (v.key || v.source || '').trim())
+      .filter(Boolean);
+
+    let existingBulk: Record<string, SourceValuation> = {};
+    if (
+      typeof this.storage.getSourceValuations === 'function' &&
+      keys.length > 0
+    ) {
+      try {
+        existingBulk = await this.storage.getSourceValuations(keys);
+      } catch (error) {
+        console.warn('Failed to fetch existing valuations batch:', error);
+      }
+    }
+
     for (const valuation of valuations) {
       try {
-        const trimmedKey = valuation.key.trim();
+        const trimmedKey = (valuation.key || valuation.source || '').trim();
         if (!trimmedKey) {
           continue;
         }
-        const trimmedSource = valuation.source.trim();
+        const trimmedSource = (valuation.source || valuation.key || '').trim();
 
         let existing: SourceValuation | null = null;
-        if (typeof this.storage.getSourceValuation === 'function') {
+        existing = existingBulk[trimmedKey] ?? null;
+        if (!existing && typeof this.storage.getSourceValuation === 'function') {
           try {
             existing = await this.storage.getSourceValuation(trimmedKey);
           } catch (error) {
@@ -247,11 +264,11 @@ export class DbManager {
           Number.isFinite(incomingCountRaw) && incomingCountRaw > 0
             ? Math.round(incomingCountRaw)
             : 1;
-        const increment =
-          hasQuality || hasSpeed || hasPing || hasPriorityUpdate
+        const aggregateCount =
+          prevCount +
+          (hasQuality || hasSpeed || hasPing || hasPriorityUpdate
             ? incomingCount
-            : incomingCount;
-        const combinedCount = prevCount + increment;
+            : incomingCount);
 
         const blendedQualityRank = priorityOnly
           ? existingQualityRank
@@ -292,7 +309,10 @@ export class DbManager {
             : existing?.loadSpeed ?? valuation.loadSpeed ?? '未知';
 
         // Always bump sample count when we see a new write, even if it's priority-only.
-        const aggregateCount = prevCount + incomingCount;
+        const nextSampleCount =
+          aggregateCount > prevCount
+            ? aggregateCount
+            : prevCount + incomingCount;
 
         const payload: SourceValuation = {
           key: trimmedKey,
@@ -312,7 +332,7 @@ export class DbManager {
           speedValue: priorityOnly
             ? existingSpeedValue
             : Math.round(blendedSpeedValue),
-          sampleCount: aggregateCount,
+          sampleCount: nextSampleCount,
           priorityScore:
             typeof valuation.priorityScore === 'number'
               ? valuation.priorityScore

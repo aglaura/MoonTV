@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line simple-import-sort/imports
-import { Film, Home, Menu, Search, Sparkles } from 'lucide-react';
+import { Film, Home, Menu, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -159,13 +159,8 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       ),
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
-  },
-  {
-    icon: Sparkles,
-    label: 'TMDB',
-    href: '/imdb',
-  },
-];
+    },
+  ];
 
   return (
     <SidebarContext.Provider value={contextValue}>

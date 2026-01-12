@@ -1054,7 +1054,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='p-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3'>
+                        <div className='p-3 grid gap-2 sm:gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1078,7 +1078,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`relative rounded-xl border px-2.5 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg overflow-visible
+                                className={`relative rounded-xl border px-2 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg overflow-visible
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'

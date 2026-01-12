@@ -28,7 +28,7 @@ import VideoCard from '@/components/VideoCard';
 
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
-type ImdbListItem = {
+type TmdbListItem = {
   tmdbId: string;
   title: string;
   year: string;
@@ -48,7 +48,7 @@ type CardItem = {
   id?: string | number;
 };
 
-type CategoryKey = 'movie' | 'tv' | 'variety' | 'anime' | 'imdb';
+type CategoryKey = 'movie' | 'tv' | 'variety' | 'anime';
 
 function resolveUiLocale(): UiLocale {
   try {
@@ -146,7 +146,7 @@ function HomeClient() {
   const [bangumiCalendarData, setBangumiCalendarData] = useState<
     BangumiCalendarData[]
   >([]);
-  const [imdbList, setImdbList] = useState<ImdbListItem[]>([]);
+  const [tmdbList, setTmdbList] = useState<TmdbListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
@@ -216,13 +216,13 @@ function HomeClient() {
         try {
           const res = await fetch('/api/imdb/list', { cache: 'no-store' });
           if (res.ok) {
-            const data = (await res.json()) as { items?: ImdbListItem[] };
+            const data = (await res.json()) as { items?: TmdbListItem[] };
             if (Array.isArray(data.items)) {
-              setImdbList(data.items);
+              setTmdbList(data.items);
             }
           }
         } catch {
-          /* ignore imdb list errors */
+          /* ignore tmdb list errors */
         }
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
@@ -291,10 +291,39 @@ function HomeClient() {
         type,
       }));
 
+    const tmdbCards: CardItem[] = (tmdbList || []).map((item) => ({
+      title: item.title,
+      poster: item.poster,
+      rate: '',
+      year: item.year,
+      type: 'movie',
+      query: item.title,
+      source_name: 'TMDB',
+      id: item.tmdbId,
+    }));
+
+    const mergedMovies = (() => {
+      const seen = new Set<string>();
+      const merged: CardItem[] = [];
+      const normalize = (title?: string, year?: string) =>
+        `${(title || '').trim().toLowerCase().replace(/\s+/g, '')}__${
+          year || ''
+        }`;
+      const add = (item: CardItem) => {
+        const key = normalize(item.title, item.year);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        merged.push(item);
+      };
+      mapDouban(hotMovies, 'movie').forEach(add);
+      tmdbCards.forEach(add);
+      return merged;
+    })();
+
     return {
       movie: {
         label: tt('Movies', '电影', '電影'),
-        items: mapDouban(hotMovies, 'movie'),
+        items: mergedMovies,
         seeMore: '/douban?type=movie',
         hint: tt('Cinema picks for today', '今日影院精选', '今日影院精選'),
       },
@@ -316,26 +345,8 @@ function HomeClient() {
         seeMore: '/douban?type=anime',
         hint: tt('Fresh episodes', '最新更新', '最新更新'),
       },
-      imdb: {
-        label: 'TMDB',
-        items: (imdbList || []).map(
-          (item) =>
-            ({
-              title: item.title,
-              poster: item.poster,
-              rate: '',
-              year: item.year,
-              type: 'movie',
-              query: item.title,
-              source_name: 'TMDB',
-              id: item.tmdbId,
-            } as CardItem)
-        ),
-        seeMore: '/imdb',
-        hint: tt('Most popular movies', '热门电影', '熱門電影'),
-      },
     };
-  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, imdbList]);
+  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, tmdbList]);
 
   const currentCategory = categoryData[category];
 
@@ -439,7 +450,7 @@ function HomeClient() {
     ? 'flex flex-col gap-6 xl:gap-8'
     : isMobile
     ? 'flex flex-col gap-6'
-    : 'grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(320px,1fr)] gap-6 xl:gap-8';
+    : 'flex flex-col gap-6 xl:gap-8';
 
   return (
     <PageLayout>
@@ -764,102 +775,21 @@ function HomeClient() {
                     <ContentRail
                       title={tt('Hot movies', '热门电影', '熱門電影')}
                       href='/douban?type=movie'
-                      items={hotMovies.map((movie) => ({
-                        title: movie.title,
-                        poster: movie.poster,
-                        rate: movie.rate,
-                        year: movie.year,
-                        douban_id: Number(movie.id),
-                        type: 'movie',
-                      }))}
+                      items={categoryData.movie.items}
                     />
                     <ContentRail
                       title={tt('Hot TV shows', '热门剧集', '熱門劇集')}
                       href='/douban?type=tv'
-                      items={hotTvShows.map((show) => ({
-                        title: show.title,
-                        poster: show.poster,
-                        rate: show.rate,
-                        year: show.year,
-                        douban_id: Number(show.id),
-                        type: 'tv',
-                      }))}
+                      items={categoryData.tv.items}
                     />
                     <ContentRail
                       title={tt('Hot variety shows', '热门综艺', '熱門綜藝')}
                       href='/douban?type=show'
-                      items={hotVarietyShows.map((show) => ({
-                        title: show.title,
-                        poster: show.poster,
-                        rate: show.rate,
-                        year: show.year,
-                        douban_id: Number(show.id),
-                        type: 'tv',
-                      }))}
-                />
-                {imdbList.length > 0 && (
-                  <ContentRail
-                    title='TMDB Popular'
-                    href='/imdb'
-                    items={imdbList.map((item) => ({
-                      title: item.title,
-                      poster: item.poster,
-                      rate: '',
-                      year: item.year,
-                      query: item.title,
-                      source_name: 'TMDB',
-                      type: 'movie',
-                    }))}
-                  />
-                )}
-              </section>
-            </div>
-
-            {/* 侧栏 */}
-            <div className='hidden xl:flex flex-col gap-6'>
-            {imdbList.length > 0 && (
-              <div className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 p-4 shadow-sm'>
-                <div className='flex items-center justify-between mb-3'>
-                    <h3 className='text-base font-semibold text-gray-900 dark:text-gray-100'>
-                      TMDB
-                    </h3>
-                    <Link
-                      href='/imdb'
-                      className='text-xs text-green-700 dark:text-green-400 hover:underline'
-                    >
-                          {tt('See more', '查看更多', '查看更多')}
-                        </Link>
-                      </div>
-                      <div className='space-y-3'>
-                        {imdbList.slice(0, 6).map((item, idx) => (
-                          <Link
-                            key={`${item.tmdbId}-${idx}`}
-                            href='/imdb'
-                            className='flex gap-3 items-center group'
-                          >
-                            <div className='w-12 h-16 rounded-md overflow-hidden bg-gray-200 dark:bg-gray-800'>
-                              {item.poster && (
-                                <img
-                                  src={item.poster}
-                                  alt={item.title}
-                                  className='w-full h-full object-cover'
-                                />
-                              )}
-                            </div>
-                            <div className='flex-1 min-w-0'>
-                              <p className='text-sm text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-green-700 dark:group-hover:text-green-400'>
-                                {item.title}
-                              </p>
-                              <p className='text-xs text-gray-500 dark:text-gray-400'>
-                                {item.year}
-                              </p>
-                            </div>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                      items={categoryData.variety.items}
+                    />
+                  </section>
                 </div>
+
               </div>
             </>
           )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Film, Home, Search, Sparkles } from 'lucide-react';
+import { Film, Home, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -43,12 +43,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       href: '/douban?type=movie',
       matchTypes: ['movie', 'tv', 'show', 'anime'],
     },
-  {
-    icon: Sparkles,
-    label: 'TMDB',
-    href: '/imdb',
-  },
-];
+  ];
 
   const isActive = (href: string) => {
     // 解码URL以进行正确的比较
@@ -73,7 +68,8 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
       style={{
         /* 紧贴视口底部，同时在内部留出安全区高度 */
         bottom: 0,
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)',
+        paddingTop: '10px',
       }}
     >
       <ul className='flex items-center'>
@@ -83,7 +79,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
             <li key={item.href} className='flex-shrink-0 flex-1'>
               <Link
                 href={item.href}
-                className='flex flex-col items-center justify-center w-full h-14 gap-1 text-xs'
+                className='flex flex-col items-center justify-center w-full gap-1 text-xs py-2.5'
               >
                 <item.icon
                   className={`h-6 w-6 ${
