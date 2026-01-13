@@ -84,7 +84,7 @@ async function fetchTmdbList(
         voteAverage: item?.vote_average,
       } as TmdbItem;
     })
-    .filter((item) => item.tmdbId && item.title)
+    .filter((item: TmdbItem) => item.tmdbId && item.title)
     .slice(0, 40);
 }
 
