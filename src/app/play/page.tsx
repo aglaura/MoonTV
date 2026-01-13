@@ -1400,7 +1400,7 @@ function PlayPageClient() {
 
     return normalized.slice(0, 12);
   }, [detail]);
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     if (!videoUrl) {
       reportError(
         tt('No playable source to download.', '暂无可下载的播放源。', '暫無可下載的播放源。'),
@@ -1417,18 +1417,32 @@ function PlayPageClient() {
     const recordTitle = [baseTitle, epLabel].filter(Boolean).join(' - ');
     persistDownloadRecord(recordTitle, videoUrl);
 
-    try {
+    const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
+    const triggerDownload = (href: string, name?: string) => {
       const a = document.createElement('a');
-      a.href = videoUrl;
-      a.download = '';
-      a.target = '_blank';
-      a.rel = 'noopener';
+      a.href = href;
+      if (name) a.download = name;
+      a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-      a.remove();
-    } catch {
-      window.open(videoUrl, '_blank', 'noopener,noreferrer');
+      setTimeout(() => a.remove(), 0);
+    };
+
+    // Try to fetch and save without opening a new tab
+    try {
+      const res = await fetch(videoUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      triggerDownload(objectUrl, `${safeName}.mp4`);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      return;
+    } catch (err) {
+      console.warn('Background download failed, falling back', err);
     }
+
+    // Fallback: direct download link (may open depending on browser)
+    triggerDownload(videoUrl, `${safeName}.mp4`);
   }, [
     videoUrl,
     displayTitleWithEnglish,
@@ -1437,6 +1451,7 @@ function PlayPageClient() {
     currentEpisodeIndex,
     persistDownloadRecord,
     tt,
+    reportError,
   ]);
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
