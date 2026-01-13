@@ -49,7 +49,7 @@ type CardItem = {
   id?: string | number;
 };
 
-type CategoryKey = 'movie' | 'tv' | 'variety' | 'anime';
+type CategoryKey = 'movie' | 'tv-cn' | 'tv-krjp' | 'variety' | 'anime';
 
 type TvSectionId =
   | 'continue'
@@ -495,6 +495,27 @@ function HomeClient() {
     return items.slice(0, 48);
   }, [bangumiCalendarData]);
 
+  const [hotTvShowsCn, hotTvShowsKrJp] = useMemo(() => {
+    const krjpList: DoubanItem[] = [];
+    const cnList: DoubanItem[] = [];
+    const isKrJpTitle = (title?: string) => {
+      if (!title) return false;
+      // Detect Hangul or common CJK markers for KR/JP titles
+      if (/[가-힣]/.test(title)) return true;
+      if (/[ぁ-ゔァ-ヴ一-龯]/.test(title)) return true;
+      if (/韩|韓|日剧|日劇|日版/.test(title)) return true;
+      return false;
+    };
+    (hotTvShows || []).forEach((item) => {
+      if (isKrJpTitle(item.title)) {
+        krjpList.push(item);
+      } else {
+        cnList.push(item);
+      }
+    });
+    return [cnList, krjpList];
+  }, [hotTvShows]);
+
   const categoryData = useMemo<
     Record<
       CategoryKey,
@@ -547,11 +568,17 @@ function HomeClient() {
         seeMore: '/douban?type=movie',
         hint: tt('Cinema picks for today', '今日影院精选', '今日影院精選'),
       },
-      tv: {
-        label: tt('TV Series', '剧集', '劇集'),
-        items: applyKidsFilter(mapDouban(hotTvShows, 'tv')),
-        seeMore: '/douban?type=tv',
-        hint: tt('Binge-worthy shows', '值得追的剧', '值得追的劇'),
+      'tv-cn': {
+        label: tt('Chinese TV', '华语剧集', '華語劇集'),
+        items: applyKidsFilter(mapDouban(hotTvShowsCn, 'tv')),
+        seeMore: '/douban?type=tv&region=cn',
+        hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
+      },
+      'tv-krjp': {
+        label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
+        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv')),
+        seeMore: '/douban?type=tv&region=krjp',
+        hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
       },
       variety: {
         label: tt('Variety', '综艺', '綜藝'),
@@ -566,7 +593,15 @@ function HomeClient() {
         hint: tt('Fresh episodes', '最新更新', '最新更新'),
       },
     };
-  }, [animeList, hotMovies, hotTvShows, hotVarietyShows, tmdbList, applyKidsFilter]);
+  }, [
+    animeList,
+    hotMovies,
+    hotTvShowsCn,
+    hotTvShowsKrJp,
+    hotVarietyShows,
+    tmdbList,
+    applyKidsFilter,
+  ]);
 
   const currentCategory = categoryData[category];
 
@@ -889,131 +924,58 @@ function HomeClient() {
                     </div>
                   </section>
 
-                  <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 dark:from-black dark:via-gray-900 dark:to-gray-800 shadow-lg overflow-hidden'>
-                    <div className='grid lg:grid-cols-[minmax(0,2.2fr)_minmax(220px,1fr)] gap-0'>
-                      <div className='p-4 sm:p-6 lg:p-8 flex flex-col gap-4 sm:gap-5'>
-                        <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-300'>
+                  <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-gray-900/70 shadow-sm max-w-6xl mx-auto w-full'>
+                    <div className='px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between'>
+                      <div className='space-y-1'>
+                        <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-700 dark:text-green-300'>
                           <span>{currentCategory.label}</span>
                           <span className='w-1 h-1 rounded-full bg-green-700 dark:bg-green-500'></span>
-                          <span className='text-gray-300'>
-                            {screenMode === 'mobile'
-                              ? tt('Mobile view', '手机竖屏', '手機豎屏')
-                              : screenMode === 'tv'
-                              ? tt('TV view', '电视模式', '電視模式')
-                              : tt('Desktop view', '桌面模式', '桌面模式')}
+                          <span className='text-gray-600 dark:text-gray-300'>
+                            {tt('Spotlight', '精选轮播', '精選輪播')}
                           </span>
                         </div>
-                        <div className='flex flex-col lg:flex-row gap-4 items-start lg:items-center'>
-                          <div className={`relative flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-gray-800 ${screenMode === 'mobile' ? 'w-32' : 'w-40 sm:w-48'}`}>
-                            {currentHero?.poster && (
-                              <img
-                                src={currentHero.poster}
-                                alt={currentHero.title}
-                                className='w-full h-full object-cover'
-                              />
-                            )}
-                            <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent'></div>
-                          </div>
-                          <div className='flex-1 flex flex-col gap-2 max-w-3xl'>
-                            <h2
-                              className={`font-bold text-white leading-tight line-clamp-2 ${
-                                screenMode === 'tv'
-                                  ? 'text-4xl lg:text-5xl'
-                                  : screenMode === 'mobile'
-                                  ? 'text-xl'
-                                  : 'text-2xl sm:text-3xl lg:text-4xl'
-                              }`}
-                            >
-                              {currentHero?.title || tt('Discover now', '发现好片', '發現好片')}
-                            </h2>
-                            <p
-                              className={`text-gray-200/80 line-clamp-3 ${
-                                screenMode === 'tv'
-                                  ? 'text-lg'
-                                  : screenMode === 'mobile'
-                                  ? 'text-xs'
-                                  : 'text-sm sm:text-base'
-                              }`}
-                            >
-                              {tt(
-                                'Tap play to start with the first provider, or open details to explore more sources.',
-                                '直接播放将从第一个来源开始，详情可查看更多来源。',
-                                '直接播放將從第一個來源開始，詳情可查看更多來源。'
-                              )}
-                            </p>
-                            <div className='text-gray-300 text-sm'>
-                              {currentHero?.year || ''}
-                              {currentHero?.rate ? ` · ${currentHero.rate}` : ''}
-                            </div>
-                            <div className='flex flex-wrap gap-3 mt-2'>
-                              {currentHero && (
-                                <VideoCard
-                                  from='douban'
-                                  title={currentHero.title}
-                                  poster={currentHero.poster}
-                                  douban_id={currentHero.douban_id}
-                                  rate={currentHero.rate}
-                                  year={currentHero.year}
-                                  type={currentHero.type}
-                                  query={currentHero.query}
-                                  source_name={currentHero.source_name}
-                                />
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        <p className='text-sm text-gray-600 dark:text-gray-300'>
+                          {tt('Swipe through highlights; tap to open.', '左右滑动浏览精选，点击打开播放。', '左右滑動瀏覽精選，點擊開啟播放。')}
+                        </p>
                       </div>
-                      <div className='bg-black/25 border-l border-white/5 p-3 sm:p-4 h-full'>
-                        <div className='flex items-center justify-between mb-3 text-sm text-gray-200'>
-                          <span>{tt('Top picks', '精选', '精選')}</span>
-                          <span className='text-gray-400'>
-                            {tt('Swipe or tap to switch', '滑动或点击切换', '滑動或點擊切換')}
-                          </span>
-                        </div>
-                        <div
-                          className='flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-                          style={{ perspective: screenMode === 'mobile' ? undefined : '900px' }}
-                        >
-                          {heroItems.slice(0, 10).map((item, idx) => {
-                            const safeLength = heroItems.length || 1;
-                            const activeIndex =
-                              ((heroIndex % safeLength) + safeLength) % safeLength;
-                            const delta = idx - activeIndex;
-                            const clampedDelta = Math.max(Math.min(delta, 2), -2);
-                            const angle = screenMode === 'mobile' ? 0 : clampedDelta * 12;
-                            const depth = screenMode === 'mobile' ? 0 : -Math.abs(clampedDelta) * 60;
-                            const active = delta === 0;
-                            return (
-                              <button
-                                key={`${item.title}-${idx}`}
-                                onClick={() => setHeroIndex(idx)}
-                                className={`relative flex-shrink-0 ${screenMode === 'mobile' ? 'w-24' : 'w-28 sm:w-32'} rounded-2xl overflow-hidden transition ${
-                                  active
-                                    ? 'ring-2 ring-green-300/70 border border-green-400/70'
-                                    : 'border border-white/10 hover:border-green-300/50'
-                                }`}
-                                style={{
-                                  scrollSnapAlign: 'start',
-                                  transformStyle: 'preserve-3d',
-                                  transform: `translateZ(${depth}px) rotateY(${angle}deg)`,
-                                }}
-                              >
-                                <div className='aspect-[2/3] bg-gray-700'>
-                                  {item.poster && (
-                                    <img
-                                      src={item.poster}
-                                      alt={item.title}
-                                      className='w-full h-full object-cover'
-                                    />
-                                  )}
+                    </div>
+                    <div className='px-3 sm:px-4 pb-4'>
+                      <div className='flex gap-3 overflow-x-auto [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                        {heroItems.slice(0, 12).map((item, idx) => {
+                          const safeLength = heroItems.length || 1;
+                          const activeIndex = ((heroIndex % safeLength) + safeLength) % safeLength;
+                          const active = idx === activeIndex;
+                          return (
+                            <button
+                              key={`${item.title}-${idx}`}
+                              onClick={() => setHeroIndex(idx)}
+                              className={`relative flex-shrink-0 w-32 sm:w-36 md:w-40 rounded-2xl overflow-hidden transition ${
+                                active
+                                  ? 'ring-2 ring-green-300/70 border border-green-400/70 scale-[1.02]'
+                                  : 'border border-gray-200 dark:border-gray-700 hover:border-green-400'
+                              }`}
+                              style={{ scrollSnapAlign: 'start' }}
+                            >
+                              <div className='aspect-[2/3] bg-gray-200 dark:bg-gray-800'>
+                                {item.poster && (
+                                  <img
+                                    src={item.poster}
+                                    alt={item.title}
+                                    className='w-full h-full object-cover'
+                                  />
+                                )}
+                                <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent'></div>
+                              </div>
+                              <div className='absolute bottom-0 left-0 right-0 p-2 text-left text-xs text-white bg-gradient-to-t from-black/80 via-black/40 to-transparent'>
+                                <div className='font-semibold line-clamp-2'>{item.title}</div>
+                                <div className='text-[11px] text-gray-200'>
+                                  {item.year || ''}
+                                  {item.rate ? ` · ${item.rate}` : ''}
                                 </div>
-                                <div className='p-2 text-[11px] text-gray-100 line-clamp-2 text-left bg-black/50'>
-                                  {item.title}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </section>
