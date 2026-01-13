@@ -991,7 +991,11 @@ function PlayPageClient() {
   }, [getValuationKey, persistSourceValuations]);
 
   const probeResolutionsForSources = useCallback(
-    async (sources: SearchResult[]) => {
+    async (
+      sources: SearchResult[],
+      providersWithEmptySources: Map<string, string>,
+      providersWithPlayableSources: Set<string>
+    ) => {
       const tasks: Promise<void>[] = [];
       const seenProviders = new Set<string>();
       const penalizedProviders = new Set<string>();
@@ -2358,7 +2362,11 @@ function PlayPageClient() {
       setSourceSearchLoading(false);
       setSourceSearchCompleted(true);
       fetchStoredValuations(allSources);
-      await probeResolutionsForSources(allSources);
+      await probeResolutionsForSources(
+        allSources,
+        providersWithEmptySources,
+        providersWithPlayableSources
+      );
       setAvailableSources(() => {
         const finalSorted = verifyAndSortSources(allSources);
         availableSourcesRef.current = finalSorted;
