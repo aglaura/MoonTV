@@ -3200,12 +3200,8 @@ function PlayPageClient() {
                   } else if (next && player.fullscreenWeb?.request) {
                     player.fullscreenWeb.request();
                   } else if (!next) {
-                    if (player.fullscreen?.exit) {
-                      player.fullscreen.exit();
-                    }
-                    if (player.fullscreenWeb?.exit) {
-                      player.fullscreenWeb.exit();
-                    }
+                    player.fullscreen?.exit?.();
+                    player.fullscreenWeb?.exit?.();
                   }
                 } catch (_) {
                   // ignore fullscreen errors
@@ -3420,11 +3416,12 @@ function PlayPageClient() {
       void autoRotateToFit();
     } else {
       unlockScreenOrientation();
-      if (document.fullscreenElement && rotateFullscreenRef.current) {
+      if (rotateFullscreenRef.current) {
         document.exitFullscreen?.().catch(() => {});
         rotateFullscreenRef.current = false;
         setInlineFullscreen(false);
         setForceRotate(false);
+        setIsFullscreen(false);
       }
     }
   }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
