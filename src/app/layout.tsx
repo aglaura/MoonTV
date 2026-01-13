@@ -9,6 +9,7 @@ import { type Locale,getDefaultLocale, getUserLanguage } from '@/lib/userLanguag
 
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
+import { ServiceWorkerRegistrar } from '../components/ServiceWorkerRegistrar';
 
 type AuthCookiePayload = {
   username?: string;
@@ -135,6 +136,7 @@ export default async function RootLayout({
             <main>
               {children}
             </main>
+            <ServiceWorkerRegistrar />
           </SiteProvider>
         </ThemeProvider>
       </body>

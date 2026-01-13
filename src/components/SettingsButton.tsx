@@ -133,6 +133,13 @@ export const SettingsButton: React.FC = () => {
       key,
     [locale]
   );
+  const formatTime = (ts: number) => {
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return '';
+    }
+  };
 
   // 确保组件已挂载
   useEffect(() => {
