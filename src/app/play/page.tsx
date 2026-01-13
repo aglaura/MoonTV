@@ -1590,6 +1590,45 @@ function PlayPageClient() {
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
   const rotateFullscreenRef = useRef(false);
+  const scrollPlayerIntoView = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const node = artRef.current;
+    if (!node) return;
+    try {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch {
+      const rect = node.getBoundingClientRect();
+      window.scrollTo({
+        top: window.scrollY + rect.top - 24,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const lock = forceRotate && isIOSDevice();
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyPos = body.style.position;
+    const prevBodyWidth = body.style.width;
+
+    if (lock) {
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed';
+      body.style.width = '100%';
+    }
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.position = prevBodyPos;
+      body.style.width = prevBodyWidth;
+    };
+  }, [forceRotate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3186,9 +3225,11 @@ function PlayPageClient() {
             html: '<button class="art-rotate-btn">↻ 90°</button>',
             style: {
               position: 'absolute',
-              bottom: '12px',
-              left: '50%',
-              transform: 'translateX(-50%)',
+              bottom: forceRotate ? '12px' : 'auto',
+              top: forceRotate ? 'auto' : '12px',
+              right: forceRotate ? '50%' : '12px',
+              left: forceRotate ? '50%' : 'auto',
+              transform: forceRotate ? 'translateX(-50%)' : 'none',
               zIndex: '600',
               display: isIOSMobile ? 'flex' : 'none',
             },
@@ -3199,6 +3240,9 @@ function PlayPageClient() {
               setInlineFullscreen(next);
               setIsFullscreen(next);
               rotateFullscreenRef.current = next;
+              if (next) {
+                setTimeout(scrollPlayerIntoView, 30);
+              }
               const player = artPlayerRef.current;
               if (player) {
                 try {
@@ -3419,31 +3463,6 @@ function PlayPageClient() {
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const lock = forceRotate && isIOSDevice();
-    const html = document.documentElement;
-    const body = document.body;
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-    const prevBodyPos = body.style.position;
-    const prevBodyWidth = body.style.width;
-
-    if (lock) {
-      html.style.overflow = 'hidden';
-      body.style.overflow = 'hidden';
-      body.style.position = 'fixed';
-      body.style.width = '100%';
-    }
-
-    return () => {
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
-      body.style.position = prevBodyPos;
-      body.style.width = prevBodyWidth;
-    };
-  }, [forceRotate]);
-
-  useEffect(() => {
     if (isFullscreen) {
       void autoRotateToFit();
     } else {
@@ -3599,7 +3618,7 @@ function PlayPageClient() {
   }
 
   return (
-    <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
+      <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>
