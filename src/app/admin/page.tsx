@@ -1903,6 +1903,24 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
         }`,
       ];
 
+      // Append detail rows when failed
+      const detailLines: string[] = [];
+      if (!data.configOk && data.configError) {
+        detailLines.push(`config.json error: ${data.configError}`);
+      }
+      if (data.configParsable === false) {
+        detailLines.push('config.json not valid JSON');
+      }
+      if (!data.posterPutOk && data.posterPutError) {
+        detailLines.push(`poster PUT error: ${data.posterPutError}`);
+      }
+      if (!data.posterGetOk && data.posterGetError) {
+        detailLines.push(`poster GET error: ${data.posterGetError}`);
+      }
+      if (detailLines.length > 0) {
+        lines.push(...detailLines);
+      }
+
       setTestSummary(lines.join(' • '));
 
       Swal.fire({
