@@ -80,6 +80,8 @@ export async function POST() {
   const posterUrl = `${base}/posters/${encodeURIComponent(filename)}`;
   result.posterUrl = posterUrl;
 
+  result.posterUploadMethod = 'POST direct';
+
   try {
     const postResp = await fetch(posterUrl, {
       method: 'POST',
@@ -102,13 +104,14 @@ export async function POST() {
           method: 'POST',
           body: fd,
         });
+        result.posterUploadMethod = 'poster.html FormData';
         result.posterHtmlPostStatus = fbResp.status;
         result.posterHtmlPostOk = fbResp.ok;
-        if (!fbResp.ok) {
-          result.posterHtmlPostError = fbResp.statusText || 'poster.html POST failed';
-        } else {
-          result.posterPostOk = true;
-        }
+        result.posterPostStatus = fbResp.status;
+        result.posterPostOk = fbResp.ok;
+        result.posterPostError = fbResp.ok
+          ? undefined
+          : fbResp.statusText || 'poster.html POST failed';
       } catch (err) {
         result.posterHtmlPostOk = false;
         result.posterHtmlPostError = (err as Error).message;
@@ -144,7 +147,7 @@ export async function POST() {
   const success =
     !!result.configOk &&
     result.configParsable !== false &&
-    (!!result.posterPostOk || !!result.posterHtmlPostOk) &&
+    !!result.posterPostOk &&
     !!result.posterGetOk;
 
   return NextResponse.json(
