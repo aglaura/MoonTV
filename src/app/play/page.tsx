@@ -1206,6 +1206,12 @@ function PlayPageClient() {
     () => isFullscreen && (forceRotate || isIOSDevice()),
     [isFullscreen, forceRotate]
   );
+  const playerHeightClass = useMemo(() => {
+    if (forceRotate || (isFullscreen && isIOSDevice())) {
+      return 'h-[70vh] lg:h-[85vh]';
+    }
+    return 'h-[300px] lg:h-full';
+  }, [forceRotate, isFullscreen]);
   const actualPlaybackInfoRef = useRef(actualPlaybackInfo);
   useEffect(() => {
     actualPlaybackInfoRef.current = actualPlaybackInfo;
@@ -3184,23 +3190,31 @@ function PlayPageClient() {
               const next = !forceRotate;
               setForceRotate(next);
               setInlineFullscreen(next);
-              setIsFullscreen(next || isFullscreen);
+              setIsFullscreen(next);
               rotateFullscreenRef.current = next;
               const player = artPlayerRef.current;
               if (player) {
                 try {
                   if (next && player.fullscreen?.request) {
                     player.fullscreen.request();
-                  } else if (!next && player.fullscreen?.exit) {
-                    player.fullscreen.exit();
                   } else if (next && player.fullscreenWeb?.request) {
                     player.fullscreenWeb.request();
-                  } else if (!next && player.fullscreenWeb?.exit) {
-                    player.fullscreenWeb.exit();
+                  } else if (!next) {
+                    if (player.fullscreen?.exit) {
+                      player.fullscreen.exit();
+                    }
+                    if (player.fullscreenWeb?.exit) {
+                      player.fullscreenWeb.exit();
+                    }
                   }
                 } catch (_) {
                   // ignore fullscreen errors
                 }
+              }
+              if (!next) {
+                rotateFullscreenRef.current = false;
+                setInlineFullscreen(false);
+                setForceRotate(false);
               }
             },
           },
@@ -3693,7 +3707,7 @@ function PlayPageClient() {
               hideSidePanels || isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-3'
             }`}
           >
-            <div className='relative w-full h-[300px] lg:h-full'>
+            <div className={`relative w-full ${playerHeightClass}`}>
               {isFullscreen && (
                 <div className='pointer-events-none absolute top-3 right-3 z-[600] rounded-full bg-black/70 px-3 py-1 text-white text-sm tracking-widest'>
                   {clockText}
