@@ -84,6 +84,7 @@ async function cachePoster(url: string, doubanId: string) {
   const base = buildPosterBase();
   if (!base || !url || !doubanId) return;
   const target = `${base}/posters/${encodeURIComponent(`douban-${doubanId}.jpg`)}`;
+  const filename = `douban-${doubanId}.jpg`;
 
   try {
     const head = await fetch(target, { method: 'HEAD' });
@@ -102,11 +103,28 @@ async function cachePoster(url: string, doubanId: string) {
     if (!resp.ok) return;
     const contentType = resp.headers.get('content-type') || 'application/octet-stream';
     const buffer = await resp.arrayBuffer();
-    await fetch(target, {
-      method: 'POST',
-      headers: { 'Content-Type': contentType },
-      body: buffer,
-    }).catch(() => {});
+    const tryUpload = async () => {
+      try {
+        const direct = await fetch(target, {
+          method: 'POST',
+          headers: { 'Content-Type': contentType },
+          body: buffer,
+        });
+        if (direct.ok) return true;
+      } catch {
+        // ignore
+      }
+      try {
+        const fd = new FormData();
+        fd.append('fileToUpload', new Blob([buffer], { type: contentType }), filename);
+        const fbUrl = `${base}/posters/poster.php?name=${encodeURIComponent(filename)}`;
+        const fbResp = await fetch(fbUrl, { method: 'POST', body: fd });
+        return fbResp.ok;
+      } catch {
+        return false;
+      }
+    };
+    await tryUpload();
   } catch {
     // ignore caching errors
   }

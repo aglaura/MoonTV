@@ -68,17 +68,12 @@ export async function GET(request: Request) {
       try {
         const buffer = await imageResponse.arrayBuffer();
         const ext = extFromContentType(contentType);
-        let filename = '';
-        if (doubanId) {
-          filename = `douban-${doubanId}${ext}`;
-        } else if (imdbId) {
-          filename = `imdb-${imdbId}${ext}`;
-        } else {
-          filename = `hash-${await hashString(imageUrl)}${ext}`;
-        }
-        const targetUrl = `${posterBase}/posters/${encodeURIComponent(
-          filename
-        )}`;
+        const filename = doubanId
+          ? `douban-${doubanId}${ext}`
+          : imdbId
+          ? `imdb-${imdbId}${ext}`
+          : `hash-${await hashString(imageUrl)}${ext}`;
+        const targetUrl = `${posterBase}/posters/${encodeURIComponent(filename)}`;
 
         // If already cached, redirect to it.
         try {
@@ -90,20 +85,41 @@ export async function GET(request: Request) {
           // ignore head failures
         }
 
-        // Upload via POST (align with poster.html expectations)
-        try {
-          const postResp = await fetch(targetUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': contentType || 'application/octet-stream',
-            },
-            body: buffer,
-          });
-          if (postResp.ok) {
-            return NextResponse.redirect(targetUrl, { status: 302 });
+        // Upload via POST; fallback to poster.php multipart for servers that block direct POST
+        const tryUploads = async () => {
+          try {
+            const postResp = await fetch(targetUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': contentType || 'application/octet-stream',
+              },
+              body: buffer,
+            });
+            if (postResp.ok) return true;
+          } catch {
+            // ignore
           }
-        } catch {
-          // ignore
+
+          // fallback poster.php multipart using fileToUpload to match common handlers
+          try {
+            const fd = new FormData();
+            fd.append(
+              'fileToUpload',
+              new Blob([buffer], { type: contentType || 'application/octet-stream' }),
+              filename
+            );
+            const fbUrl = `${posterBase}/posters/poster.php?name=${encodeURIComponent(filename)}`;
+            const fbResp = await fetch(fbUrl, { method: 'POST', body: fd });
+            if (fbResp.ok) return true;
+          } catch {
+            // ignore
+          }
+          return false;
+        };
+
+        const uploaded = await tryUploads();
+        if (uploaded) {
+          return NextResponse.redirect(targetUrl, { status: 302 });
         }
 
         // Fallback: serve original buffer
