@@ -1362,6 +1362,44 @@ function PlayPageClient() {
   const displayTitleWithEnglish = englishVideoTitle
     ? `${displayTitleText} (${englishVideoTitle})`
     : displayTitleText;
+  const introTags = useMemo(() => {
+    const tags: string[] = [];
+    const detailAny = detail as any;
+    if (detailAny?.genres?.length) {
+      tags.push(...detailAny.genres);
+    }
+    if (detailAny?.countries?.length) {
+      tags.push(...detailAny.countries);
+    }
+    if (detailAny?.regions?.length) {
+      tags.push(...detailAny.regions);
+    }
+    if (detailAny?.languages?.length) {
+      tags.push(...detailAny.languages);
+    }
+    if (detailAny?.tags?.length) {
+      tags.push(...detailAny.tags);
+    }
+    if (detail?.class) {
+      tags.push(detail.class);
+    }
+    if (detail?.type_name) {
+      tags.push(detail.type_name);
+    }
+    if (detail?.source_name) {
+      tags.push(detail.source_name);
+    }
+
+    const normalized = Array.from(
+      new Set(
+        tags
+          .map((t) => (convertToTraditional(t) || t || '').trim())
+          .filter(Boolean)
+      )
+    );
+
+    return normalized.slice(0, 12);
+  }, [detail]);
   const handleDownload = useCallback(() => {
     if (!videoUrl) {
       reportError(
@@ -3646,23 +3684,14 @@ function PlayPageClient() {
                         {detail?.year || videoYear}
                       </span>
                     )}
-                    {detail?.class && (
-                      <span className='px-2 py-[2px] rounded-full bg-green-500/10 text-green-700 dark:bg-green-500/15 dark:text-green-300'>
-                        {convertToTraditional(detail.class) || detail.class}
+                    {introTags.map((tag, idx) => (
+                      <span
+                        key={`${tag}-${idx}`}
+                        className='px-2 py-[2px] rounded-full bg-gray-500/10 text-gray-800 dark:text-gray-200 dark:bg-gray-500/20'
+                      >
+                        {tag}
                       </span>
-                    )}
-                    {detail?.type_name && (
-                      <span className='px-2 py-[2px] rounded-full bg-blue-500/10 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200'>
-                        {convertToTraditional(detail.type_name) ||
-                          detail.type_name}
-                      </span>
-                    )}
-                    {detail?.source_name && (
-                      <span className='px-2 py-[2px] rounded-full bg-gray-500/10 text-gray-700 dark:bg-gray-500/20 dark:text-gray-200'>
-                        {convertToTraditional(detail.source_name) ||
-                          detail.source_name}
-                      </span>
-                    )}
+                    ))}
                     {imdbVideoId && (
                       <a
                         href={imdbLink || '#'}
