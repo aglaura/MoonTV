@@ -1008,6 +1008,8 @@ function PlayPageClient() {
 
       providerSamples.forEach((s, valKey) => {
         const url = s.episodes[0];
+        const existing = precomputedVideoInfoRef.current.get(valKey);
+        const existingCount = existing?.sampleCount ?? 0;
         tasks.push(
           (async () => {
             try {
@@ -1021,7 +1023,7 @@ function PlayPageClient() {
                   loadSpeed: info.loadSpeed,
                   pingTime: info.pingTime,
                   speedValue,
-                  sampleCount: 1,
+                  sampleCount: existingCount + 1,
                   hasError: false,
                 });
                 precomputedVideoInfoRef.current = next;
@@ -1036,12 +1038,14 @@ function PlayPageClient() {
                 pingTime: info.pingTime,
                 qualityRank: getQualityRank(info.quality),
                 speedValue,
-                sampleCount: 1,
+                sampleCount: existingCount + 1,
                 updated_at: Date.now(),
               });
             } catch {
               if (!penalizedProviders.has(valKey)) {
                 penalizedProviders.add(valKey);
+                const prevCount =
+                  precomputedVideoInfoRef.current.get(valKey)?.sampleCount ?? 0;
                 valuationEntries.push({
                   key: valKey,
                   source: s.source,
@@ -1050,7 +1054,7 @@ function PlayPageClient() {
                   pingTime: Number.MAX_SAFE_INTEGER,
                   qualityRank: -1,
                   speedValue: 0,
-                  sampleCount: 1,
+                  sampleCount: prevCount + 1,
                   updated_at: Date.now(),
                 });
               }
@@ -2253,6 +2257,8 @@ function PlayPageClient() {
 
       providersWithEmptySources.forEach((sourceName, providerKey) => {
         if (providersWithPlayableSources.has(providerKey)) return;
+        const prevCount =
+          precomputedVideoInfoRef.current.get(providerKey)?.sampleCount ?? 0;
         penaltyEntries.push({
           key: providerKey,
           source: sourceName,
@@ -2261,7 +2267,7 @@ function PlayPageClient() {
           pingTime: Number.MAX_SAFE_INTEGER,
           qualityRank: -1,
           speedValue: 0,
-          sampleCount: 1,
+          sampleCount: prevCount + 1,
           updated_at: Date.now(),
         });
       });
@@ -3410,6 +3416,31 @@ function PlayPageClient() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const lock = forceRotate && isIOSDevice();
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyPos = body.style.position;
+    const prevBodyWidth = body.style.width;
+
+    if (lock) {
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed';
+      body.style.width = '100%';
+    }
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      body.style.position = prevBodyPos;
+      body.style.width = prevBodyWidth;
+    };
+  }, [forceRotate]);
 
   useEffect(() => {
     if (isFullscreen) {
