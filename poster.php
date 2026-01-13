@@ -1,182 +1,106 @@
+<?php
+// Simple poster upload handler + minimal manual form.
+// Saves files directly into this /posters/ directory with the requested filename.
+
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+$uploadDir = __DIR__ . '/';
+
+function sanitizeFilename($name) {
+    $name = basename($name);
+    // allow letters, numbers, underscore, dash, dot, and common CJK
+    $name = preg_replace('/[^\w\-\.\x{4e00}-\x{9fff}]/u', '_', $name);
+    if ($name === '' || $name === '.' || $name === '..') {
+        return '';
+    }
+    return $name;
+}
+
+function saveUpload($field, $desiredName = '') {
+    global $uploadDir;
+    if (empty($_FILES[$field]) || $_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
+        return ['ok' => false, 'error' => 'No file uploaded'];
+    }
+
+    $tmp = $_FILES[$field]['tmp_name'];
+    $orig = $_FILES[$field]['name'];
+    $name = sanitizeFilename($desiredName ?: $orig);
+    if ($name === '') {
+        return ['ok' => false, 'error' => 'Invalid filename'];
+    }
+
+    $target = $uploadDir . $name;
+    // overwrite to keep single canonical file
+    if (file_exists($target)) {
+        @unlink($target);
+    }
+
+    if (!move_uploaded_file($tmp, $target)) {
+        return ['ok' => false, 'error' => 'Failed to save file'];
+    }
+
+    return ['ok' => true, 'file' => $name, 'path' => $target];
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $desired = '';
+    if (isset($_GET['name'])) $desired = $_GET['name'];
+    if (isset($_POST['name'])) $desired = $_POST['name'];
+
+    $result = saveUpload('fileToUpload', $desired);
+    if (!$result['ok']) {
+        // try alternate field name 'file'
+        $result = saveUpload('file', $desired);
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    if ($result['ok']) {
+        echo json_encode(['success' => true, 'file' => $result['file']]);
+    } else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => $result['error']]);
+    }
+    exit;
+}
+
+// GET: simple manual form
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Poster Uploader</title>
+  <title>Poster Upload</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0;
-      padding: 24px;
-    }
-    .card {
-      width: 100%;
-      max-width: 520px;
-      background: #111827;
-      border: 1px solid #1f2937;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-    }
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #1f2937;
-      background: #0b1220;
-      color: #e2e8f0;
-      margin-bottom: 14px;
-    }
-    input[type="file"] {
-      width: 100%;
-      margin-bottom: 14px;
-      color: #e2e8f0;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(90deg, #0f766e, #0ea5e9);
-      color: #fff;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    .status {
-      margin-top: 12px;
-      font-size: 14px;
-      min-height: 20px;
-    }
-    .hint {
-      font-size: 12px;
-      color: #94a3b8;
-      margin-bottom: 10px;
-      line-height: 1.4;
-    }
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; padding: 24px; }
+    .card { width: 100%; max-width: 520px; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+    label { display: block; margin-bottom: 6px; font-weight: 600; }
+    input[type="text"], input[type="file"] { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #1f2937; background: #0b1220; color: #e2e8f0; margin-bottom: 14px; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(90deg, #0f766e, #0ea5e9); color: #fff; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2 style="margin-top:0;margin-bottom:10px;">Poster Uploader</h2>
-    <p class="hint">
-      Set <strong>Base URL</strong> to your CONFIGJSON site (e.g. https://example.com or https://example.com/config.json → use https://example.com).<br>
-      Files are uploaded to <code>{BaseURL}/posters/&lt;filename&gt;</code> via HTTP <strong>POST</strong>. Ensure the server (e.g. poster.php handler) allows POST/CORS and writes to that folder. The app will auto-upload posters there when missing.
+    <h2 style="margin-top:0;margin-bottom:10px;">Poster Upload (poster.php)</h2>
+    <form method="post" enctype="multipart/form-data">
+      <label for="name">Filename (optional, e.g. douban-12345.jpg)</label>
+      <input id="name" name="name" type="text" placeholder="douban-12345.jpg" />
+
+      <label for="fileToUpload">Choose poster/cover image</label>
+      <input id="fileToUpload" name="fileToUpload" type="file" accept="image/*" />
+
+      <button type="submit">Upload</button>
+    </form>
+    <p style="font-size:12px;color:#94a3b8;margin-top:8px;">
+      Files are stored in this /posters/ directory and will overwrite existing files with the same name.
     </p>
-    <label for="base">Base URL</label>
-    <input id="base" type="text" placeholder="https://your-domain.example" />
-
-    <label for="file">Choose poster/cover image</label>
-    <input id="file" type="file" accept="image/*" />
-
-    <label for="douban">Douban ID (optional)</label>
-    <input id="douban" type="text" placeholder="e.g. 1234567 (auto-fills filename as douban-1234567.jpg)" />
-
-    <label for="name">Filename (optional)</label>
-    <input id="name" type="text" placeholder="e.g. douban-12345.jpg (auto-uses selected file name if empty)" />
-
-    <button id="upload">Upload</button>
-    <div class="status" id="status"></div>
   </div>
-
-  <script>
-    const baseInput = document.getElementById('base');
-    const fileInput = document.getElementById('file');
-    const nameInput = document.getElementById('name');
-    const doubanInput = document.getElementById('douban');
-    const uploadBtn = document.getElementById('upload');
-    const statusEl = document.getElementById('status');
-
-    function setStatus(text, ok = true) {
-      statusEl.textContent = text;
-      statusEl.style.color = ok ? '#34d399' : '#f87171';
-    }
-
-    uploadBtn.addEventListener('click', async () => {
-      const base = (baseInput.value || '').trim().replace(/\/+$/, '');
-      const file = fileInput.files?.[0];
-      const explicitName = (nameInput.value || '').trim();
-      const doubanId = (doubanInput.value || '').trim();
-
-      let filename = explicitName || file?.name || '';
-      if (!filename && doubanId) {
-        filename = `douban-${doubanId}.jpg`;
-      }
-      if (!explicitName && doubanId && file) {
-        filename = `douban-${doubanId}${file.name.toLowerCase().endsWith('.png') ? '.png' : '.jpg'}`;
-      }
-
-      if (!base) {
-        setStatus('Please enter Base URL.', false);
-        return;
-      }
-      if (!file) {
-        setStatus('Please choose a file.', false);
-        return;
-      }
-
-      const destName = filename || file.name;
-      const destUrl = `${base}/posters/${encodeURIComponent(destName)}`;
-
-      uploadBtn.disabled = true;
-      setStatus('Uploading...');
-      try {
-        // Try direct POST to /posters/<file>
-        let resp = await fetch(destUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': file.type || 'application/octet-stream',
-          },
-          body: file,
-        });
-
-        // If direct POST fails (404/405), try poster.php multipart
-        if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-          const fd = new FormData();
-          fd.append('fileToUpload', file, destName);
-          const phpUrl = `${base}/posters/poster.php?name=${encodeURIComponent(destName)}`;
-          resp = await fetch(phpUrl, {
-            method: 'POST',
-            body: fd,
-          });
-        }
-
-        if (!resp.ok) {
-          throw new Error(`HTTP ${resp.status}`);
-        }
-
-        // verify by HEAD/GET
-        let verified = false;
-        try {
-          const head = await fetch(destUrl, { method: 'HEAD', cache: 'no-store' });
-          verified = head.ok;
-        } catch (_) {
-          // ignore
-        }
-        setStatus(
-          verified ? `Uploaded and verified at ${destUrl}` : `Uploaded to ${destUrl}`
-        );
-      } catch (err) {
-        setStatus(`Upload failed: ${err.message || err}`, false);
-      } finally {
-        uploadBtn.disabled = false;
-      }
-    });
-  </script>
 </body>
 </html>
