@@ -112,6 +112,11 @@ export default async function RootLayout({
     STORAGE_TYPE: process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage',
     ENABLE_REGISTER: enableRegister,
     IMAGE_PROXY: imageProxy,
+    CONFIGJSON:
+      process.env.CONFIGJSON ||
+      process.env.NEXT_PUBLIC_CONFIGJSON ||
+      '',
+    MUX_TOKEN: process.env.NEXT_PUBLIC_MUX_TOKEN || '',
   };
 
   return (

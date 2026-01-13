@@ -1477,7 +1477,41 @@ function PlayPageClient() {
       setTimeout(() => a.remove(), 0);
     };
 
-    // Try to fetch and save without opening a new tab
+    const runtimeConfig = (typeof window !== 'undefined' &&
+      (window as any).RUNTIME_CONFIG) || { CONFIGJSON: '', MUX_TOKEN: '' };
+    const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(/\/+$/, '');
+    const muxToken = runtimeConfig.MUX_TOKEN || '';
+    const isIOS = isIOSDevice();
+
+    // iOS special path: ask CONFIGJSON mux.php to produce MP4
+    if (isIOS && configJsonBase) {
+      try {
+        const muxUrl = `${configJsonBase}/posters/mux.php`;
+        const body = new URLSearchParams();
+        body.set('url', videoUrl);
+        body.set('name', `${safeName}.mp4`);
+        body.set('title', recordTitle);
+        if (muxToken) body.set('token', muxToken);
+
+        const resp = await fetch(muxUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body.toString(),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data?.url) {
+          const finalUrl = data.url as string;
+          persistDownloadRecord(recordTitle, finalUrl, { offline: false });
+          triggerDownload(finalUrl, `${safeName}.mp4`);
+          return;
+        }
+        console.warn('Server mux download failed', data);
+      } catch (err) {
+        console.warn('Server mux error', err);
+      }
+    }
+
+    // Try to fetch and save without opening a new tab (desktop / non-iOS)
     try {
       const res = await fetch(videoUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
