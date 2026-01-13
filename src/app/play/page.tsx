@@ -1182,6 +1182,10 @@ function PlayPageClient() {
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
+  const forceRotateStateRef = useRef(false);
+  useEffect(() => {
+    forceRotateStateRef.current = forceRotate;
+  }, [forceRotate]);
   const [inlineFullscreen, setInlineFullscreen] = useState(false);
   const currentPlayingInfo = useMemo(() => {
     const bySourceKey =
@@ -3218,18 +3222,17 @@ function PlayPageClient() {
             html: '<button class="art-rotate-btn">↻ 90°</button>',
             style: {
               position: 'absolute',
-              bottom: forceRotate ? '12px' : 'auto',
-              top: forceRotate ? 'auto' : '12px',
-              right: forceRotate ? '50%' : '12px',
-              left: forceRotate ? '50%' : 'auto',
-              transform: forceRotate ? 'translateX(-50%)' : 'none',
+              bottom: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
               zIndex: '600',
               display: isIOSMobile ? 'flex' : 'none',
             },
             click: () => {
               if (!isIOSMobile) return;
-              const next = !forceRotate;
+              const next = !forceRotateStateRef.current;
               setForceRotate(next);
+              forceRotateStateRef.current = next;
               setInlineFullscreen(next);
               setIsFullscreen(next);
               rotateFullscreenRef.current = next;
@@ -3246,6 +3249,7 @@ function PlayPageClient() {
                   } else if (!next) {
                     player.fullscreen?.exit?.();
                     player.fullscreenWeb?.exit?.();
+                    document.exitFullscreen?.().catch(() => {});
                   }
                 } catch (_) {
                   // ignore fullscreen errors
@@ -3255,6 +3259,7 @@ function PlayPageClient() {
                 rotateFullscreenRef.current = false;
                 setInlineFullscreen(false);
                 setForceRotate(false);
+                setIsFullscreen(false);
               }
             },
           },
