@@ -91,7 +91,7 @@ async function cachePoster(url: string, doubanId: string) {
     const contentType = resp.headers.get('content-type') || 'application/octet-stream';
     const buffer = await resp.arrayBuffer();
     await fetch(target, {
-      method: 'PUT',
+      method: 'POST',
       headers: { 'Content-Type': contentType },
       body: buffer,
     }).catch(() => {});

@@ -90,20 +90,20 @@ export async function GET(request: Request) {
           // ignore head failures
         }
 
-        // Upload via PUT
+        // Upload via POST (align with poster.html expectations)
         try {
-          const putResp = await fetch(targetUrl, {
-            method: 'PUT',
+          const postResp = await fetch(targetUrl, {
+            method: 'POST',
             headers: {
               'Content-Type': contentType || 'application/octet-stream',
             },
             body: buffer,
           });
-          if (putResp.ok) {
+          if (postResp.ok) {
             return NextResponse.redirect(targetUrl, { status: 302 });
           }
         } catch {
-          // ignore upload failure, fall back
+          // ignore
         }
 
         // Fallback: serve original buffer

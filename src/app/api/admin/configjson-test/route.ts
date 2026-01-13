@@ -56,22 +56,22 @@ export async function POST() {
   const payload = `MoonTV poster cache test @ ${new Date().toISOString()}`;
 
   try {
-    const putResp = await fetch(posterUrl, {
-      method: 'PUT',
+    const postResp = await fetch(posterUrl, {
+      method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: payload,
     });
-    result.posterPutStatus = putResp.status;
-    result.posterPutOk = putResp.ok;
-    if (!putResp.ok) {
-      result.posterPutError = putResp.statusText || 'PUT failed';
+    result.posterPostStatus = postResp.status;
+    result.posterPostOk = postResp.ok;
+    if (!postResp.ok) {
+      result.posterPostError = postResp.statusText || 'POST failed';
     }
   } catch (err) {
-    result.posterPutOk = false;
-    result.posterPutError = (err as Error).message;
+    result.posterPostOk = false;
+    result.posterPostError = (err as Error).message;
   }
 
-  if (result.posterPutOk) {
+  if (result.posterPostOk) {
     try {
       const getResp = await fetch(posterUrl, { method: 'GET', cache: 'no-store' });
       result.posterGetStatus = getResp.status;

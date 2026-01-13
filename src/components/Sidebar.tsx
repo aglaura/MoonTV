@@ -35,11 +35,14 @@ const Logo = () => {
       className='flex items-center justify-center h-16 select-none hover:opacity-80 transition-opacity duration-200 gap-2'
     >
       <div className='w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10'>
-        <img
-          src='/logo.png'
-          alt={siteName}
-          className='w-full h-full object-cover'
-        />
+        <picture>
+          <source srcSet='/logo-dark.png' media='(prefers-color-scheme: dark)' />
+          <img
+            src='/logo.png'
+            alt={siteName}
+            className='w-full h-full object-cover'
+          />
+        </picture>
       </div>
       <span className='text-2xl font-bold text-green-600 tracking-tight'>
         {siteName}

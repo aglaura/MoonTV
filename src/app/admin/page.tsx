@@ -1893,8 +1893,8 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
         `config.json: ${data.configOk ? 'OK' : 'FAIL'}${
           data.configStatus ? ` (${data.configStatus})` : ''
         }${data.configParsable === false ? ' (parse failed)' : ''}`,
-        `poster PUT: ${data.posterPutOk ? 'OK' : 'FAIL'}${
-          data.posterPutStatus ? ` (${data.posterPutStatus})` : ''
+        `poster POST: ${data.posterPostOk ? 'OK' : 'FAIL'}${
+          data.posterPostStatus ? ` (${data.posterPostStatus})` : ''
         }`,
         `poster GET: ${data.posterGetOk ? 'OK' : 'FAIL'}${
           data.posterGetStatus ? ` (${data.posterGetStatus})` : ''
@@ -1911,8 +1911,8 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       if (data.configParsable === false) {
         detailLines.push('config.json not valid JSON');
       }
-      if (!data.posterPutOk && data.posterPutError) {
-        detailLines.push(`poster PUT error: ${data.posterPutError}`);
+      if (data.posterPostOk === false && data.posterPostError) {
+        detailLines.push(`poster POST error: ${data.posterPostError}`);
       }
       if (!data.posterGetOk && data.posterGetError) {
         detailLines.push(`poster GET error: ${data.posterGetError}`);

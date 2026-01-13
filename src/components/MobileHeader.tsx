@@ -30,11 +30,14 @@ const MobileHeader = ({ showBackButton = false }: MobileHeaderProps) => {
           className='min-w-0 justify-self-center max-w-full flex items-center gap-2 truncate text-lg font-bold text-green-600 tracking-tight hover:opacity-80 transition-opacity'
         >
           <div className='w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 flex-shrink-0'>
-            <img
-              src='/logo.png'
-              alt={siteName}
-              className='w-full h-full object-cover'
-            />
+            <picture>
+              <source srcSet='/logo-dark.png' media='(prefers-color-scheme: dark)' />
+              <img
+                src='/logo.png'
+                alt={siteName}
+                className='w-full h-full object-cover'
+              />
+            </picture>
           </div>
           <span className='truncate'>{siteName}</span>
         </Link>
