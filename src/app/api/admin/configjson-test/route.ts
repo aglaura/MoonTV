@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -62,16 +65,26 @@ export async function POST() {
   }
 
   // 2) Poster upload + readback (prefers direct POST, falls back to poster.html FormData)
-  const filename = `healthcheck-${Date.now()}.txt`;
+  const loadSample = () => {
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'logo.png');
+      const buf = fs.readFileSync(logoPath);
+      return { buffer: buf, contentType: 'image/png', ext: '.png' };
+    } catch {
+      const text = `MoonTV poster cache test @ ${new Date().toISOString()}`;
+      return { buffer: Buffer.from(text, 'utf8'), contentType: 'text/plain', ext: '.txt' };
+    }
+  };
+  const sample = loadSample();
+  const filename = `healthcheck-${Date.now()}${sample.ext}`;
   const posterUrl = `${base}/posters/${encodeURIComponent(filename)}`;
   result.posterUrl = posterUrl;
-  const payload = `MoonTV poster cache test @ ${new Date().toISOString()}`;
 
   try {
     const postResp = await fetch(posterUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: payload,
+      headers: { 'Content-Type': sample.contentType },
+      body: sample.buffer,
     });
     result.posterPostStatus = postResp.status;
     result.posterPostOk = postResp.ok;
@@ -83,7 +96,7 @@ export async function POST() {
     if (!result.posterPostOk && (postResp.status === 404 || postResp.status === 405)) {
       try {
         const fd = new FormData();
-        fd.append('file', new Blob([payload], { type: 'text/plain' }), filename);
+        fd.append('file', new Blob([sample.buffer], { type: sample.contentType }), filename);
         const fbUrl = `${base}/posters/poster.html?name=${encodeURIComponent(filename)}`;
         const fbResp = await fetch(fbUrl, {
           method: 'POST',
@@ -112,22 +125,26 @@ export async function POST() {
       result.posterGetStatus = getResp.status;
       result.posterGetOk = getResp.ok;
       if (getResp.ok) {
-        const text = await getResp.text();
-        result.posterContentMatches = text === payload;
-        result.posterContentLength = text.length;
+        const fetched = Buffer.from(await getResp.arrayBuffer());
+        result.posterContentLength = fetched.length;
+        result.posterExpectedLength = sample.buffer.length;
+        result.posterContentMatches =
+          fetched.length === sample.buffer.length &&
+          fetched.slice(0, 16).toString('hex') === sample.buffer.slice(0, 16).toString('hex');
       } else {
-        result.posterGetError = getResp.statusText || 'GET failed';
+        result.posterGetError =
+          (getResp.statusText || 'GET failed') + ` (${posterUrl})`;
       }
     } catch (err) {
       result.posterGetOk = false;
-      result.posterGetError = (err as Error).message;
+      result.posterGetError = `${(err as Error).message} (${posterUrl})`;
     }
   }
 
   const success =
     !!result.configOk &&
     result.configParsable !== false &&
-    !!result.posterPutOk &&
+    (!!result.posterPostOk || !!result.posterHtmlPostOk) &&
     !!result.posterGetOk;
 
   return NextResponse.json(
