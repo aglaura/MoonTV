@@ -1199,7 +1199,7 @@ function PlayPageClient() {
     level?: number;
   } | null>(null);
   const hideSidePanels = useMemo(
-    () => isFullscreen && (forceRotate || isIOSDevice()),
+    () => forceRotate || (isFullscreen && isIOSDevice()),
     [isFullscreen, forceRotate]
   );
   const actualPlaybackInfoRef = useRef(actualPlaybackInfo);
@@ -3180,6 +3180,7 @@ function PlayPageClient() {
               const next = !forceRotate;
               setForceRotate(next);
               setInlineFullscreen(next);
+              setIsFullscreen(next || isFullscreen);
               rotateFullscreenRef.current = next;
               const player = artPlayerRef.current;
               if (player) {
