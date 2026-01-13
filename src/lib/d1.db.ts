@@ -364,6 +364,39 @@ export class D1Storage implements IStorage {
     }
   }
 
+  async renameUser(oldUserName: string, newUserName: string): Promise<void> {
+    try {
+      const db = await this.getDatabase();
+      const exists = await db
+        .prepare('SELECT 1 FROM users WHERE username = ?')
+        .bind(oldUserName)
+        .first();
+      if (!exists) {
+        throw new Error('Source user does not exist');
+      }
+
+      const statements = [
+        db
+          .prepare('UPDATE users SET username = ? WHERE username = ?')
+          .bind(newUserName, oldUserName),
+        db
+          .prepare('UPDATE play_records SET username = ? WHERE username = ?')
+          .bind(newUserName, oldUserName),
+        db
+          .prepare('UPDATE favorites SET username = ? WHERE username = ?')
+          .bind(newUserName, oldUserName),
+        db
+          .prepare('UPDATE search_history SET username = ? WHERE username = ?')
+          .bind(newUserName, oldUserName),
+      ];
+
+      await db.batch(statements);
+    } catch (err) {
+      console.error('Failed to rename user:', err);
+      throw err;
+    }
+  }
+
   async deleteUser(userName: string): Promise<void> {
     try {
       const db = await this.getDatabase();

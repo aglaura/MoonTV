@@ -44,24 +44,26 @@ async function loadConfig() {
   try {
     return fs.readFileSync(configPath, 'utf8');
   } catch (err) {
-    console.warn(`未找到本地 config.json（${configPath}），跳过生成 runtime.ts`);
+    console.warn(`未找到本地 config.json（${configPath}）`);
     return null;
   }
 }
 
 (async () => {
   rawConfig = await loadConfig();
+  let config;
   if (!rawConfig) {
-    process.exit(0);
+    // Fallback minimal config so local builds without CONFIGJSON still work.
+    config = { cache_time: 7200, api_site: {}, users: [] };
+    console.warn('未找到配置，已生成最小默认 runtime.ts 以继续构建');
+  } else {
+    try {
+      config = JSON.parse(rawConfig);
+    } catch (err) {
+      console.error('config.json 不是有效的 JSON:', err);
+      process.exit(1);
+    }
   }
-
-let config;
-try {
-  config = JSON.parse(rawConfig);
-} catch (err) {
-  console.error('config.json 不是有效的 JSON:', err);
-  process.exit(1);
-}
 
 // Prepare TypeScript file content
 const tsContent =

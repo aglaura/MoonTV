@@ -2,12 +2,9 @@
   "name": "Esmee TV",
   "short_name": "Esmee TV",
   "description": "Esmee TV · 影视聚合",
-  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "any",
-  "theme_color": "#0f172a",
   "background_color": "#000000",
   "apple-mobile-web-app-capable": "yes",
   "apple-mobile-web-app-status-bar-style": "black",
@@ -31,24 +28,6 @@
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Movies",
-      "short_name": "Movies",
-      "url": "/douban?type=movie"
-    },
-    {
-      "name": "TV Series",
-      "short_name": "TV",
-      "url": "/douban?type=tv"
     }
   ]
 }

@@ -245,12 +245,30 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     username: '',
     password: '',
   });
+  const [editingUser, setEditingUser] = useState<{
+    username: string;
+    newUsername: string;
+    avatar: string;
+    group: 'family' | 'guest';
+    makeAdmin: boolean;
+    banned: boolean;
+    newPassword: string;
+  } | null>(null);
 
   const currentUsername = getAuthInfoFromBrowserCookie()?.username || null;
 
   const isD1Storage =
     typeof window !== 'undefined' &&
     (window as any).RUNTIME_CONFIG?.STORAGE_TYPE === 'd1';
+  const editingEntry = useMemo(
+    () =>
+      editingUser
+        ? config?.UserConfig.Users.find(
+            (u) => u.username === editingUser.username
+          )
+        : null,
+    [config, editingUser]
+  );
 
   useEffect(() => {
     if (config?.UserConfig) {
@@ -379,6 +397,90 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     await handleUserAction('deleteUser', username);
   };
 
+  const handleSaveEditUser = async () => {
+    if (!editingUser || !editingEntry) {
+      setEditingUser(null);
+      return;
+    }
+    if (editingEntry.role === 'owner') {
+      setEditingUser(null);
+      return;
+    }
+
+    const tasks: Array<() => Promise<void>> = [];
+    const { username, newUsername, avatar, group, makeAdmin, banned, newPassword } =
+      editingUser;
+    const trimmedNewUsername = newUsername.trim();
+    const normalizedAvatar = avatar.trim();
+    const currentGroup =
+      (editingEntry as any)?.group === 'guest' ? 'guest' : 'family';
+    let targetName = username;
+
+    if (trimmedNewUsername && trimmedNewUsername !== username) {
+      tasks.push(async () => {
+        await handleUserAction(
+          'rename',
+          targetName,
+          undefined,
+          undefined,
+          undefined,
+          trimmedNewUsername
+        );
+        targetName = trimmedNewUsername;
+      });
+    }
+
+    if (normalizedAvatar !== (editingEntry.avatar || '')) {
+      tasks.push(() =>
+        handleUserAction('setAvatar', targetName, undefined, normalizedAvatar)
+      );
+    }
+
+    if (newPassword.trim().length > 0) {
+      tasks.push(() =>
+        handleUserAction('changePassword', targetName, newPassword.trim())
+      );
+    }
+
+    if (group !== currentGroup) {
+      tasks.push(() =>
+        handleUserAction('setGroup', targetName, undefined, undefined, group)
+      );
+    }
+
+    const isAdminNow = editingEntry.role === 'admin';
+    if (makeAdmin !== isAdminNow) {
+      tasks.push(() =>
+        makeAdmin
+          ? handleUserAction('setAdmin', targetName)
+          : handleUserAction('cancelAdmin', targetName)
+      );
+    }
+
+    const isBannedNow = !!editingEntry.banned;
+    if (banned !== isBannedNow) {
+      tasks.push(() =>
+        banned
+          ? handleUserAction('ban', targetName)
+          : handleUserAction('unban', targetName)
+      );
+    }
+
+    try {
+      for (const task of tasks) {
+        await task();
+      }
+      await refreshConfig();
+      setEditingUser(null);
+    } catch (err) {
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Operation failed', '操作失败', '操作失敗')
+      );
+    }
+  };
+
   const handleUserAction = async (
     action:
       | 'add'
@@ -389,11 +491,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       | 'setAvatar'
       | 'changePassword'
       | 'deleteUser'
-      | 'setGroup',
+      | 'setGroup'
+      | 'rename',
     targetUsername: string,
     targetPassword?: string,
     avatar?: string,
-    group?: string
+    group?: string,
+    newUsername?: string
   ) => {
     try {
       const res = await fetch('/api/admin/user', {
@@ -404,6 +508,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
           ...(targetPassword ? { targetPassword } : {}),
           ...(typeof avatar === 'string' ? { avatar } : {}),
           ...(group ? { group } : {}),
+          ...(newUsername ? { newUsername } : {}),
           action,
         }),
       });
@@ -784,81 +889,37 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                           </span>
                         </td>
                         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
-                          {canEditAvatar && (
+                          <div className='inline-flex items-center gap-2'>
                             <button
-                              onClick={() =>
-                                handleSetAvatar(user.username, user.avatar)
-                              }
-                              className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
+                              onClick={() => {
+                            setEditingUser({
+                              username: user.username,
+                              newUsername: user.username,
+                              avatar: user.avatar || '',
+                              group:
+                                (user as any)?.group === 'guest'
+                                  ? 'guest'
+                                  : 'family',
+                                  makeAdmin: user.role === 'admin',
+                                  banned: !!user.banned,
+                                  newPassword: '',
+                                });
+                                setShowAddUserForm(false);
+                                setShowChangePasswordForm(false);
+                              }}
+                              className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors'
                             >
-                              {tt('Avatar', '头像', '頭像')}
+                              {tt('Edit', '编辑', '編輯')}
                             </button>
-                          )}
-                          {/* 修改密碼按钮 */}
-                          {canChangePassword && (
-                            <button
-                              onClick={() =>
-                                handleShowChangePasswordForm(user.username)
-                              }
-                              className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-200 transition-colors'
-                            >
-                              {tt('Change password', '修改密码', '修改密碼')}
-                            </button>
-                          )}
-                          {canOperate && (
-                            <>
-                              {/* 其他操作按钮 */}
-                              {user.role === 'user' && (
-                                <button
-                                  onClick={() => handleSetAdmin(user.username)}
-                                  className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 dark:text-purple-200 transition-colors'
-                                >
-                                  {tt('Make admin', '设为管理员', '設為管理')}
-                                </button>
-                              )}
-                              {user.role === 'admin' && (
-                                <button
-                                  onClick={() =>
-                                    handleRemoveAdmin(user.username)
-                                  }
-                                  className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700/40 dark:hover:bg-gray-700/60 dark:text-gray-200 transition-colors'
-                                >
-                                  {tt(
-                                    'Remove admin',
-                                    '取消管理员',
-                                    '取消管理'
-                                  )}
-                                </button>
-                              )}
-                              {user.role !== 'owner' &&
-                                (!user.banned ? (
-                                  <button
-                                    onClick={() => handleBanUser(user.username)}
-                                    className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-300 transition-colors'
-                                  >
-                                    {tt('Ban', '封禁', '封禁')}
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      handleUnbanUser(user.username)
-                                    }
-                                    className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-300 transition-colors'
-                                  >
-                                    {tt('Unban', '解封', '解封')}
-                                  </button>
-                                ))}
-                            </>
-                          )}
-                          {/* 刪除用戶按钮 - 放在最后，使用更明显的红色样式 */}
-                          {canDeleteUser && (
-                            <button
-                              onClick={() => handleDeleteUser(user.username)}
-                              className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors'
-                            >
-                              {tt('Delete', '删除', '刪除用戶')}
-                            </button>
-                          )}
+                            {canDeleteUser && (
+                              <button
+                                onClick={() => handleDeleteUser(user.username)}
+                                className='inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 transition-colors'
+                              >
+                                {tt('Delete', '删除', '刪除用戶')}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -869,6 +930,165 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
           </table>
         </div>
       </div>
+      {editingUser && (
+        <div className='fixed inset-0 z-[2000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4'>
+          <div className='w-full max-w-lg rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                  {tt('Edit user', '编辑用户', '編輯用戶')} — {editingUser.username}
+                </h3>
+                <p className='text-sm text-gray-500 dark:text-gray-400'>
+                  {tt('Update avatar, group, role, ban status, or password.', '可更新头像、分组、角色、封禁状态或密码。', '可更新頭像、分組、角色、封禁狀態或密碼。')}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingUser(null)}
+                className='text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white'
+              >
+                ×
+              </button>
+            </div>
+
+            <div className='space-y-3'>
+              <div>
+                <label className='block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1'>
+                  {tt('Username', '用户名', '使用者名稱')}
+                </label>
+                <input
+                  type='text'
+                  value={editingUser.newUsername}
+                  onChange={(e) =>
+                    setEditingUser((prev) =>
+                      prev ? { ...prev, newUsername: e.target.value } : prev
+                    )
+                  }
+                  disabled={
+                    !editingEntry ||
+                    editingEntry.role === 'owner' ||
+                    (role !== 'owner' && editingEntry.role === 'admin')
+                  }
+                  className='w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:dark:bg-gray-800/60 disabled:text-gray-500'
+                  placeholder={tt('Enter new username', '输入新用户名', '輸入新使用者名稱')}
+                />
+              </div>
+
+              <div>
+                <label className='block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1'>
+                  {tt('Avatar URL', '头像链接', '頭像連結')}
+                </label>
+                <input
+                  type='url'
+                  value={editingUser.avatar}
+                  onChange={(e) =>
+                    setEditingUser((prev) =>
+                      prev ? { ...prev, avatar: e.target.value } : prev
+                    )
+                  }
+                  className='w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                  placeholder='https://...'
+                />
+              </div>
+
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                <div>
+                  <label className='block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1'>
+                    {tt('Group', '组别', '組別')}
+                  </label>
+                  <select
+                    value={editingUser.group}
+                    onChange={(e) =>
+                      setEditingUser((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              group: e.target.value === 'guest' ? 'guest' : 'family',
+                            }
+                          : prev
+                      )
+                    }
+                    className='w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                  >
+                    <option value='family'>
+                      {tt('Family (PASSWORD)', '家庭 (PASSWORD)', '家庭 (PASSWORD)')}
+                    </option>
+                    <option value='guest'>
+                      {tt('Guest (PASSWORD2)', '访客 (PASSWORD2)', '訪客 (PASSWORD2)')}
+                    </option>
+                  </select>
+                </div>
+                <div className='flex items-center gap-3'>
+                  <label className='text-xs font-medium text-gray-600 dark:text-gray-300'>
+                    {tt('Admin role', '管理员', '管理員')}
+                  </label>
+                  <input
+                    type='checkbox'
+                    checked={editingUser.makeAdmin}
+                    onChange={(e) =>
+                      setEditingUser((prev) =>
+                        prev ? { ...prev, makeAdmin: e.target.checked } : prev
+                      )
+                    }
+                    className='h-4 w-4'
+                    disabled={
+                      !editingEntry ||
+                      editingEntry.role === 'owner' ||
+                      (role !== 'owner' && editingEntry.role !== 'user')
+                    }
+                  />
+                  <label className='text-xs font-medium text-gray-600 dark:text-gray-300 ml-4'>
+                    {tt('Banned', '封禁', '封禁')}
+                  </label>
+                  <input
+                    type='checkbox'
+                    checked={editingUser.banned}
+                    onChange={(e) =>
+                      setEditingUser((prev) =>
+                        prev ? { ...prev, banned: e.target.checked } : prev
+                      )
+                    }
+                    className='h-4 w-4'
+                    disabled={!editingEntry || editingEntry.role === 'owner'}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className='block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1'>
+                  {tt('New password (optional)', '新密码（可选）', '新密碼（可選）')}
+                </label>
+                <input
+                  type='password'
+                  value={editingUser.newPassword}
+                  onChange={(e) =>
+                    setEditingUser((prev) =>
+                      prev ? { ...prev, newPassword: e.target.value } : prev
+                    )
+                  }
+                  className='w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-green-500 focus:border-transparent'
+                  placeholder={tt('Leave blank to keep current', '留空则不修改', '留空則不修改')}
+                />
+              </div>
+            </div>
+
+            <div className='flex justify-end gap-2 pt-2'>
+              <button
+                onClick={() => setEditingUser(null)}
+                className='px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+              >
+                {tt('Cancel', '取消', '取消')}
+              </button>
+              <button
+                onClick={handleSaveEditUser}
+                disabled={!editingEntry || editingEntry.role === 'owner'}
+                className='px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 transition-colors'
+              >
+                {tt('Save', '保存', '保存')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

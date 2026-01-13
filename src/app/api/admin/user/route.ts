@@ -21,6 +21,7 @@ const ACTIONS = [
   'changePassword',
   'deleteUser',
   'setGroup',
+  'rename',
 ] as const;
 
 export async function POST(request: NextRequest) {
@@ -43,11 +44,12 @@ export async function POST(request: NextRequest) {
     }
     const username = authInfo.username;
 
-    const { targetUsername, allowRegister, avatar, action, group } = body as {
+    const { targetUsername, allowRegister, avatar, action, group, newUsername } = body as {
       targetUsername?: string;
       allowRegister?: boolean;
       avatar?: string;
       group?: string;
+      newUsername?: string;
       action?: (typeof ACTIONS)[number];
     };
 
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
       action !== 'setAvatar' &&
       action !== 'deleteUser' &&
       action !== 'setGroup' &&
+      action !== 'rename' &&
       username === targetUsername
     ) {
       return NextResponse.json(
@@ -241,6 +244,63 @@ export async function POST(request: NextRequest) {
             }
           }
           targetEntry.banned = false;
+          break;
+        }
+        case 'rename': {
+          if (!targetEntry) {
+            return NextResponse.json(
+              { error: '目标用户不存在' },
+              { status: 404 }
+            );
+          }
+          if (targetEntry.role === 'owner') {
+            return NextResponse.json(
+              { error: '无法修改站长用户名' },
+              { status: 400 }
+            );
+          }
+          if (isTargetAdmin && operatorRole !== 'owner') {
+            return NextResponse.json(
+              { error: '仅站长可修改管理员用户名' },
+              { status: 401 }
+            );
+          }
+          const normalized =
+            typeof newUsername === 'string' ? newUsername.trim() : '';
+          if (!normalized) {
+            return NextResponse.json(
+              { error: '新用户名不能为空' },
+              { status: 400 }
+            );
+          }
+          if (normalized !== targetUsername) {
+            const configHas = adminConfig.UserConfig.Users.some(
+              (u) => u.username === normalized
+            );
+            if (configHas) {
+              return NextResponse.json(
+                { error: '用户名已存在' },
+                { status: 400 }
+              );
+            }
+            if (storage && typeof storage.checkUserExist === 'function') {
+              const exists = await storage.checkUserExist(normalized);
+              if (exists) {
+                return NextResponse.json(
+                  { error: '用户名已存在' },
+                  { status: 400 }
+                );
+              }
+            }
+            if (!storage || typeof storage.renameUser !== 'function') {
+              return NextResponse.json(
+                { error: '存储未实现改名功能' },
+                { status: 500 }
+              );
+            }
+            await storage.renameUser(targetUsername!, normalized);
+            targetEntry.username = normalized;
+          }
           break;
         }
         case 'setAdmin': {

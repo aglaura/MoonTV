@@ -73,6 +73,7 @@ export interface IStorage {
   verifyUser(userName: string, password: string): Promise<boolean>;
   checkUserExist(userName: string): Promise<boolean>;
   changePassword(userName: string, newPassword: string): Promise<void>;
+  renameUser?(oldUserName: string, newUserName: string): Promise<void>;
   deleteUser(userName: string): Promise<void>;
 
   // 搜尋歷史

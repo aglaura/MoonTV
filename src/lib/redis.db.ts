@@ -273,6 +273,57 @@ export class RedisStorage implements IStorage {
     );
   }
 
+  async renameUser(oldUserName: string, newUserName: string): Promise<void> {
+    // Move password
+    const existingPwd = await withRetry(() =>
+      this.client.get(this.userPwdKey(oldUserName))
+    );
+    if (existingPwd === null) {
+      throw new Error('Source user does not exist');
+    }
+    await withRetry(() => this.client.set(this.userPwdKey(newUserName), existingPwd));
+    await withRetry(() => this.client.del(this.userPwdKey(oldUserName)));
+
+    // Helper to migrate hash-like key groups
+    const migrateKeys = async (
+      pattern: string,
+      oldPrefix: string,
+      newPrefix: string
+    ) => {
+      const keys: string[] = await withRetry(() => this.client.keys(pattern));
+      if (!keys || keys.length === 0) return;
+      for (const key of keys) {
+        const newKey = key.replace(oldPrefix, newPrefix);
+        const val = await withRetry(() => this.client.get(key));
+        if (val !== null) {
+          await withRetry(() => this.client.set(newKey, val));
+        }
+        await withRetry(() => this.client.del(key));
+      }
+    };
+
+    await migrateKeys(
+      `u:${oldUserName}:pr:*`,
+      `u:${oldUserName}:pr:`,
+      `u:${newUserName}:pr:`
+    );
+    await migrateKeys(
+      `u:${oldUserName}:fav:*`,
+      `u:${oldUserName}:fav:`,
+      `u:${newUserName}:fav:`
+    );
+
+    // Search history list
+    const history = await withRetry(() =>
+      this.client.lRange(this.shKey(oldUserName), 0, -1)
+    );
+    if (history && history.length > 0) {
+      await withRetry(() => this.client.del(this.shKey(newUserName)));
+      await withRetry(() => this.client.rPush(this.shKey(newUserName), history));
+    }
+    await withRetry(() => this.client.del(this.shKey(oldUserName)));
+  }
+
   async deleteUser(userName: string): Promise<void> {
     await withRetry(() => this.client.del(this.userPwdKey(userName)));
 
