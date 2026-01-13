@@ -191,11 +191,12 @@ div[data-media-provider] video {
 .art-skip-back::before,
 .art-skip-forward::before {
   content: '↺';
-  font-size: 18px;
+  font-size: 26px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 .art-skip-forward {
   transform: none;
@@ -206,12 +207,12 @@ div[data-media-provider] video {
 .art-skip::after {
   content: '10s';
   position: absolute;
-  top: 26px;
   left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   font-size: 11px;
-  font-weight: 600;
-  opacity: 0.8;
+  font-weight: 700;
+  opacity: 0.9;
 }
 
 /* Hide skip buttons when controls are hidden */
