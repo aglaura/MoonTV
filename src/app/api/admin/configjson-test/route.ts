@@ -53,7 +53,7 @@ export async function POST() {
   }
 
   // 1.5) Poster helper page existence
-  const posterHelperUrl = `${base}/posters/poster.html`;
+  const posterHelperUrl = `${base}/posters/poster.php`;
   result.posterHelperUrl = posterHelperUrl;
   try {
     const helperResp = await fetch(posterHelperUrl, { method: 'GET' });
@@ -94,7 +94,7 @@ export async function POST() {
       result.posterPostError = postResp.statusText || 'POST failed';
     }
 
-    // fallback through poster.html if direct POST failed (404/405 etc.)
+    // fallback through poster.php if direct POST failed (404/405 etc.)
     if (!result.posterPostOk && (postResp.status === 404 || postResp.status === 405)) {
       const tryPosterHtmlUpload = async (
         fieldName: string
@@ -102,7 +102,7 @@ export async function POST() {
         try {
           const fd = new FormData();
           fd.append(fieldName, new Blob([sample.buffer], { type: sample.contentType }), filename);
-          const fbUrl = `${base}/posters/poster.html?name=${encodeURIComponent(filename)}`;
+          const fbUrl = `${base}/posters/poster.php?name=${encodeURIComponent(filename)}`;
           const fbResp = await fetch(fbUrl, {
             method: 'POST',
             body: fd,
@@ -110,7 +110,7 @@ export async function POST() {
           return {
             ok: fbResp.ok,
             status: fbResp.status,
-            error: fbResp.ok ? undefined : fbResp.statusText || 'poster.html POST failed',
+            error: fbResp.ok ? undefined : fbResp.statusText || 'poster.php POST failed',
           };
         } catch (err) {
           return { ok: false, error: (err as Error).message };
@@ -125,12 +125,12 @@ export async function POST() {
         result.posterHtmlPostOk = second.ok;
         result.posterHtmlPostError = second.error ?? first.error;
         if (second.ok) {
-          result.posterUploadMethod = 'poster.html FormData (fileToUpload)';
+          result.posterUploadMethod = 'poster.php FormData (fileToUpload)';
           result.posterPostStatus = second.status;
           result.posterPostOk = true;
           result.posterPostError = undefined;
         } else {
-          result.posterUploadMethod = 'poster.html FormData (fileToUpload)';
+          result.posterUploadMethod = 'poster.php FormData (fileToUpload)';
           result.posterPostOk = false;
           result.posterPostStatus = second.status ?? first.status;
           result.posterPostError = second.error ?? first.error;
@@ -138,7 +138,7 @@ export async function POST() {
       } else {
         result.posterHtmlPostStatus = first.status;
         result.posterHtmlPostOk = first.ok;
-        result.posterUploadMethod = 'poster.html FormData (file)';
+        result.posterUploadMethod = 'poster.php FormData (file)';
         result.posterPostStatus = first.status;
         result.posterPostOk = first.ok;
         result.posterPostError = first.error;

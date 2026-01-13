@@ -76,7 +76,7 @@
     <h2 style="margin-top:0;margin-bottom:10px;">Poster Uploader</h2>
     <p class="hint">
       Set <strong>Base URL</strong> to your CONFIGJSON site (e.g. https://example.com or https://example.com/config.json → use https://example.com).<br>
-      Files are uploaded to <code>{BaseURL}/posters/&lt;filename&gt;</code> via HTTP <strong>POST</strong>. Ensure the server allows POST/CORS and writes to that folder. The app will auto-upload posters there when missing.
+      Files are uploaded to <code>{BaseURL}/posters/&lt;filename&gt;</code> via HTTP <strong>POST</strong>. Ensure the server (e.g. poster.php handler) allows POST/CORS and writes to that folder. The app will auto-upload posters there when missing.
     </p>
     <label for="base">Base URL</label>
     <input id="base" type="text" placeholder="https://your-domain.example" />
@@ -136,16 +136,30 @@
       uploadBtn.disabled = true;
       setStatus('Uploading...');
       try {
-        const resp = await fetch(destUrl, {
+        // Try direct POST to /posters/<file>
+        let resp = await fetch(destUrl, {
           method: 'POST',
           headers: {
             'Content-Type': file.type || 'application/octet-stream',
           },
           body: file,
         });
+
+        // If direct POST fails (404/405), try poster.php multipart
+        if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+          const fd = new FormData();
+          fd.append('fileToUpload', file, destName);
+          const phpUrl = `${base}/posters/poster.php?name=${encodeURIComponent(destName)}`;
+          resp = await fetch(phpUrl, {
+            method: 'POST',
+            body: fd,
+          });
+        }
+
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}`);
         }
+
         // verify by HEAD/GET
         let verified = false;
         try {

@@ -1894,13 +1894,13 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
           data.configStatus ? ` (${data.configStatus})` : ''
         }${data.configParsable === false ? ' (parse failed)' : ''}`,
         data.posterHelperStatus
-          ? `poster.html: ${data.posterHelperOk ? 'OK' : 'FAIL'} (${data.posterHelperStatus})`
+          ? `poster.php: ${data.posterHelperOk ? 'OK' : 'FAIL'} (${data.posterHelperStatus})`
           : undefined,
         `poster write (${data.posterUploadMethod || 'POST'}): ${
           data.posterPostOk ? 'OK' : 'FAIL'
         }${data.posterPostStatus ? ` (${data.posterPostStatus})` : ''}`,
         data.posterHtmlPostStatus
-          ? `poster.html POST: ${data.posterHtmlPostOk ? 'OK' : 'FAIL'} (${data.posterHtmlPostStatus})`
+          ? `poster.php POST: ${data.posterHtmlPostOk ? 'OK' : 'FAIL'} (${data.posterHtmlPostStatus})`
           : undefined,
         `poster GET: ${data.posterGetOk ? 'OK' : 'FAIL'}${
           data.posterGetStatus ? ` (${data.posterGetStatus})` : ''
@@ -1921,7 +1921,7 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
         detailLines.push(`poster POST error: ${data.posterPostError}`);
       }
       if (data.posterHtmlPostOk === false && data.posterHtmlPostError) {
-        detailLines.push(`poster.html POST error: ${data.posterHtmlPostError}`);
+        detailLines.push(`poster.php POST error: ${data.posterHtmlPostError}`);
       }
       if (!data.posterGetOk && data.posterGetError) {
         detailLines.push(`poster GET error: ${data.posterGetError}`);
