@@ -1202,6 +1202,10 @@ function PlayPageClient() {
     () => forceRotate || (isFullscreen && isIOSDevice()),
     [isFullscreen, forceRotate]
   );
+  const hideNavInFullscreen = useMemo(
+    () => isFullscreen && (forceRotate || isIOSDevice()),
+    [isFullscreen, forceRotate]
+  );
   const actualPlaybackInfoRef = useRef(actualPlaybackInfo);
   useEffect(() => {
     actualPlaybackInfoRef.current = actualPlaybackInfo;
@@ -3552,7 +3556,7 @@ function PlayPageClient() {
   }
 
   return (
-    <PageLayout activePath='/play'>
+    <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
       <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>
