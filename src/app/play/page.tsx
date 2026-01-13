@@ -4084,7 +4084,9 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.genres && Array.isArray((detail as any).genres) && (detail as any).genres.length > 0 && (
+                  {(detail as any)?.genres &&
+                    Array.isArray((detail as any).genres) &&
+                    (detail as any).genres.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Genres', '类型', '類型')}
@@ -4096,7 +4098,7 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.countries &&
+                  {(detail as any)?.countries &&
                     Array.isArray((detail as any).countries) &&
                     (detail as any).countries.length > 0 && (
                     <div className='flex justify-between gap-3'>
@@ -4110,7 +4112,7 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.languages &&
+                  {(detail as any)?.languages &&
                     Array.isArray((detail as any).languages) &&
                     (detail as any).languages.length > 0 && (
                     <div className='flex justify-between gap-3'>
@@ -4124,17 +4126,17 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {typeof detail?.episodes === 'number' && detail.episodes > 0 && (
+                  {typeof (detail as any)?.episodes === 'number' && (detail as any).episodes > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Episodes', '集数', '集數')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.episodes}
+                        {(detail as any).episodes}
                       </span>
                     </div>
                   )}
-                  {detail?.durations &&
+                  {(detail as any)?.durations &&
                     Array.isArray((detail as any).durations) &&
                     (detail as any).durations.length > 0 && (
                     <div className='flex justify-between gap-3'>
@@ -4146,7 +4148,7 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.releaseDates &&
+                  {(detail as any)?.releaseDates &&
                     Array.isArray((detail as any).releaseDates) &&
                     (detail as any).releaseDates.length > 0 && (
                     <div className='flex justify-between gap-3'>
@@ -4158,7 +4160,7 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.directors &&
+                  {(detail as any)?.directors &&
                     Array.isArray((detail as any).directors) &&
                     (detail as any).directors.length > 0 && (
                     <div className='flex justify-between gap-3'>
@@ -4172,7 +4174,7 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.actors &&
+                  {(detail as any)?.actors &&
                     Array.isArray((detail as any).actors) &&
                     (detail as any).actors.length > 0 && (
                     <div className='flex justify-between gap-3'>
