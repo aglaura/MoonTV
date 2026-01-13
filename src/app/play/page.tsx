@@ -2931,6 +2931,9 @@ function PlayPageClient() {
         // iPadOS 13+ reports as MacIntel
         ((navigator as any).platform === 'MacIntel' &&
           (navigator as any).maxTouchPoints > 1)) as boolean);
+    const isIOSMobile =
+      typeof navigator !== 'undefined' &&
+      /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     if (!isWebkit && artPlayerRef.current) {
       if (typeof artPlayerRef.current.switchUrl === 'function') {
@@ -3127,7 +3130,7 @@ function PlayPageClient() {
         layers: [
           {
             name: 'rewind-10',
-            html: '<button class="art-skip art-skip-back">⏪ 10s</button>',
+            html: '<button class="art-skip art-skip-back"></button>',
             style: {
               position: 'absolute',
               top: '50%',
@@ -3144,7 +3147,7 @@ function PlayPageClient() {
           },
           {
             name: 'forward-10',
-            html: '<button class="art-skip art-skip-forward">⏩ 10s</button>',
+            html: '<button class="art-skip art-skip-forward"></button>',
             style: {
               position: 'absolute',
               top: '50%',
@@ -3170,10 +3173,10 @@ function PlayPageClient() {
               top: '12px',
               left: '12px',
               zIndex: '600',
-              display: isIOS ? 'flex' : 'none',
+              display: isIOSMobile ? 'flex' : 'none',
             },
             click: () => {
-              if (!isIOS) return;
+              if (!isIOSMobile) return;
               const next = !forceRotate;
               setForceRotate(next);
               setInlineFullscreen(next);
