@@ -190,17 +190,18 @@ div[data-media-provider] video {
 }
 .art-skip-back::before,
 .art-skip-forward::before {
-  content: '';
-  width: 20px;
-  height: 20px;
-  display: inline-block;
-  background: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10.5 7L4 12l6.5 5V7z' fill='white'/%3E%3Crect x='12' y='7' width='2' height='10' rx='1' fill='white'/%3E%3C/svg%3E") center/contain no-repeat;
+  content: '↺';
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .art-skip-forward {
-  transform: scaleX(-1);
+  transform: none;
 }
 .art-skip-forward::before {
-  transform: scaleX(-1);
+  content: '↻';
 }
 .art-skip::after {
   content: '10s';
