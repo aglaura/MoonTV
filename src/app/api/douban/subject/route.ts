@@ -14,6 +14,22 @@ interface DoubanSubjectApiResponse {
   };
 }
 
+interface DoubanFullDetail {
+  id?: string;
+  title?: string;
+  original_title?: string;
+  year?: string;
+  pubdate?: string;
+  pub_dates?: string[];
+  durations?: string[];
+  episodes_count?: number;
+  genres?: string[];
+  countries?: string[];
+  languages?: string[];
+  actors?: Array<{ name?: string }>;
+  directors?: Array<{ name?: string }>;
+}
+
 async function fetchImdbIdFromDouban(
   subjectId: string
 ): Promise<string | undefined> {
@@ -158,6 +174,34 @@ export async function GET(request: Request) {
       return [fetchedImdbId, fetchedImdbTitle] as const;
     })();
 
+    // Try to fetch richer detail for actors/directors/etc.
+    const fetchFullDetail = async (): Promise<DoubanFullDetail | null> => {
+      const detailUrls = [
+        `https://m.douban.com/rexxar/api/v2/movie/${sanitizedId}?for_mobile=1`,
+        `https://m.douban.com/rexxar/api/v2/tv/${sanitizedId}?for_mobile=1`,
+      ];
+      for (const url of detailUrls) {
+        try {
+          const resp = await fetchWithRetry(url, {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+              Referer: 'https://m.douban.com/',
+              Accept: 'application/json, text/plain, */*',
+            },
+          });
+          if (!resp.ok) continue;
+          const json = (await resp.json()) as DoubanFullDetail;
+          if (json && json.id) return json;
+        } catch {
+          // ignore and try next
+        }
+      }
+      return null;
+    };
+
+    const fullDetail = await fetchFullDetail();
+
     const result = {
       id: subject.id ?? sanitizedId,
       title: subject.title ?? '',
@@ -165,6 +209,22 @@ export async function GET(request: Request) {
       year,
       imdbId,
       imdbTitle,
+      actors:
+        fullDetail?.actors
+          ?.map((a) => a.name?.trim())
+          .filter(Boolean) ?? undefined,
+      directors:
+        fullDetail?.directors
+          ?.map((d) => d.name?.trim())
+          .filter(Boolean) ?? undefined,
+      genres: fullDetail?.genres?.filter(Boolean) ?? undefined,
+      countries: fullDetail?.countries?.filter(Boolean) ?? undefined,
+      languages: fullDetail?.languages?.filter(Boolean) ?? undefined,
+      episodes: fullDetail?.episodes_count,
+      durations: fullDetail?.durations?.filter(Boolean) ?? undefined,
+      releaseDates:
+        fullDetail?.pub_dates?.filter(Boolean) ||
+        (fullDetail?.pubdate ? [fullDetail.pubdate] : undefined),
     };
 
     const cacheTime = await getCacheTime();

@@ -4072,23 +4072,103 @@ function PlayPageClient() {
                         </span>
                       </div>
                     )}
-                    {(detail?.class || detail?.type_name) && (
-                      <div className='flex justify-between gap-3'>
-                        <span className='text-gray-500 dark:text-gray-400'>
-                          {tt('Category', '类型', '類型')}
-                        </span>
-                        <span className='font-medium text-right'>
-                          {convertToTraditional(detail?.type_name || detail?.class || '') ||
-                            detail?.type_name ||
-                            detail?.class}
-                        </span>
-                      </div>
-                    )}
-                    {(detail?.year || videoYear) && (
-                      <div className='flex justify-between gap-3'>
-                        <span className='text-gray-500 dark:text-gray-400'>
-                          {tt('Year', '年份', '年份')}
-                        </span>
+                  {(detail?.class || detail?.type_name) && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Category', '类型', '類型')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {convertToTraditional(detail?.type_name || detail?.class || '') ||
+                          detail?.type_name ||
+                          detail?.class}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.genres && detail.genres.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Genres', '类型', '類型')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.genres.map((g) => convertToTraditional(g) || g).join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.countries && detail.countries.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Regions', '地区', '地區')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.countries.map((c) => convertToTraditional(c) || c).join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.languages && detail.languages.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Languages', '语言', '語言')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.languages.map((l) => convertToTraditional(l) || l).join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {typeof detail?.episodes === 'number' && detail.episodes > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Episodes', '集数', '集數')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.episodes}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.durations && detail.durations.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Duration', '片长', '片長')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.durations.join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.releaseDates && detail.releaseDates.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Release dates', '上映日期', '上映日期')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.releaseDates.join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.directors && detail.directors.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Directors', '导演', '導演')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.directors.map((d) => convertToTraditional(d) || d).join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {detail?.actors && detail.actors.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Actors', '主演', '主演')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {detail.actors.map((a) => convertToTraditional(a) || a).join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {(detail?.year || videoYear) && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Year', '年份', '年份')}
+                      </span>
                         <span className='font-medium text-right'>
                           {detail?.year || videoYear}
                         </span>

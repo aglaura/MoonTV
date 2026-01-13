@@ -148,4 +148,12 @@ export interface DoubanSubjectDetail {
   year?: string;
   imdbId?: string;
   imdbTitle?: string;
+  actors?: string[];
+  directors?: string[];
+  genres?: string[];
+  countries?: string[];
+  languages?: string[];
+  episodes?: number;
+  durations?: string[];
+  releaseDates?: string[];
 }

@@ -514,6 +514,11 @@ function HomeClient() {
       if (item.region === 'kr' || item.region === 'jp') return item.region;
       if (item.region === 'cn' || item.region === 'hk' || item.region === 'tw')
         return 'cn';
+      const subtitle = (item.subtitle || '').toLowerCase();
+      if (/韩|韓|korean|kr/.test(subtitle)) return 'kr';
+      if (/日|japan|jp/.test(subtitle)) return 'jp';
+      if (/中国|國|大陆|大陸|港|台|普通话|國語|華語|mandarin|zh/.test(subtitle))
+        return 'cn';
       return undefined;
     };
     const isKrJpTitle = (title?: string) => {
