@@ -1,0 +1,22 @@
+{
+  "packageId": "com.esmee.tv",
+  "host": "esmee.i234.me",
+  "name": "Esmee TV",
+  "launcherName": "Esmee TV",
+  "display": "standalone",
+  "themeColor": "#0f172a",
+  "navigationColor": "#0f172a",
+  "backgroundColor": "#000000",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://esmee.i234.me/icons/icon-512x512.png",
+  "maskableIconUrl": "https://esmee.i234.me/icons/icon-512x512.png",
+  "monochromeIconUrl": "https://esmee.i234.me/icons/icon-192x192.png",
+  "webManifestUrl": "https://esmee.i234.me/manifest.json",
+  "shortcuts": [],
+  "signingKey": {
+    "path": "./android-signing-key.keystore",
+    "alias": "uploadkey"
+  },
+  "splashScreenFadeOutDuration": 300
+}

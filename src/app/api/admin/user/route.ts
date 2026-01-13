@@ -119,10 +119,17 @@ export async function POST(request: NextRequest) {
           if (targetEntry) {
             return NextResponse.json({ error: '用户已存在' }, { status: 400 });
           }
-          const sharedPassword = process.env.PASSWORD;
+          const normalizedGroup =
+            typeof group === 'string' && group.trim().length > 0
+              ? group.trim()
+              : 'family';
+          const sharedPassword =
+            normalizedGroup === 'guest'
+              ? process.env.PASSWORD2
+              : process.env.PASSWORD;
           if (!sharedPassword) {
             return NextResponse.json(
-              { error: '服務器未設定 PASSWORD 環境變數' },
+              { error: '服務器未設定對應組別密碼' },
               { status: 500 }
             );
           }
@@ -134,10 +141,6 @@ export async function POST(request: NextRequest) {
           }
           await storage.registerUser(targetUsername!, sharedPassword);
           // 更新配置
-          const normalizedGroup =
-            typeof group === 'string' && group.trim().length > 0
-              ? group.trim()
-              : 'family';
           adminConfig.UserConfig.Users.push({
             username: targetUsername!,
             role: 'user',
