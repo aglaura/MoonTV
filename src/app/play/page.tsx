@@ -2980,8 +2980,8 @@ function PlayPageClient() {
         flip: false,
         playbackRate: true,
         aspectRatio: false,
-        fullscreen: !isIOS, // disable native fullscreen on iOS so we can rotate inline
-        fullscreenWeb: true,
+        fullscreen: true, // allow native fullscreen
+        fullscreenWeb: !isIOS, // prefer native on iOS
         subtitleOffset: false,
         miniProgressBar: false,
         mutex: true,
@@ -3175,25 +3175,19 @@ function PlayPageClient() {
               setInlineFullscreen(next);
               rotateFullscreenRef.current = next;
               const player = artPlayerRef.current;
-              if (player && player.fullscreenWeb) {
+              if (player) {
                 try {
-                  if (next && typeof player.fullscreenWeb.request === 'function') {
+                  if (next && player.fullscreen?.request) {
+                    player.fullscreen.request();
+                  } else if (!next && player.fullscreen?.exit) {
+                    player.fullscreen.exit();
+                  } else if (next && player.fullscreenWeb?.request) {
                     player.fullscreenWeb.request();
-                  } else if (!next && typeof player.fullscreenWeb.exit === 'function') {
+                  } else if (!next && player.fullscreenWeb?.exit) {
                     player.fullscreenWeb.exit();
                   }
                 } catch (_) {
                   // ignore fullscreen errors
-                }
-              } else if (player && player.fullscreen) {
-                try {
-                  if (next && typeof player.fullscreen.request === 'function') {
-                    player.fullscreen.request();
-                  } else if (!next && typeof player.fullscreen.exit === 'function') {
-                    player.fullscreen.exit();
-                  }
-                } catch (_) {
-                  // ignore
                 }
               }
             },
