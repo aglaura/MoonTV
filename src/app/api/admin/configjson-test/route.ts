@@ -96,25 +96,52 @@ export async function POST() {
 
     // fallback through poster.html if direct POST failed (404/405 etc.)
     if (!result.posterPostOk && (postResp.status === 404 || postResp.status === 405)) {
-      try {
-        const fd = new FormData();
-        fd.append('file', new Blob([sample.buffer], { type: sample.contentType }), filename);
-        const fbUrl = `${base}/posters/poster.html?name=${encodeURIComponent(filename)}`;
-        const fbResp = await fetch(fbUrl, {
-          method: 'POST',
-          body: fd,
-        });
-        result.posterUploadMethod = 'poster.html FormData';
-        result.posterHtmlPostStatus = fbResp.status;
-        result.posterHtmlPostOk = fbResp.ok;
-        result.posterPostStatus = fbResp.status;
-        result.posterPostOk = fbResp.ok;
-        result.posterPostError = fbResp.ok
-          ? undefined
-          : fbResp.statusText || 'poster.html POST failed';
-      } catch (err) {
-        result.posterHtmlPostOk = false;
-        result.posterHtmlPostError = (err as Error).message;
+      const tryPosterHtmlUpload = async (
+        fieldName: string
+      ): Promise<{ ok: boolean; status?: number; error?: string }> => {
+        try {
+          const fd = new FormData();
+          fd.append(fieldName, new Blob([sample.buffer], { type: sample.contentType }), filename);
+          const fbUrl = `${base}/posters/poster.html?name=${encodeURIComponent(filename)}`;
+          const fbResp = await fetch(fbUrl, {
+            method: 'POST',
+            body: fd,
+          });
+          return {
+            ok: fbResp.ok,
+            status: fbResp.status,
+            error: fbResp.ok ? undefined : fbResp.statusText || 'poster.html POST failed',
+          };
+        } catch (err) {
+          return { ok: false, error: (err as Error).message };
+        }
+      };
+
+      // Try 'file' then 'fileToUpload' to match possible server handlers
+      const first = await tryPosterHtmlUpload('file');
+      if (!first.ok) {
+        const second = await tryPosterHtmlUpload('fileToUpload');
+        result.posterHtmlPostStatus = second.status ?? first.status;
+        result.posterHtmlPostOk = second.ok;
+        result.posterHtmlPostError = second.error ?? first.error;
+        if (second.ok) {
+          result.posterUploadMethod = 'poster.html FormData (fileToUpload)';
+          result.posterPostStatus = second.status;
+          result.posterPostOk = true;
+          result.posterPostError = undefined;
+        } else {
+          result.posterUploadMethod = 'poster.html FormData (fileToUpload)';
+          result.posterPostOk = false;
+          result.posterPostStatus = second.status ?? first.status;
+          result.posterPostError = second.error ?? first.error;
+        }
+      } else {
+        result.posterHtmlPostStatus = first.status;
+        result.posterHtmlPostOk = first.ok;
+        result.posterUploadMethod = 'poster.html FormData (file)';
+        result.posterPostStatus = first.status;
+        result.posterPostOk = first.ok;
+        result.posterPostError = first.error;
       }
     }
   } catch (err) {
