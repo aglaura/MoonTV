@@ -965,7 +965,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className='rounded-xl border border-gray-200/60 dark:border-white/10 bg-white dark:bg-gray-900/30 overflow-hidden shadow-sm'
+                        className='rounded-lg border border-gray-200/70 dark:border-white/10 bg-white dark:bg-gray-900/40 overflow-hidden shadow-sm'
                         onClick={() => {
                           // Toggle expand/collapse on tap. If collapsed, also play best.
                           setExpandedProviders((prev) => {
@@ -990,28 +990,28 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           });
                         }}
                       >
-                        <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 py-2 bg-gradient-to-r from-emerald-50/80 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
+                        <div className='flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between px-2.5 py-1.5 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
                           <div className='min-w-0 sm:flex-1'>
-                            <div className='flex items-center gap-2 min-w-0'>
+                            <div className='flex items-center gap-1.5 min-w-0'>
                               <div
-                                className='text-xs font-medium text-gray-900 dark:text-gray-100 truncate'
+                                className='text-xs font-semibold text-gray-900 dark:text-gray-100 truncate'
                                 title={providerName}
                               >
                                 {providerName}
                               </div>
                               {providerCode && (
-                                <div className='text-[11px] text-gray-500 dark:text-gray-400'>
+                                <div className='text-[10px] text-gray-500 dark:text-gray-400'>
                                   {providerCode}
                                 </div>
                               )}
                               {groupHasCurrent && (
-                                <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
+                                <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
                                   Playing
                                 </div>
                               )}
                             </div>
                           </div>
-                            <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
+                            <div className='flex flex-wrap items-center gap-1.5 sm:justify-end'>
                             <button
                               type='button'
                               onClick={(e) => {
@@ -1026,35 +1026,35 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   return next;
                                 });
                               }}
-                              className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition'
+                              className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition'
                             >
                               {group.sources.length} sources
                             </button>
                             {providerHasError ? (
-                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
+                              <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                                 檢測失敗
                               </div>
                             ) : (
                               <div
-                                className={`text-[11px] px-2 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${qualityTextColor}`}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${qualityTextColor}`}
                               >
                                 {qualityText}
                               </div>
                             )}
                             {loadSpeedText && (
-                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
+                              <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
                                 {loadSpeedText}
                               </div>
                             )}
                             {pingText && (
-                              <div className='text-[11px] px-2 py-0.5 rounded-full bg-orange-500/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'>
+                              <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 dark:bg-orange-500/15 text-orange-700 dark:text-orange-300'>
                                 {pingText}
                               </div>
                             )}
                           </div>
                         </div>
 
-                        <div className='p-3 grid gap-2 sm:gap-2.5 sm:grid-cols-2 xl:grid-cols-3'>
+                        <div className='p-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1084,22 +1084,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
                                       : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
-                                style={{
-                                  zIndex: group.sources.length - idx,
-                                  marginTop: idx === 0 ? 0 : -6,
-                                  transform: `translateY(${-idx * 4}px) translateX(${idx * 2}px)`,
-                                }}
                               >
-                                {group.sources.length > 1 &&
-                                  !expandedProviders.has(group.key) &&
-                                  idx === 0 && (
-                                    <div
-                                      className='absolute inset-0 -z-10 translate-y-1 translate-x-0 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900/70'
-                                      aria-hidden
-                                    ></div>
-                                  )}
-                                <div className='flex items-start gap-3'>
-                                  <div className='flex-shrink-0 w-14 h-24 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
+                                <div className='flex items-start gap-2'>
+                                  <div className='flex-shrink-0 w-10 h-16 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
                                     {source.episodes &&
                                       source.episodes.length > 0 && (
                                         <div className='relative w-full h-full'>
@@ -1124,11 +1111,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                       )}
                                   </div>
 
-                                    <div className='min-w-0 flex-1'>
-                                      <div className='flex items-start justify-between gap-3'>
+                                    <div className='min-w-0 flex-1 space-y-1'>
+                                      <div className='flex items-start justify-between gap-2'>
                                         <div className='min-w-0'>
                                           <div
-                                            className='text-sm font-medium text-gray-900 dark:text-gray-100 truncate'
+                                            className='text-[13px] font-medium text-gray-900 dark:text-gray-100 truncate'
                                             title={displaySourceTitle}
                                           >
                                             {displaySourceTitle}
@@ -1143,15 +1130,15 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                           )}
                                         </div>
                                         {idx === 0 && (
-                                          <div className='text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200'>
+                                          <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200'>
                                             最佳
                                           </div>
                                         )}
                                       </div>
 
-                                      <div className='mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300'>
+                                      <div className='flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300'>
                                         {source.episodes.length > 1 && (
-                                          <div className='px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
+                                          <div className='px-1.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
                                             {source.episodes.length} 集
                                           </div>
                                         )}
