@@ -15,6 +15,12 @@ type TmdbItem = {
   year: string;
   poster: string;
   mediaType: 'movie' | 'tv';
+  voteAverage?: number;
+  certification?: string;
+  genres?: string[];
+  providers?: string[];
+  cast?: string[];
+  directors?: string[];
 };
 
 async function fetchDoubanChineseTitle(title: string): Promise<string | undefined> {
@@ -75,6 +81,7 @@ async function fetchTmdbList(
         year: (date || '').toString().slice(0, 4),
         poster: item?.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : '',
         mediaType,
+        voteAverage: item?.vote_average,
       } as TmdbItem;
     })
     .filter((item) => item.tmdbId && item.title)
@@ -110,6 +117,98 @@ function dedup(items: TmdbItem[]) {
   });
 }
 
+async function enrichTmdbItem(
+  apiKey: string,
+  item: TmdbItem
+): Promise<TmdbItem> {
+  try {
+    const id = item.tmdbId.replace('tmdb:', '');
+    const detailUrl = `${TMDB_BASE}/${item.mediaType}/${id}?api_key=${encodeURIComponent(
+      apiKey
+    )}&language=zh-CN&append_to_response=release_dates,content_ratings,watch/providers,credits,translations`;
+    const resp = await fetch(detailUrl, { cache: 'no-store' });
+    if (!resp.ok) return item;
+    const data = await resp.json();
+
+    // Localized title
+    const translations = (data?.translations?.translations || []) as any[];
+    const zhTrans = translations.find(
+      (t) => t?.iso_639_1 === 'zh' && t?.iso_3166_1 === 'CN'
+    );
+    const localizedTitle =
+      zhTrans?.data?.title ||
+      zhTrans?.data?.name ||
+      data?.title ||
+      data?.name ||
+      item.title;
+
+    // Certification
+    let certification: string | undefined;
+    if (item.mediaType === 'movie') {
+      const releases = (data?.release_dates?.results || []) as any[];
+      const preferredRegion = releases.find((r) => r?.iso_3166_1 === 'US') ||
+        releases.find((r) => r?.iso_3166_1 === 'CN') ||
+        releases[0];
+      const certEntry = preferredRegion?.release_dates?.find(
+        (r: any) => r?.certification
+      );
+      certification = certEntry?.certification || undefined;
+    } else {
+      const ratings = (data?.content_ratings?.results || []) as any[];
+      const preferred = ratings.find((r) => r?.iso_3166_1 === 'US') ||
+        ratings.find((r) => r?.iso_3166_1 === 'CN') ||
+        ratings[0];
+      certification = preferred?.rating || undefined;
+    }
+
+    // Watch providers
+    const providersData = data?.['watch/providers']?.results || {};
+    const providerRegion =
+      providersData?.US || providersData?.CN || providersData?.HK || providersData?.TW;
+    const providers =
+      providerRegion?.flatrate?.map((p: any) => p?.provider_name)?.filter(Boolean) ||
+      providerRegion?.rent?.map((p: any) => p?.provider_name)?.filter(Boolean) ||
+      providerRegion?.buy?.map((p: any) => p?.provider_name)?.filter(Boolean) ||
+      [];
+
+    // Genres
+    const genres =
+      (data?.genres as any[])
+        ?.map((g) => g?.name)
+        ?.filter(Boolean) ?? [];
+
+    // Cast & crew
+    const cast =
+      (data?.credits?.cast as any[])
+        ?.slice(0, 3)
+        ?.map((c) => c?.name)
+        ?.filter(Boolean) ?? [];
+    const directors =
+      (data?.credits?.crew as any[])
+        ?.filter((c) => c?.job === 'Director')
+        ?.slice(0, 2)
+        ?.map((c) => c?.name)
+        ?.filter(Boolean) ?? [];
+
+    return {
+      ...item,
+      title: localizedTitle || item.title,
+      originalTitle: data?.title || data?.name || item.originalTitle,
+      year:
+        (data?.release_date || data?.first_air_date || item.year || '').slice(0, 4),
+      poster: data?.poster_path ? `${TMDB_IMAGE}${data.poster_path}` : item.poster,
+      certification,
+      genres,
+      providers,
+      cast,
+      directors,
+      voteAverage: data?.vote_average ?? item.voteAverage,
+    };
+  } catch {
+    return item;
+  }
+}
+
 export async function GET() {
   const apiKey =
     process.env.TMDB_API_KEY || '2de27bb73e68f7ebdc05dfcf29a5c2ed';
@@ -132,18 +231,14 @@ export async function GET() {
           ]);
 
         const localizedMovies = await Promise.all(
-          dedup([...trendingMovies, ...popularMovies]).map(async (item) => {
-            const cn = await fetchDoubanChineseTitle(item.title);
-            if (cn) return { ...item, title: cn };
-            return item;
-          })
+          dedup([...trendingMovies, ...popularMovies])
+            .slice(0, 30)
+            .map((item) => enrichTmdbItem(apiKey, item))
         );
         const localizedTv = await Promise.all(
-          dedup([...trendingTv, ...popularTv]).map(async (item) => {
-            const cn = await fetchDoubanChineseTitle(item.title);
-            if (cn) return { ...item, title: cn };
-            return item;
-          })
+          dedup([...trendingTv, ...popularTv])
+            .slice(0, 30)
+            .map((item) => enrichTmdbItem(apiKey, item))
         );
 
         movies = localizedMovies;
@@ -154,6 +249,10 @@ export async function GET() {
       }
     } else {
       fetchError = 'TMDB_API_KEY not configured';
+    }
+
+    if (!movies.length) {
+      movies = FALLBACK_MOVIES.map((m) => ({ ...m, mediaType: 'movie' as const }));
     }
 
     if (!movies.length) {

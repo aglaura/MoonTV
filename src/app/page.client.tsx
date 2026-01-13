@@ -37,6 +37,12 @@ type TmdbListItem = {
   poster: string;
   originalTitle?: string;
   mediaType?: 'movie' | 'tv';
+  certification?: string;
+  genres?: string[];
+  providers?: string[];
+  voteAverage?: number;
+  cast?: string[];
+  directors?: string[];
 };
 type TmdbPerson = {
   tmdbId: string;
