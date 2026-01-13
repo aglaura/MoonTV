@@ -10,10 +10,18 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 
 const isIOSDevice = () => {
   if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  const platform = ((navigator as any).platform || '').toLowerCase();
+  const isTouchMac =
+    platform === 'macintel' && (navigator as any).maxTouchPoints > 1;
+  const isAppleDesktopSafari =
+    /macintosh|mac os x/.test(ua) &&
+    /safari/.test(ua) &&
+    !/chrome|crios|fxios|edgios/.test(ua);
   return (
-    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    ((navigator as any).platform === 'MacIntel' &&
-      (navigator as any).maxTouchPoints > 1)
+    /iphone|ipad|ipod/.test(ua) ||
+    isTouchMac ||
+    isAppleDesktopSafari
   );
 };
 
