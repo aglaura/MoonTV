@@ -1183,13 +1183,6 @@ function PlayPageClient() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
   const [inlineFullscreen, setInlineFullscreen] = useState(false);
-  const [clockText, setClockText] = useState(() => {
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
-      now.getSeconds()
-    )}`;
-  });
   const currentPlayingInfo = useMemo(() => {
     const bySourceKey =
       precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
@@ -3477,16 +3470,6 @@ function PlayPageClient() {
     }
   }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
 
-  useEffect(() => {
-    if (!isFullscreen) {
-      return;
-    }
-    const tick = () => setClockText(formatClock());
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [isFullscreen]);
-
   if (loading) {
     return (
       <PageLayout activePath='/play'>
@@ -3756,11 +3739,6 @@ function PlayPageClient() {
             }`}
           >
             <div className={`relative w-full ${playerHeightClass}`}>
-              {isFullscreen && (
-                <div className='pointer-events-none absolute top-3 right-3 z-[600] rounded-full bg-black/70 px-3 py-1 text-white text-sm tracking-widest'>
-                  {clockText}
-                </div>
-              )}
               {error && (
                 <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
                   <div className='flex items-start justify-between gap-3'>
