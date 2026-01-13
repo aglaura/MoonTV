@@ -104,7 +104,7 @@ async function fetchTmdbPeople(apiKey: string) {
       poster: p?.profile_path ? `${TMDB_PROFILE}${p.profile_path}` : '',
       year: '',
     }))
-    .filter((p) => p.tmdbId && p.title)
+    .filter((p: any) => p.tmdbId && p.title)
     .slice(0, 30);
 }
 
