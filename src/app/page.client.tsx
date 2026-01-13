@@ -1054,9 +1054,15 @@ function HomeClient() {
                       className={tvSectionClass('rail-tv')}
                     >
                       <ContentRail
-                        title={tt('Hot TV shows', '热门剧集', '熱門劇集')}
-                        href="/douban?type=tv"
-                        items={categoryData.tv.items}
+                        title={tt('Hot CN TV', '热门华语剧', '熱門華語劇')}
+                        href="/douban?type=tv&region=cn"
+                        items={categoryData['tv-cn'].items}
+                        screenMode={screenMode}
+                      />
+                      <ContentRail
+                        title={tt('Hot KR/JP TV', '热门日韩剧', '熱門日韓劇')}
+                        href="/douban?type=tv&region=krjp"
+                        items={categoryData['tv-krjp'].items}
                         screenMode={screenMode}
                       />
                     </div>
