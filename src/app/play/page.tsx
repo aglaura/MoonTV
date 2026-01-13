@@ -235,6 +235,23 @@ function PlayPageClient() {
     needPreferRef.current = needPrefer;
   }, [needPrefer]);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
+  const persistDownloadRecord = useCallback(
+    (title: string, url: string) => {
+      if (typeof window === 'undefined' || !url) return;
+      try {
+        const existingRaw = localStorage.getItem('downloadRecords');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const next = [
+          { title, url, ts: Date.now() },
+          ...(Array.isArray(existing) ? existing : []),
+        ].slice(0, 100);
+        localStorage.setItem('downloadRecords', JSON.stringify(next));
+      } catch {
+        // ignore storage failures
+      }
+    },
+    []
+  );
 
   const currentSourceRef = useRef(currentSource);
   const currentIdRef = useRef(currentId);
@@ -1345,6 +1362,44 @@ function PlayPageClient() {
   const displayTitleWithEnglish = englishVideoTitle
     ? `${displayTitleText} (${englishVideoTitle})`
     : displayTitleText;
+  const handleDownload = useCallback(() => {
+    if (!videoUrl) {
+      reportError(
+        tt('No playable source to download.', '暂无可下载的播放源。', '暫無可下載的播放源。'),
+        'playback'
+      );
+      return;
+    }
+    const baseTitle =
+      displayTitleWithEnglish || videoTitleRef.current || searchTitle || 'Video';
+    const epLabel =
+      (detail?.episodes?.length || 0) > 1
+        ? `${tt('Episode', '第', '第')} ${currentEpisodeIndex + 1}`
+        : '';
+    const recordTitle = [baseTitle, epLabel].filter(Boolean).join(' - ');
+    persistDownloadRecord(recordTitle, videoUrl);
+
+    try {
+      const a = document.createElement('a');
+      a.href = videoUrl;
+      a.download = '';
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      window.open(videoUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [
+    videoUrl,
+    displayTitleWithEnglish,
+    searchTitle,
+    detail?.episodes?.length,
+    currentEpisodeIndex,
+    persistDownloadRecord,
+    tt,
+  ]);
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
       ? `https://www.imdb.com/title/${imdbVideoId}/`
@@ -3338,6 +3393,14 @@ function PlayPageClient() {
                 </span>
               </>
             )}
+            <button
+              type='button'
+              onClick={handleDownload}
+              className='px-3 py-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 shadow-sm border border-green-500/40 disabled:opacity-60 disabled:cursor-not-allowed'
+              disabled={!videoUrl}
+            >
+              {tt('Download', '下载到本地', '下載到本地')}
+            </button>
           </div>
         )}
 

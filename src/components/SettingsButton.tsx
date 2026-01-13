@@ -30,6 +30,12 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     footerNote: 'These settings are stored in this browser',
     settingsAria: 'Settings',
     closeAria: 'Close',
+    downloadTitle: 'Download manager',
+    downloadDesc: 'Downloads saved locally on this device.',
+    downloadEmpty: 'No downloads yet',
+    downloadOpen: 'Open',
+    downloadRemove: 'Remove',
+    downloadClear: 'Clear all',
   },
   'zh-Hans': {
     settingsTitle: '设置',
@@ -53,6 +59,12 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     footerNote: '这些设置保存在本地浏览器中',
     settingsAria: '设置',
     closeAria: '关闭',
+    downloadTitle: '下载管理',
+    downloadDesc: '下载记录仅保存在本机。',
+    downloadEmpty: '暂无下载记录',
+    downloadOpen: '打开',
+    downloadRemove: '删除',
+    downloadClear: '清空',
   },
   'zh-Hant': {
     settingsTitle: '設定',
@@ -76,6 +88,12 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     footerNote: '這些設定保存在本地瀏覽器中',
     settingsAria: '設定',
     closeAria: '關閉',
+    downloadTitle: '下載管理',
+    downloadDesc: '下載紀錄僅保存在本機。',
+    downloadEmpty: '暫無下載紀錄',
+    downloadOpen: '開啟',
+    downloadRemove: '刪除',
+    downloadClear: '清空',
   },
 };
 
@@ -88,6 +106,9 @@ export const SettingsButton: React.FC = () => {
   const [enableOptimization, setEnableOptimization] = useState(true);
   const [enableImageProxy, setEnableImageProxy] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [downloadRecords, setDownloadRecords] = useState<
+    { title: string; url: string; ts: number }[]
+  >([]);
 
   const locale = useMemo(() => {
     if (typeof window === 'undefined') return 'en';
@@ -155,6 +176,18 @@ export const SettingsButton: React.FC = () => {
       if (savedEnableOptimization !== null) {
         setEnableOptimization(JSON.parse(savedEnableOptimization));
       }
+
+      const savedDownloads = localStorage.getItem('downloadRecords');
+      if (savedDownloads) {
+        try {
+          const parsed = JSON.parse(savedDownloads);
+          if (Array.isArray(parsed)) {
+            setDownloadRecords(parsed);
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
   }, []);
 
@@ -192,6 +225,26 @@ export const SettingsButton: React.FC = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('enableImageProxy', JSON.stringify(value));
     }
+  };
+
+  const persistDownloads = (records: { title: string; url: string; ts: number }[]) => {
+    setDownloadRecords(records);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('downloadRecords', JSON.stringify(records));
+    }
+  };
+
+  const handleOpenDownload = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleRemoveDownload = (idx: number) => {
+    persistDownloads(downloadRecords.filter((_, i) => i !== idx));
+  };
+
+  const handleClearDownloads = () => {
+    persistDownloads([]);
   };
 
   const handleSettingsClick = () => {
@@ -389,6 +442,68 @@ export const SettingsButton: React.FC = () => {
               onChange={(e) => handleImageProxyUrlChange(e.target.value)}
               disabled={!enableImageProxy}
             />
+          </div>
+
+          {/* 下载管理 */}
+          <div className='space-y-2'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  {t('downloadTitle')}
+                </h4>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                  {t('downloadDesc')}
+                </p>
+              </div>
+              {downloadRecords.length > 0 && (
+                <button
+                  onClick={handleClearDownloads}
+                  className='text-xs px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
+                >
+                  {t('downloadClear')}
+                </button>
+              )}
+            </div>
+            <div className='space-y-2 max-h-48 overflow-y-auto'>
+              {downloadRecords.length === 0 ? (
+                <div className='text-xs text-gray-500 dark:text-gray-400'>
+                  {t('downloadEmpty')}
+                </div>
+              ) : (
+                downloadRecords
+                  .slice()
+                  .sort((a, b) => b.ts - a.ts)
+                  .map((rec, idx) => (
+                    <div
+                      key={`${rec.title}-${rec.ts}-${idx}`}
+                      className='rounded-md border border-gray-200 dark:border-gray-700 p-2 flex items-center justify-between gap-2 bg-white/70 dark:bg-gray-900/60'
+                    >
+                      <div className='min-w-0'>
+                        <div className='text-sm text-gray-900 dark:text-gray-100 truncate'>
+                          {rec.title || rec.url}
+                        </div>
+                        <div className='text-[11px] text-gray-500 dark:text-gray-400'>
+                          {new Date(rec.ts).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className='flex items-center gap-2 flex-shrink-0'>
+                        <button
+                          onClick={() => handleOpenDownload(rec.url)}
+                          className='text-xs px-2 py-1 rounded-full bg-green-600 text-white hover:bg-green-700'
+                        >
+                          {t('downloadOpen')}
+                        </button>
+                        <button
+                          onClick={() => handleRemoveDownload(idx)}
+                          className='text-xs px-2 py-1 rounded-full bg-red-500 text-white hover:bg-red-600'
+                        >
+                          {t('downloadRemove')}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
           </div>
         </div>
 

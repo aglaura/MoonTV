@@ -4,7 +4,7 @@
 
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   BangumiCalendarData,
@@ -20,6 +20,7 @@ import {
 import { convertToTraditional } from '@/lib/locale';
 import { DoubanItem } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
+import { useUserLanguage } from '@/lib/userLanguage.client';
 
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
@@ -97,13 +98,6 @@ function resolveUiLocale(): UiLocale {
   return 'en';
 }
 
-function tt(en: string, zhHans: string, zhHant: string): string {
-  const locale = resolveUiLocale();
-  if (locale === 'zh-Hans') return zhHans;
-  if (locale === 'zh-Hant') return zhHant;
-  return en;
-}
-
 function isKidSafeCard(item: CardItem) {
   return isKidSafeContent({
     title: item.title,
@@ -123,11 +117,13 @@ function ContentRail({
   href,
   items,
   screenMode,
+  tt,
 }: {
   title: string;
   href?: string;
   items: CardItem[];
   screenMode: 'tv' | 'desktop' | 'mobile';
+  tt: (en: string, zhHans: string, zhHant: string) => string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const isTV = screenMode === 'tv';
@@ -345,6 +341,22 @@ function ContentRail({
 }
 
 function HomeClient() {
+  const { userLocale } = useUserLanguage();
+  const uiLocale: UiLocale = useMemo(() => {
+    if (userLocale === 'en' || userLocale === 'zh-Hans' || userLocale === 'zh-Hant') {
+      return userLocale;
+    }
+    return resolveUiLocale();
+  }, [userLocale]);
+  const tt = useCallback(
+    (en: string, zhHans: string, zhHant: string): string => {
+      if (uiLocale === 'zh-Hans') return zhHans;
+      if (uiLocale === 'zh-Hant') return zhHant;
+      return en;
+    },
+    [uiLocale]
+  );
+
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
@@ -531,14 +543,22 @@ function HomeClient() {
     >
   >(() => {
     const mapDouban = (items: DoubanItem[], type?: string): CardItem[] =>
-      (items || []).map((item) => ({
-        title: item.title,
-        poster: item.poster,
-        rate: item.rate,
-        year: item.year,
-        douban_id: Number(item.id),
-        type,
-      }));
+      (items || []).map((item) => {
+        const localizedTitle =
+          uiLocale === 'zh-Hant'
+            ? convertToTraditional(item.title)
+            : uiLocale === 'en' && item.original_title
+            ? item.original_title
+            : item.title;
+        return {
+          title: localizedTitle,
+          poster: item.poster,
+          rate: item.rate,
+          year: item.year,
+          douban_id: Number(item.id),
+          type,
+        };
+      });
 
     const tmdbCards: CardItem[] = (tmdbList || []).map((item) => ({
       title: item.title,
@@ -951,37 +971,32 @@ function HomeClient() {
                       <div className='flex gap-3 overflow-x-auto [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
                         {heroItems.slice(0, 12).map((item, idx) => {
                           const safeLength = heroItems.length || 1;
-                          const activeIndex = ((heroIndex % safeLength) + safeLength) % safeLength;
+                          const activeIndex =
+                            ((heroIndex % safeLength) + safeLength) % safeLength;
                           const active = idx === activeIndex;
                           return (
-                            <button
+                            <div
                               key={`${item.title}-${idx}`}
-                              onClick={() => setHeroIndex(idx)}
-                              className={`relative flex-shrink-0 w-32 sm:w-36 md:w-40 rounded-2xl overflow-hidden transition ${
+                              onMouseEnter={() => setHeroIndex(idx)}
+                              className={`relative flex-shrink-0 w-32 sm:w-36 md:w-40 transition ${
                                 active
                                   ? 'ring-2 ring-green-300/70 border border-green-400/70 scale-[1.02]'
                                   : 'border border-gray-200 dark:border-gray-700 hover:border-green-400'
-                              }`}
+                              } rounded-2xl overflow-hidden`}
                               style={{ scrollSnapAlign: 'start' }}
                             >
-                              <div className='aspect-[2/3] bg-gray-200 dark:bg-gray-800'>
-                                {item.poster && (
-                                  <img
-                                    src={item.poster}
-                                    alt={item.title}
-                                    className='w-full h-full object-cover'
-                                  />
-                                )}
-                                <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent'></div>
-                              </div>
-                              <div className='absolute bottom-0 left-0 right-0 p-2 text-left text-xs text-white bg-gradient-to-t from-black/80 via-black/40 to-transparent'>
-                                <div className='font-semibold line-clamp-2'>{item.title}</div>
-                                <div className='text-[11px] text-gray-200'>
-                                  {item.year || ''}
-                                  {item.rate ? ` · ${item.rate}` : ''}
-                                </div>
-                              </div>
-                            </button>
+                              <VideoCard
+                                from='douban'
+                                title={item.title}
+                                poster={item.poster}
+                                douban_id={item.douban_id}
+                                rate={item.rate}
+                                year={item.year}
+                                type={item.type}
+                                query={item.query || item.title}
+                                source_name={item.source_name}
+                              />
+                            </div>
                           );
                         })}
                       </div>
@@ -1055,6 +1070,7 @@ function HomeClient() {
                         href="/douban?type=movie"
                         items={categoryData.movie.items}
                         screenMode={screenMode}
+                        tt={tt}
                       />
                     </div>
                     <div
@@ -1066,12 +1082,14 @@ function HomeClient() {
                         href="/douban?type=tv&region=cn"
                         items={categoryData['tv-cn'].items}
                         screenMode={screenMode}
+                        tt={tt}
                       />
                       <ContentRail
                         title={tt('Hot KR/JP TV', '热门日韩剧', '熱門日韓劇')}
                         href="/douban?type=tv&region=krjp"
                         items={categoryData['tv-krjp'].items}
                         screenMode={screenMode}
+                        tt={tt}
                       />
                     </div>
                     <div
@@ -1087,6 +1105,7 @@ function HomeClient() {
                         href="/douban?type=show"
                         items={categoryData.variety.items}
                         screenMode={screenMode}
+                        tt={tt}
                       />
                     </div>
                   </section>
