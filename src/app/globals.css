@@ -170,17 +170,35 @@ div[data-media-provider] video {
 }
 
 .art-skip {
-  background: rgba(0, 0, 0, 0.6);
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 9999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.art-skip:hover {
+  transform: scale(1.05);
+  background: rgba(0, 0, 0, 0.7);
+}
+.art-skip-back::before {
+  content: '↺';
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 1;
+}
+.art-skip-forward::after {
+  content: '↻';
+  margin-left: 6px;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .art-rotate-btn {
