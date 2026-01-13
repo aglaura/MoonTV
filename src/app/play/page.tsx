@@ -3107,24 +3107,42 @@ function PlayPageClient() {
           {
             position: 'left',
             index: 10,
-            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">⏪ 10s</div>',
+            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-white text-xs shadow-lg">⏪ 10s</div>',
             tooltip: tt('Rewind 10s', '后退 10 秒', '後退 10 秒'),
+            style: {
+              position: 'absolute',
+              top: '50%',
+              left: '12px',
+              transform: 'translateY(-50%)',
+            },
             click: () => {
-              if (isIOSDevice()) return;
               const player = artPlayerRef.current;
               if (!player) return;
+              if (isIOSDevice()) {
+                // iOS relies on native controls; let them handle it
+                return;
+              }
               player.currentTime = Math.max(0, player.currentTime - 10);
             },
           },
           {
-            position: 'left',
+            position: 'right',
             index: 11,
-            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">⏩ 10s</div>',
+            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-white text-xs shadow-lg">⏩ 10s</div>',
             tooltip: tt('Forward 10s', '前进 10 秒', '前進 10 秒'),
+            style: {
+              position: 'absolute',
+              top: '50%',
+              right: '12px',
+              transform: 'translateY(-50%)',
+            },
             click: () => {
-              if (isIOSDevice()) return;
               const player = artPlayerRef.current;
               if (!player) return;
+              if (isIOSDevice()) {
+                // iOS relies on native controls; let them handle it
+                return;
+              }
               player.currentTime = Math.min(
                 player.duration || Number.MAX_SAFE_INTEGER,
                 player.currentTime + 10
