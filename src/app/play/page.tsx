@@ -3823,11 +3823,11 @@ function PlayPageClient() {
                   </div>
                 </div>
               )}
-        <div
-          ref={artRef}
-          className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
-            forceRotate ? 'forced-rotate-player' : ''
-          }`}
+              <div
+                ref={artRef}
+                className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
+                  forceRotate ? 'forced-rotate-player' : ''
+                }`}
               ></div>
 
                 {/* 换源加载蒙层 */}
