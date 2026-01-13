@@ -17,11 +17,18 @@ const isIOSDevice = () => {
   const isAppleDesktopSafari =
     /macintosh|mac os x/.test(ua) &&
     /safari/.test(ua) &&
-    !/chrome|crios|fxios|edgios/.test(ua);
+    !/chrome|crios|fxios|edgios/.test(ua) &&
+    !/firefox|fxios/.test(ua);
+  const isSafari =
+    /safari/.test(ua) &&
+    !/chrome|crios|fxios|edgios/.test(ua) &&
+    !/firefox|fxios/.test(ua);
+  const hasTouch = (navigator as any).maxTouchPoints > 0;
   return (
     /iphone|ipad|ipod/.test(ua) ||
     isTouchMac ||
-    isAppleDesktopSafari
+    isAppleDesktopSafari ||
+    (isSafari && hasTouch)
   );
 };
 
@@ -3101,9 +3108,62 @@ function PlayPageClient() {
         controls: [
           {
             position: 'left',
-            index: 9,
-            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/30 text-white text-xs">↻ 90°</div>',
-            tooltip: tt('Rotate (iOS inline)', '旋转（iOS 内联）', '旋轉（iOS 內聯）'),
+            index: 13,
+            html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
+            tooltip: tt('Next episode', '下一集', '下一集'),
+            click: function () {
+              handleNextEpisode();
+            },
+          },
+        ],
+        layers: [
+          {
+            name: 'rewind-10',
+            html: '<button class="art-skip art-skip-back">⏪ 10s</button>',
+            style: {
+              position: 'absolute',
+              top: '50%',
+              left: '12px',
+              transform: 'translateY(-50%)',
+              zIndex: 600,
+            },
+            click: () => {
+              if (isIOSDevice()) return;
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.max(0, player.currentTime - 10);
+            },
+          },
+          {
+            name: 'forward-10',
+            html: '<button class="art-skip art-skip-forward">⏩ 10s</button>',
+            style: {
+              position: 'absolute',
+              top: '50%',
+              right: '12px',
+              transform: 'translateY(-50%)',
+              zIndex: 600,
+            },
+            click: () => {
+              if (isIOSDevice()) return;
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.min(
+                player.duration || Number.MAX_SAFE_INTEGER,
+                player.currentTime + 10
+              );
+            },
+          },
+          {
+            name: 'rotate',
+            html: '<button class="art-rotate-btn">↻ 90°</button>',
+            style: {
+              position: 'absolute',
+              top: '12px',
+              left: '12px',
+              zIndex: 600,
+              display: isIOS ? 'flex' : 'none',
+            },
             click: () => {
               if (!isIOS) return;
               const next = !forceRotate;
@@ -3132,60 +3192,6 @@ function PlayPageClient() {
                   // ignore
                 }
               }
-            },
-          },
-          {
-            position: 'left',
-            index: 10,
-            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-white text-xs shadow-lg">⏪ 10s</div>',
-            tooltip: tt('Rewind 10s', '后退 10 秒', '後退 10 秒'),
-            style: {
-              position: 'absolute',
-              top: '50%',
-              left: '12px',
-              transform: 'translateY(-50%)',
-            },
-            click: () => {
-              const player = artPlayerRef.current;
-              if (!player) return;
-              if (isIOSDevice()) {
-                // iOS relies on native controls; let them handle it
-                return;
-              }
-              player.currentTime = Math.max(0, player.currentTime - 10);
-            },
-          },
-          {
-            position: 'right',
-            index: 11,
-            html: '<div class="flex items-center gap-1 px-2 py-1 rounded bg-black/60 text-white text-xs shadow-lg">⏩ 10s</div>',
-            tooltip: tt('Forward 10s', '前进 10 秒', '前進 10 秒'),
-            style: {
-              position: 'absolute',
-              top: '50%',
-              right: '12px',
-              transform: 'translateY(-50%)',
-            },
-            click: () => {
-              const player = artPlayerRef.current;
-              if (!player) return;
-              if (isIOSDevice()) {
-                // iOS relies on native controls; let them handle it
-                return;
-              }
-              player.currentTime = Math.min(
-                player.duration || Number.MAX_SAFE_INTEGER,
-                player.currentTime + 10
-              );
-            },
-          },
-          {
-            position: 'left',
-            index: 13,
-            html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
-            tooltip: tt('Next episode', '下一集', '下一集'),
-            click: function () {
-              handleNextEpisode();
             },
           },
         ],

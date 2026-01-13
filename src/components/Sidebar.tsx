@@ -34,13 +34,13 @@ const Logo = () => {
       href='/'
       className='flex items-center justify-center h-16 select-none hover:opacity-80 transition-opacity duration-200 gap-2'
     >
-      <div className='w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10'>
+      <div className='w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 bg-white dark:bg-black flex items-center justify-center p-1.5'>
         <picture>
           <source srcSet='/logo-dark.png' media='(prefers-color-scheme: dark)' />
           <img
             src='/logo.png'
             alt={siteName}
-            className='w-full h-full object-cover'
+            className='w-full h-full object-contain'
           />
         </picture>
       </div>
