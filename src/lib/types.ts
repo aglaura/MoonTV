@@ -129,6 +129,9 @@ export interface DoubanItem {
   poster: string;
   rate: string;
   year: string;
+   /** Optional metadata parsed from Douban card_subtitle (e.g., region string) */
+   subtitle?: string;
+   region?: string; // cn, hk, tw, kr, jp, other
 }
 
 // 豆瓣查詢結果

@@ -25,6 +25,16 @@ type DoubanCategoryApiResponse = {
   }>;
 };
 
+function parseRegion(subtitle?: string): string | undefined {
+  if (!subtitle) return undefined;
+  if (/日本/.test(subtitle)) return 'jp';
+  if (/韩国|韓國|韓/.test(subtitle)) return 'kr';
+  if (/中国大陆|中國大陸|大陆|內地/.test(subtitle)) return 'cn';
+  if (/香港/.test(subtitle)) return 'hk';
+  if (/台湾|台灣/.test(subtitle)) return 'tw';
+  return undefined;
+}
+
 function mapCategoryResponse(data: DoubanCategoryApiResponse): DoubanItem[] {
   const items = Array.isArray(data?.items) ? data.items : [];
   return items.map((item) => ({
@@ -33,6 +43,8 @@ function mapCategoryResponse(data: DoubanCategoryApiResponse): DoubanItem[] {
     poster: item.pic?.normal || item.pic?.large || '',
     rate: item.rating?.value ? item.rating.value.toFixed(1) : '',
     year: item.card_subtitle?.match(/(\d{4})/)?.[1] || '',
+    subtitle: item.card_subtitle,
+    region: parseRegion(item.card_subtitle),
   }));
 }
 

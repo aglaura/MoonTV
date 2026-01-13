@@ -498,16 +498,24 @@ function HomeClient() {
   const [hotTvShowsCn, hotTvShowsKrJp] = useMemo(() => {
     const krjpList: DoubanItem[] = [];
     const cnList: DoubanItem[] = [];
+    const regionFromItem = (item: DoubanItem) => {
+      if (item.region === 'kr' || item.region === 'jp') return item.region;
+      if (item.region === 'cn' || item.region === 'hk' || item.region === 'tw')
+        return 'cn';
+      return undefined;
+    };
     const isKrJpTitle = (title?: string) => {
       if (!title) return false;
       // Detect Hangul or common CJK markers for KR/JP titles
-      if (/[가-힣]/.test(title)) return true;
-      if (/[ぁ-ゔァ-ヴ一-龯]/.test(title)) return true;
-      if (/韩|韓|日剧|日劇|日版/.test(title)) return true;
+      if (/[가-힣]/.test(title)) return true; // Hangul
+      if (/[ぁ-ゔァ-ヴ]/.test(title)) return true; // Kana
+      if (/韩|韓/.test(title)) return true;
+      if (/日剧|日劇|日版|日本/.test(title)) return true;
       return false;
     };
     (hotTvShows || []).forEach((item) => {
-      if (isKrJpTitle(item.title)) {
+      const region = regionFromItem(item);
+      if (region === 'kr' || region === 'jp' || isKrJpTitle(item.title)) {
         krjpList.push(item);
       } else {
         cnList.push(item);

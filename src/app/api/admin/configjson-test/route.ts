@@ -49,7 +49,19 @@ export async function POST() {
     result.configError = (err as Error).message;
   }
 
-  // 2) Poster upload + readback
+  // 1.5) Poster helper page existence
+  const posterHelperUrl = `${base}/posters/poster.html`;
+  result.posterHelperUrl = posterHelperUrl;
+  try {
+    const helperResp = await fetch(posterHelperUrl, { method: 'GET' });
+    result.posterHelperStatus = helperResp.status;
+    result.posterHelperOk = helperResp.ok;
+  } catch (err) {
+    result.posterHelperOk = false;
+    result.posterHelperError = (err as Error).message;
+  }
+
+  // 2) Poster upload + readback (prefers direct POST, falls back to poster.html FormData)
   const filename = `healthcheck-${Date.now()}.txt`;
   const posterUrl = `${base}/posters/${encodeURIComponent(filename)}`;
   result.posterUrl = posterUrl;
@@ -65,6 +77,29 @@ export async function POST() {
     result.posterPostOk = postResp.ok;
     if (!postResp.ok) {
       result.posterPostError = postResp.statusText || 'POST failed';
+    }
+
+    // fallback through poster.html if direct POST failed (404/405 etc.)
+    if (!result.posterPostOk && (postResp.status === 404 || postResp.status === 405)) {
+      try {
+        const fd = new FormData();
+        fd.append('file', new Blob([payload], { type: 'text/plain' }), filename);
+        const fbUrl = `${base}/posters/poster.html?name=${encodeURIComponent(filename)}`;
+        const fbResp = await fetch(fbUrl, {
+          method: 'POST',
+          body: fd,
+        });
+        result.posterHtmlPostStatus = fbResp.status;
+        result.posterHtmlPostOk = fbResp.ok;
+        if (!fbResp.ok) {
+          result.posterHtmlPostError = fbResp.statusText || 'poster.html POST failed';
+        } else {
+          result.posterPostOk = true;
+        }
+      } catch (err) {
+        result.posterHtmlPostOk = false;
+        result.posterHtmlPostError = (err as Error).message;
+      }
     }
   } catch (err) {
     result.posterPostOk = false;
