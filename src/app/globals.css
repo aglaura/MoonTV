@@ -214,6 +214,15 @@ div[data-media-provider] video {
   opacity: 0.8;
 }
 
+/* Hide skip buttons when controls are hidden */
+.art-control .art-skip {
+  opacity: 1;
+}
+.art-controls-hidden .art-skip {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .art-rotate-btn {
   background: rgba(0, 0, 0, 0.6);
   color: #fff;

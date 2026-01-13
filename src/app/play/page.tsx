@@ -3170,62 +3170,11 @@ function PlayPageClient() {
         ],
         controls: [
           {
-            position: 'left',
-            index: 13,
-            html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
-            tooltip: tt('Next episode', '下一集', '下一集'),
-            click: function () {
-              handleNextEpisode();
-            },
-          },
-        ],
-        layers: [
-          {
-            name: 'rewind-10',
-            html: '<button class="art-skip art-skip-back"></button>',
+            position: 'right',
+            index: 8,
+            html: '<div class="art-rotate-btn">↻ 90°</div>',
+            tooltip: tt('Rotate (iOS)', '旋转（iOS）', '旋轉（iOS）'),
             style: {
-              position: 'absolute',
-              top: '50%',
-              left: '12px',
-              transform: 'translateY(-50%)',
-              zIndex: '600',
-            },
-            click: () => {
-              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
-              const player = artPlayerRef.current;
-              if (!player) return;
-              player.currentTime = Math.max(0, player.currentTime - 10);
-            },
-          },
-          {
-            name: 'forward-10',
-            html: '<button class="art-skip art-skip-forward"></button>',
-            style: {
-              position: 'absolute',
-              top: '50%',
-              right: '12px',
-              transform: 'translateY(-50%)',
-              zIndex: '600',
-            },
-            click: () => {
-              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
-              const player = artPlayerRef.current;
-              if (!player) return;
-              player.currentTime = Math.min(
-                player.duration || Number.MAX_SAFE_INTEGER,
-                player.currentTime + 10
-              );
-            },
-          },
-          {
-            name: 'rotate',
-            html: '<button class="art-rotate-btn">↻ 90°</button>',
-            style: {
-              position: 'absolute',
-              bottom: '12px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: '600',
               display: isIOSMobile ? 'flex' : 'none',
             },
             click: () => {
@@ -3261,6 +3210,58 @@ function PlayPageClient() {
                 setForceRotate(false);
                 setIsFullscreen(false);
               }
+            },
+          },
+          {
+            position: 'left',
+            index: 13,
+            html: '<i class="art-icon flex"><svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" fill="currentColor"/></svg></i>',
+            tooltip: tt('Next episode', '下一集', '下一集'),
+            click: function () {
+              handleNextEpisode();
+            },
+          },
+        ],
+        layers: [
+          {
+            name: 'rewind-10',
+            html: '<button class="art-skip art-skip-back"></button>',
+            style: {
+              position: 'absolute',
+              bottom: '18%',
+              left: '14px',
+              transform: 'none',
+              zIndex: '600',
+              opacity: '0',
+              transition: 'opacity 0.2s ease',
+            },
+            click: () => {
+              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.max(0, player.currentTime - 10);
+            },
+          },
+          {
+            name: 'forward-10',
+            html: '<button class="art-skip art-skip-forward"></button>',
+            style: {
+              position: 'absolute',
+              bottom: '18%',
+              right: '14px',
+              transform: 'none',
+              zIndex: '600',
+              opacity: '0',
+              transition: 'opacity 0.2s ease',
+            },
+            click: () => {
+              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
+              const player = artPlayerRef.current;
+              if (!player) return;
+              player.currentTime = Math.min(
+                player.duration || Number.MAX_SAFE_INTEGER,
+                player.currentTime + 10
+              );
             },
           },
         ],
