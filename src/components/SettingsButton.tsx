@@ -107,7 +107,7 @@ export const SettingsButton: React.FC = () => {
   const [enableImageProxy, setEnableImageProxy] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [downloadRecords, setDownloadRecords] = useState<
-    { title: string; url: string; ts: number }[]
+    { title: string; url: string; ts: number; offline?: boolean }[]
   >([]);
 
   const locale = useMemo(() => {
@@ -227,7 +227,9 @@ export const SettingsButton: React.FC = () => {
     }
   };
 
-  const persistDownloads = (records: { title: string; url: string; ts: number }[]) => {
+  const persistDownloads = (
+    records: { title: string; url: string; ts: number; offline?: boolean }[]
+  ) => {
     setDownloadRecords(records);
     if (typeof window !== 'undefined') {
       localStorage.setItem('downloadRecords', JSON.stringify(records));

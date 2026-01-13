@@ -236,13 +236,13 @@ function PlayPageClient() {
   }, [needPrefer]);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const persistDownloadRecord = useCallback(
-    (title: string, url: string) => {
+    (title: string, url: string, opts?: { offline?: boolean }) => {
       if (typeof window === 'undefined' || !url) return;
       try {
         const existingRaw = localStorage.getItem('downloadRecords');
         const existing = existingRaw ? JSON.parse(existingRaw) : [];
         const next = [
-          { title, url, ts: Date.now() },
+          { title, url, ts: Date.now(), offline: opts?.offline ?? false },
           ...(Array.isArray(existing) ? existing : []),
         ].slice(0, 100);
         localStorage.setItem('downloadRecords', JSON.stringify(next));
@@ -258,6 +258,8 @@ function PlayPageClient() {
   const videoTitleRef = useRef(videoTitle);
   const videoYearRef = useRef(videoYear);
   const detailRef = useRef<SearchResult | null>(detail);
+  const [offlineUrl, setOfflineUrl] = useState<string | null>(null);
+  const offlineObjectUrlRef = useRef<string | null>(null);
   const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
   const majorityEpisodeCountRef = useRef<number | null>(null);
 
@@ -1400,6 +1402,53 @@ function PlayPageClient() {
 
     return normalized.slice(0, 12);
   }, [detail]);
+  const refreshOfflineAvailability = useCallback(
+    async (url: string) => {
+      if (
+        typeof window === 'undefined' ||
+        !url ||
+        !(window as any).caches ||
+        typeof caches?.match !== 'function'
+      ) {
+        setOfflineUrl(null);
+        return;
+      }
+      try {
+        const cache = await caches.open('moontv-downloads');
+        const match = await cache.match(url);
+        if (!match) {
+          setOfflineUrl(null);
+          return;
+        }
+        const blob = await match.blob();
+        if (!blob || blob.size === 0) {
+          setOfflineUrl(null);
+          return;
+        }
+        if (offlineObjectUrlRef.current) {
+          URL.revokeObjectURL(offlineObjectUrlRef.current);
+          offlineObjectUrlRef.current = null;
+        }
+        const objUrl = URL.createObjectURL(blob);
+        offlineObjectUrlRef.current = objUrl;
+        setOfflineUrl(objUrl);
+      } catch (err) {
+        console.warn('Check offline cache failed', err);
+        setOfflineUrl(null);
+      }
+    },
+    []
+  );
+  useEffect(() => {
+    refreshOfflineAvailability(videoUrl);
+    return () => {
+      if (offlineObjectUrlRef.current) {
+        URL.revokeObjectURL(offlineObjectUrlRef.current);
+        offlineObjectUrlRef.current = null;
+      }
+    };
+  }, [videoUrl, refreshOfflineAvailability]);
+  const playbackUrl = offlineUrl || videoUrl;
   const handleDownload = useCallback(async () => {
     if (!videoUrl) {
       reportError(
@@ -1415,7 +1464,7 @@ function PlayPageClient() {
         ? `${tt('Episode', '第', '第')} ${currentEpisodeIndex + 1}`
         : '';
     const recordTitle = [baseTitle, epLabel].filter(Boolean).join(' - ');
-    persistDownloadRecord(recordTitle, videoUrl);
+    let cached = false;
 
     const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
     const triggerDownload = (href: string, name?: string) => {
@@ -1432,10 +1481,22 @@ function PlayPageClient() {
     try {
       const res = await fetch(videoUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const resForCache = res.clone();
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       triggerDownload(objectUrl, `${safeName}.mp4`);
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        try {
+          const cache = await caches.open('moontv-downloads');
+          await cache.put(videoUrl, resForCache);
+          cached = true;
+        } catch (cacheErr) {
+          console.warn('Caching download failed', cacheErr);
+        }
+      }
+      persistDownloadRecord(recordTitle, videoUrl, { offline: cached });
+      refreshOfflineAvailability(videoUrl);
       return;
     } catch (err) {
       console.warn('Background download failed, falling back', err);
@@ -1443,6 +1504,7 @@ function PlayPageClient() {
 
     // Fallback: direct download link (may open depending on browser)
     triggerDownload(videoUrl, `${safeName}.mp4`);
+    persistDownloadRecord(recordTitle, videoUrl, { offline: cached });
   }, [
     videoUrl,
     displayTitleWithEnglish,
@@ -1452,6 +1514,7 @@ function PlayPageClient() {
     persistDownloadRecord,
     tt,
     reportError,
+    refreshOfflineAvailability,
   ]);
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
@@ -1822,6 +1885,11 @@ function PlayPageClient() {
     }
     const newUrl = detailData?.episodes[episodeIndex] || '';
     if (newUrl !== videoUrl) {
+      if (offlineObjectUrlRef.current) {
+        URL.revokeObjectURL(offlineObjectUrlRef.current);
+        offlineObjectUrlRef.current = null;
+      }
+      setOfflineUrl(null);
       setVideoUrl(newUrl);
     }
   };
@@ -2766,7 +2834,7 @@ function PlayPageClient() {
     if (
       !Artplayer ||
       !Hls ||
-      !videoUrl ||
+      !playbackUrl ||
       loading ||
       currentEpisodeIndex === null ||
       !artRef.current
@@ -2791,11 +2859,11 @@ function PlayPageClient() {
       return;
     }
 
-    if (!videoUrl) {
+    if (!playbackUrl) {
       reportError(tt('Invalid video URL', '视频地址无效', '影片地址無效'), 'playback');
       return;
     }
-    console.log(videoUrl);
+    console.log(playbackUrl);
 
     const isWebkit =
       typeof window !== 'undefined' &&
@@ -2809,9 +2877,9 @@ function PlayPageClient() {
 
     if (!isWebkit && artPlayerRef.current) {
       if (typeof artPlayerRef.current.switchUrl === 'function') {
-        artPlayerRef.current.switchUrl(videoUrl);
+        artPlayerRef.current.switchUrl(playbackUrl);
       } else {
-        artPlayerRef.current.switch = videoUrl;
+        artPlayerRef.current.switch = playbackUrl;
       }
       artPlayerRef.current.title = tt(
         `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
@@ -2822,7 +2890,7 @@ function PlayPageClient() {
       if (artPlayerRef.current?.video) {
         ensureVideoSource(
           artPlayerRef.current.video as HTMLVideoElement,
-          videoUrl
+          playbackUrl
         );
       }
       refreshActualPlaybackInfo();
@@ -2843,7 +2911,7 @@ function PlayPageClient() {
 
       artPlayerRef.current = new Artplayer({
         container: artRef.current,
-        url: videoUrl,
+        url: playbackUrl,
         poster: videoCover,
         volume: 0.7,
         isLive: false,
@@ -3211,7 +3279,7 @@ function PlayPageClient() {
     refreshActualPlaybackInfo,
     trySwitchToNextSource,
     uiLocale,
-    videoUrl,
+    playbackUrl,
     autoRotateToFit,
     unlockScreenOrientation,
   ]);
@@ -3450,7 +3518,7 @@ function PlayPageClient() {
               type='button'
               onClick={handleDownload}
               className='px-3 py-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 shadow-sm border border-green-500/40 disabled:opacity-60 disabled:cursor-not-allowed'
-              disabled={!videoUrl}
+              disabled={!playbackUrl}
             >
               {tt('Download', '下载到本地', '下載到本地')}
             </button>
