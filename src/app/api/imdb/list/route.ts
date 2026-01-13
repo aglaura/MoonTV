@@ -8,6 +8,49 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
 const TMDB_PROFILE = 'https://image.tmdb.org/t/p/w300';
 
+const FALLBACK_MOVIES: TmdbItem[] = [
+  {
+    tmdbId: 'tmdb:278',
+    title: 'The Shawshank Redemption',
+    originalTitle: 'The Shawshank Redemption',
+    year: '1994',
+    poster: `${TMDB_IMAGE}/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg`,
+    mediaType: 'movie',
+  },
+  {
+    tmdbId: 'tmdb:238',
+    title: 'The Godfather',
+    originalTitle: 'The Godfather',
+    year: '1972',
+    poster: `${TMDB_IMAGE}/3bhkrj58Vtu7enYsRolD1fZdja1.jpg`,
+    mediaType: 'movie',
+  },
+  {
+    tmdbId: 'tmdb:424',
+    title: "Schindler's List",
+    originalTitle: "Schindler's List",
+    year: '1993',
+    poster: `${TMDB_IMAGE}/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg`,
+    mediaType: 'movie',
+  },
+  {
+    tmdbId: 'tmdb:550',
+    title: 'Fight Club',
+    originalTitle: 'Fight Club',
+    year: '1999',
+    poster: `${TMDB_IMAGE}/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg`,
+    mediaType: 'movie',
+  },
+  {
+    tmdbId: 'tmdb:155',
+    title: 'The Dark Knight',
+    originalTitle: 'The Dark Knight',
+    year: '2008',
+    poster: `${TMDB_IMAGE}/qJ2tW6WMUDux911r6m7haRef0WH.jpg`,
+    mediaType: 'movie',
+  },
+];
+
 type TmdbItem = {
   tmdbId: string;
   title: string;
@@ -252,11 +295,7 @@ export async function GET() {
     }
 
     if (!movies.length) {
-      movies = FALLBACK_MOVIES.map((m) => ({ ...m, mediaType: 'movie' as const }));
-    }
-
-    if (!movies.length) {
-      movies = FALLBACK_MOVIES.map((m) => ({ ...m, mediaType: 'movie' as const }));
+      movies = FALLBACK_MOVIES;
     }
 
     return NextResponse.json(
