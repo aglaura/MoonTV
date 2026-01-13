@@ -2603,7 +2603,7 @@ function PlayPageClient() {
           return findVersion(/Mac OS X ([\d_]+)/)?.replace(/_/g, '.');
         case 'Android':
           return findVersion(/Android ([\d.]+)/);
-        case 'iOS':
+        case 'iOS/iPadOS':
           return findVersion(/OS ([\d_]+)/)?.replace(/_/g, '.');
         default:
           return undefined;
