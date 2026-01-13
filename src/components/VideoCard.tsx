@@ -414,10 +414,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return undefined;
     }, [dynamicDoubanId, imdbIdState]);
 
+    const processedPosterUrl = useMemo(
+      () => (actualPoster ? processImageUrl(actualPoster) : ''),
+      [actualPoster]
+    );
+
     const [posterSrc, setPosterSrc] = useState<string>(
-      actualPoster ? processImageUrl(actualPoster) : placeholderPoster
+      processedPosterUrl || placeholderPoster
     );
     const uploadInFlightRef = useRef(false);
+    const triedDirectPosterRef = useRef(false);
 
     useEffect(() => {
       let cancelled = false;
@@ -428,8 +434,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           setPosterSrc(placeholderPoster);
           return;
         }
-
-        const processedUrl = processImageUrl(actualPoster);
 
         if (typeof window !== 'undefined' && 'caches' in window && posterCacheKey) {
           try {
@@ -442,7 +446,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               return;
             }
 
-            const response = await fetch(processedUrl, { cache: 'force-cache' });
+            const response = await fetch(processedPosterUrl, { cache: 'force-cache' });
             if (response.ok) {
               cache.put(posterCacheKey, response.clone());
               const blob = await response.blob();
@@ -456,14 +460,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         }
 
         if (!cancelled) {
-          setPosterSrc(processedUrl || placeholderPoster);
+          setPosterSrc(processedPosterUrl || placeholderPoster);
         }
 
         // Client-side attempt to backfill remote cache if missing and allowed.
         if (!uploadInFlightRef.current && actualPoster) {
           uploadInFlightRef.current = true;
           try {
-            const url = new URL(processedUrl, window.location.href);
+            const url = new URL(processedPosterUrl, window.location.href);
             const params = url.searchParams;
             if (!params.has('doubanId') && dynamicDoubanId) {
               params.set('doubanId', dynamicDoubanId.toString());
@@ -1019,16 +1023,26 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               loading='lazy'
               onLoadingComplete={() => setIsLoading(true)}
               onError={(e) => {
-                // 图片加载失败时的重试机制，最终回退到占位图
+                // Retry strategy: proxy -> direct -> placeholder
                 const img = e.target as HTMLImageElement;
-                if (!img.dataset.retried && actualPoster) {
-                  img.dataset.retried = 'true';
-                  setTimeout(() => {
-                    img.src = posterSrc || placeholderPoster;
-                  }, 1200);
-                } else {
-                  img.src = placeholderPoster;
+                const directUrl =
+                  actualPoster && actualPoster.startsWith('http')
+                    ? actualPoster
+                    : undefined;
+
+                if (directUrl && !triedDirectPosterRef.current) {
+                  triedDirectPosterRef.current = true;
+                  img.src = directUrl;
+                  return;
                 }
+
+                if (!img.dataset.retried && processedPosterUrl) {
+                  img.dataset.retried = 'true';
+                  img.src = processedPosterUrl;
+                  return;
+                }
+
+                img.src = placeholderPoster;
               }}
               style={
                 {
