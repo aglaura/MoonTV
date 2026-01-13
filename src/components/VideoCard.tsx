@@ -75,6 +75,8 @@ export interface VideoCardProps {
   isBangumi?: boolean;
   isAggregate?: boolean;
   origin?: 'vod' | 'live';
+  size?: 'sm' | 'md' | 'lg';
+  compactMeta?: boolean;
 }
 
 export type VideoCardHandle = {
@@ -107,6 +109,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       isBangumi = false,
       isAggregate = false,
       origin = 'vod',
+      size = 'md',
+      compactMeta = false,
     }: VideoCardProps,
     ref
   ) {
@@ -151,6 +155,32 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     useEffect(() => {
       setResolvedQuery(query || '');
     }, [query]);
+
+    const sizeStyles = useMemo(() => {
+      switch (size) {
+        case 'lg':
+          return {
+            container: 'min-h-[360px]',
+            poster: 'min-h-[320px]',
+            title: 'text-base sm:text-lg',
+            meta: 'text-xs',
+          };
+        case 'sm':
+          return {
+            container: 'min-h-[200px]',
+            poster: 'min-h-[180px]',
+            title: 'text-sm',
+            meta: 'text-[11px]',
+          };
+        default:
+          return {
+            container: 'min-h-[260px]',
+            poster: 'min-h-[220px]',
+            title: 'text-sm sm:text-base',
+            meta: 'text-xs',
+          };
+      }
+    }, [size]);
 
     useImperativeHandle(ref, () => ({
       setEpisodes: (eps?: number) => setDynamicEpisodes(eps),
@@ -767,6 +797,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return configs[from] || configs.search;
     }, [from, isAggregate, douban_id, rate]);
 
+    const showProgress =
+      config.showProgress && progress !== undefined && !compactMeta;
+
     // 移动端操作菜单配置
     const mobileActions = useMemo(() => {
       const actions = [];
@@ -913,7 +946,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     return (
       <>
         <div
-          className='group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500]'
+          className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] ${sizeStyles.container}`}
           onClick={handleClick}
           {...longPressProps}
           style={
@@ -957,7 +990,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         >
           {/* 海报容器 */}
           <div
-            className={`relative aspect-[2/3] overflow-hidden rounded-lg ${
+            className={`relative aspect-[2/3] overflow-hidden rounded-lg ${sizeStyles.poster} ${
               origin === 'live'
                 ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
                 : ''
@@ -1405,7 +1438,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           </div>
 
           {/* 进度条 */}
-          {config.showProgress && progress !== undefined && (
+          {showProgress && (
             <div
               className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'
               style={
@@ -1464,7 +1497,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               }
             >
               <span
-                className='block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer'
+                className={`block font-semibold truncate text-gray-900 dark:text-gray-100 transition-colors duration-300 ease-in-out group-hover:text-green-600 dark:group-hover:text-green-400 peer ${sizeStyles.title}`}
                 style={
                   {
                     WebkitUserSelect: 'none',
@@ -1526,7 +1559,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             </div>
             {config.showSourceName && source_name && (
               <span
-                className='block text-xs text-gray-500 dark:text-gray-400 mt-1'
+                className={`block ${sizeStyles.meta} text-gray-500 dark:text-gray-400 mt-1`}
                 style={
                   {
                     WebkitUserSelect: 'none',
@@ -1563,12 +1596,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 </span>
               </span>
             )}
-            {displaySourceNames && displaySourceNames.length > 0 && (
+            {displaySourceNames &&
+              displaySourceNames.length > 0 &&
+              !compactMeta && (
               <div className='mt-1 flex flex-wrap justify-center gap-1'>
                 {displaySourceNames.map((name, idx) => (
                   <span
                     key={`${name}-${idx}`}
-                    className='px-2 py-0.5 rounded-full bg-gray-100 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
+                    className={`px-2 py-0.5 rounded-full bg-gray-100 ${sizeStyles.meta} text-gray-600 dark:bg-gray-800 dark:text-gray-300 border border-gray-200 dark:border-gray-700`}
                     title={name}
                   >
                     {name}

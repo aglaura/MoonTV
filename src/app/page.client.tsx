@@ -170,11 +170,11 @@ function ContentRail({
   if (isTV) {
     return (
       <div
-        className="relative rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-4 overflow-hidden group"
-        style={{ height: '500px' }}
+        className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-3 overflow-hidden group"
+        style={{ height: '540px' }}
       >
-        <div className="flex items-center justify-between mb-3 px-1">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {title}
           </h3>
           {href && (
@@ -188,26 +188,9 @@ function ContentRail({
           )}
         </div>
 
-        {/* Up/Down scroll arrows (mouse remote emulation) */}
-        <button
-          onClick={() => scrollVertical(-300)}
-          className="absolute top-2 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition p-2 rounded-full bg-black/40 hover:bg-black/70 text-white shadow"
-        >
-          ▲
-        </button>
-        <button
-          onClick={() => scrollVertical(300)}
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition p-2 rounded-full bg-black/40 hover:bg-black/70 text-white shadow"
-        >
-          ▼
-        </button>
-
-        <div className="pointer-events-none absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-black/70 to-transparent z-10" />
-        <div className="pointer-events-none absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-black/70 to-transparent z-10" />
-
         <div
           ref={scrollRef}
-          className="flex flex-col gap-5 overflow-y-auto pb-10 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex flex-col gap-3 overflow-y-auto pb-6 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-y snap-mandatory"
         >
           {noData && (
             <div className="text-gray-500 text-center py-4">
@@ -216,7 +199,10 @@ function ContentRail({
           )}
 
           {items.map((item, idx) => (
-            <div key={idx} className="transition-all duration-200 opacity-90">
+            <div
+              key={idx}
+              className="transition-all duration-200 opacity-95 snap-start focus-within:ring-4 focus-within:ring-emerald-400/70 rounded-2xl"
+            >
               <VideoCard
                 from="douban"
                 title={item.title}
@@ -227,6 +213,8 @@ function ContentRail({
                 type={item.type}
                 query={item.query}
                 source_name={item.source_name}
+                size="lg"
+                compactMeta
               />
             </div>
           ))}
