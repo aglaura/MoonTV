@@ -3132,7 +3132,7 @@ function PlayPageClient() {
               zIndex: '600',
             },
             click: () => {
-              if (isIOSDevice()) return;
+              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
               const player = artPlayerRef.current;
               if (!player) return;
               player.currentTime = Math.max(0, player.currentTime - 10);
@@ -3149,7 +3149,7 @@ function PlayPageClient() {
               zIndex: '600',
             },
             click: () => {
-              if (isIOSDevice()) return;
+              if (isIOSDevice()) return; // iOS/macOS Safari use native controls
               const player = artPlayerRef.current;
               if (!player) return;
               player.currentTime = Math.min(
