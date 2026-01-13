@@ -4084,33 +4084,43 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.genres && detail.genres.length > 0 && (
+                  {detail?.genres && Array.isArray((detail as any).genres) && (detail as any).genres.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Genres', '类型', '類型')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.genres.map((g) => convertToTraditional(g) || g).join(' / ')}
+                        {(detail as any).genres
+                          .map((g: string) => convertToTraditional(g) || g)
+                          .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {detail?.countries && detail.countries.length > 0 && (
+                  {detail?.countries &&
+                    Array.isArray((detail as any).countries) &&
+                    (detail as any).countries.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Regions', '地区', '地區')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.countries.map((c) => convertToTraditional(c) || c).join(' / ')}
+                        {(detail as any).countries
+                          .map((c: string) => convertToTraditional(c) || c)
+                          .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {detail?.languages && detail.languages.length > 0 && (
+                  {detail?.languages &&
+                    Array.isArray((detail as any).languages) &&
+                    (detail as any).languages.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Languages', '语言', '語言')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.languages.map((l) => convertToTraditional(l) || l).join(' / ')}
+                        {(detail as any).languages
+                          .map((l: string) => convertToTraditional(l) || l)
+                          .join(' / ')}
                       </span>
                     </div>
                   )}
@@ -4124,43 +4134,55 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {detail?.durations && detail.durations.length > 0 && (
+                  {detail?.durations &&
+                    Array.isArray((detail as any).durations) &&
+                    (detail as any).durations.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Duration', '片长', '片長')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.durations.join(' / ')}
+                        {(detail as any).durations.join(' / ')}
                       </span>
                     </div>
                   )}
-                  {detail?.releaseDates && detail.releaseDates.length > 0 && (
+                  {detail?.releaseDates &&
+                    Array.isArray((detail as any).releaseDates) &&
+                    (detail as any).releaseDates.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Release dates', '上映日期', '上映日期')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.releaseDates.join(' / ')}
+                        {(detail as any).releaseDates.join(' / ')}
                       </span>
                     </div>
                   )}
-                  {detail?.directors && detail.directors.length > 0 && (
+                  {detail?.directors &&
+                    Array.isArray((detail as any).directors) &&
+                    (detail as any).directors.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Directors', '导演', '導演')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.directors.map((d) => convertToTraditional(d) || d).join(' / ')}
+                        {(detail as any).directors
+                          .map((d: string) => convertToTraditional(d) || d)
+                          .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {detail?.actors && detail.actors.length > 0 && (
+                  {detail?.actors &&
+                    Array.isArray((detail as any).actors) &&
+                    (detail as any).actors.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Actors', '主演', '主演')}
                       </span>
                       <span className='font-medium text-right'>
-                        {detail.actors.map((a) => convertToTraditional(a) || a).join(' / ')}
+                        {(detail as any).actors
+                          .map((a: string) => convertToTraditional(a) || a)
+                          .join(' / ')}
                       </span>
                     </div>
                   )}
