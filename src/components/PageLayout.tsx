@@ -12,37 +12,48 @@ import UserBadge from './UserBadge';
 interface PageLayoutProps {
   children: React.ReactNode;
   activePath?: string;
+  hideTopBar?: boolean;
 }
 
-const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
+const PageLayout = ({
+  children,
+  activePath = '/',
+  hideTopBar = false,
+}: PageLayoutProps) => {
   return (
     <div className='w-full min-h-screen'>
       {/* 移动端头部 */}
-      <MobileHeader showBackButton={['/play'].includes(activePath)} />
+      {!hideTopBar && (
+        <MobileHeader showBackButton={['/play'].includes(activePath)} />
+      )}
 
       {/* 主要布局容器 */}
       <div className='flex md:grid md:grid-cols-[auto_1fr] w-full min-h-screen md:min-h-auto'>
         {/* 侧边栏 - 桌面端显示，移动端隐藏 */}
-        <div className='hidden md:block'>
-          <Sidebar activePath={activePath} />
-        </div>
+        {!hideTopBar && (
+          <div className='hidden md:block'>
+            <Sidebar activePath={activePath} />
+          </div>
+        )}
 
         {/* 主内容区域 */}
         <div className='relative min-w-0 flex-1 transition-all duration-300'>
           {/* 桌面端左上角返回按钮 */}
-          {['/play'].includes(activePath) && (
+          {['/play'].includes(activePath) && !hideTopBar && (
             <div className='absolute top-3 left-1 z-20 hidden md:flex'>
               <BackButton />
             </div>
           )}
 
           {/* 桌面端顶部按钮 */}
-          <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
-            <SettingsButton />
-            <LanguageSelector variant='compact' />
-            <UserBadge />
-            <ThemeToggle />
-          </div>
+          {!hideTopBar && (
+            <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
+              <SettingsButton />
+              <LanguageSelector variant='compact' />
+              <UserBadge />
+              <ThemeToggle />
+            </div>
+          )}
 
           {/* 主内容 */}
           <main
@@ -57,9 +68,11 @@ const PageLayout = ({ children, activePath = '/' }: PageLayoutProps) => {
       </div>
 
       {/* 移动端底部导航 */}
-      <div className='md:hidden'>
-        <MobileBottomNav activePath={activePath} />
-      </div>
+      {!hideTopBar && (
+        <div className='md:hidden'>
+          <MobileBottomNav activePath={activePath} />
+        </div>
+      )}
     </div>
   );
 };
