@@ -68,6 +68,10 @@ function LoginPageClient() {
   const [stage, setStage] = useState<'group' | 'password'>('group');
   const passwordRef = useRef<HTMLInputElement | null>(null);
   const [groupOptions, setGroupOptions] = useState<string[]>(['family', 'guest']);
+  const groupButtonRefs = useRef<HTMLButtonElement[]>([]);
+  const userButtonRefs = useRef<HTMLButtonElement[]>([]);
+  const [groupFocusIndex, setGroupFocusIndex] = useState(0);
+  const [userFocusIndex, setUserFocusIndex] = useState(0);
 
   const colorThemes = [
     {
@@ -254,6 +258,180 @@ function LoginPageClient() {
     }
   }, [stage]);
 
+  const focusGroupButton = useCallback(
+    (idx: number) => {
+      const btn = groupButtonRefs.current[idx];
+      if (btn) {
+        btn.focus();
+        setGroupFocusIndex(idx);
+      }
+    },
+    []
+  );
+
+  const focusUserButton = useCallback(
+    (idx: number) => {
+      const btn = userButtonRefs.current[idx];
+      if (btn) {
+        btn.focus();
+        setUserFocusIndex(idx);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (stage === 'group') {
+      focusGroupButton(groupFocusIndex);
+    } else if (stage === 'password' && passwordRef.current) {
+      passwordRef.current.focus();
+    }
+  }, [stage, focusGroupButton, groupFocusIndex]);
+
+  useEffect(() => {
+    if (requiresSelection && userButtonRefs.current[userFocusIndex]) {
+      focusUserButton(userFocusIndex);
+    }
+  }, [requiresSelection, userFocusIndex, focusUserButton, availableUsers]);
+
+  const handleUserSelect = useCallback(
+    async (user: string) => {
+      setError(null);
+      setPendingUser(user);
+      try {
+        setLoading(true);
+        const res = await fetch('/api/login/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setError(
+            data.error ??
+              tt(
+                'Failed to select user',
+                '选择用户失败',
+                '選擇使用者失敗'
+              )
+          );
+          return;
+        }
+
+        const redirect = searchParams.get('redirect') || '/';
+        router.replace(redirect);
+      } catch (err) {
+        setError(
+          tt(
+            'Network error. Please try again later.',
+            '网络错误，请稍后再试。',
+            '網路錯誤，請稍後再試'
+          )
+        );
+      } finally {
+        setLoading(false);
+        setPendingUser(null);
+      }
+    },
+    [router, searchParams]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const key = e.key;
+      const isArrow =
+        key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight';
+
+      // Group selection stage: D-pad moves focus, Enter selects/moves forward
+      if (stage === 'group') {
+        if (isArrow) {
+          e.preventDefault();
+          const cols = 2;
+          const total = groupOptions.length;
+          let next = groupFocusIndex;
+          if (key === 'ArrowRight') next = Math.min(total - 1, groupFocusIndex + 1);
+          if (key === 'ArrowLeft') next = Math.max(0, groupFocusIndex - 1);
+          if (key === 'ArrowDown') next = Math.min(total - 1, groupFocusIndex + cols);
+          if (key === 'ArrowUp') next = Math.max(0, groupFocusIndex - cols);
+          focusGroupButton(next);
+          return;
+        }
+        if (key === 'Enter') {
+          e.preventDefault();
+          const targetGroup = groupOptions[groupFocusIndex] ?? groupOptions[0];
+          if (targetGroup) {
+            setGroup(targetGroup);
+            setStage('password');
+            setRequiresSelection(false);
+          }
+          return;
+        }
+      }
+
+      // Password stage: Enter submits, Up/Back/Escape returns to group
+      if (stage === 'password' && !requiresSelection) {
+        if (key === 'Enter') {
+          // Let the form submit naturally
+          return;
+        }
+        if (key === 'ArrowUp' || key === 'Backspace' || key === 'Escape' || key === 'Back') {
+          e.preventDefault();
+          setStage('group');
+          setPassword('');
+          setTimeout(() => focusGroupButton(groupFocusIndex), 10);
+        }
+      }
+
+      // User selection stage: D-pad up/down moves, Enter selects, Back returns to password
+      if (requiresSelection) {
+        if (isArrow) {
+          e.preventDefault();
+          const total = availableUsers.length;
+          if (total === 0) return;
+          let next = userFocusIndex;
+          if (key === 'ArrowDown') next = Math.min(total - 1, userFocusIndex + 1);
+          if (key === 'ArrowUp') next = Math.max(0, userFocusIndex - 1);
+          focusUserButton(next);
+          return;
+        }
+        if (key === 'Enter') {
+          e.preventDefault();
+          const target = availableUsers[userFocusIndex];
+          if (target) {
+            void handleUserSelect(target);
+          }
+          return;
+        }
+        if (key === 'Backspace' || key === 'Escape' || key === 'Back') {
+          e.preventDefault();
+          setRequiresSelection(false);
+          setStage('password');
+          setTimeout(() => {
+            if (passwordRef.current) passwordRef.current.focus();
+          }, 10);
+        }
+      }
+    },
+    [
+      stage,
+      requiresSelection,
+      groupOptions,
+      groupFocusIndex,
+      focusGroupButton,
+      availableUsers,
+      userFocusIndex,
+      focusUserButton,
+      handleUserSelect,
+    ]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -345,50 +523,6 @@ function LoginPageClient() {
     [password, group, router, searchParams, storageRequiresSelection, stage]
   );
 
-  const handleUserSelect = useCallback(
-    async (user: string) => {
-      setError(null);
-      setPendingUser(user);
-      try {
-        setLoading(true);
-        const res = await fetch('/api/login/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user }),
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          setError(
-            data.error ??
-              tt(
-                'Failed to select user',
-                '选择用户失败',
-                '選擇使用者失敗'
-              )
-          );
-          return;
-        }
-
-        const redirect = searchParams.get('redirect') || '/';
-        router.replace(redirect);
-      } catch (err) {
-        setError(
-          tt(
-            'Network error. Please try again later.',
-            '网络错误，请稍后再试。',
-            '網路錯誤，請稍後再試'
-          )
-        );
-      } finally {
-        setLoading(false);
-        setPendingUser(null);
-      }
-    },
-    [router, searchParams]
-  );
-
   useEffect(() => {
     if (!requiresSelection) return;
     if (loading) return;
@@ -442,7 +576,7 @@ function LoginPageClient() {
             role='radiogroup'
             aria-label={tt('Choose group', '选择组别', '選擇組別')}
           >
-            {groupOptions.map((key) => {
+            {groupOptions.map((key, idx) => {
               const active = group === key;
               const label =
                 key === 'guest'
@@ -457,7 +591,10 @@ function LoginPageClient() {
                   type='button'
                   role='radio'
                   aria-checked={active}
-                  tabIndex={0}
+                  tabIndex={stage === 'group' ? (idx === groupFocusIndex ? 0 : -1) : -1}
+                  ref={(el) => {
+                    if (el) groupButtonRefs.current[idx] = el;
+                  }}
                   onClick={() => {
                     setGroup(key);
                     setError(null);
@@ -580,14 +717,25 @@ function LoginPageClient() {
                 const thumbnail = userThumbnails[user];
                 const isPending = pendingUser === user && loading;
                 const theme = themeForKey(user);
+                const idx = availableUsers.findIndex((u) => u === user);
                 return (
                   <button
                     key={user}
                     type='button'
+                    ref={(el) => {
+                      if (el && idx >= 0) userButtonRefs.current[idx] = el;
+                    }}
                     onClick={() => handleUserSelect(user)}
                     disabled={loading}
                     role='radio'
                     aria-checked={pendingUser ? pendingUser === user : false}
+                    tabIndex={
+                      requiresSelection
+                        ? idx === userFocusIndex
+                          ? 0
+                          : -1
+                        : -1
+                    }
                     className='relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent bg-gray-100 text-gray-700 px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
                   >
                     <div className='flex items-center gap-4'>
