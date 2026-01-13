@@ -36,6 +36,12 @@ type TmdbListItem = {
   year: string;
   poster: string;
   originalTitle?: string;
+  mediaType?: 'movie' | 'tv';
+};
+type TmdbPerson = {
+  tmdbId: string;
+  title: string;
+  poster: string;
 };
 
 type CardItem = {
@@ -364,7 +370,9 @@ function HomeClient() {
   const [bangumiCalendarData, setBangumiCalendarData] = useState<
     BangumiCalendarData[]
   >([]);
-  const [tmdbList, setTmdbList] = useState<TmdbListItem[]>([]);
+  const [tmdbMovies, setTmdbMovies] = useState<TmdbListItem[]>([]);
+  const [tmdbTv, setTmdbTv] = useState<TmdbListItem[]>([]);
+  const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
@@ -448,10 +456,14 @@ function HomeClient() {
         try {
           const res = await fetch('/api/imdb/list', { cache: 'no-store' });
           if (res.ok) {
-            const data = (await res.json()) as { items?: TmdbListItem[] };
-            if (Array.isArray(data.items)) {
-              setTmdbList(data.items);
-            }
+            const data = (await res.json()) as {
+              movies?: TmdbListItem[];
+              tv?: TmdbListItem[];
+              people?: TmdbPerson[];
+            };
+            setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
+            setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
+            setTmdbPeople(Array.isArray(data.people) ? data.people : []);
           }
         } catch {
           /* ignore tmdb list errors */
@@ -506,6 +518,51 @@ function HomeClient() {
     });
     return items.slice(0, 48);
   }, [bangumiCalendarData]);
+
+  const tmdbMovieCards = useMemo(
+    () =>
+      (tmdbMovies || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: '',
+        year: item.year,
+        type: 'movie',
+        query: item.title,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbMovies]
+  );
+
+  const tmdbTvCards = useMemo(
+    () =>
+      (tmdbTv || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: '',
+        year: item.year,
+        type: 'tv',
+        query: item.title,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbTv]
+  );
+
+  const tmdbPeopleCards = useMemo(
+    () =>
+      (tmdbPeople || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: '',
+        year: '',
+        type: 'person',
+        query: item.title,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbPeople]
+  );
 
   const [hotTvShowsCn, hotTvShowsKrJp] = useMemo(() => {
     const krjpList: DoubanItem[] = [];
@@ -565,17 +622,6 @@ function HomeClient() {
         };
       });
 
-    const tmdbCards: CardItem[] = (tmdbList || []).map((item) => ({
-      title: item.title,
-      poster: item.poster,
-      rate: '',
-      year: item.year,
-      type: 'movie',
-      query: item.title,
-      source_name: 'TMDB',
-      id: item.tmdbId,
-    }));
-
     const mergedMovies = (() => {
       const seen = new Set<string>();
       const merged: CardItem[] = [];
@@ -590,7 +636,7 @@ function HomeClient() {
         merged.push(item);
       };
       mapDouban(hotMovies, 'movie').forEach(add);
-      tmdbCards.forEach(add);
+      tmdbMovieCards.forEach(add);
       return merged;
     })();
 
@@ -609,7 +655,7 @@ function HomeClient() {
       },
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv')),
+        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv').concat(tmdbTvCards)),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
       },
@@ -632,7 +678,9 @@ function HomeClient() {
     hotTvShowsCn,
     hotTvShowsKrJp,
     hotVarietyShows,
-    tmdbList,
+    tmdbMovies,
+    tmdbTv,
+    tmdbPeople,
     applyKidsFilter,
   ]);
 
@@ -1078,6 +1126,15 @@ function HomeClient() {
                         tt={tt}
                       />
                     </div>
+                    <div className={tvSectionClass('rail-movie')}>
+                      <ContentRail
+                        title={tt('Trending movies (TMDB)', 'TMDB 热门电影', 'TMDB 熱門電影')}
+                        href="#"
+                        items={applyKidsFilter(tmdbMovieCards)}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                    </div>
                     <div
                       data-tv-section="rail-tv"
                       className={tvSectionClass('rail-tv')}
@@ -1096,7 +1153,25 @@ function HomeClient() {
                         screenMode={screenMode}
                         tt={tt}
                       />
+                      <ContentRail
+                        title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
+                        href="#"
+                        items={applyKidsFilter(tmdbTvCards)}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
                     </div>
+                    {tmdbPeopleCards.length > 0 && (
+                      <div className={tvSectionClass('rail-variety')}>
+                        <ContentRail
+                          title={tt('Trending people (TMDB)', 'TMDB 热门影人', 'TMDB 熱門影人')}
+                          href="#"
+                          items={tmdbPeopleCards}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </div>
+                    )}
                     <div
                       data-tv-section="rail-variety"
                       className={tvSectionClass('rail-variety')}

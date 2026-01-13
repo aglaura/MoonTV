@@ -4,47 +4,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 1800; // cache for 30 minutes (best-effort; dynamic fetch)
 
-// TMDB "Most Popular" movies (page 1)
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
+const TMDB_PROFILE = 'https://image.tmdb.org/t/p/w300';
 
-const FALLBACK_ITEMS = [
-  {
-    tmdbId: 'tmdb:278',
-    title: 'The Shawshank Redemption',
-    originalTitle: 'The Shawshank Redemption',
-    year: '1994',
-    poster: `${TMDB_IMAGE}/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg`,
-  },
-  {
-    tmdbId: 'tmdb:238',
-    title: 'The Godfather',
-    originalTitle: 'The Godfather',
-    year: '1972',
-    poster: `${TMDB_IMAGE}/3bhkrj58Vtu7enYsRolD1fZdja1.jpg`,
-  },
-  {
-    tmdbId: 'tmdb:424',
-    title: 'Schindler\'s List',
-    originalTitle: 'Schindler\'s List',
-    year: '1993',
-    poster: `${TMDB_IMAGE}/sF1U4EUQS8YHUYjNl3pMGNIQyr0.jpg`,
-  },
-  {
-    tmdbId: 'tmdb:550',
-    title: 'Fight Club',
-    originalTitle: 'Fight Club',
-    year: '1999',
-    poster: `${TMDB_IMAGE}/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg`,
-  },
-  {
-    tmdbId: 'tmdb:155',
-    title: 'The Dark Knight',
-    originalTitle: 'The Dark Knight',
-    year: '2008',
-    poster: `${TMDB_IMAGE}/qJ2tW6WMUDux911r6m7haRef0WH.jpg`,
-  },
-];
+type TmdbItem = {
+  tmdbId: string;
+  title: string;
+  originalTitle: string;
+  year: string;
+  poster: string;
+  mediaType: 'movie' | 'tv';
+};
 
 async function fetchDoubanChineseTitle(title: string): Promise<string | undefined> {
   if (!title) return undefined;
@@ -66,8 +37,8 @@ async function fetchDoubanChineseTitle(title: string): Promise<string | undefine
     if (Array.isArray(data) && data[0]?.title) {
       return data[0].title as string;
     }
-    if (Array.isArray(data?.items) && data.items[0]?.title) {
-      return data.items[0].title as string;
+    if (Array.isArray((data as any)?.items) && (data as any).items[0]?.title) {
+      return (data as any).items[0].title as string;
     }
     return undefined;
   } catch {
@@ -75,60 +46,122 @@ async function fetchDoubanChineseTitle(title: string): Promise<string | undefine
   }
 }
 
+async function fetchTmdbList(
+  apiKey: string,
+  path: string,
+  mediaType: 'movie' | 'tv'
+): Promise<TmdbItem[]> {
+  const url = `${TMDB_BASE}${path}${
+    path.includes('?') ? '&' : '?'
+  }api_key=${encodeURIComponent(apiKey)}&language=en-US&page=1`;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`TMDB ${path} ${response.status}`);
+  }
+  const json = await response.json();
+  const results = Array.isArray(json?.results) ? json.results : [];
+  return results
+    .map((item: any) => {
+      const title =
+        mediaType === 'movie'
+          ? item?.title || item?.original_title || ''
+          : item?.name || item?.original_name || '';
+      const date =
+        mediaType === 'movie' ? item?.release_date : item?.first_air_date;
+      return {
+        tmdbId: `tmdb:${item?.id ?? ''}`,
+        title: title.trim(),
+        originalTitle: title.trim(),
+        year: (date || '').toString().slice(0, 4),
+        poster: item?.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : '',
+        mediaType,
+      } as TmdbItem;
+    })
+    .filter((item) => item.tmdbId && item.title)
+    .slice(0, 40);
+}
+
+async function fetchTmdbPeople(apiKey: string) {
+  const url = `${TMDB_BASE}/trending/person/day?api_key=${encodeURIComponent(
+    apiKey
+  )}&language=en-US&page=1`;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`TMDB people ${response.status}`);
+  const json = await response.json();
+  const results = Array.isArray(json?.results) ? json.results : [];
+  return results
+    .map((p: any) => ({
+      tmdbId: `tmdb:${p?.id ?? ''}`,
+      title: p?.name || '',
+      originalTitle: p?.name || '',
+      poster: p?.profile_path ? `${TMDB_PROFILE}${p.profile_path}` : '',
+      year: '',
+    }))
+    .filter((p) => p.tmdbId && p.title)
+    .slice(0, 30);
+}
+
+function dedup(items: TmdbItem[]) {
+  const seen = new Set<string>();
+  return items.filter((i) => {
+    if (seen.has(i.tmdbId)) return false;
+    seen.add(i.tmdbId);
+    return true;
+  });
+}
+
 export async function GET() {
   const apiKey =
     process.env.TMDB_API_KEY || '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
   try {
-    let items = FALLBACK_ITEMS;
     let fetchError: string | null = null;
+    let movies: TmdbItem[] = [];
+    let tv: TmdbItem[] = [];
+    let people: Array<Omit<TmdbItem, 'mediaType'>> = [];
 
     if (apiKey) {
-      const url = `${TMDB_BASE}/movie/popular?api_key=${encodeURIComponent(
-        apiKey
-      )}&language=en-US&page=1`;
-      const response = await fetch(url, { next: { revalidate: 3600 } });
+      try {
+        const [trendingMovies, popularMovies, trendingTv, popularTv, trendingPeople] =
+          await Promise.all([
+            fetchTmdbList(apiKey, '/trending/movie/day?sort_by=popularity.desc', 'movie'),
+            fetchTmdbList(apiKey, '/movie/popular?', 'movie'),
+            fetchTmdbList(apiKey, '/trending/tv/day?sort_by=popularity.desc', 'tv'),
+            fetchTmdbList(apiKey, '/tv/popular?', 'tv'),
+            fetchTmdbPeople(apiKey),
+          ]);
 
-      if (response.ok) {
-        const json = await response.json();
-        const results = Array.isArray(json?.results) ? json.results : [];
-
-        const fetchedRaw = results
-          .map((item: any) => {
-            const originalTitle = (item?.title || item?.original_title || '').trim();
-            return {
-              tmdbId: `tmdb:${item?.id ?? ''}`,
-              title: originalTitle,
-              originalTitle,
-              year: (item?.release_date || '').toString().slice(0, 4),
-              poster: item?.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : '',
-            };
-          })
-          .filter((item: any) => item.tmdbId && item.title)
-          .slice(0, 50);
-
-        const fetched = await Promise.all(
-          fetchedRaw.map(async (item: any) => {
+        const localizedMovies = await Promise.all(
+          dedup([...trendingMovies, ...popularMovies]).map(async (item) => {
             const cn = await fetchDoubanChineseTitle(item.title);
-            if (cn) {
-              return { ...item, title: cn };
-            }
+            if (cn) return { ...item, title: cn };
+            return item;
+          })
+        );
+        const localizedTv = await Promise.all(
+          dedup([...trendingTv, ...popularTv]).map(async (item) => {
+            const cn = await fetchDoubanChineseTitle(item.title);
+            if (cn) return { ...item, title: cn };
             return item;
           })
         );
 
-        if (fetched.length > 0) {
-          items = fetched;
-        }
-      } else {
-        fetchError = `TMDB responded with ${response.status}`;
+        movies = localizedMovies;
+        tv = localizedTv;
+        people = trendingPeople;
+      } catch (err) {
+        fetchError = (err as Error).message;
       }
     } else {
       fetchError = 'TMDB_API_KEY not configured';
     }
 
+    if (!movies.length) {
+      movies = FALLBACK_MOVIES.map((m) => ({ ...m, mediaType: 'movie' as const }));
+    }
+
     return NextResponse.json(
-      { items, error: fetchError ?? undefined },
+      { movies, tv, people, error: fetchError ?? undefined },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
