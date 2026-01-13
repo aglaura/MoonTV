@@ -155,17 +155,14 @@ div[data-media-provider] video {
 
 .forced-rotate-player {
   position: absolute !important;
-  inset: 0 !important;
-  margin: auto !important;
+  top: 50% !important;
+  left: 50% !important;
   width: 100vh !important;
   height: 100vw !important;
   max-width: 100vw !important;
   max-height: 100vh !important;
-  transform: rotate(90deg);
+  transform: translate(-50%, -50%) rotate(90deg);
   transform-origin: center center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .forced-rotate-player video {
