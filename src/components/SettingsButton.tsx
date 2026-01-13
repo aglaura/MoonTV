@@ -485,14 +485,24 @@ export const SettingsButton: React.FC = () => {
                   .map((rec, idx) => (
                     <div
                       key={`${rec.title}-${rec.ts}-${idx}`}
-                      className='rounded-md border border-gray-200 dark:border-gray-700 p-2 flex items-center justify-between gap-2 bg-white/70 dark:bg-gray-900/60'
+                      className='rounded-md border border-gray-200 dark:border-gray-700 p-2 flex items-start justify-between gap-3 bg-white/70 dark:bg-gray-900/60'
                     >
-                      <div className='min-w-0'>
-                        <div className='text-sm text-gray-900 dark:text-gray-100 truncate'>
-                          {rec.title || rec.url}
+                      <div className='min-w-0 space-y-1'>
+                        <div className='flex items-center gap-2 min-w-0'>
+                          <div className='text-sm text-gray-900 dark:text-gray-100 truncate'>
+                            {rec.title || rec.url}
+                          </div>
+                          {rec.offline && (
+                            <span className='px-2 py-[2px] rounded-full text-[11px] bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-100 whitespace-nowrap'>
+                              Offline
+                            </span>
+                          )}
                         </div>
-                        <div className='text-[11px] text-gray-500 dark:text-gray-400'>
-                          {new Date(rec.ts).toLocaleString()}
+                        <div className='text-[11px] text-gray-500 dark:text-gray-400 truncate'>
+                          {rec.url}
+                        </div>
+                        <div className='text-[11px] text-gray-400 dark:text-gray-500'>
+                          {formatTime(rec.ts)}
                         </div>
                       </div>
                       <div className='flex items-center gap-2 flex-shrink-0'>
