@@ -1815,6 +1815,8 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
     ImageProxy: '',
   });
   const [saving, setSaving] = useState(false);
+  const [testingConfigJson, setTestingConfigJson] = useState(false);
+  const [testSummary, setTestSummary] = useState<string | null>(null);
 
   const isD1Storage =
     typeof window !== 'undefined' &&
@@ -1865,6 +1867,58 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTestConfigJson = async () => {
+    try {
+      setTestingConfigJson(true);
+      const resp = await fetch('/api/admin/configjson-test', {
+        method: 'POST',
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        throw new Error(
+          data?.error ||
+            tt(
+              `HTTP ${resp.status}`,
+              `HTTP ${resp.status}`,
+              `HTTP ${resp.status}`
+            )
+        );
+      }
+
+      const lines = [
+        `CONFIGJSON: ${data.baseUrl || '-'}`,
+        `config.json: ${data.configOk ? 'OK' : 'FAIL'}${
+          data.configStatus ? ` (${data.configStatus})` : ''
+        }${data.configParsable === false ? ' (parse failed)' : ''}`,
+        `poster PUT: ${data.posterPutOk ? 'OK' : 'FAIL'}${
+          data.posterPutStatus ? ` (${data.posterPutStatus})` : ''
+        }`,
+        `poster GET: ${data.posterGetOk ? 'OK' : 'FAIL'}${
+          data.posterGetStatus ? ` (${data.posterGetStatus})` : ''
+        }${
+          data.posterContentMatches === false ? ' (content mismatch)' : ''
+        }`,
+      ];
+
+      setTestSummary(lines.join(' • '));
+
+      Swal.fire({
+        icon: data.success ? 'success' : 'warning',
+        title: tt('CONFIGJSON test', 'CONFIGJSON 测试', 'CONFIGJSON 測試'),
+        html: lines.join('<br/>'),
+      });
+    } catch (err) {
+      setTestSummary(null);
+      showError(
+        err instanceof Error
+          ? err.message
+          : tt('Test failed', '测试失败', '測試失敗')
+      );
+    } finally {
+      setTestingConfigJson(false);
     }
   };
 
@@ -2039,20 +2093,44 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
       </div>
 
       {/* 操作按钮 */}
-      <div className='flex justify-end'>
-        <button
-          onClick={handleSave}
-          disabled={saving || isD1Storage}
-          className={`px-4 py-2 ${
-            saving || isD1Storage
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700'
-          } text-white rounded-lg transition-colors`}
-        >
-          {saving
-            ? tt('Saving…', '保存中…', '保存中…')
-            : tt('Save', '保存', '保存')}
-        </button>
+      <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3'>
+        <div className='text-xs text-gray-600 dark:text-gray-400'>
+          {testSummary
+            ? testSummary
+            : tt(
+                'Test CONFIGJSON availability and poster cache write/read.',
+                '测试 CONFIGJSON 可访问性及海报缓存写入/读取。',
+                '測試 CONFIGJSON 可存取性與海報快取寫入/讀取。'
+              )}
+        </div>
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={handleTestConfigJson}
+            disabled={testingConfigJson}
+            className={`px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 ${
+              testingConfigJson
+                ? 'bg-gray-200 dark:bg-gray-800 text-gray-500'
+                : 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-100'
+            } transition-colors`}
+          >
+            {testingConfigJson
+              ? tt('Testing…', '测试中…', '測試中…')
+              : tt('Test CONFIGJSON', '测试 CONFIGJSON', '測試 CONFIGJSON')}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || isD1Storage}
+            className={`px-4 py-2 ${
+              saving || isD1Storage
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700'
+            } text-white rounded-lg transition-colors`}
+          >
+            {saving
+              ? tt('Saving…', '保存中…', '保存中…')
+              : tt('Save', '保存', '保存')}
+          </button>
+        </div>
       </div>
     </div>
   );
