@@ -1623,6 +1623,79 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
     }
   }, []);
 
+  const handleTestValuations = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      // Create a fake sample for the top provider to verify sampleCount/updated_at
+      const target = valuations[0];
+      if (!target) {
+        throw new Error(
+          tt(
+            'No providers available to test.',
+            '没有可测试的提供者。',
+            '沒有可測試的提供者。'
+          )
+        );
+      }
+      const payload = {
+        valuations: [
+          {
+            key: target.key,
+            source: target.source,
+            quality: target.quality || '1080p',
+            loadSpeed: target.loadSpeed || '1 MB/s',
+            pingTime: target.pingTime || 1000,
+            qualityRank: target.qualityRank ?? 75,
+            speedValue: target.speedValue ?? 1024,
+            sampleCount: (target.sampleCount ?? 0) + 1,
+            updated_at: Date.now(),
+          },
+        ],
+      };
+
+      const resp = await fetch('/api/source/valuation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            tt(
+              `Failed: ${resp.status}`,
+              `失败: ${resp.status}`,
+              `失敗: ${resp.status}`
+            )
+        );
+      }
+
+      await fetchValuations();
+
+      Swal.fire({
+        icon: 'success',
+        title: tt('Valuations test', '估值测试', '估值測試'),
+        text: tt(
+          'Added a test sample to the first provider and refreshed.',
+          '向第一个提供者添加了测试样本并已刷新。',
+          '向第一個提供者新增了測試樣本並已刷新。'
+        ),
+      });
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: tt('Valuations test failed', '估值测试失败', '估值測試失敗'),
+        text:
+          err instanceof Error
+            ? err.message
+            : tt('Unknown error', '未知错误', '未知錯誤'),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [valuations, fetchValuations]);
+
   useEffect(() => {
     fetchValuations();
   }, [fetchValuations]);
@@ -1697,6 +1770,13 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
             {isLoading
               ? tt('Refreshing…', '刷新中…', '刷新中…')
               : tt('Refresh', '刷新', '重新整理')}
+          </button>
+          <button
+            onClick={handleTestValuations}
+            className='px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors'
+            disabled={isLoading}
+          >
+            {tt('Test storage', '测试存储', '測試存儲')}
           </button>
         </div>
       </div>
