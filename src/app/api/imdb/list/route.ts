@@ -64,6 +64,8 @@ type TmdbItem = {
   providers?: string[];
   cast?: string[];
   directors?: string[];
+  imdbId?: string;
+  doubanId?: string;
 };
 
 async function fetchDoubanChineseTitle(title: string): Promise<string | undefined> {
@@ -160,6 +162,41 @@ function dedup(items: TmdbItem[]) {
   });
 }
 
+async function findDoubanId(
+  imdbId?: string,
+  title?: string
+): Promise<string | undefined> {
+  const candidates: string[] = [];
+  if (imdbId) candidates.push(imdbId);
+  if (title) candidates.push(title);
+
+  for (const q of candidates) {
+    if (!q) continue;
+    try {
+      const res = await fetch(
+        `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(q)}`,
+        {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            Accept: 'application/json,text/plain,*/*',
+            Referer: 'https://movie.douban.com/',
+          },
+          cache: 'no-store',
+        }
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : Array.isArray((data as any)?.items) ? (data as any).items : [];
+      const first = items.find((it: any) => it?.id);
+      if (first?.id) return String(first.id);
+    } catch {
+      // ignore and try next
+    }
+  }
+  return undefined;
+}
+
 async function enrichTmdbItem(
   apiKey: string,
   item: TmdbItem
@@ -168,7 +205,7 @@ async function enrichTmdbItem(
     const id = item.tmdbId.replace('tmdb:', '');
     const detailUrl = `${TMDB_BASE}/${item.mediaType}/${id}?api_key=${encodeURIComponent(
       apiKey
-    )}&language=zh-CN&append_to_response=release_dates,content_ratings,watch/providers,credits,translations`;
+    )}&language=zh-CN&append_to_response=release_dates,content_ratings,watch/providers,credits,translations,external_ids`;
     const resp = await fetch(detailUrl, { cache: 'no-store' });
     if (!resp.ok) return item;
     const data = await resp.json();
@@ -233,6 +270,9 @@ async function enrichTmdbItem(
         ?.map((c) => c?.name)
         ?.filter(Boolean) ?? [];
 
+    const imdbId = data?.external_ids?.imdb_id || undefined;
+    const doubanId = await findDoubanId(imdbId, localizedTitle || item.title);
+
     return {
       ...item,
       title: localizedTitle || item.title,
@@ -246,6 +286,8 @@ async function enrichTmdbItem(
       cast,
       directors,
       voteAverage: data?.vote_average ?? item.voteAverage,
+      imdbId: imdbId || item.imdbId,
+      doubanId: doubanId || item.doubanId,
     };
   } catch {
     return item;

@@ -43,6 +43,8 @@ type TmdbListItem = {
   voteAverage?: number;
   cast?: string[];
   directors?: string[];
+  imdbId?: string;
+  doubanId?: string;
 };
 type TmdbPerson = {
   tmdbId: string;
@@ -522,6 +524,8 @@ function HomeClient() {
         year: item.year,
         type: 'movie',
         query: item.title,
+        imdb_id: item.imdbId,
+        douban_id: item.doubanId ? Number(item.doubanId) : undefined,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
@@ -537,6 +541,8 @@ function HomeClient() {
         year: item.year,
         type: 'tv',
         query: item.title,
+        imdb_id: item.imdbId,
+        douban_id: item.doubanId ? Number(item.doubanId) : undefined,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
