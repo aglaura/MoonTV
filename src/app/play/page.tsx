@@ -2559,11 +2559,15 @@ function PlayPageClient() {
       return m?.[1];
     };
 
+    const isAppleTouch =
+      /iphone|ipad|ipod/.test(ua) ||
+      (((navigator as any).platform || '').toLowerCase() === 'macintel' &&
+        (navigator as any).maxTouchPoints > 1);
     const os = (() => {
       if (/windows nt/.test(ua)) return 'Windows';
-      if (/mac os x/.test(ua)) return 'macOS';
       if (/android/.test(ua)) return 'Android';
-      if (/(iphone|ipad|ipod)/.test(ua)) return 'iOS';
+      if (isAppleTouch) return 'iOS/iPadOS';
+      if (/mac os x/.test(ua)) return 'macOS';
       if (/linux/.test(ua)) return 'Linux';
       return 'Unknown OS';
     })();
@@ -3125,7 +3129,7 @@ function PlayPageClient() {
               top: '50%',
               left: '12px',
               transform: 'translateY(-50%)',
-              zIndex: 600,
+              zIndex: '600',
             },
             click: () => {
               if (isIOSDevice()) return;
@@ -3142,7 +3146,7 @@ function PlayPageClient() {
               top: '50%',
               right: '12px',
               transform: 'translateY(-50%)',
-              zIndex: 600,
+              zIndex: '600',
             },
             click: () => {
               if (isIOSDevice()) return;
@@ -3161,7 +3165,7 @@ function PlayPageClient() {
               position: 'absolute',
               top: '12px',
               left: '12px',
-              zIndex: 600,
+              zIndex: '600',
               display: isIOS ? 'flex' : 'none',
             },
             click: () => {
