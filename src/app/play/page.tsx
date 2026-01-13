@@ -996,6 +996,7 @@ function PlayPageClient() {
       const seenProviders = new Set<string>();
       const penalizedProviders = new Set<string>();
       const valuationEntries: SourceValuationPayload[] = [];
+      const penaltyEntries: SourceValuationPayload[] = [];
 
       const providerSamples = new Map<string, SearchResult>();
       sources.forEach((s) => {
@@ -1042,31 +1043,90 @@ function PlayPageClient() {
                 updated_at: Date.now(),
               });
             } catch {
-              if (!penalizedProviders.has(valKey)) {
-                penalizedProviders.add(valKey);
-                const prevCount =
-                  precomputedVideoInfoRef.current.get(valKey)?.sampleCount ?? 0;
-                valuationEntries.push({
-                  key: valKey,
-                  source: s.source,
-                  quality: 'Unavailable',
-                  loadSpeed: 'Unavailable',
-                  pingTime: Number.MAX_SAFE_INTEGER,
-                  qualityRank: -1,
-                  speedValue: 0,
-                  sampleCount: prevCount + 1,
-                  updated_at: Date.now(),
+              if (penalizedProviders.has(valKey)) return;
+              penalizedProviders.add(valKey);
+              const prevCount =
+                precomputedVideoInfoRef.current.get(valKey)?.sampleCount ?? 0;
+              const penalty: SourceValuationPayload = {
+                key: valKey,
+                source: s.source,
+                quality: 'Unavailable',
+                loadSpeed: 'Unavailable',
+                pingTime: Number.MAX_SAFE_INTEGER,
+                qualityRank: -1,
+                speedValue: 0,
+                sampleCount: prevCount + 1,
+                updated_at: Date.now(),
+              };
+              penaltyEntries.push(penalty);
+              setPrecomputedVideoInfo((prev) => {
+                const next = new Map(prev);
+                next.set(valKey, {
+                  quality: penalty.quality,
+                  loadSpeed: penalty.loadSpeed,
+                  pingTime: penalty.pingTime,
+                  qualityRank: penalty.qualityRank,
+                  speedValue: penalty.speedValue,
+                  sampleCount: penalty.sampleCount,
+                  hasError: true,
                 });
-              }
+                precomputedVideoInfoRef.current = next;
+                return next;
+              });
             }
           })()
         );
       });
 
+      // Penalize providers with no playable sources found
+      providersWithEmptySources.forEach((sourceName, providerKey) => {
+        if (providersWithPlayableSources.has(providerKey)) return;
+        if (penalizedProviders.has(providerKey)) return;
+        penalizedProviders.add(providerKey);
+        const prevCount =
+          precomputedVideoInfoRef.current.get(providerKey)?.sampleCount ?? 0;
+        penaltyEntries.push({
+          key: providerKey,
+          source: sourceName,
+          quality: 'Unavailable',
+          loadSpeed: 'Unavailable',
+          pingTime: Number.MAX_SAFE_INTEGER,
+          qualityRank: -1,
+          speedValue: 0,
+          sampleCount: prevCount + 1,
+          updated_at: Date.now(),
+        });
+      });
+
+      if (penaltyEntries.length) {
+        let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null =
+          null;
+        setPrecomputedVideoInfo((prev) => {
+          const next = new Map(prev);
+          penaltyEntries.forEach((entry) => {
+            next.set(entry.key, {
+              quality: entry.quality,
+              loadSpeed: entry.loadSpeed,
+              pingTime: entry.pingTime,
+              qualityRank: entry.qualityRank,
+              speedValue: entry.speedValue,
+              sampleCount: entry.sampleCount,
+              hasError: true,
+            });
+          });
+          updatedInfoMap = next;
+          return next;
+        });
+        if (updatedInfoMap) {
+          precomputedVideoInfoRef.current = updatedInfoMap;
+        }
+      }
+
       if (tasks.length) {
         await Promise.allSettled(tasks);
-        if (valuationEntries.length) {
-          void persistSourceValuations(valuationEntries);
+        const allEntries = [...valuationEntries, ...penaltyEntries];
+        if (allEntries.length) {
+          void persistSourceValuations(allEntries);
         }
       }
     },
@@ -2291,47 +2351,9 @@ function PlayPageClient() {
 
       }
 
-      providersWithEmptySources.forEach((sourceName, providerKey) => {
-        if (providersWithPlayableSources.has(providerKey)) return;
-        const prevCount =
-          precomputedVideoInfoRef.current.get(providerKey)?.sampleCount ?? 0;
-        penaltyEntries.push({
-          key: providerKey,
-          source: sourceName,
-          quality: 'Unavailable',
-          loadSpeed: 'Unavailable',
-          pingTime: Number.MAX_SAFE_INTEGER,
-          qualityRank: -1,
-          speedValue: 0,
-          sampleCount: prevCount + 1,
-          updated_at: Date.now(),
-        });
-      });
+      // Skip penalizing empty providers to avoid inflating failed samples
 
-      if (penaltyEntries.length) {
-        let updatedInfoMap: Map<string, PrecomputedVideoInfoEntry> | null = null;
-        setPrecomputedVideoInfo((prev) => {
-          const next = new Map(prev);
-          penaltyEntries.forEach((entry) => {
-            next.set(entry.key, {
-              quality: entry.quality,
-              loadSpeed: entry.loadSpeed,
-              pingTime: entry.pingTime,
-              qualityRank: entry.qualityRank,
-              speedValue: entry.speedValue,
-              sampleCount: entry.sampleCount,
-              hasError: true,
-            });
-          });
-          updatedInfoMap = next;
-          return next;
-        });
-        if (updatedInfoMap) {
-          precomputedVideoInfoRef.current = updatedInfoMap;
-        }
-        void persistSourceValuations(penaltyEntries);
-        penaltyEntries.length = 0;
-      }
+      // No penalty entries pushed; only successful probes persist
 
       setSourceSearchLoading(false);
       setSourceSearchCompleted(true);
@@ -2340,6 +2362,38 @@ function PlayPageClient() {
       setAvailableSources(() => {
         const finalSorted = verifyAndSortSources(allSources);
         availableSourcesRef.current = finalSorted;
+
+        // Persist any cached valuations for the providers we just listed
+        const entries: SourceValuationPayload[] = [];
+        const seenValKeys = new Set<string>();
+        finalSorted.forEach((s) => {
+          const valKey = getValuationKey(s.source);
+          if (!valKey || seenValKeys.has(valKey)) return;
+          seenValKeys.add(valKey);
+          const info = precomputedVideoInfoRef.current.get(valKey);
+          if (!info) return;
+          const qualityRank = info.qualityRank ?? getQualityRank(info.quality);
+          const speedValue =
+            info.speedValue ?? parseSpeedToKBps(info.loadSpeed || '未知');
+          const hasMetrics =
+            qualityRank > 0 || speedValue > 0 || (info.pingTime ?? 0) > 0;
+          if (!hasMetrics) return;
+          entries.push({
+            key: valKey,
+            source: s.source,
+            quality: info.quality,
+            loadSpeed: info.loadSpeed || '未知',
+            pingTime: info.pingTime ?? 0,
+            qualityRank,
+            speedValue,
+            sampleCount: info.sampleCount ?? 1,
+            updated_at: Date.now(),
+          });
+        });
+        if (entries.length) {
+          void persistSourceValuations(entries);
+        }
+
         return finalSorted;
       });
       const resumeCandidateFinal = tryResumeFromRecord();
