@@ -1212,7 +1212,7 @@ function PlayPageClient() {
   );
   const playerHeightClass = useMemo(() => {
     if (forceRotate || (isFullscreen && isIOSDevice())) {
-      return 'h-[70vh] lg:h-[85vh]';
+      return 'h-[75vh] lg:h-[90vh]';
     }
     return 'h-[300px] lg:h-full';
   }, [forceRotate, isFullscreen]);
@@ -3186,8 +3186,9 @@ function PlayPageClient() {
             html: '<button class="art-rotate-btn">↻ 90°</button>',
             style: {
               position: 'absolute',
-              top: '12px',
-              left: '12px',
+              bottom: '12px',
+              left: '50%',
+              transform: 'translateX(-50%)',
               zIndex: '600',
               display: isIOSMobile ? 'flex' : 'none',
             },
