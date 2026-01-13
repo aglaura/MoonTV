@@ -3102,6 +3102,28 @@ function PlayPageClient() {
               setForceRotate(next);
               setInlineFullscreen(next);
               rotateFullscreenRef.current = next;
+              const player = artPlayerRef.current;
+              if (player && player.fullscreenWeb) {
+                try {
+                  if (next && typeof player.fullscreenWeb.request === 'function') {
+                    player.fullscreenWeb.request();
+                  } else if (!next && typeof player.fullscreenWeb.exit === 'function') {
+                    player.fullscreenWeb.exit();
+                  }
+                } catch (_) {
+                  // ignore fullscreen errors
+                }
+              } else if (player && player.fullscreen) {
+                try {
+                  if (next && typeof player.fullscreen.request === 'function') {
+                    player.fullscreen.request();
+                  } else if (!next && typeof player.fullscreen.exit === 'function') {
+                    player.fullscreen.exit();
+                  }
+                } catch (_) {
+                  // ignore
+                }
+              }
             },
           },
           {
