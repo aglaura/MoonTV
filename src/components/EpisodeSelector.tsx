@@ -80,6 +80,61 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   providerCount = 0,
   searchStats = { total: 0, found: 0, notFound: 0 },
 }) => {
+  const parseChineseNumber = useCallback((text: string): number | null => {
+    const map: Record<string, number> = {
+      一: 1,
+      二: 2,
+      三: 3,
+      四: 4,
+      五: 5,
+      六: 6,
+      七: 7,
+      八: 8,
+      九: 9,
+      十: 10,
+      零: 0,
+    };
+    if (!text) return null;
+    let total = 0;
+    let current = 0;
+    for (const char of text) {
+      if (map[char] !== undefined) {
+        current = map[char];
+      } else if (char === '十') {
+        current = current === 0 ? 10 : current * 10;
+      }
+    }
+    total += current;
+    return total || null;
+  }, []);
+
+  const extractSeason = useCallback(
+    (title?: string): number => {
+      if (!title) return 1;
+      const cleaned = title.trim();
+      const patterns = [
+        /第\s*([0-9一二三四五六七八九十零]+)\s*季/,
+        /Season\s*(\d{1,2})/i,
+        /\bS(\d{1,2})\b/i,
+        /第\s*([0-9一二三四五六七八九十零]+)\s*部/,
+      ];
+      for (const p of patterns) {
+        const m = cleaned.match(p);
+        if (m && m[1]) {
+          const numText = m[1];
+          if (/^\d+$/.test(numText)) {
+            const n = parseInt(numText, 10);
+            if (n > 0) return n;
+          }
+          const cn = parseChineseNumber(numText);
+          if (cn && cn > 0) return cn;
+        }
+      }
+      return 1;
+    },
+    [parseChineseNumber]
+  );
+
   const router = useRouter();
   const pageCount = Math.ceil(totalEpisodes / episodesPerPage);
 
@@ -119,6 +174,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
 
   // 是否倒序显示
   const [descending, setDescending] = useState<boolean>(false);
+  const [selectedSeason, setSelectedSeason] = useState<number>(1);
 
   // 获取视频信息的函数 - 移除 attemptedSources 依赖避免不必要的重新创建
   const getVideoInfo = useCallback(async (source: SearchResult) => {
@@ -377,6 +433,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     const sourcesWithIndex = availableSources.map((source, index) => ({
       source,
       index,
+      season: extractSeason(source.title),
     }));
 
     sourcesWithIndex.sort((a, b) => {
@@ -391,8 +448,37 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       return a.index - b.index;
     });
 
-    return sourcesWithIndex.map(({ source }) => source);
-  }, [availableSources, currentId, currentSource]);
+    return sourcesWithIndex.map(({ source, season }) => ({
+      ...source,
+      season,
+    }));
+  }, [availableSources, currentId, currentSource, extractSeason]);
+
+  const availableSeasons = useMemo(() => {
+    const seasons = new Set<number>();
+    sortedSources.forEach((s: any) => {
+      if (typeof s.season === 'number' && s.season > 0) {
+        seasons.add(s.season);
+      }
+    });
+    if (seasons.size === 0) seasons.add(1);
+    return Array.from(seasons).sort((a, b) => a - b);
+  }, [sortedSources]);
+
+  useEffect(() => {
+    if (availableSeasons.length > 0) {
+      setSelectedSeason((prev) =>
+        availableSeasons.includes(prev) ? prev : availableSeasons[0]
+      );
+    }
+  }, [availableSeasons]);
+
+  const seasonFilteredSources = useMemo(() => {
+    return sortedSources.filter((s: any) => {
+      const season = typeof s.season === 'number' ? s.season : 1;
+      return season === selectedSeason;
+    });
+  }, [sortedSources, selectedSeason]);
 
   const groupedSources = useMemo(() => {
     const qualityRankToScore = (rank?: number) => {
@@ -527,7 +613,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     };
 
     const groups = new Map<string, SearchResult[]>();
-    for (const source of sortedSources) {
+    for (const source of seasonFilteredSources) {
       const groupKey = source.source?.toString() ?? '';
       const existing = groups.get(groupKey);
       if (existing) {
@@ -642,7 +728,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     });
 
     return enrichedGroups;
-  }, [sortedSources, videoInfoMap, currentId, currentSource]);
+  }, [seasonFilteredSources, videoInfoMap, currentId, currentSource]);
 
   // Persist provider valuations using the best entry per provider and the current priority order.
   useEffect(() => {
@@ -821,6 +907,23 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {/* 换源 Tab 内容 */}
       {activeTab === 'sources' && (
         <div className='flex flex-col h-full mt-4'>
+          {availableSeasons.length > 1 && (
+            <div className='flex flex-wrap items-center gap-1 mb-2'>
+              {availableSeasons.map((season) => (
+                <button
+                  key={season}
+                  onClick={() => setSelectedSeason(season)}
+                  className={`px-2 py-1 rounded-md text-xs font-medium border transition-colors ${
+                    selectedSeason === season
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
+                  }`}
+                >
+                  {`S${season}`}
+                </button>
+              ))}
+            </div>
+          )}
           {sourceSearchLoading && (
             <div className='flex items-center justify-center py-8'>
               <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-green-500'></div>
