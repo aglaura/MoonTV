@@ -55,7 +55,7 @@ async function tryRemoteProxy(opts: {
       if (cached) {
         const target = cached.startsWith('http')
           ? cached
-          : `${posterBase}/posters/${cached.replace(/^\\//, '')}`;
+          : `${posterBase}/posters/${cached.replace(/^\//, '')}`;
         return { redirect: target };
       }
     }
