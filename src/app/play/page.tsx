@@ -1243,6 +1243,9 @@ function PlayPageClient() {
   const [imdbDescription, setImdbDescription] = useState<string | undefined>(
     undefined
   );
+  const [tmdbId, setTmdbId] = useState<string | undefined>(undefined);
+  const [tmdbSeasons, setTmdbSeasons] = useState<any[]>([]);
+  const [tmdbRecommendations, setTmdbRecommendations] = useState<any[]>([]);
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
@@ -1648,6 +1651,10 @@ function PlayPageClient() {
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
       ? `https://www.imdb.com/title/${imdbVideoId}/`
       : null;
+  const tmdbLink =
+    tmdbId && tmdbId.startsWith('tmdb:')
+      ? `https://www.themoviedb.org/tv/${tmdbId.replace('tmdb:', '')}`
+      : null;
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
   const rotateFullscreenRef = useRef(false);
@@ -1716,6 +1723,41 @@ function PlayPageClient() {
       cancelled = true;
     };
   }, [imdbVideoId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchTmdb = async () => {
+      if (!imdbVideoId || totalEpisodes <= 1) {
+        setTmdbSeasons([]);
+        setTmdbRecommendations([]);
+        setTmdbId(undefined);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/tmdb/season?imdbId=${encodeURIComponent(imdbVideoId)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setTmdbId(data?.tmdbId || undefined);
+        setTmdbSeasons(Array.isArray(data?.seasons) ? data.seasons : []);
+        setTmdbRecommendations(
+          Array.isArray(data?.recommendations) ? data.recommendations : []
+        );
+      } catch {
+        if (!cancelled) {
+          setTmdbId(undefined);
+          setTmdbSeasons([]);
+          setTmdbRecommendations([]);
+        }
+      }
+    };
+    void fetchTmdb();
+    return () => {
+      cancelled = true;
+    };
+  }, [imdbVideoId, totalEpisodes]);
 
   // -----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------
@@ -4215,10 +4257,61 @@ function PlayPageClient() {
                           IMDb
                         </div>
                         <div>{imdbDescription}</div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                  {tmdbSeasons.length > 0 && (
+                    <div className='flex justify-between gap-3 items-start'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Seasons (TMDB)', 'TMDB 季度', 'TMDB 季度')}
+                      </span>
+                      <span className='font-medium text-right text-sm space-y-1'>
+                        {tmdbSeasons.slice(0, 3).map((s: any) => (
+                          <div key={s.id ?? s.name}>
+                            {`${s.name || `S${s.season_number || ''}`}`}{' '}
+                            {s.episode_count ? `(${s.episode_count} ep)` : ''}
+                          </div>
+                        ))}
+                        {tmdbSeasons.length > 3 && (
+                          <div className='text-xs text-gray-500'>
+                            {tt(
+                              `+${tmdbSeasons.length - 3} more`,
+                              `+${tmdbSeasons.length - 3} 季`,
+                              `+${tmdbSeasons.length - 3} 季`
+                            )}
+                          </div>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {tmdbRecommendations.length > 0 && (
+                    <div className='flex justify-between gap-3 items-start'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Related (TMDB)', 'TMDB 相关推荐', 'TMDB 相關推薦')}
+                      </span>
+                      <span className='font-medium text-right text-sm space-y-1 max-w-xs'>
+                        {tmdbRecommendations.slice(0, 4).map((r: any) => (
+                          <div key={r.id}>{r.name || r.title || ''}</div>
+                        ))}
+                      </span>
+                    </div>
+                  )}
+                  {tmdbLink && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        TMDB
+                      </span>
+                      <a
+                        className='text-green-600 dark:text-green-400 underline'
+                        href={tmdbLink}
+                        target='_blank'
+                        rel='noreferrer'
+                      >
+                        {tmdbId}
+                      </a>
+                    </div>
+                  )}
                 </div>
+              </div>
               </div>
             </div>
           </div>
