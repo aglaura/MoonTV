@@ -16,7 +16,6 @@ import {
   getQualityRank,
   getVideoResolutionFromM3u8,
   parseSpeedToKBps,
-  processImageUrl,
 } from '@/lib/utils';
 
 // 定义视频信息类型
@@ -318,6 +317,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
 
   const categoryContainerRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const buildPosterPlaceholder = useCallback((text?: string) => {
+    const label = (text || 'No Image').slice(0, 12);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="120" height="180" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="14" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }, []);
 
   // 当分页切换时，将激活的分页标签滚动到视口中间
   useEffect(() => {
@@ -1080,14 +1085,16 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-1'>
-                                  <div className='relative flex-shrink-0 w-16 h-18 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700 p-0'>
+                                  <div className='relative flex-shrink-0 w-16 h-[72px] overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700 p-0'>
                                     <img
-                                      src={source.poster}
+                                      src={source.poster || buildPosterPlaceholder(displaySourceTitle)}
                                       alt={displaySourceTitle}
-                                      className='absolute inset-0 w-full h-full object-cover object-center'
+                                      className='absolute inset-0 w-full h-full object-cover'
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
+                                        target.onerror = null;
+                                        target.src = buildPosterPlaceholder(displaySourceTitle);
+                                        target.style.display = 'block';
                                       }}
                                     />
                                   </div>
