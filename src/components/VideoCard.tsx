@@ -410,8 +410,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }, [dynamicDoubanId, imdbIdState]);
 
     const processedPosterUrl = useMemo(
-      () => (actualPoster ? processImageUrl(actualPoster) : ''),
-      [actualPoster]
+      () =>
+        actualPoster
+          ? processImageUrl(actualPoster, {
+              doubanId: dynamicDoubanId,
+              imdbId: imdbIdState,
+              preferCached: true,
+            })
+          : '',
+      [actualPoster, dynamicDoubanId, imdbIdState]
     );
 
     const [posterSrc, setPosterSrc] = useState<string>(processedPosterUrl || '');

@@ -26,18 +26,42 @@ export function getImageProxyUrl(): string | null {
     : null;
 }
 
+export interface ImageProcessOptions {
+  doubanId?: string | number | null;
+  imdbId?: string | null;
+  preferCached?: boolean;
+}
+
 /**
- * 处理图片 URL，如果设置了图片代理则使用代理
+ * 处理图片 URL，如果设置了图片代理则使用代理，并携带标识帮助远端缓存复用
  */
-export function processImageUrl(originalUrl: string): string {
+export function processImageUrl(
+  originalUrl: string,
+  opts?: ImageProcessOptions
+): string {
   if (!originalUrl) return originalUrl;
 
   const proxyUrl = getImageProxyUrl();
   if (!proxyUrl) {
     // Default to built-in proxy to avoid hotlink blocks
-    if (originalUrl.startsWith('/api/image-proxy')) return originalUrl;
+    const params = new URLSearchParams();
+    if (opts?.doubanId) params.set('doubanId', String(opts.doubanId));
+    if (opts?.imdbId) params.set('imdbId', String(opts.imdbId));
+    if (opts?.preferCached) params.set('preferCached', '1');
+
+    if (originalUrl.startsWith('/api/image-proxy')) {
+      if ([...params.keys()].length === 0) return originalUrl;
+      const url = new URL(originalUrl, 'http://localhost');
+      params.forEach((value, key) => {
+        if (!url.searchParams.has(key)) {
+          url.searchParams.set(key, value);
+        }
+      });
+      return `${url.pathname}?${url.searchParams.toString()}`;
+    }
     if (originalUrl.startsWith('http')) {
-      return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
+      params.set('url', originalUrl);
+      return `/api/image-proxy?${params.toString()}`;
     }
     return originalUrl;
   }

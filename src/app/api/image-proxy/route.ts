@@ -27,6 +27,35 @@ async function hashString(input: string): Promise<string> {
   return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function findCachedPoster(
+  posterBase: string | null,
+  doubanId?: string | null,
+  imdbId?: string | null
+): Promise<string | null> {
+  if (!posterBase) return null;
+  const baseName = doubanId
+    ? `douban-${doubanId}`
+    : imdbId
+    ? `imdb-${imdbId}`
+    : null;
+  if (!baseName) return null;
+
+  const exts = ['.jpg', '.webp', '.png', '.gif'];
+  for (const ext of exts) {
+    const candidate = `${posterBase}/posters/${baseName}${ext}`;
+    try {
+      const head = await fetch(candidate, {
+        method: 'HEAD',
+        cache: 'no-store',
+      });
+      if (head.ok) return candidate;
+    } catch {
+      // ignore single failure
+    }
+  }
+  return null;
+}
+
 async function tryRemoteProxy(opts: {
   imageUrl: string;
   doubanId?: string | null;
@@ -88,6 +117,11 @@ export async function GET(request: Request) {
 
   try {
     const posterBase = buildPosterBaseUrl();
+    const cachedPoster = await findCachedPoster(posterBase, doubanId, imdbId);
+    if (cachedPoster) {
+      return NextResponse.redirect(cachedPoster, { status: 302 });
+    }
+
     const remote = await tryRemoteProxy({
       imageUrl,
       doubanId,
