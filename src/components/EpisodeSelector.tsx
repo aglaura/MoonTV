@@ -1048,7 +1048,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='p-1.5 flex flex-col gap-1'>
+                        <div className='px-1.5 pb-1 pt-0.5 flex flex-col gap-0.75'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1072,15 +1072,15 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                        className={`relative rounded-lg border px-1.5 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
+                        className={`relative rounded-lg border px-1 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
                                       : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
                               >
-                                <div className='flex items-start gap-2'>
-                                  <div className='flex-shrink-0 w-14 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
+                                <div className='flex items-start gap-1.5'>
+                                  <div className='flex-shrink-0 w-16 h-22 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
                                     <img
                                       src={processImageUrl(source.poster)}
                                       alt={displaySourceTitle}
