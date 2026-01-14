@@ -723,6 +723,7 @@ function HomeClient() {
       const subtitle = (item.subtitle || '').toLowerCase();
       if (/韩|韓|korean|kr/.test(subtitle)) return 'kr';
       if (/日|japan|jp/.test(subtitle)) return 'jp';
+      if (/日本动漫|日本動漫|日漫|動畫|动漫/.test(subtitle)) return 'jp';
       if (/中国|國|大陆|大陸|港|台|普通话|國語|華語|mandarin|zh/.test(subtitle))
         return 'cn';
       if (/(us|usa|uk|gb|british|england|europe|france|germany|german|spain|spanish|italy|italian|canada|australia)/.test(subtitle))
