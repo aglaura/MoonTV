@@ -103,6 +103,11 @@ export interface SearchResult {
   title: string; // 中文片名
   original_title?: string; // 英文片名（可選）
   poster: string;
+  posterAlt?: string[];
+  posterDouban?: string;
+  posterTmdb?: string;
+  doubanUrl?: string;
+  tmdbUrl?: string;
   episodes: string[];
   providerLinks?: Array<{ key: string; name: string; url?: string }>;
   sourceLinks?: Array<{

@@ -55,6 +55,11 @@ type TmdbPerson = {
 type CardItem = {
   title: string;
   poster?: string;
+  posterAlt?: string[];
+  posterDouban?: string;
+  posterTmdb?: string;
+  doubanUrl?: string;
+  tmdbUrl?: string;
   rate?: string;
   year?: string;
   douban_id?: number;
@@ -210,6 +215,9 @@ function ContentRail({
                 from="douban"
                 title={item.title}
                 poster={item.poster}
+                posterAlt={item.posterAlt}
+                posterDouban={item.posterDouban}
+                posterTmdb={item.posterTmdb}
                 douban_id={item.douban_id}
                 rate={item.rate}
                 year={item.year}
@@ -279,6 +287,9 @@ function ContentRail({
                 from="douban"
                 title={item.title}
                 poster={item.poster}
+                posterAlt={item.posterAlt}
+                posterDouban={item.posterDouban}
+                posterTmdb={item.posterTmdb}
                 douban_id={item.douban_id}
                 rate={item.rate}
                 year={item.year}
@@ -329,6 +340,9 @@ function ContentRail({
               from="douban"
               title={item.title}
               poster={item.poster}
+              posterAlt={item.posterAlt}
+              posterDouban={item.posterDouban}
+              posterTmdb={item.posterTmdb}
               douban_id={item.douban_id}
               rate={item.rate}
               year={item.year}
@@ -562,6 +576,9 @@ function HomeClient() {
       (tmdbMovies || []).map((item) => ({
         title: item.title,
         poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/${item.type === 'tv' ? 'tv' : 'movie'}/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
         rate: '',
         year: item.year,
         type: 'movie',
@@ -579,6 +596,9 @@ function HomeClient() {
       (tmdbTv || []).map((item) => ({
         title: item.title,
         poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/${item.type === 'tv' ? 'tv' : 'movie'}/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
         rate: '',
         year: item.year,
         type: 'tv',
@@ -612,12 +632,16 @@ function HomeClient() {
         const localizedTitle =
           uiLocale === 'zh-Hant'
             ? convertToTraditional(item.title)
-            : uiLocale === 'en' && item.original_title
-            ? item.original_title
-            : item.title;
+          : uiLocale === 'en' && item.original_title
+          ? item.original_title
+          : item.title;
+        const doubanUrl = `https://movie.douban.com/subject/${item.id}`;
         return {
           title: localizedTitle,
           poster: item.poster,
+          posterAlt: [item.poster].filter(Boolean),
+          posterDouban: item.poster,
+          doubanUrl,
           rate: item.rate,
           year: item.year,
           douban_id: Number(item.id),
@@ -649,22 +673,54 @@ function HomeClient() {
         if (!key) return;
         const existing = map.get(key);
         if (!existing) {
-          map.set(key, { ...item });
+          const alt = new Set(
+            [
+              ...(item.posterAlt || []),
+              item.poster,
+              item.posterDouban,
+              item.posterTmdb,
+            ].filter(Boolean)
+          );
+          map.set(key, { ...item, posterAlt: Array.from(alt) as string[] });
           if (posterMap && item.poster) posterMap.set(key, item.poster);
           return;
         }
         if (posterMap && !posterMap.has(key) && item.poster) {
           posterMap.set(key, item.poster);
         }
+        const mergedDouban = existing.posterDouban || item.posterDouban;
+        const mergedTmdb = existing.posterTmdb || item.posterTmdb;
+        const mergedPoster =
+          existing.poster ||
+          item.poster ||
+          mergedDouban ||
+          mergedTmdb ||
+          existing.posterAlt?.[0] ||
+          item.posterAlt?.[0];
+        const mergedAlt = new Set(
+          [
+            ...(existing.posterAlt || []),
+            ...(item.posterAlt || []),
+            existing.poster,
+            item.poster,
+            mergedDouban,
+            mergedTmdb,
+          ].filter(Boolean)
+        );
         map.set(key, {
           ...existing,
           ...item,
-          poster: existing.poster || item.poster,
+          poster: mergedPoster,
+          posterDouban: mergedDouban,
+          posterTmdb: mergedTmdb,
+          posterAlt: Array.from(mergedAlt) as string[],
           rate: existing.rate || item.rate,
           year: existing.year || item.year,
           query: existing.query || item.query,
           source_name: existing.source_name || item.source_name,
           type: existing.type || item.type,
+          doubanUrl: existing.doubanUrl || item.doubanUrl,
+          tmdbUrl: existing.tmdbUrl || item.tmdbUrl,
         });
       };
 
@@ -685,6 +741,9 @@ function HomeClient() {
       (tmdbNowPlaying || []).map((item) => ({
         title: item.title,
         poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/movie/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
         rate: '',
         year: item.year,
         type: 'movie',
@@ -701,6 +760,9 @@ function HomeClient() {
       (tmdbOnAir || []).map((item) => ({
         title: item.title,
         poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/tv/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
         rate: '',
         year: item.year,
         type: 'tv',
@@ -1219,6 +1281,9 @@ function HomeClient() {
                                 from='douban'
                                 title={item.title}
                                 poster={item.poster}
+                                posterAlt={item.posterAlt}
+                                posterDouban={item.posterDouban}
+                                posterTmdb={item.posterTmdb}
                                 douban_id={item.douban_id}
                                 rate={item.rate}
                                 year={item.year}
@@ -1270,6 +1335,9 @@ function HomeClient() {
                                 from="douban"
                                 title={item.title}
                                 poster={item.poster}
+                                posterAlt={item.posterAlt}
+                                posterDouban={item.posterDouban}
+                                posterTmdb={item.posterTmdb}
                                 douban_id={item.douban_id}
                                 rate={item.rate}
                                 year={item.year}

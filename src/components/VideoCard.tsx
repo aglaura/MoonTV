@@ -59,6 +59,11 @@ export interface VideoCardProps {
   title_en?: string; // English title
   query?: string;
   poster?: string;
+  posterAlt?: string[];
+  posterDouban?: string;
+  posterTmdb?: string;
+  doubanUrl?: string;
+  tmdbUrl?: string;
   episodes?: number;
   source_name?: string;
   source_names?: string[];
@@ -92,6 +97,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       title_en,
       query = '',
       poster = '',
+      posterAlt,
+      posterDouban,
+      posterTmdb,
+      doubanUrl,
+      tmdbUrl,
       episodes,
       source,
       source_name,
@@ -298,6 +308,17 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const actualTitle = title;
     const actualPoster = poster;
+    const fallbackPosters = useMemo(() => {
+      const urls = new Set<string>();
+      const add = (url?: string) => {
+        if (url) urls.add(url);
+      };
+      add(poster);
+      posterAlt?.forEach(add);
+      add(posterDouban);
+      add(posterTmdb);
+      return Array.from(urls);
+    }, [poster, posterAlt, posterDouban, posterTmdb]);
     const actualSource = source;
     const actualId = id;
     const actualDoubanId = dynamicDoubanId;
@@ -409,16 +430,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return undefined;
     }, [dynamicDoubanId, imdbIdState]);
 
+    const posterCandidates = useMemo(() => {
+      const candidates = new Set<string>();
+      fallbackPosters.forEach((url) => {
+        const processed = processImageUrl(url, {
+          doubanId: dynamicDoubanId,
+          imdbId: imdbIdState,
+          preferCached: true,
+        });
+        if (processed) candidates.add(processed);
+      });
+      return Array.from(candidates);
+    }, [fallbackPosters, dynamicDoubanId, imdbIdState]);
+
     const processedPosterUrl = useMemo(
-      () =>
-        actualPoster
-          ? processImageUrl(actualPoster, {
-              doubanId: dynamicDoubanId,
-              imdbId: imdbIdState,
-              preferCached: true,
-            })
-          : '',
-      [actualPoster, dynamicDoubanId, imdbIdState]
+      () => posterCandidates[0] || '',
+      [posterCandidates]
     );
 
     const [posterSrc, setPosterSrc] = useState<string>(processedPosterUrl || '');
@@ -427,15 +454,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     useEffect(() => {
       retryCountRef.current = 0;
-    }, [processedPosterUrl, actualPoster]);
+    }, [posterCandidates]);
 
     useEffect(() => {
       let cancelled = false;
       const loadPoster = async () => {
-        if (!actualPoster) {
+        if (!posterCandidates.length) {
           setPosterSrc('');
           return;
         }
+        const primaryOriginal = fallbackPosters[0];
 
         if (typeof window !== 'undefined' && 'caches' in window && posterCacheKey) {
           try {
@@ -484,12 +512,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
         // Fallback: direct fetch, then backfill remote cache
         try {
-          const directResp = await fetch(actualPoster, {
+          const directResp = await fetch(primaryOriginal || processedPosterUrl, {
             cache: 'no-store',
             mode: 'cors',
           });
           if (directResp.ok) {
-            if (!cancelled) setPosterSrc(actualPoster);
+            if (!cancelled) setPosterSrc(primaryOriginal || processedPosterUrl);
             backfillRemoteCache();
             return;
           }
@@ -509,7 +537,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return () => {
         cancelled = true;
       };
-    }, [actualPoster, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
+    }, [fallbackPosters, posterCandidates, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
 
     // 获取收藏状态（搜索结果页面不检查）
     useEffect(() => {
@@ -1093,15 +1121,20 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                     actualPoster && actualPoster.startsWith('http')
                       ? actualPoster
                       : undefined;
-                  const candidates = [
-                    processedPosterUrl
-                      ? `${processedPosterUrl}${processedPosterUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-                      : null,
-                    directUrl,
-                    directUrl
-                      ? `${directUrl}${directUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-                      : null,
-                  ].filter(Boolean) as string[];
+                  const baseCandidates =
+                    posterCandidates.length > 0
+                      ? posterCandidates
+                      : [processedPosterUrl, directUrl].filter(Boolean) as string[];
+                  const candidates = baseCandidates.flatMap((url, idx) => {
+                    if (!url) return [];
+                    if (idx === 0) {
+                      return [
+                        url,
+                        `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`,
+                      ];
+                    }
+                    return [url];
+                  });
 
                   if (retryCountRef.current < candidates.length) {
                     const nextUrl = candidates[retryCountRef.current];
