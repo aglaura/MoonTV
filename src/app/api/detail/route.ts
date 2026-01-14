@@ -72,7 +72,9 @@ export async function GET(request: Request) {
     const cacheBase = buildCacheBase();
     const cacheKey = `detail-${sourceCode}-${id}.json`;
     const cacheUrl =
-      cacheBase && cacheBase.length > 0 ? `${cacheBase}/cache/${cacheKey}` : null;
+      cacheBase && cacheBase.length > 0
+        ? `${cacheBase}/posters/video_info/${cacheKey}`
+        : null;
 
     if (cacheUrl) {
       const cached = await tryFetchCache(cacheUrl);

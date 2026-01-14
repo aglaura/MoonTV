@@ -191,7 +191,7 @@ export async function POST() {
   };
 
   const detailFilename = `detail-test-${Date.now()}.json`;
-  const detailUrl = `${base}/cache/${encodeURIComponent(detailFilename)}`;
+  const detailUrl = `${base}/posters/video_info/${encodeURIComponent(detailFilename)}`;
   result.detailCacheUrl = detailUrl;
 
   try {
