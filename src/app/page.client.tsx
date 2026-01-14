@@ -435,53 +435,76 @@ function HomeClient() {
         setLoading(true);
         setError(false);
 
-        const [doubanHome, bangumiCalendarData] = await Promise.all([
-          fetch('/api/douban/home', { cache: 'force-cache' }).then((r) => {
-            if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
-            return r.json() as Promise<{
-              movies?: DoubanItem[];
-              tv?: DoubanItem[];
-              variety?: DoubanItem[];
-              latestMovies?: DoubanItem[];
-              latestTv?: DoubanItem[];
-            }>;
-          }),
-          GetBangumiCalendarData(),
+        const doubanPromise = fetch('/api/douban/home', {
+          cache: 'force-cache',
+        }).then((r) => {
+          if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
+          return r.json() as Promise<{
+            movies?: DoubanItem[];
+            tv?: DoubanItem[];
+            variety?: DoubanItem[];
+            latestMovies?: DoubanItem[];
+            latestTv?: DoubanItem[];
+          }>;
+        });
+
+        const bangumiPromise = GetBangumiCalendarData();
+
+        const tmdbPromise = fetch('/api/imdb/list', {
+          cache: 'force-cache',
+        }).then(async (res) => {
+          if (!res.ok) throw new Error(`TMDB list failed (${res.status})`);
+          return (await res.json()) as {
+            movies?: TmdbListItem[];
+            tv?: TmdbListItem[];
+            people?: TmdbPerson[];
+            nowPlaying?: TmdbListItem[];
+            onAir?: TmdbListItem[];
+          };
+        });
+
+        const [doubanRes, bangumiRes, tmdbRes] = await Promise.allSettled([
+          doubanPromise,
+          bangumiPromise,
+          tmdbPromise,
         ]);
 
-        setHotMovies(Array.isArray(doubanHome?.movies) ? doubanHome.movies : []);
-        setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
-        setLatestMoviesDouban(
-          Array.isArray(doubanHome?.latestMovies) ? doubanHome.latestMovies : []
-        );
-        setLatestTvDouban(
-          Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
-        );
-        setHotVarietyShows(
-          Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
-        );
-        setBangumiCalendarData(bangumiCalendarData);
+        if (doubanRes.status === 'fulfilled') {
+          const doubanHome = doubanRes.value;
+          setHotMovies(Array.isArray(doubanHome?.movies) ? doubanHome.movies : []);
+          setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
+          setLatestMoviesDouban(
+            Array.isArray(doubanHome?.latestMovies) ? doubanHome.latestMovies : []
+          );
+          setLatestTvDouban(
+            Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
+          );
+          setHotVarietyShows(
+            Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
+          );
+        }
 
-        try {
-          const res = await fetch('/api/imdb/list', { cache: 'no-store' });
-          if (res.ok) {
-            const data = (await res.json()) as {
-              movies?: TmdbListItem[];
-              tv?: TmdbListItem[];
-              people?: TmdbPerson[];
-              nowPlaying?: TmdbListItem[];
-              onAir?: TmdbListItem[];
-            };
-            setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
-            setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
-            setTmdbPeople(Array.isArray(data.people) ? data.people : []);
-            setTmdbNowPlaying(
-              Array.isArray(data.nowPlaying) ? data.nowPlaying : []
-            );
-            setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
-          }
-        } catch {
-          /* ignore tmdb list errors */
+        if (bangumiRes.status === 'fulfilled') {
+          setBangumiCalendarData(bangumiRes.value);
+        }
+
+        if (tmdbRes.status === 'fulfilled') {
+          const data = tmdbRes.value;
+          setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
+          setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
+          setTmdbPeople(Array.isArray(data.people) ? data.people : []);
+          setTmdbNowPlaying(
+            Array.isArray(data.nowPlaying) ? data.nowPlaying : []
+          );
+          setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
+        }
+
+        if (
+          doubanRes.status === 'rejected' &&
+          tmdbRes.status === 'rejected' &&
+          bangumiRes.status === 'rejected'
+        ) {
+          setError(true);
         }
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
