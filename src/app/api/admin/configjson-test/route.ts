@@ -171,11 +171,70 @@ export async function POST() {
     }
   }
 
+  // 3) Video detail cache roundtrip
+  const detailPayload = {
+    cacheVersion: 2,
+    title: 'Cache healthcheck',
+    id: 'healthcheck',
+    source: 'test',
+    source_name: 'TestSource',
+    providerLinks: [{ key: 'test', name: 'TestSource', url: `${base}/cache/healthcheck` }],
+    sourceLinks: [
+      {
+        provider: 'test',
+        id: 'healthcheck',
+        title: 'Cache healthcheck',
+        episodes: ['https://example.com/stream.m3u8'],
+        playUrl: 'https://example.com/watch',
+      },
+    ],
+  };
+
+  const detailFilename = `detail-test-${Date.now()}.json`;
+  const detailUrl = `${base}/cache/${encodeURIComponent(detailFilename)}`;
+  result.detailCacheUrl = detailUrl;
+
+  try {
+    const putResp = await fetch(detailUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(detailPayload),
+    });
+    result.detailPutStatus = putResp.status;
+    result.detailPutOk = putResp.ok;
+    if (!putResp.ok) {
+      result.detailPutError = putResp.statusText || 'PUT failed';
+    }
+  } catch (err) {
+    result.detailPutOk = false;
+    result.detailPutError = (err as Error).message;
+  }
+
+  if (result.detailPutOk) {
+    try {
+      const getResp = await fetch(detailUrl, { cache: 'no-store' });
+      result.detailGetStatus = getResp.status;
+      result.detailGetOk = getResp.ok;
+      if (getResp.ok) {
+        const data = await getResp.json().catch(() => null);
+        result.detailJsonOk = !!data && data.cacheVersion === 2;
+      } else {
+        result.detailGetError = getResp.statusText || 'GET failed';
+      }
+    } catch (err) {
+      result.detailGetOk = false;
+      result.detailGetError = (err as Error).message;
+    }
+  }
+
   const success =
     !!result.configOk &&
     result.configParsable !== false &&
     !!result.posterPostOk &&
-    !!result.posterGetOk;
+    !!result.posterGetOk &&
+    !!result.detailPutOk &&
+    !!result.detailGetOk &&
+    result.detailJsonOk !== false;
 
   return NextResponse.json(
     { ...result, success },

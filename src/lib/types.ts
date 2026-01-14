@@ -104,6 +104,15 @@ export interface SearchResult {
   original_title?: string; // 英文片名（可選）
   poster: string;
   episodes: string[];
+  providerLinks?: Array<{ key: string; name: string; url?: string }>;
+  sourceLinks?: Array<{
+    provider: string;
+    id: string;
+    title?: string;
+    episodes: string[];
+    playUrl?: string;
+    poster?: string;
+  }>;
   source: string;
   source_name: string;
   class?: string;

@@ -284,6 +284,23 @@ export async function getDetailFromApi(
     title: videoDetail.vod_name,
     poster: videoDetail.vod_pic,
     episodes,
+    providerLinks: [
+      {
+        key: apiSite.key,
+        name: apiSite.name,
+        url: `${detailUrl}`,
+      },
+    ],
+    sourceLinks: [
+      {
+        provider: apiSite.key,
+        id: id.toString(),
+        title: videoDetail.vod_name,
+        episodes,
+        playUrl: `${detailUrl}`,
+        poster: videoDetail.vod_pic,
+      },
+    ],
     source: apiSite.key,
     source_name: apiSite.name,
     class: videoDetail.vod_class,
@@ -340,6 +357,23 @@ async function handleSpecialSourceDetail(
     title: titleText,
     poster: coverUrl,
     episodes: matches,
+    providerLinks: [
+      {
+        key: apiSite.key,
+        name: apiSite.name,
+        url: detailUrl,
+      },
+    ],
+    sourceLinks: [
+      {
+        provider: apiSite.key,
+        id,
+        title: titleText,
+        episodes: matches,
+        playUrl: detailUrl,
+        poster: coverUrl,
+      },
+    ],
     source: apiSite.key,
     source_name: apiSite.name,
     class: '',
