@@ -964,7 +964,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className='rounded-lg border border-gray-200/70 dark:border-white/10 bg-white dark:bg-gray-900/40 overflow-hidden shadow-sm w-full'
+                        className='rounded-lg border border-gray-200/70 dark:border-white/10 bg-white dark:bg-gray-900/40 overflow-hidden shadow-sm w-full px-1'
                         onClick={() => {
                           // Toggle expand/collapse on tap. If collapsed, also play best.
                           setExpandedProviders((prev) => {
@@ -1048,7 +1048,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='px-1 pb-1 pt-0.5 flex flex-col gap-0.5'>
+                        <div className='px-1 pb-0.5 pt-0.5 flex flex-col gap-0.5'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1072,7 +1072,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                        className={`relative rounded-lg border px-1 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
+                        className={`relative rounded-lg border px-1 py-0.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
@@ -1080,7 +1080,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-1'>
-                                  <div className='relative flex-shrink-0 w-16 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
+                                  <div className='relative flex-shrink-0 w-16 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700 p-0'>
                                     <img
                                       src={source.poster}
                                       alt={displaySourceTitle}

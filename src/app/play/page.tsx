@@ -3670,7 +3670,7 @@ function PlayPageClient() {
 
   return (
       <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
-      <div className='flex flex-col gap-3 py-4 px-5 lg:px-[3rem] 2xl:px-20'>
+      <div className='flex flex-col gap-3 py-3 px-3 sm:px-4 lg:px-8 xl:px-10'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
