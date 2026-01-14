@@ -613,7 +613,12 @@ function HomeClient() {
   }, []);
 
   const mergeCards = useCallback(
-    (base: CardItem[], extras: CardItem[], addUnmatched = true): CardItem[] => {
+    (
+      base: CardItem[],
+      extras: CardItem[],
+      addUnmatched = true,
+      posterMap?: Map<string, string>
+    ): CardItem[] => {
       const map = new Map<string, CardItem>();
 
       const mergeInto = (item: CardItem) => {
@@ -622,7 +627,11 @@ function HomeClient() {
         const existing = map.get(key);
         if (!existing) {
           map.set(key, { ...item });
+          if (posterMap && item.poster) posterMap.set(key, item.poster);
           return;
+        }
+        if (posterMap && !posterMap.has(key) && item.poster) {
+          posterMap.set(key, item.poster);
         }
         map.set(key, {
           ...existing,
@@ -731,9 +740,35 @@ function HomeClient() {
       { label: string; items: CardItem[]; seeMore?: string; hint: string }
     >
   >(() => {
-    const mergedMovies = mergeCards(mapDoubanCards(hotMovies, 'movie'), tmdbMovieCards);
+    const posterMap = new Map<string, string>();
+
+    const mergedMovies = mergeCards(
+      mapDoubanCards(hotMovies, 'movie'),
+      tmdbMovieCards,
+      true,
+      posterMap
+    );
+    const mergedTvCn = mergeCards(
+      mapDoubanCards(hotTvShowsCn, 'tv'),
+      tmdbTvCards,
+      false,
+      posterMap
+    );
+    const mergedTvKrJp = mergeCards(
+      mapDoubanCards(hotTvShowsKrJp, 'tv'),
+      tmdbTvCards,
+      false,
+      posterMap
+    );
+    const mergedTvUs = mergeCards(
+      mapDoubanCards(hotTvShowsUsEu, 'tv'),
+      tmdbTvCards,
+      true,
+      posterMap
+    );
 
     return {
+      posterMap,
       movie: {
         label: tt('Movies', '电影', '電影'),
         items: applyKidsFilter(mergedMovies),
@@ -742,25 +777,19 @@ function HomeClient() {
       },
       'tv-cn': {
         label: tt('Chinese TV', '华语剧集', '華語劇集'),
-        items: applyKidsFilter(
-          mergeCards(mapDoubanCards(hotTvShowsCn, 'tv'), tmdbTvCards, false)
-        ),
+        items: applyKidsFilter(mergedTvCn),
         seeMore: '/douban?type=tv&region=cn',
         hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
       },
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-        items: applyKidsFilter(
-          mergeCards(mapDoubanCards(hotTvShowsKrJp, 'tv'), tmdbTvCards, false)
-        ),
+        items: applyKidsFilter(mergedTvKrJp),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
       },
       'tv-us': {
         label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
-        items: applyKidsFilter(
-          mergeCards(mapDoubanCards(hotTvShowsUsEu, 'tv'), tmdbTvCards, true)
-        ),
+        items: applyKidsFilter(mergedTvUs),
         seeMore: '/douban?type=tv&region=us',
         hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
       },
@@ -793,6 +822,22 @@ function HomeClient() {
   ]);
 
   const currentCategory = categoryData[category];
+
+  const applyPosterOverrides = useCallback(
+    (items: CardItem[]) =>
+      items.map((item) => {
+        const key = getCardKey(item);
+        const override =
+          key && (categoryData as any).posterMap?.get
+            ? (categoryData as any).posterMap.get(key)
+            : undefined;
+        if (override && override !== item.poster) {
+          return { ...item, poster: override };
+        }
+        return item;
+      }),
+    [categoryData, getCardKey]
+  );
 
   useEffect(() => {
     setHeroIndex(0);
@@ -1238,7 +1283,7 @@ function HomeClient() {
                       <ContentRail
                         title={tt('Trending movies (TMDB)', 'TMDB 热门电影', 'TMDB 熱門電影')}
                         href="#"
-                        items={applyKidsFilter(tmdbMovieCards)}
+                        items={applyKidsFilter(applyPosterOverrides(tmdbMovieCards))}
                         screenMode={screenMode}
                         tt={tt}
                       />
@@ -1248,9 +1293,11 @@ function HomeClient() {
                         title={tt('Latest movies', '最新电影', '最新電影')}
                         href="#"
                         items={applyKidsFilter(
-                          mergeCards(
-                            mapDoubanCards(latestMoviesDouban, 'movie'),
-                            tmdbNowPlayingCards
+                          applyPosterOverrides(
+                            mergeCards(
+                              mapDoubanCards(latestMoviesDouban, 'movie'),
+                              tmdbNowPlayingCards
+                            )
                           )
                         )}
                         screenMode={screenMode}
@@ -1278,7 +1325,7 @@ function HomeClient() {
                       <ContentRail
                         title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
                         href="#"
-                        items={applyKidsFilter(tmdbTvCards)}
+                        items={applyKidsFilter(applyPosterOverrides(tmdbTvCards))}
                         screenMode={screenMode}
                         tt={tt}
                       />
@@ -1286,9 +1333,11 @@ function HomeClient() {
                         title={tt('Latest TV', '最新剧集', '最新劇集')}
                         href="#"
                         items={applyKidsFilter(
-                          mergeCards(
-                            mapDoubanCards(latestTvDouban, 'tv'),
-                            tmdbOnAirCards
+                          applyPosterOverrides(
+                            mergeCards(
+                              mapDoubanCards(latestTvDouban, 'tv'),
+                              tmdbOnAirCards
+                            )
                           )
                         )}
                         screenMode={screenMode}
