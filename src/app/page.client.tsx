@@ -64,7 +64,7 @@ type CardItem = {
   id?: string | number;
 };
 
-type CategoryKey = 'movie' | 'tv-cn' | 'tv-krjp' | 'variety' | 'anime';
+type CategoryKey = 'movie' | 'tv-cn' | 'tv-krjp' | 'tv-us' | 'variety' | 'anime';
 
 type TvSectionId =
   | 'continue'
@@ -564,9 +564,10 @@ function HomeClient() {
     [tmdbPeople]
   );
 
-  const [hotTvShowsCn, hotTvShowsKrJp] = useMemo(() => {
+  const [hotTvShowsCn, hotTvShowsKrJp, hotTvShowsUsEu] = useMemo(() => {
     const krjpList: DoubanItem[] = [];
     const cnList: DoubanItem[] = [];
+    const usEuList: DoubanItem[] = [];
     const regionFromItem = (item: DoubanItem) => {
       if (item.region === 'kr' || item.region === 'jp') return item.region;
       if (item.region === 'cn' || item.region === 'hk' || item.region === 'tw')
@@ -576,6 +577,9 @@ function HomeClient() {
       if (/日|japan|jp/.test(subtitle)) return 'jp';
       if (/中国|國|大陆|大陸|港|台|普通话|國語|華語|mandarin|zh/.test(subtitle))
         return 'cn';
+      if (/(us|usa|uk|gb|british|england|europe|france|germany|german|spain|spanish|italy|italian|canada|australia)/.test(subtitle))
+        return 'us';
+      if (/美剧|美劇|英剧|英劇|欧美|歐美/.test(subtitle)) return 'us';
       return undefined;
     };
     const isKrJpTitle = (title?: string) => {
@@ -587,15 +591,22 @@ function HomeClient() {
       if (/日剧|日劇|日版|日本/.test(title)) return true;
       return false;
     };
+    const isCnTitle = (title?: string) => {
+      if (!title) return false;
+      if (/中国|國|大陆|大陸|港|台|華語|华语/.test(title)) return true;
+      return /[\u4e00-\u9fff]/.test(title);
+    };
     (hotTvShows || []).forEach((item) => {
       const region = regionFromItem(item);
       if (region === 'kr' || region === 'jp' || isKrJpTitle(item.title)) {
         krjpList.push(item);
-      } else {
+      } else if (region === 'cn' || isCnTitle(item.title)) {
         cnList.push(item);
+      } else {
+        usEuList.push(item);
       }
     });
-    return [cnList, krjpList];
+    return [cnList, krjpList, usEuList];
   }, [hotTvShows]);
 
   const categoryData = useMemo<
@@ -655,9 +666,17 @@ function HomeClient() {
       },
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv').concat(tmdbTvCards)),
+        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv')),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
+      },
+      'tv-us': {
+        label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
+        items: applyKidsFilter(
+          mapDouban(hotTvShowsUsEu, 'tv').concat(tmdbTvCards)
+        ),
+        seeMore: '/douban?type=tv&region=us',
+        hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
       },
       variety: {
         label: tt('Variety', '综艺', '綜藝'),
@@ -677,6 +696,7 @@ function HomeClient() {
     hotMovies,
     hotTvShowsCn,
     hotTvShowsKrJp,
+    hotTvShowsUsEu,
     hotVarietyShows,
     tmdbMovies,
     tmdbTv,
