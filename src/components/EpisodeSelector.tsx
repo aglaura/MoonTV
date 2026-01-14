@@ -989,7 +989,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           });
                         }}
                       >
-                        <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-2 py-1 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
+                        <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-1.5 py-1 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
                           <div className='min-w-0 sm:flex-1'>
                             <div className='flex items-center gap-1.5 min-w-0'>
                               <div
@@ -1048,7 +1048,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='px-1.5 pb-1 pt-0.5 flex flex-col gap-0.75'>
+                        <div className='px-1 pb-1 pt-0.5 flex flex-col gap-0.5'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1072,7 +1072,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                        className={`relative rounded-lg border px-1 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
+                        className={`relative rounded-lg border px-1 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
@@ -1082,7 +1082,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 <div className='flex items-start gap-1.5'>
                                   <div className='flex-shrink-0 w-16 h-22 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
                                     <img
-                                      src={processImageUrl(source.poster)}
+                                      src={source.poster}
                                       alt={displaySourceTitle}
                                       className='w-full h-full object-cover object-center'
                                       onError={(e) => {
