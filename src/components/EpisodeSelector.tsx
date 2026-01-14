@@ -1080,11 +1080,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-2'>
-                                  <div className='flex-shrink-0 w-10 h-14 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
+                                  <div className='flex-shrink-0 w-14 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
                                     <img
                                       src={processImageUrl(source.poster)}
                                       alt={displaySourceTitle}
-                                      className='w-full h-full object-cover'
+                                      className='w-full h-full object-cover object-center'
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.style.display = 'none';
