@@ -919,7 +919,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     const providerName =
                       convertToTraditional(primary.source_name) ||
                       primary.source_name;
-                    const providerCode = primary.source?.toString() ?? '';
 
                     const groupHasCurrent = group.hasCurrent;
 
@@ -999,11 +998,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                               >
                                 {providerName}
                               </div>
-                              {providerCode && (
-                                <div className='text-[10px] text-gray-500 dark:text-gray-400'>
-                                  {providerCode}
-                                </div>
-                              )}
                               {groupHasCurrent && (
                                 <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
                                   Playing
@@ -1054,7 +1048,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           </div>
                         </div>
 
-                        <div className='p-2 grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3'>
+                        <div className='p-1.5 flex flex-col gap-1'>
                           {(expandedProviders.has(group.key)
                             ? group.sources
                             : bestSource
@@ -1078,7 +1072,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`relative rounded-xl border px-2 py-2 transition-all select-none duration-200 shadow-md hover:shadow-lg overflow-visible
+                                className={`relative rounded-lg border px-2 py-1.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
@@ -1086,7 +1080,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-2'>
-                                  <div className='flex-shrink-0 w-10 h-16 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
+                                  <div className='flex-shrink-0 w-10 h-14 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
                                     {source.episodes &&
                                       source.episodes.length > 0 && (
                                         <div className='relative w-full h-full'>
