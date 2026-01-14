@@ -624,6 +624,34 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       [from, actualSource, actualId, onDelete]
     );
 
+    const buildSearchUrl = useCallback(
+      () => {
+        const doubanParam =
+          dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
+            ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
+            : '';
+        const imdbParam = imdbIdState
+          ? `&imdbId=${encodeURIComponent(imdbIdState)}`
+          : '';
+        return `/play?title=${encodeURIComponent(actualTitle.trim())}${
+          actualYear ? `&year=${actualYear}` : ''
+        }${actualSearchType ? `&stype=${actualSearchType}` : ''}${
+          isAggregate ? '&prefer=true' : ''
+        }${
+          actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
+        }${doubanParam}${imdbParam}`;
+      },
+      [
+        dynamicDoubanId,
+        imdbIdState,
+        actualTitle,
+        actualYear,
+        actualSearchType,
+        isAggregate,
+        actualQuery,
+      ]
+    );
+
     const handleClick = useCallback(() => {
       const doubanParam =
         dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
@@ -677,6 +705,19 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       dynamicDoubanId,
       imdbIdState,
     ]);
+
+    const handleIntro = useCallback(() => {
+      const url = buildSearchUrl();
+      router.push(url);
+    }, [buildSearchUrl, router]);
+
+    const handleCardClick = useCallback(() => {
+      if (origin === 'live' || from === 'playrecord') {
+        handleClick();
+        return;
+      }
+      handleIntro();
+    }, [from, origin, handleClick, handleIntro]);
 
     // 新标签页播放处理函数
     const handlePlayInNewTab = useCallback(() => {
@@ -781,7 +822,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     // 长按手势hook
     const longPressProps = useLongPress({
       onLongPress: handleLongPress,
-      onClick: handleClick, // 保持点击播放功能
+      onClick: handleCardClick,
       longPressDelay: 500,
     });
 
@@ -981,7 +1022,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       <>
         <div
           className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] ${sizeStyles.container}`}
-          onClick={handleClick}
+          onClick={handleCardClick}
           {...longPressProps}
           style={
             {
@@ -1123,6 +1164,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               <div
                 data-button='true'
                 className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClick();
+                }}
                 style={
                   {
                     WebkitUserSelect: 'none',
