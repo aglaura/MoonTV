@@ -964,7 +964,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className='rounded-lg border border-gray-200/70 dark:border-white/10 bg-white dark:bg-gray-900/40 overflow-hidden shadow-sm'
+                        className='rounded-lg border border-gray-200/70 dark:border-white/10 bg-white dark:bg-gray-900/40 overflow-hidden shadow-sm w-full'
                         onClick={() => {
                           // Toggle expand/collapse on tap. If collapsed, also play best.
                           setExpandedProviders((prev) => {
@@ -1119,9 +1119,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                         </div>
                                       </div>
 
-                                      <div className='flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300'>
+                                      <div className='flex flex-wrap items-center gap-1 text-[11px] text-gray-600 dark:text-gray-300'>
                                         {source.episodes.length > 1 && (
-                                          <div className='px-1.5 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
+                                          <div className='px-1 py-0.5 rounded-full bg-black/5 dark:bg-white/10'>
                                             {source.episodes.length} 集
                                           </div>
                                         )}
