@@ -633,23 +633,26 @@ function HomeClient() {
         };
       });
 
-    const mergedMovies = (() => {
+    const dedupCards = (items: CardItem[]) => {
       const seen = new Set<string>();
-      const merged: CardItem[] = [];
       const normalize = (title?: string, year?: string) =>
         `${(title || '').trim().toLowerCase().replace(/\s+/g, '')}__${
           year || ''
         }`;
-      const add = (item: CardItem) => {
+      const out: CardItem[] = [];
+      items.forEach((item) => {
         const key = normalize(item.title, item.year);
         if (!key || seen.has(key)) return;
         seen.add(key);
-        merged.push(item);
-      };
-      mapDouban(hotMovies, 'movie').forEach(add);
-      tmdbMovieCards.forEach(add);
-      return merged;
-    })();
+        out.push(item);
+      });
+      return out;
+    };
+
+    const mergedMovies = dedupCards([
+      ...mapDouban(hotMovies, 'movie'),
+      ...tmdbMovieCards,
+    ]);
 
     return {
       movie: {
@@ -660,20 +663,24 @@ function HomeClient() {
       },
       'tv-cn': {
         label: tt('Chinese TV', '华语剧集', '華語劇集'),
-        items: applyKidsFilter(mapDouban(hotTvShowsCn, 'tv')),
+        items: applyKidsFilter(
+          dedupCards([...mapDouban(hotTvShowsCn, 'tv'), ...tmdbTvCards])
+        ),
         seeMore: '/douban?type=tv&region=cn',
         hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
       },
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-        items: applyKidsFilter(mapDouban(hotTvShowsKrJp, 'tv')),
+        items: applyKidsFilter(
+          dedupCards([...mapDouban(hotTvShowsKrJp, 'tv'), ...tmdbTvCards])
+        ),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
       },
       'tv-us': {
         label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
         items: applyKidsFilter(
-          mapDouban(hotTvShowsUsEu, 'tv').concat(tmdbTvCards)
+          dedupCards([...mapDouban(hotTvShowsUsEu, 'tv'), ...tmdbTvCards])
         ),
         seeMore: '/douban?type=tv&region=us',
         hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
