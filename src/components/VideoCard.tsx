@@ -431,16 +431,20 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }, [dynamicDoubanId, imdbIdState]);
 
     const posterCandidates = useMemo(() => {
-      const candidates = new Set<string>();
+      const direct = new Set<string>();
+      const proxied = new Set<string>();
       fallbackPosters.forEach((url) => {
+        if (!url) return;
+        direct.add(url);
         const processed = processImageUrl(url, {
           doubanId: dynamicDoubanId,
           imdbId: imdbIdState,
           preferCached: true,
         });
-        if (processed) candidates.add(processed);
+        if (processed) proxied.add(processed);
       });
-      return Array.from(candidates);
+      // Try direct first, then proxies
+      return [...Array.from(direct), ...Array.from(proxied)];
     }, [fallbackPosters, dynamicDoubanId, imdbIdState]);
 
     const processedPosterUrl = useMemo(
@@ -485,44 +489,39 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         }
 
         const backfillRemoteCache = async () => {
-          if (uploadInFlightRef.current || !processedPosterUrl) return;
+          if (uploadInFlightRef.current || posterCandidates.length === 0) return;
           uploadInFlightRef.current = true;
           try {
-            await fetch(
-              `${processedPosterUrl}${
-                processedPosterUrl.includes('?') ? '&' : '?'
-              }bust=${Date.now()}`,
-              { cache: 'no-store' }
-            ).catch(() => {});
+            const proxyCandidate = posterCandidates.find((u) =>
+              u.startsWith('/api/image-proxy')
+            );
+            if (proxyCandidate) {
+              await fetch(
+                `${proxyCandidate}${proxyCandidate.includes('?') ? '&' : '?'}bust=${Date.now()}`,
+                { cache: 'no-store' }
+              ).catch(() => {});
+            }
           } finally {
             uploadInFlightRef.current = false;
           }
         };
 
-        // Try proxy fetch (which also stores remotely)
+        // Try direct then proxy in order
         try {
-          const resp = await fetch(processedPosterUrl, { cache: 'force-cache' });
-          if (resp.ok) {
-            if (!cancelled) setPosterSrc(processedPosterUrl);
-            return;
+          for (const candidate of posterCandidates) {
+            const isProxy = candidate.includes('/api/image-proxy');
+            const resp = await fetch(candidate, {
+              cache: isProxy ? 'force-cache' : 'no-store',
+              mode: isProxy ? 'cors' : 'cors',
+            });
+            if (resp.ok) {
+              if (!cancelled) setPosterSrc(candidate);
+              if (!isProxy) backfillRemoteCache();
+              return;
+            }
           }
         } catch {
           // fall through to direct
-        }
-
-        // Fallback: direct fetch, then backfill remote cache
-        try {
-          const directResp = await fetch(primaryOriginal || processedPosterUrl, {
-            cache: 'no-store',
-            mode: 'cors',
-          });
-          if (directResp.ok) {
-            if (!cancelled) setPosterSrc(primaryOriginal || processedPosterUrl);
-            backfillRemoteCache();
-            return;
-          }
-        } catch {
-          // ignore
         }
 
         if (!cancelled) {
