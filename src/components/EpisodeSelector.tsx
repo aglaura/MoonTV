@@ -1020,7 +1020,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   return next;
                                 });
                               }}
-                              className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition'
+                            className='text-[10px] px-1 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition'
                             >
                               {group.sources.length} sources
                             </button>
@@ -1079,12 +1079,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                       : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                                   }`.trim()}
                               >
-                                <div className='flex items-start gap-1.5'>
-                                  <div className='flex-shrink-0 w-16 h-22 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
+                                <div className='flex items-start gap-1'>
+                                  <div className='relative flex-shrink-0 w-16 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
                                     <img
                                       src={source.poster}
                                       alt={displaySourceTitle}
-                                      className='w-full h-full object-cover object-center'
+                                      className='absolute inset-0 w-full h-full object-cover object-center'
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.style.display = 'none';
