@@ -701,13 +701,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   );
 
   return (
-    <div className='md:ml-2 px-4 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'>
+    <div className='md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'>
       {/* 主要的 Tab 切换 - 无缝融入设计 */}
-      <div className='flex mb-1 -mx-6 flex-shrink-0 relative z-[10]'>
+      <div className='flex mb-1 -mx-2 sm:-mx-3 flex-shrink-0 relative z-[10]'>
         {totalEpisodes > 1 && (
           <div
             onClick={() => setActiveTab('episodes')}
-            className={`flex-1 py-3 px-6 text-center cursor-pointer transition-all duration-200 font-medium
+            className={`flex-1 py-2.5 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium
               ${
                 activeTab === 'episodes'
                   ? 'text-green-600 dark:text-green-400'
@@ -720,7 +720,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         )}
         <div
           onClick={handleSourceTabClick}
-          className={`flex-1 py-3 px-6 text-center cursor-pointer transition-all duration-200 font-medium
+          className={`flex-1 py-2.5 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium
             ${
               activeTab === 'sources'
                 ? 'text-green-600 dark:text-green-400'
@@ -736,9 +736,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {activeTab === 'episodes' && (
         <>
           {/* 分类标签 */}
-          <div className='flex items-center gap-4 mb-4 border-b border-gray-300 dark:border-gray-700 -mx-6 px-6 flex-shrink-0'>
-            <div className='flex-1 overflow-x-auto' ref={categoryContainerRef}>
-              <div className='flex gap-2 min-w-max'>
+          <div className='flex items-center gap-3 mb-3 border-b border-gray-300 dark:border-gray-700 -mx-2 sm:-mx-3 px-2 sm:px-3 flex-shrink-0'>
+              <div className='flex-1 overflow-x-auto pr-1' ref={categoryContainerRef}>
+                <div className='flex gap-2 min-w-max'>
                 {categories.map((label, idx) => {
                   const isActive = idx === currentPage;
                   return (
