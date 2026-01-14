@@ -33,7 +33,6 @@ import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { processImageUrl } from '@/lib/utils';
 
-import { ImagePlaceholder } from '@/components/ImagePlaceholder';
 import MobileActionSheet from '@/components/MobileActionSheet';
 import { useLongPress } from '@/components/useLongPress';
 
@@ -116,15 +115,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
   ) {
     const router = useRouter();
     const [favorited, setFavorited] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showMobileActions, setShowMobileActions] = useState(false);
-  const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
-    null
-  ); // 搜索结果的收藏状态
-  const [resolvedQuery, setResolvedQuery] = useState<string>(query || '');
-  const [englishTitle, setEnglishTitle] = useState<string | undefined>(
-    undefined
-  );
+    const [showMobileActions, setShowMobileActions] = useState(false);
+    const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
+      null
+    ); // 搜索结果的收藏状态
+    const [resolvedQuery, setResolvedQuery] = useState<string>(query || '');
+    const [englishTitle, setEnglishTitle] = useState<string | undefined>(
+      undefined
+    );
     const [imdbIdState, setImdbIdState] = useState<string | undefined>(
       imdb_id
     );
@@ -398,11 +396,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         cancelled = true;
       };
     }, [resolvedQuery, source_name, actualId, actualTitle, hasChinese]);
-    const placeholderPoster = useMemo(() => {
-      const text = (traditionalTitle || actualTitle || 'No Image').slice(0, 18);
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="26" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${text}</text></svg>`;
-      return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    }, [actualTitle, traditionalTitle]);
+    const transparentPixel =
+      'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
     const posterCacheKey = useMemo(() => {
       if (dynamicDoubanId && Number(dynamicDoubanId) > 0) {
@@ -419,11 +414,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       [actualPoster]
     );
 
-    const [posterSrc, setPosterSrc] = useState<string>(
-      processedPosterUrl || placeholderPoster
-    );
+    const [posterSrc, setPosterSrc] = useState<string>(processedPosterUrl || '');
     const uploadInFlightRef = useRef(false);
-    const triedDirectPosterRef = useRef(false);
+    const retryCountRef = useRef(0);
+
+    useEffect(() => {
+      retryCountRef.current = 0;
+    }, [processedPosterUrl, actualPoster]);
 
     useEffect(() => {
       let cancelled = false;
@@ -431,7 +428,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
       const loadPoster = async () => {
         if (!actualPoster) {
-          setPosterSrc(placeholderPoster);
+          setPosterSrc('');
           return;
         }
 
@@ -460,7 +457,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         }
 
         if (!cancelled) {
-          setPosterSrc(processedPosterUrl || placeholderPoster);
+          setPosterSrc(processedPosterUrl || '');
         }
 
         // Client-side attempt to backfill remote cache if missing and allowed.
@@ -494,7 +491,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           URL.revokeObjectURL(objectUrl);
         }
       };
-    }, [actualPoster, placeholderPoster, posterCacheKey]);
+    }, [actualPoster, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
 
     // 获取收藏状态（搜索结果页面不检查）
     useEffect(() => {
@@ -1011,57 +1008,66 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               return false;
             }}
           >
-            {/* 骨架屏 */}
-            {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
             {/* 图片 */}
-            <Image
-              src={posterSrc || placeholderPoster}
-              alt={traditionalTitle || actualTitle}
-              fill
-              className={origin === 'live' ? 'object-contain' : 'object-cover'}
-              referrerPolicy='no-referrer'
-              loading='lazy'
-              onLoadingComplete={() => setIsLoading(true)}
-              onError={(e) => {
-                // Retry strategy: proxy -> direct -> placeholder
-                const img = e.target as HTMLImageElement;
-                const directUrl =
-                  actualPoster && actualPoster.startsWith('http')
-                    ? actualPoster
-                    : undefined;
+            {posterSrc ? (
+              <Image
+                src={posterSrc || processedPosterUrl || transparentPixel}
+                alt={traditionalTitle || actualTitle}
+                fill
+                className={origin === 'live' ? 'object-contain' : 'object-cover'}
+                referrerPolicy='no-referrer'
+                loading='lazy'
+                onError={(e) => {
+                  const img = e.target as HTMLImageElement;
+                  const directUrl =
+                    actualPoster && actualPoster.startsWith('http')
+                      ? actualPoster
+                      : undefined;
+                  const candidates = [
+                    directUrl,
+                    processedPosterUrl
+                      ? `${processedPosterUrl}${processedPosterUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+                      : null,
+                    directUrl
+                      ? `${directUrl}${directUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+                      : null,
+                    processedPosterUrl
+                      ? `${processedPosterUrl}${processedPosterUrl.includes('?') ? '&' : '?'}t=${Date.now()}-${retryCountRef.current}`
+                      : null,
+                  ].filter(Boolean) as string[];
 
-                if (directUrl && !triedDirectPosterRef.current) {
-                  triedDirectPosterRef.current = true;
-                  img.src = directUrl;
-                  return;
+                  if (retryCountRef.current < candidates.length) {
+                    const nextUrl = candidates[retryCountRef.current];
+                    retryCountRef.current += 1;
+                    if (nextUrl) {
+                      img.src = nextUrl;
+                      return;
+                    }
+                  }
+
+                  setPosterSrc('');
+                }}
+                style={
+                  {
+                    // 禁用图片的默认长按效果
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    pointerEvents: 'none', // 图片不响应任何指针事件
+                  } as React.CSSProperties
                 }
-
-                if (!img.dataset.retried && processedPosterUrl) {
-                  img.dataset.retried = 'true';
-                  img.src = processedPosterUrl;
-                  return;
-                }
-
-                img.src = placeholderPoster;
-              }}
-              style={
-                {
-                  // 禁用图片的默认长按效果
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  pointerEvents: 'none', // 图片不响应任何指针事件
-                } as React.CSSProperties
-              }
-              onContextMenu={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-              onDragStart={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            />
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+                onDragStart={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              />
+            ) : (
+              <div className='absolute inset-0 bg-gradient-to-br from-gray-200/70 via-gray-200/60 to-gray-300/70 dark:from-gray-800/60 dark:via-gray-800/50 dark:to-gray-700/60' />
+            )}
 
             {/* 悬浮遮罩 */}
             <div
