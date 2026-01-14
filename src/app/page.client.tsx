@@ -58,6 +58,7 @@ type CardItem = {
   rate?: string;
   year?: string;
   douban_id?: number;
+  imdb_id?: string;
   type?: string;
   query?: string;
   source_name?: string;
@@ -633,26 +634,51 @@ function HomeClient() {
         };
       });
 
-    const dedupCards = (items: CardItem[]) => {
-      const seen = new Set<string>();
-      const normalize = (title?: string, year?: string) =>
-        `${(title || '').trim().toLowerCase().replace(/\s+/g, '')}__${
-          year || ''
-        }`;
-      const out: CardItem[] = [];
-      items.forEach((item) => {
-        const key = normalize(item.title, item.year);
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        out.push(item);
-      });
-      return out;
+    const getKey = (item: CardItem) => {
+      if (item.douban_id && item.douban_id > 0) return `douban:${item.douban_id}`;
+      if (item.imdb_id) return `imdb:${item.imdb_id.toLowerCase()}`;
+      const normTitle = (item.title || '').trim().toLowerCase().replace(/\s+/g, '');
+      return `${normTitle}__${item.year || ''}`;
     };
 
-    const mergedMovies = dedupCards([
-      ...mapDouban(hotMovies, 'movie'),
-      ...tmdbMovieCards,
-    ]);
+    const mergeCards = (
+      base: CardItem[],
+      extras: CardItem[],
+      addUnmatched = true
+    ): CardItem[] => {
+      const map = new Map<string, CardItem>();
+
+      const mergeInto = (item: CardItem) => {
+        const key = getKey(item);
+        if (!key) return;
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, { ...item });
+          return;
+        }
+        map.set(key, {
+          ...existing,
+          ...item,
+          poster: existing.poster || item.poster,
+          rate: existing.rate || item.rate,
+          year: existing.year || item.year,
+          query: existing.query || item.query,
+          source_name: existing.source_name || item.source_name,
+          type: existing.type || item.type,
+        });
+      };
+
+      base.forEach(mergeInto);
+      extras.forEach((item) => {
+        const key = getKey(item);
+        const exists = key && map.has(key);
+        if (exists || addUnmatched) mergeInto(item);
+      });
+
+      return Array.from(map.values());
+    };
+
+    const mergedMovies = mergeCards(mapDouban(hotMovies, 'movie'), tmdbMovieCards);
 
     return {
       movie: {
@@ -664,7 +690,7 @@ function HomeClient() {
       'tv-cn': {
         label: tt('Chinese TV', '华语剧集', '華語劇集'),
         items: applyKidsFilter(
-          dedupCards([...mapDouban(hotTvShowsCn, 'tv'), ...tmdbTvCards])
+          mergeCards(mapDouban(hotTvShowsCn, 'tv'), tmdbTvCards, false)
         ),
         seeMore: '/douban?type=tv&region=cn',
         hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
@@ -672,7 +698,7 @@ function HomeClient() {
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
         items: applyKidsFilter(
-          dedupCards([...mapDouban(hotTvShowsKrJp, 'tv'), ...tmdbTvCards])
+          mergeCards(mapDouban(hotTvShowsKrJp, 'tv'), tmdbTvCards, false)
         ),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
@@ -680,7 +706,7 @@ function HomeClient() {
       'tv-us': {
         label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
         items: applyKidsFilter(
-          dedupCards([...mapDouban(hotTvShowsUsEu, 'tv'), ...tmdbTvCards])
+          mergeCards(mapDouban(hotTvShowsUsEu, 'tv'), tmdbTvCards, true)
         ),
         seeMore: '/douban?type=tv&region=us',
         hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
