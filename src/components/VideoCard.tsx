@@ -463,31 +463,57 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           }
         }
 
+        const backfillRemoteCache = async () => {
+          if (uploadInFlightRef.current || !processedPosterUrl) return;
+          uploadInFlightRef.current = true;
+          try {
+            await fetch(
+              `${processedPosterUrl}${
+                processedPosterUrl.includes('?') ? '&' : '?'
+              }bust=${Date.now()}`,
+              { cache: 'no-store' }
+            ).catch(() => {});
+          } finally {
+            uploadInFlightRef.current = false;
+          }
+        };
+
+        // Try proxy fetch (which also stores remotely)
+        try {
+          const resp = await fetch(processedPosterUrl, { cache: 'force-cache' });
+          if (resp.ok) {
+            const blob = await resp.blob();
+            objectUrl = URL.createObjectURL(blob);
+            if (!cancelled) setPosterSrc(objectUrl);
+            return;
+          }
+        } catch {
+          // fall through to direct
+        }
+
+        // Fallback: direct fetch, then backfill remote cache
+        try {
+          const directResp = await fetch(actualPoster, {
+            cache: 'no-store',
+            mode: 'cors',
+          });
+          if (directResp.ok) {
+            const blob = await directResp.blob();
+            objectUrl = URL.createObjectURL(blob);
+            if (!cancelled) setPosterSrc(objectUrl);
+            backfillRemoteCache();
+            return;
+          }
+        } catch {
+          // ignore
+        }
+
         if (!cancelled) {
           setPosterSrc(processedPosterUrl || '');
         }
 
         // Client-side attempt to backfill remote cache if missing and allowed.
-        if (!uploadInFlightRef.current && actualPoster) {
-          uploadInFlightRef.current = true;
-          try {
-            const url = new URL(processedPosterUrl, window.location.href);
-            const params = url.searchParams;
-            if (!params.has('doubanId') && dynamicDoubanId) {
-              params.set('doubanId', dynamicDoubanId.toString());
-              url.search = params.toString();
-            }
-            if (!params.has('imdbId') && imdbIdState) {
-              params.set('imdbId', imdbIdState);
-              url.search = params.toString();
-            }
-            await fetch(url.toString(), { cache: 'no-store' }).catch(() => {});
-          } catch {
-            // ignore
-          } finally {
-            uploadInFlightRef.current = false;
-          }
-        }
+        backfillRemoteCache();
       };
 
       loadPoster();
