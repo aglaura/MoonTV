@@ -1080,7 +1080,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-1'>
-                                  <div className='relative flex-shrink-0 w-16 h-20 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700 p-0'>
+                                  <div className='relative flex-shrink-0 w-16 h-18 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700 p-0'>
                                     <img
                                       src={source.poster}
                                       alt={displaySourceTitle}
