@@ -431,8 +431,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     useEffect(() => {
       let cancelled = false;
-      let objectUrl: string | undefined;
-
       const loadPoster = async () => {
         if (!actualPoster) {
           setPosterSrc('');
@@ -444,18 +442,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             const cache = await caches.open('moontv-poster-cache');
             const match = await cache.match(posterCacheKey);
             if (match) {
-              const blob = await match.blob();
-              objectUrl = URL.createObjectURL(blob);
-              if (!cancelled) setPosterSrc(objectUrl);
+              if (!cancelled) setPosterSrc(processedPosterUrl);
               return;
             }
-
             const response = await fetch(processedPosterUrl, { cache: 'force-cache' });
             if (response.ok) {
               cache.put(posterCacheKey, response.clone());
-              const blob = await response.blob();
-              objectUrl = URL.createObjectURL(blob);
-              if (!cancelled) setPosterSrc(objectUrl);
+              if (!cancelled) setPosterSrc(processedPosterUrl);
               return;
             }
           } catch (err) {
@@ -482,9 +475,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         try {
           const resp = await fetch(processedPosterUrl, { cache: 'force-cache' });
           if (resp.ok) {
-            const blob = await resp.blob();
-            objectUrl = URL.createObjectURL(blob);
-            if (!cancelled) setPosterSrc(objectUrl);
+            if (!cancelled) setPosterSrc(processedPosterUrl);
             return;
           }
         } catch {
@@ -498,9 +489,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             mode: 'cors',
           });
           if (directResp.ok) {
-            const blob = await directResp.blob();
-            objectUrl = URL.createObjectURL(blob);
-            if (!cancelled) setPosterSrc(objectUrl);
+            if (!cancelled) setPosterSrc(actualPoster);
             backfillRemoteCache();
             return;
           }
@@ -517,12 +506,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       };
 
       loadPoster();
-
       return () => {
         cancelled = true;
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-        }
       };
     }, [actualPoster, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
 
@@ -624,6 +609,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       [from, actualSource, actualId, onDelete]
     );
 
+    const longPressTriggeredRef = useRef(false);
+
     const buildSearchUrl = useCallback(
       () => {
         const doubanParam =
@@ -653,6 +640,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     );
 
     const handleClick = useCallback(() => {
+      longPressTriggeredRef.current = false;
       const doubanParam =
         dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
           ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
@@ -707,11 +695,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     ]);
 
     const handleIntro = useCallback(() => {
+      longPressTriggeredRef.current = false;
       const url = buildSearchUrl();
       router.push(url);
     }, [buildSearchUrl, router]);
 
     const handleCardClick = useCallback(() => {
+      if (longPressTriggeredRef.current) {
+        longPressTriggeredRef.current = false;
+        return;
+      }
       if (origin === 'live' || from === 'playrecord') {
         handleClick();
         return;
@@ -821,7 +814,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     // 长按手势hook
     const longPressProps = useLongPress({
-      onLongPress: handleLongPress,
+      onLongPress: () => {
+        longPressTriggeredRef.current = true;
+        handleLongPress();
+      },
       onClick: handleCardClick,
       longPressDelay: 500,
     });
@@ -1098,15 +1094,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                       ? actualPoster
                       : undefined;
                   const candidates = [
-                    directUrl,
                     processedPosterUrl
                       ? `${processedPosterUrl}${processedPosterUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
                       : null,
+                    directUrl,
                     directUrl
                       ? `${directUrl}${directUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-                      : null,
-                    processedPosterUrl
-                      ? `${processedPosterUrl}${processedPosterUrl.includes('?') ? '&' : '?'}t=${Date.now()}-${retryCountRef.current}`
                       : null,
                   ].filter(Boolean) as string[];
 
@@ -1119,7 +1112,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                     }
                   }
 
-                  setPosterSrc('');
+                  setPosterSrc(processedPosterUrl || directUrl || '');
                 }}
                 style={
                   {
