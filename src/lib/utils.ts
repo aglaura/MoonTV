@@ -50,7 +50,11 @@ export function processImageUrl(
     if (opts?.preferCached) params.set('preferCached', '1');
 
     if (originalUrl.startsWith('/api/image-proxy')) {
-      if ([...params.keys()].length === 0) return originalUrl;
+      let hasParam = false;
+      params.forEach(() => {
+        hasParam = true;
+      });
+      if (!hasParam) return originalUrl;
       const url = new URL(originalUrl, 'http://localhost');
       params.forEach((value, key) => {
         if (!url.searchParams.has(key)) {
