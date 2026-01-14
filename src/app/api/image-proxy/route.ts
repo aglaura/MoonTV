@@ -27,6 +27,54 @@ async function hashString(input: string): Promise<string> {
   return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+async function tryRemoteProxy(opts: {
+  imageUrl: string;
+  doubanId?: string | null;
+  imdbId?: string | null;
+  posterBase: string | null;
+}) {
+  const { imageUrl, doubanId, imdbId, posterBase } = opts;
+  if (!posterBase) return null;
+
+  const proxyUrl = `${posterBase}/posters/proxy.php`;
+  const qs = new URLSearchParams({ url: imageUrl });
+  if (doubanId) qs.set('doubanId', doubanId);
+  if (imdbId) qs.set('imdbId', imdbId);
+
+  try {
+    const resp = await fetch(`${proxyUrl}?${qs.toString()}`, {
+      cache: 'no-store',
+    });
+    if (!resp.ok) return null;
+
+    const contentType = resp.headers.get('content-type') || '';
+    // If proxy returns JSON with a cached URL, redirect directly
+    if (contentType.includes('application/json')) {
+      const data = await resp.json().catch(() => null);
+      const cached = data?.url || data?.path;
+      if (cached) {
+        const target = cached.startsWith('http')
+          ? cached
+          : `${posterBase}/posters/${cached.replace(/^\\//, '')}`;
+        return { redirect: target };
+      }
+    }
+
+    // If proxy streams the image, passthrough
+    const headers = new Headers();
+    if (contentType) headers.set('Content-Type', contentType);
+    headers.set('Cache-Control', 'public, max-age=15720000');
+    return {
+      response: new Response(resp.body, {
+        status: resp.status,
+        headers,
+      }),
+    };
+  } catch {
+    return null;
+  }
+}
+
 // OrionTV 兼容接口
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -39,6 +87,20 @@ export async function GET(request: Request) {
   }
 
   try {
+    const posterBase = buildPosterBaseUrl();
+    const remote = await tryRemoteProxy({
+      imageUrl,
+      doubanId,
+      imdbId,
+      posterBase,
+    });
+    if (remote?.redirect) {
+      return NextResponse.redirect(remote.redirect, { status: 302 });
+    }
+    if (remote?.response) {
+      return remote.response;
+    }
+
     const imageResponse = await fetch(imageUrl, {
       headers: {
         Referer: 'https://movie.douban.com/',
@@ -63,7 +125,6 @@ export async function GET(request: Request) {
       );
     }
 
-    const posterBase = buildPosterBaseUrl();
     if (posterBase) {
       try {
         const buffer = await imageResponse.arrayBuffer();
