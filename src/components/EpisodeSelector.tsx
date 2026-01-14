@@ -859,7 +859,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                   providers · With sources {searchStats.found} · No sources{' '}
                   {searchStats.notFound} · Failed {searchStats.failed}
                 </div>
-                <div className='space-y-3'>
+                <div className='space-y-2'>
                   {groupedSources.map((group) => {
                     const pickBestSource = () => {
                       const withEpisodes = group.sources.map((s, idx) => ({
@@ -989,7 +989,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                           });
                         }}
                       >
-                        <div className='flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between px-2.5 py-1.5 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
+                        <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-2 py-1 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
                           <div className='min-w-0 sm:flex-1'>
                             <div className='flex items-center gap-1.5 min-w-0'>
                               <div
@@ -1072,7 +1072,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                                className={`relative rounded-lg border px-2 py-1.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
+                        className={`relative rounded-lg border px-1.5 py-1 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-visible
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
@@ -1080,39 +1080,33 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                   }`.trim()}
                               >
                                 <div className='flex items-start gap-2'>
-                                  <div className='flex-shrink-0 w-10 h-14 bg-gray-200 dark:bg-gray-700 rounded-md overflow-hidden shadow-inner'>
-                                    {source.episodes &&
-                                      source.episodes.length > 0 && (
-                                        <div className='relative w-full h-full'>
-                                          <img
-                                            src={processImageUrl(source.poster)}
-                                            alt={displaySourceTitle}
-                                            className='w-full h-full object-cover rounded-md'
-                                            onError={(e) => {
-                                              const target =
-                                                e.target as HTMLImageElement;
-                                              target.style.display = 'none';
-                                            }}
-                                          />
-                                          {group.sources.length > 1 &&
-                                            !expandedProviders.has(group.key) &&
-                                            idx === 0 && (
-                                              <div className='absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full shadow'>
-                                                +{group.sources.length - 1}
-                                              </div>
-                                            )}
-                                        </div>
-                                      )}
+                                  <div className='flex-shrink-0 w-10 h-14 overflow-hidden rounded-sm bg-gray-200 dark:bg-gray-700'>
+                                    <img
+                                      src={processImageUrl(source.poster)}
+                                      alt={displaySourceTitle}
+                                      className='w-full h-full object-cover'
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
                                   </div>
 
                                     <div className='min-w-0 flex-1 space-y-1'>
-                                      <div className='flex items-start justify-between gap-2'>
-                                        <div className='min-w-0'>
-                                          <div
-                                            className='text-[13px] font-medium text-gray-900 dark:text-gray-100 truncate'
-                                            title={displaySourceTitle}
-                                          >
-                                            {displaySourceTitle}
+                                      <div className='flex items-start gap-2'>
+                                        <div className='min-w-0 flex-1'>
+                                          <div className='flex items-center gap-1 min-w-0'>
+                                            <div
+                                              className='text-[13px] font-medium text-gray-900 dark:text-gray-100 truncate'
+                                              title={displaySourceTitle}
+                                            >
+                                              {displaySourceTitle}
+                                            </div>
+                                            {idx === 0 && (
+                                              <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200 flex-shrink-0'>
+                                                最佳
+                                              </div>
+                                            )}
                                           </div>
                                           {englishSourceTitle && (
                                             <div
@@ -1123,11 +1117,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                             </div>
                                           )}
                                         </div>
-                                        {idx === 0 && (
-                                          <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-200'>
-                                            最佳
-                                          </div>
-                                        )}
                                       </div>
 
                                       <div className='flex flex-wrap items-center gap-1.5 text-[11px] text-gray-600 dark:text-gray-300'>
