@@ -363,6 +363,8 @@ function HomeClient() {
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
+  const [latestMoviesDouban, setLatestMoviesDouban] = useState<DoubanItem[]>([]);
+  const [latestTvDouban, setLatestTvDouban] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [bangumiCalendarData, setBangumiCalendarData] = useState<
     BangumiCalendarData[]
@@ -370,6 +372,8 @@ function HomeClient() {
   const [tmdbMovies, setTmdbMovies] = useState<TmdbListItem[]>([]);
   const [tmdbTv, setTmdbTv] = useState<TmdbListItem[]>([]);
   const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
+  const [tmdbNowPlaying, setTmdbNowPlaying] = useState<TmdbListItem[]>([]);
+  const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
@@ -438,6 +442,8 @@ function HomeClient() {
               movies?: DoubanItem[];
               tv?: DoubanItem[];
               variety?: DoubanItem[];
+              latestMovies?: DoubanItem[];
+              latestTv?: DoubanItem[];
             }>;
           }),
           GetBangumiCalendarData(),
@@ -445,6 +451,12 @@ function HomeClient() {
 
         setHotMovies(Array.isArray(doubanHome?.movies) ? doubanHome.movies : []);
         setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
+        setLatestMoviesDouban(
+          Array.isArray(doubanHome?.latestMovies) ? doubanHome.latestMovies : []
+        );
+        setLatestTvDouban(
+          Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
+        );
         setHotVarietyShows(
           Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
         );
@@ -457,10 +469,16 @@ function HomeClient() {
               movies?: TmdbListItem[];
               tv?: TmdbListItem[];
               people?: TmdbPerson[];
+              nowPlaying?: TmdbListItem[];
+              onAir?: TmdbListItem[];
             };
             setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
             setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
             setTmdbPeople(Array.isArray(data.people) ? data.people : []);
+            setTmdbNowPlaying(
+              Array.isArray(data.nowPlaying) ? data.nowPlaying : []
+            );
+            setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
           }
         } catch {
           /* ignore tmdb list errors */
@@ -565,6 +583,103 @@ function HomeClient() {
     [tmdbPeople]
   );
 
+  const mapDoubanCards = useCallback(
+    (items: DoubanItem[], type?: string): CardItem[] =>
+      (items || []).map((item) => {
+        const localizedTitle =
+          uiLocale === 'zh-Hant'
+            ? convertToTraditional(item.title)
+            : uiLocale === 'en' && item.original_title
+            ? item.original_title
+            : item.title;
+        return {
+          title: localizedTitle,
+          poster: item.poster,
+          rate: item.rate,
+          year: item.year,
+          douban_id: Number(item.id),
+          type,
+          query: localizedTitle,
+        };
+      }),
+    [uiLocale]
+  );
+
+  const getCardKey = useCallback((item: CardItem) => {
+    if (item.douban_id && item.douban_id > 0) return `douban:${item.douban_id}`;
+    if (item.imdb_id) return `imdb:${item.imdb_id.toLowerCase()}`;
+    const normTitle = (item.title || '').trim().toLowerCase().replace(/\s+/g, '');
+    return `${normTitle}__${item.year || ''}`;
+  }, []);
+
+  const mergeCards = useCallback(
+    (base: CardItem[], extras: CardItem[], addUnmatched = true): CardItem[] => {
+      const map = new Map<string, CardItem>();
+
+      const mergeInto = (item: CardItem) => {
+        const key = getCardKey(item);
+        if (!key) return;
+        const existing = map.get(key);
+        if (!existing) {
+          map.set(key, { ...item });
+          return;
+        }
+        map.set(key, {
+          ...existing,
+          ...item,
+          poster: existing.poster || item.poster,
+          rate: existing.rate || item.rate,
+          year: existing.year || item.year,
+          query: existing.query || item.query,
+          source_name: existing.source_name || item.source_name,
+          type: existing.type || item.type,
+        });
+      };
+
+      base.forEach(mergeInto);
+      extras.forEach((item) => {
+        const key = getCardKey(item);
+        const exists = key && map.has(key);
+        if (exists || addUnmatched) mergeInto(item);
+      });
+
+      return Array.from(map.values());
+    },
+    [getCardKey]
+  );
+
+  const tmdbNowPlayingCards = useMemo(
+    () =>
+      (tmdbNowPlaying || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: '',
+        year: item.year,
+        type: 'movie',
+        query: item.title,
+        imdb_id: item.imdbId,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbNowPlaying]
+  );
+
+  const tmdbOnAirCards = useMemo(
+    () =>
+      (tmdbOnAir || []).map((item) => ({
+        title: item.title,
+        poster: item.poster,
+        rate: '',
+        year: item.year,
+        type: 'tv',
+        query: item.title,
+        imdb_id: item.imdbId,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbOnAir]
+  );
+
   const [hotTvShowsCn, hotTvShowsKrJp, hotTvShowsUsEu] = useMemo(() => {
     const krjpList: DoubanItem[] = [];
     const cnList: DoubanItem[] = [];
@@ -616,69 +731,7 @@ function HomeClient() {
       { label: string; items: CardItem[]; seeMore?: string; hint: string }
     >
   >(() => {
-    const mapDouban = (items: DoubanItem[], type?: string): CardItem[] =>
-      (items || []).map((item) => {
-        const localizedTitle =
-          uiLocale === 'zh-Hant'
-            ? convertToTraditional(item.title)
-            : uiLocale === 'en' && item.original_title
-            ? item.original_title
-            : item.title;
-        return {
-          title: localizedTitle,
-          poster: item.poster,
-          rate: item.rate,
-          year: item.year,
-          douban_id: Number(item.id),
-          type,
-        };
-      });
-
-    const getKey = (item: CardItem) => {
-      if (item.douban_id && item.douban_id > 0) return `douban:${item.douban_id}`;
-      if (item.imdb_id) return `imdb:${item.imdb_id.toLowerCase()}`;
-      const normTitle = (item.title || '').trim().toLowerCase().replace(/\s+/g, '');
-      return `${normTitle}__${item.year || ''}`;
-    };
-
-    const mergeCards = (
-      base: CardItem[],
-      extras: CardItem[],
-      addUnmatched = true
-    ): CardItem[] => {
-      const map = new Map<string, CardItem>();
-
-      const mergeInto = (item: CardItem) => {
-        const key = getKey(item);
-        if (!key) return;
-        const existing = map.get(key);
-        if (!existing) {
-          map.set(key, { ...item });
-          return;
-        }
-        map.set(key, {
-          ...existing,
-          ...item,
-          poster: existing.poster || item.poster,
-          rate: existing.rate || item.rate,
-          year: existing.year || item.year,
-          query: existing.query || item.query,
-          source_name: existing.source_name || item.source_name,
-          type: existing.type || item.type,
-        });
-      };
-
-      base.forEach(mergeInto);
-      extras.forEach((item) => {
-        const key = getKey(item);
-        const exists = key && map.has(key);
-        if (exists || addUnmatched) mergeInto(item);
-      });
-
-      return Array.from(map.values());
-    };
-
-    const mergedMovies = mergeCards(mapDouban(hotMovies, 'movie'), tmdbMovieCards);
+    const mergedMovies = mergeCards(mapDoubanCards(hotMovies, 'movie'), tmdbMovieCards);
 
     return {
       movie: {
@@ -690,7 +743,7 @@ function HomeClient() {
       'tv-cn': {
         label: tt('Chinese TV', '华语剧集', '華語劇集'),
         items: applyKidsFilter(
-          mergeCards(mapDouban(hotTvShowsCn, 'tv'), tmdbTvCards, false)
+          mergeCards(mapDoubanCards(hotTvShowsCn, 'tv'), tmdbTvCards, false)
         ),
         seeMore: '/douban?type=tv&region=cn',
         hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
@@ -698,7 +751,7 @@ function HomeClient() {
       'tv-krjp': {
         label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
         items: applyKidsFilter(
-          mergeCards(mapDouban(hotTvShowsKrJp, 'tv'), tmdbTvCards, false)
+          mergeCards(mapDoubanCards(hotTvShowsKrJp, 'tv'), tmdbTvCards, false)
         ),
         seeMore: '/douban?type=tv&region=krjp',
         hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
@@ -706,14 +759,14 @@ function HomeClient() {
       'tv-us': {
         label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
         items: applyKidsFilter(
-          mergeCards(mapDouban(hotTvShowsUsEu, 'tv'), tmdbTvCards, true)
+          mergeCards(mapDoubanCards(hotTvShowsUsEu, 'tv'), tmdbTvCards, true)
         ),
         seeMore: '/douban?type=tv&region=us',
         hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
       },
       variety: {
         label: tt('Variety', '综艺', '綜藝'),
-        items: applyKidsFilter(mapDouban(hotVarietyShows, 'show')),
+        items: applyKidsFilter(mapDoubanCards(hotVarietyShows, 'show')),
         seeMore: '/douban?type=show',
         hint: tt('Light entertainment', '轻松综艺', '輕鬆綜藝'),
       },
@@ -735,6 +788,8 @@ function HomeClient() {
     tmdbTv,
     tmdbPeople,
     applyKidsFilter,
+    mapDoubanCards,
+    mergeCards,
   ]);
 
   const currentCategory = categoryData[category];
@@ -1188,6 +1243,20 @@ function HomeClient() {
                         tt={tt}
                       />
                     </div>
+                    <div className={tvSectionClass('rail-movie')}>
+                      <ContentRail
+                        title={tt('Latest movies', '最新电影', '最新電影')}
+                        href="#"
+                        items={applyKidsFilter(
+                          mergeCards(
+                            mapDoubanCards(latestMoviesDouban, 'movie'),
+                            tmdbNowPlayingCards
+                          )
+                        )}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                    </div>
                     <div
                       data-tv-section="rail-tv"
                       className={tvSectionClass('rail-tv')}
@@ -1210,6 +1279,18 @@ function HomeClient() {
                         title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
                         href="#"
                         items={applyKidsFilter(tmdbTvCards)}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                      <ContentRail
+                        title={tt('Latest TV', '最新剧集', '最新劇集')}
+                        href="#"
+                        items={applyKidsFilter(
+                          mergeCards(
+                            mapDoubanCards(latestTvDouban, 'tv'),
+                            tmdbOnAirCards
+                          )
+                        )}
                         screenMode={screenMode}
                         tt={tt}
                       />

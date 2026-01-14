@@ -303,16 +303,28 @@ export async function GET() {
     let movies: TmdbItem[] = [];
     let tv: TmdbItem[] = [];
     let people: Array<Omit<TmdbItem, 'mediaType'>> = [];
+    let nowPlayingMovies: TmdbItem[] = [];
+    let onAirTv: TmdbItem[] = [];
 
     if (apiKey) {
       try {
-        const [trendingMovies, popularMovies, trendingTv, popularTv, trendingPeople] =
+        const [
+          trendingMovies,
+          popularMovies,
+          trendingTv,
+          popularTv,
+          trendingPeople,
+          nowPlaying,
+          onAir,
+        ] =
           await Promise.all([
             fetchTmdbList(apiKey, '/trending/movie/day?sort_by=popularity.desc', 'movie'),
             fetchTmdbList(apiKey, '/movie/popular?', 'movie'),
             fetchTmdbList(apiKey, '/trending/tv/day?sort_by=popularity.desc', 'tv'),
             fetchTmdbList(apiKey, '/tv/popular?', 'tv'),
             fetchTmdbPeople(apiKey),
+            fetchTmdbList(apiKey, '/movie/now_playing?', 'movie'),
+            fetchTmdbList(apiKey, '/tv/on_the_air?', 'tv'),
           ]);
 
         const localizedMovies = await Promise.all(
@@ -329,6 +341,8 @@ export async function GET() {
         movies = localizedMovies;
         tv = localizedTv;
         people = trendingPeople;
+        nowPlayingMovies = nowPlaying;
+        onAirTv = onAir;
       } catch (err) {
         fetchError = (err as Error).message;
       }
@@ -341,7 +355,7 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { movies, tv, people, error: fetchError ?? undefined },
+      { movies, tv, people, nowPlaying: nowPlayingMovies, onAir: onAirTv, error: fetchError ?? undefined },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',

@@ -132,10 +132,12 @@ async function cachePoster(url: string, doubanId: string) {
 
 export async function GET() {
   try {
-    const [movies, tv, variety] = await Promise.all([
+    const [movies, tv, variety, latestMovies, latestTv] = await Promise.all([
       fetchRecentHot('movie', '热门', '全部'),
       fetchRecentHot('tv', 'tv', 'tv'),
       fetchRecentHot('tv', 'show', 'show'),
+      fetchRecentHot('movie', '最新', '全部'),
+      fetchRecentHot('tv', '最新', '全部'),
     ]);
 
     // fire-and-forget cache posters to remote store if configured
@@ -146,7 +148,7 @@ export async function GET() {
     ).catch(() => {});
 
     return NextResponse.json(
-      { movies, tv, variety },
+      { movies, tv, variety, latestMovies, latestTv },
       {
         headers: {
           // Encourage CDN caching; Next's `revalidate` controls refresh cadence.
