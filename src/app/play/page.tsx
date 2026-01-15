@@ -43,6 +43,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
+import { getOMDBData, type OMDBEnrichment } from '@/lib/omdb.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -1246,6 +1247,7 @@ function PlayPageClient() {
   const [tmdbId, setTmdbId] = useState<string | undefined>(undefined);
   const [tmdbSeasons, setTmdbSeasons] = useState<any[]>([]);
   const [tmdbRecommendations, setTmdbRecommendations] = useState<any[]>([]);
+  const [omdbData, setOmdbData] = useState<OMDBEnrichment | null>(null);
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
@@ -1773,6 +1775,30 @@ function PlayPageClient() {
       cancelled = true;
     };
   }, [imdbVideoId, totalEpisodes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchOmdb = async () => {
+      if (!imdbVideoId) {
+        setOmdbData(null);
+        return;
+      }
+      try {
+        const data = await getOMDBData(imdbVideoId);
+        if (cancelled) return;
+        setOmdbData(data);
+      } catch (error) {
+        console.warn('OMDb enrichment error:', error);
+        if (!cancelled) {
+          setOmdbData(null);
+        }
+      }
+    };
+    void fetchOmdb();
+    return () => {
+      cancelled = true;
+    };
+  }, [imdbVideoId]);
 
   // -----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------
@@ -4175,6 +4201,50 @@ function PlayPageClient() {
                             <span>Douban: {detail.douban_id}</span>
                           )}
                         </span>
+                      </div>
+                    )}
+                    {omdbData && (omdbData.imdbRating || omdbData.metascore || omdbData.rottenTomatoesScore) && (
+                      <div className='pt-2 border-t border-gray-200 dark:border-gray-800 space-y-2'>
+                        <div className='text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold'>
+                          {tt('Ratings', '评分', '評分')}
+                        </div>
+                        {omdbData.imdbRating && (
+                          <div className='flex justify-between gap-3'>
+                            <span className='text-gray-500 dark:text-gray-400'>IMDb</span>
+                            <span className='font-medium text-right text-yellow-600 dark:text-yellow-400'>
+                              ⭐ {omdbData.imdbRating}
+                              {omdbData.imdbVotes && (
+                                <span className='text-xs text-gray-500 dark:text-gray-400 ml-1'>
+                                  ({parseInt(omdbData.imdbVotes).toLocaleString()})
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        {omdbData.rottenTomatoesScore && (
+                          <div className='flex justify-between gap-3'>
+                            <span className='text-gray-500 dark:text-gray-400'>Rotten Tomatoes</span>
+                            <span className='font-medium text-right text-red-600 dark:text-red-400'>
+                              🍅 {omdbData.rottenTomatoesScore}
+                            </span>
+                          </div>
+                        )}
+                        {omdbData.metascore && (
+                          <div className='flex justify-between gap-3'>
+                            <span className='text-gray-500 dark:text-gray-400'>Metacritic</span>
+                            <span className='font-medium text-right text-blue-600 dark:text-blue-400'>
+                              {omdbData.metascore}/100
+                            </span>
+                          </div>
+                        )}
+                        {omdbData.awards && (
+                          <div className='flex justify-between gap-3 items-start'>
+                            <span className='text-gray-500 dark:text-gray-400'>Awards</span>
+                            <span className='font-medium text-right text-sm text-amber-600 dark:text-amber-400'>
+                              {omdbData.awards}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   {(detail?.class || detail?.type_name) && (
