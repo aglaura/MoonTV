@@ -3289,13 +3289,13 @@ function PlayPageClient() {
         ],
         controls: [
           {
-            name: 'autohide-timer',
+            name: 'tv-autohide-timer',
             position: 'top',
             index: 0,
             html: '<div style="display:none"></div>',
             mounted: (art: any) => {
               if (!art || !art.template) return;
-              const hideDelay = isMobile ? 2000 : 2600;
+              const baseDelay = isMobile ? 2200 : 3200;
               let timer: NodeJS.Timeout | null = null;
               const scheduleHide = () => {
                 if (timer) clearTimeout(timer);
@@ -3306,7 +3306,7 @@ function PlayPageClient() {
                   } catch {
                     // ignore
                   }
-                }, hideDelay);
+                }, baseDelay);
               };
               art.on('mousemove', scheduleHide);
               art.on('touchstart', scheduleHide);

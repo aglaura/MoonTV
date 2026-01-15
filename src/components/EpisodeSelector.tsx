@@ -813,12 +813,12 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         {totalEpisodes > 1 && (
           <div
             onClick={() => setActiveTab('episodes')}
-            className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px]
-              ${
-                activeTab === 'episodes'
-                  ? 'text-green-600 dark:text-green-400'
-                  : 'text-gray-700 hover:text-green-600 bg-black/5 dark:bg-white/5 dark:text-gray-300 dark:hover:text-green-400 hover:bg-black/3 dark:hover:bg-white/3'
-              }
+                  className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500
+                    ${
+                      activeTab === 'episodes'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-gray-700 hover:text-green-600 bg-black/5 dark:bg-white/5 dark:text-gray-300 dark:hover:text-green-400 hover:bg-black/3 dark:hover:bg-white/3'
+                    }
             `.trim()}
           >
             選集
@@ -826,7 +826,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         )}
         <div
           onClick={handleSourceTabClick}
-          className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px]
+          className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500
             ${
               activeTab === 'sources'
                 ? 'text-green-600 dark:text-green-400'
@@ -842,7 +842,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {activeTab === 'episodes' && (
         <>
           {/* 分类标签 */}
-          <div className='flex items-center gap-3 mb-3 border-b border-gray-300 dark:border-gray-700 -mx-2 sm:-mx-3 px-2 sm:px-3 flex-shrink-0'>
+            <div className='flex items-center gap-3 mb-3 border-b border-gray-300 dark:border-gray-700 -mx-2 sm:-mx-3 px-2 sm:px-3 flex-shrink-0'>
               <div className='flex-1 overflow-x-auto pr-1' ref={categoryContainerRef}>
                 <div className='flex gap-2 min-w-max'>
                 {categories.map((label, idx) => {
@@ -949,11 +949,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           {groupedSources.length > 0 && (
             <button
               onClick={() => setExpandAllToggle((v) => !v)}
-              className='px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
-            >
-              {expandAllToggle ? 'Collapse all' : 'Expand all'}
-            </button>
-          )}
+                    className='px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500'
+                >
+                  {expandAllToggle ? 'Collapse all' : 'Expand all'}
+                </button>
+              )}
             </div>
           )}
           {sourceSearchLoading && (
