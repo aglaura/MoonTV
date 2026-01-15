@@ -41,13 +41,16 @@ export function processImageUrl(
 ): string {
   if (!originalUrl) return originalUrl;
 
+  // Default: direct URL unless caller explicitly prefers cached/proxy
+  if (!opts?.preferCached) {
+    return originalUrl;
+  }
+
   const proxyUrl = getImageProxyUrl();
   if (!proxyUrl) {
-    // Default to built-in proxy to avoid hotlink blocks
     const params = new URLSearchParams();
     if (opts?.doubanId) params.set('doubanId', String(opts.doubanId));
     if (opts?.imdbId) params.set('imdbId', String(opts.imdbId));
-    if (opts?.preferCached) params.set('preferCached', '1');
 
     if (originalUrl.startsWith('/api/image-proxy')) {
       let hasParam = false;
