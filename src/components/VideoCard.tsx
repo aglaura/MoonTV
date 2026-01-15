@@ -52,6 +52,35 @@ const ENGLISH_TITLE_PLACEHOLDERS = new Set(
   ].map((item) => item.toLowerCase())
 );
 
+type TmdbLookupResult = {
+  tmdbId?: string;
+  poster?: string;
+  title?: string;
+  originalTitle?: string;
+  year?: string;
+  mediaType?: 'movie' | 'tv';
+  imdbId?: string;
+};
+
+type DoubanSuggestResult = {
+  id?: number;
+  title?: string;
+};
+
+const tmdbLookupCache = new Map<string, TmdbLookupResult | null>();
+const doubanSuggestCache = new Map<string, DoubanSuggestResult | null>();
+
+const parseTmdbId = (value?: string | number | null) => {
+  if (value === undefined || value === null) return undefined;
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+  if (raw.startsWith('tmdb:')) return raw;
+  const match = raw.match(/themoviedb\.org\/(?:movie|tv)\/(\d+)/i);
+  if (match?.[1]) return `tmdb:${match[1]}`;
+  if (/^\d+$/.test(raw)) return `tmdb:${raw}`;
+  return undefined;
+};
+
 export interface VideoCardProps {
   id?: string;
   source?: string;
@@ -136,6 +165,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [imdbIdState, setImdbIdState] = useState<string | undefined>(
       imdb_id
     );
+    const [tmdbIdState, setTmdbIdState] = useState<string | undefined>(() => {
+      const fromId = parseTmdbId(id);
+      if (fromId) return fromId;
+      return parseTmdbId(tmdbUrl);
+    });
+    const [posterTmdbState, setPosterTmdbState] = useState<string | undefined>(
+      posterTmdb
+    );
 
     // 可外部修改的可控字段
     const [dynamicEpisodes, setDynamicEpisodes] = useState<number | undefined>(
@@ -163,6 +200,20 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     useEffect(() => {
       setResolvedQuery(query || '');
     }, [query]);
+
+    useEffect(() => {
+      if (posterTmdb) {
+        setPosterTmdbState(posterTmdb);
+      }
+    }, [posterTmdb]);
+
+    useEffect(() => {
+      if (tmdbIdState) return;
+      const next = parseTmdbId(id) || parseTmdbId(tmdbUrl);
+      if (next) {
+        setTmdbIdState(next);
+      }
+    }, [id, tmdbUrl, tmdbIdState]);
 
     const sizeStyles = useMemo(() => {
       switch (size) {
@@ -225,6 +276,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return candidate;
     }, []);
 
+    const hasChinese = useCallback(
+      (value?: string) => (value ? /[\u4e00-\u9fff]/.test(value) : false),
+      []
+    );
+
+    const doubanDetailRef = useRef<number | null>(null);
+
     useEffect(() => {
       const sanitized = sanitizeEnglishTitle(title_en);
       setEnglishTitle(sanitized);
@@ -236,20 +294,18 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     }, [sanitizeEnglishTitle, extractImdbId, title_en, douban_id]);
 
     useEffect(() => {
-      if (
-        englishTitle !== undefined ||
-        !douban_id ||
-        Number.isNaN(Number(douban_id)) ||
-        douban_id === 0
-      ) {
-        return;
-      }
+      const normalizedDoubanId = Number(douban_id);
+      if (!normalizedDoubanId || Number.isNaN(normalizedDoubanId)) return;
+      const needsDetail = englishTitle === undefined || !imdbIdState;
+      if (!needsDetail) return;
+      if (doubanDetailRef.current === normalizedDoubanId) return;
+      doubanDetailRef.current = normalizedDoubanId;
 
       let cancelled = false;
 
       const fetchEnglishTitle = async () => {
         try {
-          const detail = await getDoubanSubjectDetail(douban_id);
+          const detail = await getDoubanSubjectDetail(normalizedDoubanId);
           const imdbEnglish = detail?.imdbTitle;
           const imdbId = detail?.imdbId;
           const original = detail?.original_title;
@@ -268,8 +324,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           if (!cancelled) {
             if (resolved) {
               setEnglishTitle(resolved);
-            } else {
-              setEnglishTitle(undefined);
             }
 
             if (imdbId && !resolved) {
@@ -291,11 +345,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 /* ignore imdb fetch errors */
               }
             }
+
+            if (detail?.title && !hasChinese(resolvedQuery)) {
+              setResolvedQuery(detail.title);
+            }
           }
         } catch (error) {
-          if (!cancelled) {
-            setEnglishTitle(undefined);
-          }
+          /* ignore douban detail errors */
         }
       };
 
@@ -304,7 +360,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return () => {
         cancelled = true;
       };
-    }, [douban_id, englishTitle, sanitizeEnglishTitle, extractImdbId]);
+    }, [
+      douban_id,
+      englishTitle,
+      imdbIdState,
+      sanitizeEnglishTitle,
+      extractImdbId,
+      hasChinese,
+      resolvedQuery,
+    ]);
 
     const actualTitle = title;
     const actualPoster = poster;
@@ -316,9 +380,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       add(poster);
       posterAlt?.forEach(add);
       add(posterDouban);
-      add(posterTmdb);
+      add(posterTmdbState);
       return Array.from(urls);
-    }, [poster, posterAlt, posterDouban, posterTmdb]);
+    }, [poster, posterAlt, posterDouban, posterTmdbState]);
     const actualSource = source;
     const actualId = id;
     const actualDoubanId = dynamicDoubanId;
@@ -366,57 +430,218 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       () => convertToTraditional(actualTitle),
       [actualTitle]
     );
-    const hasChinese = useCallback(
-      (value?: string) => (value ? /[\u4e00-\u9fff]/.test(value) : false),
-      []
-    );
 
     useEffect(() => {
-      if (hasChinese(resolvedQuery)) return;
+      if (dynamicDoubanId && Number(dynamicDoubanId) > 0) return;
+      const candidates = [
+        imdbIdState?.trim(),
+        resolvedQuery?.trim(),
+        actualTitle?.trim(),
+        englishTitle?.trim(),
+      ].filter(Boolean) as string[];
+      if (!candidates.length) return;
+
       const isTmdb =
         (source_name || '').toLowerCase() === 'tmdb' ||
         (actualId || '').toString().startsWith('tmdb:');
-      if (!isTmdb) return;
+      const shouldUpdateTitle = !hasChinese(resolvedQuery);
+
       let cancelled = false;
+
+      const resolveFromCache = (key: string) => {
+        const cached = doubanSuggestCache.get(key);
+        if (!cached) return null;
+        return cached;
+      };
+
+      const applySuggestion = (suggestion: DoubanSuggestResult) => {
+        if (!suggestion?.id || cancelled) return true;
+        if (!dynamicDoubanId) {
+          setDynamicDoubanId(suggestion.id);
+        }
+        if (suggestion.title && shouldUpdateTitle) {
+          setResolvedQuery(suggestion.title);
+        }
+        return true;
+      };
+
       const run = async () => {
-        try {
-          // Prefer Douban suggest to get Chinese title
-          const suggestRes = await fetch(
-            `/api/douban/suggest?q=${encodeURIComponent(
-              actualTitle || resolvedQuery
-            )}`,
-            { cache: 'no-store' }
-          );
-          if (suggestRes.ok) {
+        for (const candidate of candidates) {
+          const key = candidate.toLowerCase();
+          if (doubanSuggestCache.has(key)) {
+            const cached = resolveFromCache(key);
+            if (cached?.id && applySuggestion(cached)) return;
+            continue;
+          }
+
+          try {
+            const suggestRes = await fetch(
+              `/api/douban/suggest?q=${encodeURIComponent(candidate)}`,
+              { cache: 'no-store' }
+            );
+            if (!suggestRes.ok) {
+              doubanSuggestCache.set(key, null);
+              continue;
+            }
             const data = await suggestRes.json();
             const first = Array.isArray(data?.items) ? data.items[0] : null;
-            const cn = first?.title;
-            if (cn && !cancelled) {
-              setResolvedQuery(cn);
-              return;
+            const suggestion =
+              first?.id && !Number.isNaN(Number(first.id))
+                ? {
+                    id: Number(first.id),
+                    title: typeof first.title === 'string' ? first.title : undefined,
+                  }
+                : null;
+            doubanSuggestCache.set(key, suggestion);
+            if (suggestion?.id && applySuggestion(suggestion)) return;
+          } catch {
+            doubanSuggestCache.set(key, null);
+          }
+        }
+
+        if (isTmdb && shouldUpdateTitle) {
+          try {
+            const res = await fetch(
+              `/api/title-convert?title=${encodeURIComponent(
+                actualTitle || resolvedQuery
+              )}`,
+              { cache: 'force-cache' }
+            );
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data?.title && !cancelled) {
+              setResolvedQuery(data.title);
             }
+          } catch {
+            // ignore
           }
-          // Fallback to wiki convert
-          const res = await fetch(
-            `/api/title-convert?title=${encodeURIComponent(
-              actualTitle || resolvedQuery
-            )}`,
-            { cache: 'force-cache' }
-          );
-          if (!res.ok) return;
-          const data = await res.json();
-          if (data?.title && !cancelled) {
-            setResolvedQuery(data.title);
-          }
-        } catch (err) {
-          // ignore
         }
       };
       run();
       return () => {
         cancelled = true;
       };
-    }, [resolvedQuery, source_name, actualId, actualTitle, hasChinese]);
+    }, [
+      dynamicDoubanId,
+      imdbIdState,
+      resolvedQuery,
+      actualTitle,
+      englishTitle,
+      source_name,
+      actualId,
+      hasChinese,
+    ]);
+
+    const tmdbLookupRef = useRef<string | null>(null);
+
+    useEffect(() => {
+      const tmdbIdValue = tmdbIdState?.startsWith('tmdb:')
+        ? tmdbIdState
+        : tmdbIdState
+        ? `tmdb:${tmdbIdState}`
+        : undefined;
+      const tmdbIdRaw = tmdbIdValue?.replace(/^tmdb:/, '');
+      const normalizedImdbId = imdbIdState?.trim();
+      const normalizedTitle = actualTitle?.trim();
+
+      const lookupKey = tmdbIdRaw
+        ? `tmdb:${tmdbIdRaw}`
+        : normalizedImdbId
+        ? `imdb:${normalizedImdbId}`
+        : normalizedTitle
+        ? `title:${normalizedTitle}-${actualYear || ''}-${actualSearchType || ''}`
+        : '';
+
+      if (!lookupKey) return;
+      if (tmdbLookupRef.current === lookupKey) return;
+
+      const needsPoster = !posterTmdbState;
+      const needsId = !tmdbIdRaw;
+      const needsImdb = !normalizedImdbId;
+
+      if (!needsPoster && !needsId && !needsImdb) return;
+
+      tmdbLookupRef.current = lookupKey;
+
+      const cached = tmdbLookupCache.get(lookupKey);
+      if (cached !== undefined) {
+        if (cached) {
+          if (cached.tmdbId && !tmdbIdRaw) {
+            setTmdbIdState(cached.tmdbId);
+          }
+          if (cached.imdbId && !normalizedImdbId) {
+            setImdbIdState((prev) => prev ?? cached.imdbId);
+          }
+          if (cached.poster && !posterTmdbState) {
+            setPosterTmdbState(cached.poster);
+          }
+          if (cached.originalTitle && englishTitle === undefined) {
+            const sanitized = sanitizeEnglishTitle(cached.originalTitle);
+            if (sanitized) setEnglishTitle(sanitized);
+          }
+        }
+        return;
+      }
+
+      let cancelled = false;
+
+      const run = async () => {
+        try {
+          const params = new URLSearchParams();
+          if (tmdbIdRaw) {
+            params.set('tmdbId', tmdbIdRaw);
+          } else if (normalizedImdbId) {
+            params.set('imdbId', normalizedImdbId);
+          } else if (normalizedTitle) {
+            params.set('title', normalizedTitle);
+          }
+          if (actualYear) params.set('year', actualYear);
+          if (actualSearchType) params.set('type', actualSearchType);
+
+          const res = await fetch(`/api/tmdb/lookup?${params.toString()}`, {
+            cache: 'force-cache',
+          });
+          if (!res.ok) {
+            tmdbLookupCache.set(lookupKey, null);
+            return;
+          }
+          const data = (await res.json()) as TmdbLookupResult;
+          tmdbLookupCache.set(lookupKey, data);
+          if (cancelled || !data) return;
+
+          if (data.tmdbId && !tmdbIdRaw) {
+            setTmdbIdState(data.tmdbId);
+          }
+          if (data.imdbId && !normalizedImdbId) {
+            setImdbIdState((prev) => prev ?? data.imdbId);
+          }
+          if (data.poster && !posterTmdbState) {
+            setPosterTmdbState(data.poster);
+          }
+          if (data.originalTitle && englishTitle === undefined) {
+            const sanitized = sanitizeEnglishTitle(data.originalTitle);
+            if (sanitized) setEnglishTitle(sanitized);
+          }
+        } catch {
+          tmdbLookupCache.set(lookupKey, null);
+        }
+      };
+
+      run();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [
+      tmdbIdState,
+      imdbIdState,
+      actualTitle,
+      actualYear,
+      actualSearchType,
+      posterTmdbState,
+      englishTitle,
+      sanitizeEnglishTitle,
+    ]);
     const transparentPixel =
       'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
@@ -427,8 +652,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       if (imdbIdState) {
         return `imdb:${imdbIdState}`;
       }
+      if (tmdbIdState) {
+        return `tmdb:${tmdbIdState.replace(/^tmdb:/, '')}`;
+      }
       return undefined;
-    }, [dynamicDoubanId, imdbIdState]);
+    }, [dynamicDoubanId, imdbIdState, tmdbIdState]);
 
     const directCandidates = useMemo(
       () => fallbackPosters.filter(Boolean),
