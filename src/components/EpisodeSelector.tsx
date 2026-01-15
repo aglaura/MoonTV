@@ -927,33 +927,23 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {/* 换源 Tab 内容 */}
       {activeTab === 'sources' && (
         <div className='flex flex-col h-full mt-4'>
-          {(availableSeasons.length > 1 || groupedSources.length > 0) && (
+          {availableSeasons.length > 1 && (
             <div className='flex flex-wrap items-center gap-2 mb-2 sticky top-0 z-10 bg-black/5 dark:bg-white/5 py-1 pr-1'>
-              {availableSeasons.length > 1 && (
-                <div className='flex items-center gap-1'>
-                  {availableSeasons.map((season) => (
-                <button
-                  key={season}
-                  onClick={() => setSelectedSeason(season)}
-                  className={`px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border transition-colors ${
-                    selectedSeason === season
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
-                  }`}
-                >
-                  {`S${season}`}
-                </button>
-              ))}
-            </div>
-          )}
-          {groupedSources.length > 0 && (
-            <button
-              onClick={() => setExpandAllToggle((v) => !v)}
-                    className='px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500'
-                >
-                  {expandAllToggle ? 'Collapse all' : 'Expand all'}
-                </button>
-              )}
+              <div className='flex items-center gap-1'>
+                {availableSeasons.map((season) => (
+                  <button
+                    key={season}
+                    onClick={() => setSelectedSeason(season)}
+                    className={`px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border transition-colors ${
+                      selectedSeason === season
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
+                    }`}
+                  >
+                    {`S${season}`}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {sourceSearchLoading && (
@@ -993,24 +983,6 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             !sourceSearchError &&
             availableSources.length > 0 && (
               <div className='flex-1 overflow-y-auto space-y-2 pb-20 pr-1'>
-                <div className='sticky top-0 z-10 flex items-center gap-2 bg-black/5 dark:bg-white/5 py-2 pr-1'>
-                  <button
-                    onClick={() => {
-                      const player = document.getElementById('player-root');
-                      if (player) {
-                        player.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }}
-                    className='px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
-                  >
-                    返回播放器
-                  </button>
-                  {availableSeasons.length > 1 && (
-                    <span className='text-xs text-gray-500 dark:text-gray-400'>
-                      {`S${selectedSeason}`}
-                    </span>
-                  )}
-                </div>
                 <div className='text-xs text-gray-600 dark:text-gray-300 mb-2 px-1'>
                   Searched{' '}
                   {searchStats.searched ?? searchStats.total ?? providerCount}{' '}

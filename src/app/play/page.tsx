@@ -4059,10 +4059,10 @@ function PlayPageClient() {
         </div>
 
         {/* 详情展示 */}
-        <div className='grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 md:gap-4'>
+        <div className='grid grid-cols-1 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-2.5 md:gap-3'>
           {/* 文字区 */}
           <div className='md:col-span-3'>
-            <div className='p-6 flex flex-col min-h-0 space-y-4 bg-white/70 dark:bg-gray-900/60 rounded-xl border border-gray-200/60 dark:border-gray-800 shadow-sm'>
+            <div className='p-4 flex flex-col min-h-0 space-y-3 bg-white/70 dark:bg-gray-900/60 rounded-xl border border-gray-200/60 dark:border-gray-800 shadow-sm'>
               {/* 标题 */}
                   <div className='flex items-start justify-between gap-3 flex-wrap sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur px-2 py-2 rounded-lg'>
                 <div className='min-w-0'>
@@ -4121,7 +4121,7 @@ function PlayPageClient() {
               </div>
 
               {/* 简介 + 重点信息 */}
-              <div className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 min-h-0'>
+              <div className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 min-h-0'>
                 <div className='min-h-0'>
                   {detail?.desc ? (
                     <div
@@ -4140,7 +4140,7 @@ function PlayPageClient() {
                     </div>
                   )}
                 </div>
-                <div className='bg-gray-100/80 dark:bg-white/5 rounded-lg p-4 border border-gray-200/70 dark:border-gray-800 space-y-3 text-sm text-gray-700 dark:text-gray-200'>
+                <div className='bg-gray-100/80 dark:bg-white/5 rounded-lg p-3 border border-gray-200/70 dark:border-gray-800 space-y-2 text-sm text-gray-700 dark:text-gray-200'>
                   <div className='font-semibold text-gray-800 dark:text-gray-100'>
                     {tt('Metadata', '影片信息', '影片資訊')}
                   </div>
