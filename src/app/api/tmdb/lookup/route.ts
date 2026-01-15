@@ -226,7 +226,8 @@ async function resolveByTitle(
   const path = mediaType ? `/search/${mediaType}` : '/search/multi';
   const url = `${TMDB_BASE}${path}?${params.toString()}`;
   const data = await fetchJson<{ results?: TmdbSearchItem[] }>(url);
-  const results = Array.isArray(data?.results) ? data.results : [];
+  const results =
+    data && Array.isArray(data.results) ? data.results : [];
   const first = results.find((item) =>
     mediaType ? true : item.media_type === 'movie' || item.media_type === 'tv'
   );
