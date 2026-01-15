@@ -1230,7 +1230,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                                 onClick={() =>
                                   !isCurrentSource && handleSourceClick(source)
                                 }
-                        className={`relative rounded-lg border px-1 py-0.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
+                        className={`relative rounded-lg border pr-1 pl-0 py-0.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
                                   ${
                                     isCurrentSource
                                       ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
