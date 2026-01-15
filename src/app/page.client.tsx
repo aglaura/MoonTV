@@ -54,8 +54,25 @@ type TmdbPerson = {
   poster: string;
 };
 
+type PrefetchedHome = {
+  movies: CardItem[];
+  tvCn: CardItem[];
+  tvKrJp: CardItem[];
+  tvUs: CardItem[];
+  variety: CardItem[];
+  latestMovies: CardItem[];
+  latestTv: CardItem[];
+  tmdbMovies: CardItem[];
+  tmdbTv: CardItem[];
+  tmdbPeople: CardItem[];
+  tmdbNowPlaying: CardItem[];
+  tmdbOnAir: CardItem[];
+  updatedAt?: number;
+};
+
 type CardItem = {
   title: string;
+  title_en?: string;
   poster?: string;
   posterAlt?: string[];
   posterDouban?: string;
@@ -218,11 +235,13 @@ function ContentRail({
               <VideoCard
                 from="douban"
                 title={item.title}
+                title_en={item.title_en}
                 poster={item.poster}
                 posterAlt={item.posterAlt}
                 posterDouban={item.posterDouban}
                 posterTmdb={item.posterTmdb}
                 douban_id={item.douban_id}
+                imdb_id={item.imdb_id}
                 rate={item.rate}
                 year={item.year}
                 type={item.type}
@@ -290,11 +309,13 @@ function ContentRail({
               <VideoCard
                 from="douban"
                 title={item.title}
+                title_en={item.title_en}
                 poster={item.poster}
                 posterAlt={item.posterAlt}
                 posterDouban={item.posterDouban}
                 posterTmdb={item.posterTmdb}
                 douban_id={item.douban_id}
+                imdb_id={item.imdb_id}
                 rate={item.rate}
                 year={item.year}
                 type={item.type}
@@ -343,11 +364,13 @@ function ContentRail({
             <VideoCard
               from="douban"
               title={item.title}
+              title_en={item.title_en}
               poster={item.poster}
               posterAlt={item.posterAlt}
               posterDouban={item.posterDouban}
               posterTmdb={item.posterTmdb}
               douban_id={item.douban_id}
+              imdb_id={item.imdb_id}
               rate={item.rate}
               year={item.year}
               type={item.type}
@@ -392,6 +415,9 @@ function HomeClient() {
   const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
   const [tmdbNowPlaying, setTmdbNowPlaying] = useState<TmdbListItem[]>([]);
   const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
+  const [prefetchedHome, setPrefetchedHome] = useState<PrefetchedHome | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
@@ -453,76 +479,94 @@ function HomeClient() {
         setLoading(true);
         setError(false);
 
-        const doubanPromise = fetch('/api/douban/home', {
-          cache: 'force-cache',
-        }).then((r) => {
-          if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
-          return r.json() as Promise<{
-            movies?: DoubanItem[];
-            tv?: DoubanItem[];
-            variety?: DoubanItem[];
-            latestMovies?: DoubanItem[];
-            latestTv?: DoubanItem[];
-          }>;
-        });
-
         const bangumiPromise = GetBangumiCalendarData();
 
-        const tmdbPromise = fetch('/api/imdb/list', {
-          cache: 'force-cache',
-        }).then(async (res) => {
-          if (!res.ok) throw new Error(`TMDB list failed (${res.status})`);
-          return (await res.json()) as {
-            movies?: TmdbListItem[];
-            tv?: TmdbListItem[];
-            people?: TmdbPerson[];
-            nowPlaying?: TmdbListItem[];
-            onAir?: TmdbListItem[];
-          };
-        });
-
-        const [doubanRes, bangumiRes, tmdbRes] = await Promise.allSettled([
-          doubanPromise,
-          bangumiPromise,
-          tmdbPromise,
-        ]);
-
-        if (doubanRes.status === 'fulfilled') {
-          const doubanHome = doubanRes.value;
-          setHotMovies(Array.isArray(doubanHome?.movies) ? doubanHome.movies : []);
-          setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
-          setLatestMoviesDouban(
-            Array.isArray(doubanHome?.latestMovies) ? doubanHome.latestMovies : []
-          );
-          setLatestTvDouban(
-            Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
-          );
-          setHotVarietyShows(
-            Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
-          );
+        let mergedOk = false;
+        try {
+          const mergedRes = await fetch('/api/home/merged', {
+            cache: 'force-cache',
+          });
+          if (mergedRes.ok) {
+            const merged = (await mergedRes.json()) as PrefetchedHome;
+            setPrefetchedHome(merged);
+            mergedOk = true;
+          } else {
+            setPrefetchedHome(null);
+          }
+        } catch {
+          setPrefetchedHome(null);
         }
 
-        if (bangumiRes.status === 'fulfilled') {
-          setBangumiCalendarData(bangumiRes.value);
+        if (!mergedOk) {
+          const doubanPromise = fetch('/api/douban/home', {
+            cache: 'force-cache',
+          }).then((r) => {
+            if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
+            return r.json() as Promise<{
+              movies?: DoubanItem[];
+              tv?: DoubanItem[];
+              variety?: DoubanItem[];
+              latestMovies?: DoubanItem[];
+              latestTv?: DoubanItem[];
+            }>;
+          });
+
+          const tmdbPromise = fetch('/api/imdb/list', {
+            cache: 'force-cache',
+          }).then(async (res) => {
+            if (!res.ok) throw new Error(`TMDB list failed (${res.status})`);
+            return (await res.json()) as {
+              movies?: TmdbListItem[];
+              tv?: TmdbListItem[];
+              people?: TmdbPerson[];
+              nowPlaying?: TmdbListItem[];
+              onAir?: TmdbListItem[];
+            };
+          });
+
+          const [doubanRes, tmdbRes] = await Promise.allSettled([
+            doubanPromise,
+            tmdbPromise,
+          ]);
+
+          if (doubanRes.status === 'fulfilled') {
+            const doubanHome = doubanRes.value;
+            setHotMovies(
+              Array.isArray(doubanHome?.movies) ? doubanHome.movies : []
+            );
+            setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
+            setLatestMoviesDouban(
+              Array.isArray(doubanHome?.latestMovies)
+                ? doubanHome.latestMovies
+                : []
+            );
+            setLatestTvDouban(
+              Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
+            );
+            setHotVarietyShows(
+              Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
+            );
+          }
+
+          if (tmdbRes.status === 'fulfilled') {
+            const data = tmdbRes.value;
+            setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
+            setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
+            setTmdbPeople(Array.isArray(data.people) ? data.people : []);
+            setTmdbNowPlaying(
+              Array.isArray(data.nowPlaying) ? data.nowPlaying : []
+            );
+            setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
+          }
+
+          if (doubanRes.status === 'rejected' && tmdbRes.status === 'rejected') {
+            setError(true);
+          }
         }
 
-        if (tmdbRes.status === 'fulfilled') {
-          const data = tmdbRes.value;
-          setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
-          setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
-          setTmdbPeople(Array.isArray(data.people) ? data.people : []);
-          setTmdbNowPlaying(
-            Array.isArray(data.nowPlaying) ? data.nowPlaying : []
-          );
-          setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
-        }
-
-        if (
-          doubanRes.status === 'rejected' &&
-          tmdbRes.status === 'rejected' &&
-          bangumiRes.status === 'rejected'
-        ) {
-          setError(true);
+        const bangumiRes = await Promise.allSettled([bangumiPromise]);
+        if (bangumiRes[0]?.status === 'fulfilled') {
+          setBangumiCalendarData(bangumiRes[0].value);
         }
       } catch (error) {
         console.error('獲取推薦資料失敗:', error);
@@ -579,6 +623,7 @@ function HomeClient() {
     () =>
       (tmdbMovies || []).map((item) => ({
         title: item.title,
+        title_en: item.originalTitle,
         poster: item.poster,
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
@@ -601,6 +646,7 @@ function HomeClient() {
     () =>
       (tmdbTv || []).map((item) => ({
         title: item.title,
+        title_en: item.originalTitle,
         poster: item.poster,
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
@@ -748,6 +794,7 @@ function HomeClient() {
     () =>
       (tmdbNowPlaying || []).map((item) => ({
         title: item.title,
+        title_en: item.originalTitle,
         poster: item.poster,
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
@@ -769,6 +816,7 @@ function HomeClient() {
     () =>
       (tmdbOnAir || []).map((item) => ({
         title: item.title,
+        title_en: item.originalTitle,
         poster: item.poster,
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
@@ -785,6 +833,19 @@ function HomeClient() {
       })),
     [tmdbOnAir]
   );
+
+  const effectiveTmdbMovies = prefetchedHome?.tmdbMovies ?? tmdbMovieCards;
+  const effectiveTmdbTv = prefetchedHome?.tmdbTv ?? tmdbTvCards;
+  const effectiveTmdbPeople = prefetchedHome?.tmdbPeople ?? tmdbPeopleCards;
+  const effectiveTmdbNowPlaying =
+    prefetchedHome?.tmdbNowPlaying ?? tmdbNowPlayingCards;
+  const effectiveTmdbOnAir = prefetchedHome?.tmdbOnAir ?? tmdbOnAirCards;
+  const effectiveLatestMovies =
+    prefetchedHome?.latestMovies ??
+    mergeCards(mapDoubanCards(latestMoviesDouban, 'movie'), effectiveTmdbNowPlaying);
+  const effectiveLatestTv =
+    prefetchedHome?.latestTv ??
+    mergeCards(mapDoubanCards(latestTvDouban, 'tv'), effectiveTmdbOnAir);
 
   const [hotTvShowsCn, hotTvShowsKrJp, hotTvShowsUsEu] = useMemo(() => {
     const krjpList: DoubanItem[] = [];
@@ -849,6 +910,48 @@ function HomeClient() {
       { label: string; items: CardItem[]; seeMore?: string; hint: string }
     >
   >(() => {
+    if (prefetchedHome) {
+      return {
+        posterMap: new Map<string, string>(),
+        movie: {
+          label: tt('Movies', '电影', '電影'),
+          items: applyKidsFilter(prefetchedHome.movies || []),
+          seeMore: '/douban?type=movie',
+          hint: tt('Cinema picks for today', '今日影院精选', '今日影院精選'),
+        },
+        'tv-cn': {
+          label: tt('Chinese TV', '华语剧集', '華語劇集'),
+          items: applyKidsFilter(prefetchedHome.tvCn || []),
+          seeMore: '/douban?type=tv&region=cn',
+          hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
+        },
+        'tv-krjp': {
+          label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
+          items: applyKidsFilter(prefetchedHome.tvKrJp || []),
+          seeMore: '/douban?type=tv&region=krjp',
+          hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
+        },
+        'tv-us': {
+          label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
+          items: applyKidsFilter(prefetchedHome.tvUs || []),
+          seeMore: '/douban?type=tv&region=us',
+          hint: tt('Western series', '热门欧美剧', '熱門歐美劇'),
+        },
+        variety: {
+          label: tt('Variety', '综艺', '綜藝'),
+          items: applyKidsFilter(prefetchedHome.variety || []),
+          seeMore: '/douban?type=show',
+          hint: tt('Light entertainment', '轻松综艺', '輕鬆綜藝'),
+        },
+        anime: {
+          label: tt('Anime', '新番', '新番'),
+          items: applyKidsFilter(animeList),
+          seeMore: '/douban?type=anime',
+          hint: tt('Fresh episodes', '最新更新', '最新更新'),
+        },
+      };
+    }
+
     const posterMap = new Map<string, string>();
 
     const mergedMovies = mergeCards(
@@ -918,6 +1021,7 @@ function HomeClient() {
     };
   }, [
     animeList,
+    prefetchedHome,
     hotMovies,
     hotTvShowsCn,
     hotTvShowsKrJp,
@@ -1304,11 +1408,13 @@ function HomeClient() {
                               <VideoCard
                                 from='douban'
                                 title={item.title}
+                                title_en={item.title_en}
                                 poster={item.poster}
                                 posterAlt={item.posterAlt}
                                 posterDouban={item.posterDouban}
                                 posterTmdb={item.posterTmdb}
                                 douban_id={item.douban_id}
+                                imdb_id={item.imdb_id}
                                 rate={item.rate}
                                 year={item.year}
                                 type={item.type}
@@ -1358,11 +1464,13 @@ function HomeClient() {
                               <VideoCard
                                 from="douban"
                                 title={item.title}
+                                title_en={item.title_en}
                                 poster={item.poster}
                                 posterAlt={item.posterAlt}
                                 posterDouban={item.posterDouban}
                                 posterTmdb={item.posterTmdb}
                                 douban_id={item.douban_id}
+                                imdb_id={item.imdb_id}
                                 rate={item.rate}
                                 year={item.year}
                                 type={item.type}
@@ -1399,7 +1507,9 @@ function HomeClient() {
                       <ContentRail
                         title={tt('Trending movies (TMDB)', 'TMDB 热门电影', 'TMDB 熱門電影')}
                         href="#"
-                        items={applyKidsFilter(applyPosterOverrides(tmdbMovieCards))}
+                        items={applyKidsFilter(
+                          applyPosterOverrides(effectiveTmdbMovies)
+                        )}
                         screenMode={screenMode}
                         tt={tt}
                       />
@@ -1409,12 +1519,7 @@ function HomeClient() {
                         title={tt('Latest movies', '最新电影', '最新電影')}
                         href="#"
                         items={applyKidsFilter(
-                          applyPosterOverrides(
-                            mergeCards(
-                              mapDoubanCards(latestMoviesDouban, 'movie'),
-                              tmdbNowPlayingCards
-                            )
-                          )
+                          applyPosterOverrides(effectiveLatestMovies)
                         )}
                         screenMode={screenMode}
                         tt={tt}
@@ -1441,7 +1546,9 @@ function HomeClient() {
                       <ContentRail
                         title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
                         href="#"
-                        items={applyKidsFilter(applyPosterOverrides(tmdbTvCards))}
+                        items={applyKidsFilter(
+                          applyPosterOverrides(effectiveTmdbTv)
+                        )}
                         screenMode={screenMode}
                         tt={tt}
                       />
@@ -1449,23 +1556,18 @@ function HomeClient() {
                         title={tt('Latest TV', '最新剧集', '最新劇集')}
                         href="#"
                         items={applyKidsFilter(
-                          applyPosterOverrides(
-                            mergeCards(
-                              mapDoubanCards(latestTvDouban, 'tv'),
-                              tmdbOnAirCards
-                            )
-                          )
+                          applyPosterOverrides(effectiveLatestTv)
                         )}
                         screenMode={screenMode}
                         tt={tt}
                       />
                     </div>
-                    {tmdbPeopleCards.length > 0 && (
+                    {effectiveTmdbPeople.length > 0 && (
                       <div className={tvSectionClass('rail-variety')}>
                         <ContentRail
                           title={tt('Trending people (TMDB)', 'TMDB 热门影人', 'TMDB 熱門影人')}
                           href="#"
-                          items={tmdbPeopleCards}
+                          items={effectiveTmdbPeople}
                           screenMode={screenMode}
                           tt={tt}
                         />
