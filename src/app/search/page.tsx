@@ -52,6 +52,8 @@ function HomeClient() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [activeTypes, setActiveTypes] = useState<string[]>([]);
+  const [sortOption, setSortOption] = useState('relevance');
   const [wikiResults, setWikiResults] = useState<
     Array<{
       title: string;
@@ -114,6 +116,19 @@ function HomeClient() {
     },
     []
   );
+
+  const toggleType = useCallback((key: string) => {
+    setActiveTypes((prev) => {
+      if (prev.includes(key)) {
+        return prev.filter((item) => item !== key);
+      }
+      return [...prev, key];
+    });
+  }, []);
+
+  const clearTypes = useCallback(() => {
+    setActiveTypes([]);
+  }, []);
 
   const resolveWikiLang = useCallback(
     (query: string) => {
@@ -302,6 +317,9 @@ function HomeClient() {
         douban_id?: number;
         imdbId?: string;
         episodesCount: number;
+        typeName?: string;
+        className?: string;
+        order: number;
       }
     >();
 
@@ -320,7 +338,7 @@ function HomeClient() {
       return `${titleKey}#${yearKey}`;
     };
 
-    searchResults.forEach((item) => {
+    searchResults.forEach((item, index) => {
       const key = buildKey(item);
       const existing = map.get(key);
       const episodesCount = Array.isArray(item.episodes)
@@ -339,6 +357,9 @@ function HomeClient() {
           douban_id: item.douban_id,
           imdbId: (item as unknown as { imdbId?: string })?.imdbId,
           episodesCount,
+          typeName: item.type_name,
+          className: item.class,
+          order: index,
         });
         return;
       }
@@ -350,6 +371,8 @@ function HomeClient() {
       const mergedTitle = existing.title || item.title;
       const mergedOriginal = existing.original_title || item.original_title;
       const mergedDouban = existing.douban_id || item.douban_id;
+      const mergedType = existing.typeName || item.type_name;
+      const mergedClass = existing.className || item.class;
 
       map.set(key, {
         ...existing,
@@ -360,11 +383,84 @@ function HomeClient() {
         original_title: mergedOriginal,
         douban_id: mergedDouban,
         episodesCount: mergedEpisodes,
+        typeName: mergedType,
+        className: mergedClass,
       });
     });
 
     return Array.from(map.values());
   }, [searchResults]);
+
+  const filteredResults = useMemo(() => {
+    const getTypeKey = (item: {
+      typeName?: string;
+      className?: string;
+    }) => {
+      const raw = `${item.typeName || ''} ${item.className || ''}`.toLowerCase();
+      if (
+        raw.includes('动漫') ||
+        raw.includes('動畫') ||
+        raw.includes('动画') ||
+        raw.includes('anime')
+      ) {
+        return 'anime';
+      }
+      if (raw.includes('综艺') || raw.includes('綜藝') || raw.includes('variety')) {
+        return 'variety';
+      }
+      if (
+        raw.includes('电视剧') ||
+        raw.includes('電視劇') ||
+        raw.includes('剧集') ||
+        raw.includes('劇集') ||
+        raw.includes('series') ||
+        raw.includes('tv') ||
+        raw.includes('剧') ||
+        raw.includes('劇')
+      ) {
+        return 'tv';
+      }
+      if (
+        raw.includes('电影') ||
+        raw.includes('電影') ||
+        raw.includes('movie') ||
+        raw.includes('film')
+      ) {
+        return 'movie';
+      }
+      return 'unknown';
+    };
+
+    const parseNumber = (value?: string) => {
+      if (!value) return 0;
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    let list = aggregatedResults;
+    if (activeTypes.length > 0) {
+      list = list.filter((item) => activeTypes.includes(getTypeKey(item)));
+    }
+
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sortOption) {
+        case 'newest':
+          return parseNumber(b.year) - parseNumber(a.year) || a.order - b.order;
+        case 'oldest':
+          return parseNumber(a.year) - parseNumber(b.year) || a.order - b.order;
+        case 'rating':
+          return parseNumber(b.rate) - parseNumber(a.rate) || a.order - b.order;
+        case 'episodes':
+          return b.episodesCount - a.episodesCount || a.order - b.order;
+        case 'relevance':
+        default:
+          return a.order - b.order;
+      }
+    });
+
+    return sorted;
+  }, [aggregatedResults, activeTypes, sortOption]);
 
   return (
     <PageLayout activePath='/search'>
@@ -449,6 +545,70 @@ function HomeClient() {
             </div>
           )}
 
+          <div className='mt-4 max-w-3xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400'>
+                {tt('Filter', '筛选', '篩選')}
+              </span>
+              <button
+                type='button'
+                onClick={clearTypes}
+                className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                  activeTypes.length === 0
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-emerald-400'
+                }`}
+              >
+                {tt('All', '全部', '全部')}
+              </button>
+              {[
+                { key: 'movie', label: tt('Movies', '电影', '電影') },
+                { key: 'tv', label: tt('TV', '剧集', '劇集') },
+                { key: 'variety', label: tt('Variety', '综艺', '綜藝') },
+                { key: 'anime', label: tt('Anime', '动漫', '動漫') },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type='button'
+                  onClick={() => toggleType(item.key)}
+                  className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                    activeTypes.includes(item.key)
+                      ? 'bg-emerald-600 text-white border-emerald-600'
+                      : 'bg-white/70 dark:bg-white/5 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-emerald-400'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className='flex items-center gap-2'>
+              <span className='text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400'>
+                {tt('Sort', '排序', '排序')}
+              </span>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className='text-xs rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/70 px-3 py-1 text-gray-700 dark:text-gray-200'
+              >
+                <option value='relevance'>
+                  {tt('Relevance', '相关度', '相關度')}
+                </option>
+                <option value='newest'>
+                  {tt('Newest', '最新', '最新')}
+                </option>
+                <option value='oldest'>
+                  {tt('Oldest', '最早', '最早')}
+                </option>
+                <option value='rating'>
+                  {tt('Rating', '评分', '評分')}
+                </option>
+                <option value='episodes'>
+                  {tt('Episodes', '集数', '集數')}
+                </option>
+              </select>
+            </div>
+          </div>
+
           <div className='mt-6'>
             {searchError && (
               <p className='text-sm text-red-600 dark:text-red-400 text-center'>
@@ -488,14 +648,23 @@ function HomeClient() {
                   </h2>
                   <span className='text-sm text-gray-500 dark:text-gray-400'>
                     {tt(
-                      `Total ${aggregatedResults.length}`,
-                      `共 ${aggregatedResults.length} 条`,
-                      `共 ${aggregatedResults.length} 筆`
+                      `Showing ${filteredResults.length} / ${aggregatedResults.length}`,
+                      `显示 ${filteredResults.length} / ${aggregatedResults.length} 条`,
+                      `顯示 ${filteredResults.length} / ${aggregatedResults.length} 筆`
                     )}
                   </span>
                 </div>
-                <div className='grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
-                  {aggregatedResults.map((item) => (
+                {filteredResults.length === 0 ? (
+                  <p className='text-sm text-gray-500 dark:text-gray-400'>
+                    {tt(
+                      'No results match your filters.',
+                      '没有匹配筛选条件的结果。',
+                      '沒有匹配篩選條件的結果。'
+                    )}
+                  </p>
+                ) : (
+                  <div className='grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'>
+                    {filteredResults.map((item) => (
                     <VideoCard
                       key={item.key}
                       id={item.id}
@@ -512,7 +681,8 @@ function HomeClient() {
                       from='search'
                     />
                   ))}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
