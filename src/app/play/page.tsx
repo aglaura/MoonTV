@@ -1655,9 +1655,24 @@ function PlayPageClient() {
     tmdbId && tmdbId.startsWith('tmdb:')
       ? `https://www.themoviedb.org/tv/${tmdbId.replace('tmdb:', '')}`
       : null;
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
   const rotateFullscreenRef = useRef(false);
+  const scrollSidebarIntoView = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const node = sidebarRef.current;
+    if (!node) return;
+    try {
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch {
+      const rect = node.getBoundingClientRect();
+      window.scrollTo({
+        top: window.scrollY + rect.top - 16,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
   const scrollPlayerIntoView = useCallback(() => {
     if (typeof window === 'undefined') return;
     const node = artRef.current;
@@ -3848,7 +3863,27 @@ function PlayPageClient() {
               hideSidePanels || isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-1'
             }`}
           >
-            <div className={`relative w-full ${playerHeightClass}`}>
+            <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
+              <div className='absolute top-2 left-2 z-[605] flex flex-wrap items-center gap-2 bg-black/60 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
+                <div className='text-sm font-semibold truncate max-w-[60%]'>
+                  {displayTitleText}
+                  {totalEpisodes > 1 && ` · E${currentEpisodeIndex + 1}`}
+                </div>
+                {currentPlayingInfo?.quality && (
+                  <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
+                    {localizeInfoLabel(currentPlayingInfo.quality)}
+                  </div>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollSidebarIntoView();
+                  }}
+                  className='ml-auto text-xs px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-medium'
+                >
+                  {tt('Sources', '换源', '換源')}
+                </button>
+              </div>
               {error && (
                 <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
                   <div className='flex items-start justify-between gap-3'>

@@ -804,13 +804,16 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   );
 
   return (
-    <div className='md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'>
+    <div
+      id='source-panel'
+      className='md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'
+    >
       {/* 主要的 Tab 切换 - 无缝融入设计 */}
       <div className='flex mb-1 -mx-2 sm:-mx-3 flex-shrink-0 relative z-[10]'>
         {totalEpisodes > 1 && (
           <div
             onClick={() => setActiveTab('episodes')}
-            className={`flex-1 py-2.5 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium
+            className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px]
               ${
                 activeTab === 'episodes'
                   ? 'text-green-600 dark:text-green-400'
@@ -823,7 +826,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
         )}
         <div
           onClick={handleSourceTabClick}
-          className={`flex-1 py-2.5 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium
+          className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px]
             ${
               activeTab === 'sources'
                 ? 'text-green-600 dark:text-green-400'
@@ -990,6 +993,24 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             !sourceSearchError &&
             availableSources.length > 0 && (
               <div className='flex-1 overflow-y-auto space-y-2 pb-20 pr-1'>
+                <div className='sticky top-0 z-10 flex items-center gap-2 bg-black/5 dark:bg-white/5 py-2 pr-1'>
+                  <button
+                    onClick={() => {
+                      const player = document.getElementById('player-root');
+                      if (player) {
+                        player.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    className='px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
+                  >
+                    返回播放器
+                  </button>
+                  {availableSeasons.length > 1 && (
+                    <span className='text-xs text-gray-500 dark:text-gray-400'>
+                      {`S${selectedSeason}`}
+                    </span>
+                  )}
+                </div>
                 <div className='text-xs text-gray-600 dark:text-gray-300 mb-2 px-1'>
                   Searched{' '}
                   {searchStats.searched ?? searchStats.total ?? providerCount}{' '}
