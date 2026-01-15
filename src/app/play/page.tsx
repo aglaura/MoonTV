@@ -3289,6 +3289,32 @@ function PlayPageClient() {
         ],
         controls: [
           {
+            name: 'autohide-timer',
+            position: 'top',
+            index: 0,
+            html: '<div style="display:none"></div>',
+            mounted: (art: any) => {
+              if (!art || !art.template) return;
+              const hideDelay = isMobile ? 2000 : 2600;
+              let timer: NodeJS.Timeout | null = null;
+              const scheduleHide = () => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                  try {
+                    art.notice?.hide?.();
+                    art.controls?.hide?.();
+                  } catch {
+                    // ignore
+                  }
+                }, hideDelay);
+              };
+              art.on('mousemove', scheduleHide);
+              art.on('touchstart', scheduleHide);
+              art.on('focus', scheduleHide);
+              scheduleHide();
+            },
+          },
+          {
             position: 'right',
             index: 8,
             html: '<div class="art-rotate-btn">↻ 90°</div>',
