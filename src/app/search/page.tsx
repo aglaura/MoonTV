@@ -4,7 +4,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { tt } from '@/lib/i18n.client';
+import { resolveUiLocale, tt } from '@/lib/i18n.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
@@ -15,6 +15,7 @@ import VideoCard from '@/components/VideoCard';
 
 function HomeClient() {
   const { announcement } = useSite();
+  const uiLocale = resolveUiLocale();
   const announcementText = useMemo(() => {
     if (!announcement) return '';
     if (typeof window !== 'undefined') {
@@ -51,6 +52,17 @@ function HomeClient() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [wikiResults, setWikiResults] = useState<
+    Array<{
+      title: string;
+      snippet: string;
+      pageid: number;
+      url?: string;
+      thumbnail?: string;
+    }>
+  >([]);
+  const [wikiLoading, setWikiLoading] = useState(false);
+  const [wikiError, setWikiError] = useState<string | null>(null);
   const initializedHistoryRef = useRef(false);
   const { isKidsMode } = useKidsMode();
 
@@ -103,6 +115,24 @@ function HomeClient() {
     []
   );
 
+  const resolveWikiLang = useCallback(
+    (query: string) => {
+      if (/[\u4e00-\u9fff]/.test(query)) return 'zh';
+      return uiLocale === 'zh-Hans' || uiLocale === 'zh-Hant' ? 'zh' : 'en';
+    },
+    [uiLocale]
+  );
+
+  const toPlainSnippet = useCallback((snippet: string) => {
+    if (!snippet) return '';
+    if (typeof document === 'undefined') {
+      return snippet.replace(/<[^>]+>/g, '').trim();
+    }
+    const node = document.createElement('div');
+    node.innerHTML = snippet;
+    return (node.textContent || '').trim();
+  }, []);
+
   const runSearch = useCallback(
     async (input: string) => {
       const trimmed = input.trim();
@@ -111,6 +141,9 @@ function HomeClient() {
         setSearchResults([]);
         setHasSearched(false);
         setSearchError(null);
+        setWikiResults([]);
+        setWikiError(null);
+        setWikiLoading(false);
         return;
       }
 
@@ -125,6 +158,9 @@ function HomeClient() {
       });
 
       const performSearch = async () => {
+        let wikiQuery = trimmed;
+        const wikiLang = resolveWikiLang(trimmed);
+
         const searchOnce = async (query: string) => {
           const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
           if (!response.ok) {
@@ -155,6 +191,9 @@ function HomeClient() {
         try {
           setSearching(true);
           setSearchError(null);
+          setWikiError(null);
+          setWikiLoading(true);
+          setWikiResults([]);
           const primaryResults = await searchOnce(trimmed);
           let combinedResults = primaryResults;
 
@@ -177,6 +216,7 @@ function HomeClient() {
             if (converted !== trimmed) {
               const translatedResults = await searchOnce(converted);
               combinedResults = dedupe([...primaryResults, ...translatedResults]);
+              wikiQuery = converted;
             }
           }
 
@@ -193,6 +233,36 @@ function HomeClient() {
           setSearchResults(filtered);
           setHasSearched(true);
           addToHistory(originalQuery);
+
+          try {
+            const response = await fetch(
+              `/api/wiki/search?query=${encodeURIComponent(
+                wikiQuery
+              )}&lang=${encodeURIComponent(wikiLang)}`
+            );
+            if (!response.ok) {
+              throw new Error(`Wiki ${response.status}`);
+            }
+            const data = (await response.json()) as {
+              results?: Array<{
+                title: string;
+                snippet: string;
+                pageid: number;
+                url?: string;
+                thumbnail?: string;
+              }>;
+            };
+            setWikiResults(Array.isArray(data.results) ? data.results : []);
+          } catch (err) {
+            setWikiError(
+              err instanceof Error
+                ? err.message
+                : tt('Wiki lookup failed', '百科检索失败', '百科檢索失敗')
+            );
+            setWikiResults([]);
+          } finally {
+            setWikiLoading(false);
+          }
         } catch (err) {
           setSearchError(
             err instanceof Error
@@ -201,6 +271,8 @@ function HomeClient() {
           );
           setSearchResults([]);
           setHasSearched(true);
+          setWikiResults([]);
+          setWikiLoading(false);
         } finally {
           setSearching(false);
         }
@@ -208,7 +280,7 @@ function HomeClient() {
 
       void performSearch();
     },
-    [addToHistory, tt, isKidsMode]
+    [addToHistory, tt, isKidsMode, resolveWikiLang]
   );
 
   const handleCloseAnnouncement = (announcement: string) => {
@@ -441,6 +513,83 @@ function HomeClient() {
                     />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {(wikiLoading ||
+              wikiError ||
+              (hasSearched && wikiResults.length > 0)) && (
+              <div className='mt-8'>
+                <div className='flex items-center justify-between mb-3'>
+                  <h2 className='text-lg font-semibold text-gray-800 dark:text-gray-200'>
+                    {tt('Wikipedia', '维基百科', '維基百科')}
+                  </h2>
+                  <span className='text-xs text-gray-500 dark:text-gray-400'>
+                    {tt('Knowledge quick look', '知识速览', '知識速覽')}
+                  </span>
+                </div>
+                {wikiLoading && (
+                  <div className='grid gap-3 sm:grid-cols-2'>
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className='h-24 rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
+                      />
+                    ))}
+                  </div>
+                )}
+                {wikiError && (
+                  <p className='text-sm text-red-500 dark:text-red-400'>
+                    {wikiError}
+                  </p>
+                )}
+                {!wikiLoading && !wikiError && wikiResults.length === 0 && (
+                  <p className='text-sm text-gray-500 dark:text-gray-400'>
+                    {tt(
+                      'No Wikipedia matches.',
+                      '没有百科匹配结果。',
+                      '沒有百科匹配結果。'
+                    )}
+                  </p>
+                )}
+                {!wikiLoading && wikiResults.length > 0 && (
+                  <div className='grid gap-3 sm:grid-cols-2'>
+                    {wikiResults.map((item) => (
+                      <a
+                        key={item.pageid}
+                        href={item.url || '#'}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='group flex gap-3 rounded-xl border border-gray-200/70 dark:border-gray-800 bg-white/80 dark:bg-gray-900/60 p-3 hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors'
+                      >
+                        <div className='h-16 w-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 flex-shrink-0'>
+                          {item.thumbnail ? (
+                            <img
+                              src={item.thumbnail}
+                              alt={item.title}
+                              className='h-full w-full object-cover'
+                            />
+                          ) : (
+                            <div className='h-full w-full flex items-center justify-center text-[10px] text-gray-400'>
+                              {tt('No image', '无图片', '無圖片')}
+                            </div>
+                          )}
+                        </div>
+                        <div className='min-w-0'>
+                          <div className='text-sm font-semibold text-gray-900 dark:text-gray-100 truncate'>
+                            {item.title}
+                          </div>
+                          <div className='text-xs text-gray-600 dark:text-gray-300 line-clamp-3'>
+                            {toPlainSnippet(item.snippet)}
+                          </div>
+                          <div className='mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity'>
+                            {tt('Open in Wikipedia', '打开维基百科', '打開維基百科')}
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
