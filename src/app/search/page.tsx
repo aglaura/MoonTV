@@ -324,13 +324,13 @@ function HomeClient() {
     >();
 
     const buildKey = (item: SearchResult) => {
+      if (item.douban_id) return `douban:${item.douban_id}`;
       const imdbId = (item as unknown as { imdbId?: string; imdb_id?: string })
         ?.imdbId
         ?.toString()
         .toLowerCase() ||
         (item as unknown as { imdb_id?: string })?.imdb_id?.toString().toLowerCase();
       if (imdbId) return `imdb:${imdbId}`;
-      if (item.douban_id) return `douban:${item.douban_id}`;
       const baseTitle = (item.title || '').trim().toLowerCase();
       const originalTitle = (item.original_title || '').trim().toLowerCase();
       const titleKey = baseTitle || originalTitle || (item.id || '').toString();

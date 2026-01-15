@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 
 import { getAvailableApiSites, getCacheTime } from '@/lib/config';
+import { db } from '@/lib/db';
 import { searchFromApi } from '@/lib/downstream';
 import { fetchJsonWithRetry, fetchWithRetry } from '@/lib/fetchRetry.server';
 import { convertToSimplified } from '@/lib/locale';
 import { convertResultsArray } from '@/lib/responseTrad';
 import { SearchResult } from '@/lib/types';
-import { db } from '@/lib/db';
 
 export const runtime = 'nodejs';
 
 const imdbIdRegex = /(tt\d{5,}|imdbt\d+)/i;
 const doubanIdRegex = /^\d{3,}$/;
-const tmdbIdRegex = /tmdb[:\-]?(\d{3,})/i;
+const tmdbIdRegex = /tmdb[:-]?(\d{3,})/i;
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const DEFAULT_TMDB_KEY = '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
@@ -362,8 +362,8 @@ export async function GET(request: Request) {
       if (providerValuations.length) {
         try {
           await db.saveSourceValuations(providerValuations);
-        } catch (error) {
-          console.warn('Failed to refresh provider valuations from search:', error);
+        } catch {
+          // ignore
         }
       }
     }
