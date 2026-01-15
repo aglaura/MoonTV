@@ -58,6 +58,8 @@ type TmdbItem = {
   year: string;
   poster: string;
   mediaType: 'movie' | 'tv';
+  originalLanguage?: string;
+  originCountry?: string[];
   voteAverage?: number;
   certification?: string;
   genres?: string[];
@@ -126,6 +128,10 @@ async function fetchTmdbList(
         year: (date || '').toString().slice(0, 4),
         poster: item?.poster_path ? `${TMDB_IMAGE}${item.poster_path}` : '',
         mediaType,
+        originalLanguage: item?.original_language || undefined,
+        originCountry: Array.isArray(item?.origin_country)
+          ? item.origin_country
+          : undefined,
         voteAverage: item?.vote_average,
       } as TmdbItem;
     })

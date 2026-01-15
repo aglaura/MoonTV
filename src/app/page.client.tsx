@@ -37,6 +37,8 @@ type TmdbListItem = {
   poster: string;
   originalTitle?: string;
   mediaType?: 'movie' | 'tv';
+  originalLanguage?: string;
+  originCountry?: string[];
   certification?: string;
   genres?: string[];
   providers?: string[];
@@ -60,6 +62,8 @@ type CardItem = {
   posterTmdb?: string;
   doubanUrl?: string;
   tmdbUrl?: string;
+  originalLanguage?: string;
+  originCountry?: string[];
   rate?: string;
   year?: string;
   douban_id?: number;
@@ -579,6 +583,8 @@ function HomeClient() {
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
         tmdbUrl: `https://www.themoviedb.org/movie/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
         rate: '',
         year: item.year,
         type: 'movie',
@@ -599,6 +605,8 @@ function HomeClient() {
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
         tmdbUrl: `https://www.themoviedb.org/tv/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
         rate: '',
         year: item.year,
         type: 'tv',
@@ -744,6 +752,8 @@ function HomeClient() {
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
         tmdbUrl: `https://www.themoviedb.org/movie/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
         rate: '',
         year: item.year,
         type: 'movie',
@@ -763,6 +773,8 @@ function HomeClient() {
         posterAlt: [item.poster].filter(Boolean),
         posterTmdb: item.poster,
         tmdbUrl: `https://www.themoviedb.org/tv/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
         rate: '',
         year: item.year,
         type: 'tv',
@@ -820,6 +832,17 @@ function HomeClient() {
     return [cnList, krjpList, usEuList];
   }, [hotTvShows]);
 
+  const isKrJpTmdb = useCallback((item: CardItem) => {
+    const lang = (item.originalLanguage || '').toLowerCase();
+    if (lang === 'ja' || lang === 'ko') return true;
+    const countries = Array.isArray(item.originCountry) ? item.originCountry : [];
+    if (countries.includes('JP') || countries.includes('KR')) return true;
+    const title = item.title || '';
+    if (/[가-힣]/.test(title)) return true;
+    if (/[ぁ-ゔァ-ヴ]/.test(title)) return true;
+    return /日剧|日劇|日版|日本|韩剧|韓劇|韓/.test(title);
+  }, []);
+
   const categoryData = useMemo<
     Record<
       CategoryKey,
@@ -840,10 +863,11 @@ function HomeClient() {
       false,
       posterMap
     );
+    const tmdbTvKrJp = tmdbTvCards.filter(isKrJpTmdb);
     const mergedTvKrJp = mergeCards(
       mapDoubanCards(hotTvShowsKrJp, 'tv'),
-      tmdbTvCards,
-      false,
+      tmdbTvKrJp,
+      true,
       posterMap
     );
     const mergedTvUs = mergeCards(
