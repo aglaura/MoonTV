@@ -12,6 +12,9 @@ export const runtime = 'nodejs';
 
 const imdbIdRegex = /(tt\d{5,}|imdbt\d+)/i;
 const doubanIdRegex = /^\d{3,}$/;
+const tmdbIdRegex = /tmdb[:\-]?(\d{3,})/i;
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const DEFAULT_TMDB_KEY = '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
 type DoubanMeta = {
   title?: string;
@@ -20,6 +23,27 @@ type DoubanMeta = {
   imdbId?: string;
   imdbTitle?: string;
 };
+
+type TmdbMeta = {
+  title?: string;
+  originalTitle?: string;
+  year?: string;
+};
+
+type TmdbSearchItem = {
+  id?: number;
+  title?: string;
+  name?: string;
+  original_title?: string;
+  original_name?: string;
+  release_date?: string;
+  first_air_date?: string;
+  media_type?: 'movie' | 'tv' | 'person';
+};
+
+function getTmdbKey() {
+  return process.env.TMDB_API_KEY || DEFAULT_TMDB_KEY;
+}
 
 async function fetchImdbTitle(imdbId: string): Promise<string | undefined> {
   if (imdbId.startsWith('imdbt')) return undefined;
@@ -141,6 +165,78 @@ async function fetchDoubanMeta(subjectId: string): Promise<DoubanMeta | null> {
   }
 }
 
+async function fetchTmdbMetaByTitle(query: string): Promise<TmdbMeta | null> {
+  const apiKey = getTmdbKey();
+  if (!apiKey) return null;
+  const url = `${TMDB_BASE}/search/multi?api_key=${encodeURIComponent(
+    apiKey
+  )}&language=zh-CN&include_adult=false&query=${encodeURIComponent(query)}`;
+  try {
+    const data = await fetchJsonWithRetry<{ results?: TmdbSearchItem[] }>(url);
+    const results = Array.isArray(data?.results) ? data.results : [];
+    const first = results.find(
+      (item) => item.media_type === 'movie' || item.media_type === 'tv'
+    );
+    if (!first) return null;
+    const title = first.title || first.name || '';
+    const originalTitle = first.original_title || first.original_name || '';
+    const date = first.release_date || first.first_air_date || '';
+    return {
+      title: title || undefined,
+      originalTitle: originalTitle || undefined,
+      year: date ? date.slice(0, 4) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTmdbMetaById(tmdbId: string): Promise<TmdbMeta | null> {
+  const apiKey = getTmdbKey();
+  if (!apiKey) return null;
+  const movieUrl = `${TMDB_BASE}/movie/${encodeURIComponent(
+    tmdbId
+  )}?api_key=${encodeURIComponent(apiKey)}&language=zh-CN`;
+  const tvUrl = `${TMDB_BASE}/tv/${encodeURIComponent(
+    tmdbId
+  )}?api_key=${encodeURIComponent(apiKey)}&language=zh-CN`;
+
+  const tryFetch = async (url: string) => {
+    try {
+      const data = await fetchJsonWithRetry<Record<string, unknown>>(url);
+      const title =
+        typeof data.title === 'string'
+          ? data.title
+          : typeof data.name === 'string'
+          ? data.name
+          : '';
+      const originalTitle =
+        typeof data.original_title === 'string'
+          ? data.original_title
+          : typeof data.original_name === 'string'
+          ? data.original_name
+          : '';
+      const date =
+        typeof data.release_date === 'string'
+          ? data.release_date
+          : typeof data.first_air_date === 'string'
+          ? data.first_air_date
+          : '';
+      return {
+        title: title || undefined,
+        originalTitle: originalTitle || undefined,
+        year: date ? date.slice(0, 4) : undefined,
+      } as TmdbMeta;
+    } catch {
+      return null;
+    }
+  };
+
+  const movie = await tryFetch(movieUrl);
+  if (movie?.title || movie?.originalTitle) return movie;
+  return tryFetch(tvUrl);
+}
+
 function dedupeQueries(values: string[]): string[] {
   const seen = new Set<string>();
   return values
@@ -188,6 +284,17 @@ export async function GET(request: Request) {
     if (doubanMeta?.title) normalizedQueries.add(doubanMeta.title);
     if (doubanMeta?.originalTitle) normalizedQueries.add(doubanMeta.originalTitle);
     if (doubanMeta?.imdbTitle) normalizedQueries.add(doubanMeta.imdbTitle);
+  }
+
+  const tmdbMatch = query.match(tmdbIdRegex);
+  if (tmdbMatch?.[1]) {
+    const tmdbMeta = await fetchTmdbMetaById(tmdbMatch[1]);
+    if (tmdbMeta?.title) normalizedQueries.add(tmdbMeta.title);
+    if (tmdbMeta?.originalTitle) normalizedQueries.add(tmdbMeta.originalTitle);
+  } else if (!doubanIdRegex.test(query.trim())) {
+    const tmdbMeta = await fetchTmdbMetaByTitle(query);
+    if (tmdbMeta?.title) normalizedQueries.add(tmdbMeta.title);
+    if (tmdbMeta?.originalTitle) normalizedQueries.add(tmdbMeta.originalTitle);
   }
 
   const queriesToSearch = dedupeQueries(
