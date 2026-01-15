@@ -3779,7 +3779,7 @@ function PlayPageClient() {
         )}
 
         {/* 第二行：播放器和选集 */}
-        <div className='space-y-2'>
+        <div className='space-y-2.5'>
           {/* 折叠控制 - 仅在 lg 及以上屏幕顯示 */}
           {!hideSidePanels && (
           <div className='hidden lg:flex justify-end'>
@@ -3839,7 +3839,7 @@ function PlayPageClient() {
             className={`grid gap-3 lg:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]'
+                : 'grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
             }`}
           >
             {/* 播放器 */}
@@ -3996,12 +3996,12 @@ function PlayPageClient() {
         </div>
 
         {/* 详情展示 */}
-        <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+        <div className='grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 md:gap-4'>
           {/* 文字区 */}
           <div className='md:col-span-3'>
             <div className='p-6 flex flex-col min-h-0 space-y-4 bg-white/70 dark:bg-gray-900/60 rounded-xl border border-gray-200/60 dark:border-gray-800 shadow-sm'>
               {/* 标题 */}
-              <div className='flex items-start justify-between gap-3 flex-wrap'>
+                  <div className='flex items-start justify-between gap-3 flex-wrap sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur px-2 py-2 rounded-lg'>
                 <div className='min-w-0'>
                   <h1 className='text-3xl font-bold tracking-wide flex items-center flex-shrink-0 text-center md:text-left w-full'>
                     <span className='truncate'>
