@@ -148,6 +148,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
     new Set()
   );
+  const [expandAllToggle, setExpandAllToggle] = useState(false);
 
   // 使用 ref 来避免闭包问题
   const attemptedSourcesRef = useRef<Set<string>>(new Set());
@@ -161,6 +162,22 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   useEffect(() => {
     videoInfoMapRef.current = videoInfoMap;
   }, [videoInfoMap]);
+
+  useEffect(() => {
+    if (expandAllToggle) {
+      setExpandedProviders((prev) => {
+        if (prev.size === providerCount) return prev;
+        const all = new Set<string>();
+        availableSources.forEach((s) => {
+          const key = s.source?.toString() ?? '';
+          if (key) all.add(key);
+        });
+        return all;
+      });
+    } else {
+      setExpandedProviders(new Set());
+    }
+  }, [expandAllToggle, availableSources, providerCount]);
 
   // 主要的 tab 状态：'episodes' 或 'sources'
   // 当只有一集时默认展示 "换源"，并隐藏 "选集" 标签
@@ -907,21 +924,33 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {/* 换源 Tab 内容 */}
       {activeTab === 'sources' && (
         <div className='flex flex-col h-full mt-4'>
-          {availableSeasons.length > 1 && (
-            <div className='flex flex-wrap items-center gap-1 mb-2'>
-              {availableSeasons.map((season) => (
+          {(availableSeasons.length > 1 || groupedSources.length > 0) && (
+            <div className='flex flex-wrap items-center gap-2 mb-2'>
+              {availableSeasons.length > 1 && (
+                <div className='flex items-center gap-1'>
+                  {availableSeasons.map((season) => (
+                    <button
+                      key={season}
+                      onClick={() => setSelectedSeason(season)}
+                      className={`px-3 py-2 rounded-md text-xs font-medium border transition-colors ${
+                        selectedSeason === season
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
+                      }`}
+                    >
+                      {`S${season}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {groupedSources.length > 0 && (
                 <button
-                  key={season}
-                  onClick={() => setSelectedSeason(season)}
-                  className={`px-2 py-1 rounded-md text-xs font-medium border transition-colors ${
-                    selectedSeason === season
-                      ? 'bg-green-600 text-white border-green-600'
-                      : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
-                  }`}
+                  onClick={() => setExpandAllToggle((v) => !v)}
+                  className='px-3 py-2 rounded-md text-xs font-medium border bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
                 >
-                  {`S${season}`}
+                  {expandAllToggle ? 'Collapse all' : 'Expand all'}
                 </button>
-              ))}
+              )}
             </div>
           )}
           {sourceSearchLoading && (

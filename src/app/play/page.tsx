@@ -3712,7 +3712,7 @@ function PlayPageClient() {
 
   return (
       <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
-      <div className='flex flex-col gap-3 py-3 px-3 sm:px-4 lg:px-8 xl:px-10'>
+      <div className='flex flex-col gap-2 py-2 px-2.5 sm:px-3.5 lg:px-5 xl:px-7'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
@@ -3836,16 +3836,16 @@ function PlayPageClient() {
           )}
 
           <div
-            className={`grid gap-4 lg:h-[500px] xl:h-[650px] 2xl:h-[750px] transition-all duration-300 ease-in-out ${
+            className={`grid gap-3 lg:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 md:grid-cols-4'
+                : 'grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]'
             }`}
           >
             {/* 播放器 */}
             <div
             className={`h-full transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
-              hideSidePanels || isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-3'
+              hideSidePanels || isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-1'
             }`}
           >
             <div className={`relative w-full ${playerHeightClass}`}>
