@@ -243,7 +243,8 @@ function mapTmdbPeople(items: TmdbPerson[]): CardItem[] {
 }
 
 function splitTvByRegion(items: DoubanItem[]) {
-  const krjp: DoubanItem[] = [];
+  const kr: DoubanItem[] = [];
+  const jp: DoubanItem[] = [];
   const cn: DoubanItem[] = [];
   const us: DoubanItem[] = [];
   const regionFromItem = (item: DoubanItem) => {
@@ -280,26 +281,19 @@ function splitTvByRegion(items: DoubanItem[]) {
   };
   items.forEach((item) => {
     const region = regionFromItem(item);
-    if (region === 'kr' || region === 'jp' || isKrJpTitle(item.title)) {
-      krjp.push(item);
+    if (region === 'kr' || /韩|韓/.test(item.title)) {
+      kr.push(item);
+    } else if (region === 'jp' || /日剧|日劇|日版|日本/.test(item.title)) {
+      jp.push(item);
+    } else if (isKrJpTitle(item.title)) {
+      jp.push(item);
     } else if (region === 'cn' || isCnTitle(item.title)) {
       cn.push(item);
     } else {
       us.push(item);
     }
   });
-  return { cn, krjp, us };
-}
-
-function isKrJpTmdb(item: CardItem) {
-  const lang = (item.originalLanguage || '').toLowerCase();
-  if (lang === 'ja' || lang === 'ko') return true;
-  const countries = Array.isArray(item.originCountry) ? item.originCountry : [];
-  if (countries.includes('JP') || countries.includes('KR')) return true;
-  const title = item.title || '';
-  if (/[가-힣]/.test(title)) return true;
-  if (/[ぁ-ゔァ-ヴ]/.test(title)) return true;
-  return /日剧|日劇|日版|日本|韩剧|韓劇|韓/.test(title);
+  return { cn, kr, jp, us };
 }
 
 export async function GET(request: Request) {
@@ -311,7 +305,11 @@ export async function GET(request: Request) {
 
   if (cacheUrl) {
     const cached = await tryFetchCache(cacheUrl);
-    if (cached) {
+    if (
+      cached &&
+      Array.isArray((cached as any).tvKr) &&
+      Array.isArray((cached as any).tvJp)
+    ) {
       return NextResponse.json(cached, {
         headers: {
           'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
@@ -345,18 +343,20 @@ export async function GET(request: Request) {
       latestMovies?: DoubanItem[];
       latestTv?: DoubanItem[];
     };
-  const tmdbHome = (await tmdbRes.json()) as {
-    movies?: TmdbItem[];
-    tv?: TmdbItem[];
-    krjpTv?: TmdbItem[];
-    people?: TmdbPerson[];
-    nowPlaying?: TmdbItem[];
-    onAir?: TmdbItem[];
-  };
+    const tmdbHome = (await tmdbRes.json()) as {
+      movies?: TmdbItem[];
+      tv?: TmdbItem[];
+      krTv?: TmdbItem[];
+      jpTv?: TmdbItem[];
+      people?: TmdbPerson[];
+      nowPlaying?: TmdbItem[];
+      onAir?: TmdbItem[];
+    };
 
     const doubanMovies = mapDoubanCards(doubanHome.movies || [], 'movie');
     let tvCnRaw: DoubanItem[] = [];
-    let tvKrJpRaw: DoubanItem[] = [];
+    let tvKrRaw: DoubanItem[] = [];
+    let tvJpRaw: DoubanItem[] = [];
     let tvUsRaw: DoubanItem[] = [];
 
     const [tagCn, tagKr, tagJp, tagUs, tagUk] = await Promise.all([
@@ -372,34 +372,49 @@ export async function GET(request: Request) {
 
     if (tagCount > 0) {
       tvCnRaw = dedupDouban(tagCn);
-      tvKrJpRaw = dedupDouban([...tagKr, ...tagJp]);
+      tvKrRaw = dedupDouban(tagKr);
+      tvJpRaw = dedupDouban(tagJp);
       tvUsRaw = dedupDouban([...tagUs, ...tagUk]);
     } else {
       const split = splitTvByRegion(doubanHome.tv || []);
       tvCnRaw = split.cn;
-      tvKrJpRaw = split.krjp;
+      tvKrRaw = split.kr;
+      tvJpRaw = split.jp;
       tvUsRaw = split.us;
     }
     const doubanTvCn = mapDoubanCards(tvCnRaw, 'tv');
-    const doubanTvKrJp = mapDoubanCards(tvKrJpRaw, 'tv');
+    const doubanTvKr = mapDoubanCards(tvKrRaw, 'tv');
+    const doubanTvJp = mapDoubanCards(tvJpRaw, 'tv');
     const doubanTvUs = mapDoubanCards(tvUsRaw, 'tv');
     const doubanVariety = mapDoubanCards(doubanHome.variety || [], 'show');
 
     const tmdbMovieCards = mapTmdbCards(tmdbHome.movies || []);
     const tmdbTvCards = mapTmdbCards(tmdbHome.tv || []);
-    const tmdbKrJpCards = mapTmdbCards(tmdbHome.krjpTv || []);
+    const tmdbKrCards = mapTmdbCards(tmdbHome.krTv || []);
+    const tmdbJpCards = mapTmdbCards(tmdbHome.jpTv || []);
     const tmdbNowPlaying = mapTmdbCards(tmdbHome.nowPlaying || []);
     const tmdbOnAir = mapTmdbCards(tmdbHome.onAir || []);
     const tmdbPeople = mapTmdbPeople(tmdbHome.people || []);
 
-    const tmdbTvKrJp = mergeCards(
-      tmdbTvCards.filter(isKrJpTmdb),
-      tmdbKrJpCards
+    const tmdbTvKr = mergeCards(
+      tmdbTvCards.filter((item) => {
+        const lang = (item.originalLanguage || '').toLowerCase();
+        return lang === 'ko' || item.originCountry?.includes('KR');
+      }),
+      tmdbKrCards
+    );
+    const tmdbTvJp = mergeCards(
+      tmdbTvCards.filter((item) => {
+        const lang = (item.originalLanguage || '').toLowerCase();
+        return lang === 'ja' || item.originCountry?.includes('JP');
+      }),
+      tmdbJpCards
     );
 
     const mergedMovies = mergeCards(doubanMovies, tmdbMovieCards);
     const mergedTvCn = mergeCards(doubanTvCn, tmdbTvCards);
-    const mergedTvKrJp = mergeCards(doubanTvKrJp, tmdbTvKrJp);
+    const mergedTvKr = mergeCards(doubanTvKr, tmdbTvKr);
+    const mergedTvJp = mergeCards(doubanTvJp, tmdbTvJp);
     const mergedTvUs = mergeCards(doubanTvUs, tmdbTvCards);
     const latestMovies = mergeCards(
       mapDoubanCards(doubanHome.latestMovies || [], 'movie'),
@@ -413,14 +428,16 @@ export async function GET(request: Request) {
     const payload = {
       movies: mergedMovies,
       tvCn: mergedTvCn,
-      tvKrJp: mergedTvKrJp,
+      tvKr: mergedTvKr,
+      tvJp: mergedTvJp,
       tvUs: mergedTvUs,
       variety: doubanVariety,
       latestMovies,
       latestTv,
       tmdbMovies: tmdbMovieCards,
       tmdbTv: tmdbTvCards,
-      tmdbKrJp: tmdbKrJpCards,
+      tmdbKr: tmdbKrCards,
+      tmdbJp: tmdbJpCards,
       tmdbPeople,
       tmdbNowPlaying,
       tmdbOnAir,

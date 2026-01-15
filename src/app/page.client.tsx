@@ -57,14 +57,16 @@ type TmdbPerson = {
 type PrefetchedHome = {
   movies: CardItem[];
   tvCn: CardItem[];
-  tvKrJp: CardItem[];
+  tvKr: CardItem[];
+  tvJp: CardItem[];
   tvUs: CardItem[];
   variety: CardItem[];
   latestMovies: CardItem[];
   latestTv: CardItem[];
   tmdbMovies: CardItem[];
   tmdbTv: CardItem[];
-  tmdbKrJp?: CardItem[];
+  tmdbKr?: CardItem[];
+  tmdbJp?: CardItem[];
   tmdbPeople: CardItem[];
   tmdbNowPlaying: CardItem[];
   tmdbOnAir: CardItem[];
@@ -92,7 +94,14 @@ type CardItem = {
   id?: string | number;
 };
 
-type CategoryKey = 'movie' | 'tv-cn' | 'tv-krjp' | 'tv-us' | 'variety' | 'anime';
+type CategoryKey =
+  | 'movie'
+  | 'tv-cn'
+  | 'tv-kr'
+  | 'tv-jp'
+  | 'tv-us'
+  | 'variety'
+  | 'anime';
 
 type TvSectionId =
   | 'continue'
@@ -413,7 +422,8 @@ function HomeClient() {
   >([]);
   const [tmdbMovies, setTmdbMovies] = useState<TmdbListItem[]>([]);
   const [tmdbTv, setTmdbTv] = useState<TmdbListItem[]>([]);
-  const [tmdbKrJp, setTmdbKrJp] = useState<TmdbListItem[]>([]);
+  const [tmdbKr, setTmdbKr] = useState<TmdbListItem[]>([]);
+  const [tmdbJp, setTmdbJp] = useState<TmdbListItem[]>([]);
   const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
   const [tmdbNowPlaying, setTmdbNowPlaying] = useState<TmdbListItem[]>([]);
   const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
@@ -520,7 +530,8 @@ function HomeClient() {
           return (await res.json()) as {
             movies?: TmdbListItem[];
             tv?: TmdbListItem[];
-            krjpTv?: TmdbListItem[];
+            krTv?: TmdbListItem[];
+            jpTv?: TmdbListItem[];
             people?: TmdbPerson[];
             nowPlaying?: TmdbListItem[];
             onAir?: TmdbListItem[];
@@ -555,7 +566,8 @@ function HomeClient() {
             const data = tmdbRes.value;
             setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
             setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
-            setTmdbKrJp(Array.isArray(data.krjpTv) ? data.krjpTv : []);
+            setTmdbKr(Array.isArray(data.krTv) ? data.krTv : []);
+            setTmdbJp(Array.isArray(data.jpTv) ? data.jpTv : []);
             setTmdbPeople(Array.isArray(data.people) ? data.people : []);
             setTmdbNowPlaying(
               Array.isArray(data.nowPlaying) ? data.nowPlaying : []
@@ -669,9 +681,9 @@ function HomeClient() {
     [tmdbTv]
   );
 
-  const tmdbKrJpCards = useMemo(
+  const tmdbKrCards = useMemo(
     () =>
-      (tmdbKrJp || []).map((item) => ({
+      (tmdbKr || []).map((item) => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
@@ -689,7 +701,30 @@ function HomeClient() {
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
-    [tmdbKrJp]
+    [tmdbKr]
+  );
+
+  const tmdbJpCards = useMemo(
+    () =>
+      (tmdbJp || []).map((item) => ({
+        title: item.title,
+        title_en: item.originalTitle,
+        poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/tv/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
+        rate: '',
+        year: item.year,
+        type: 'tv',
+        query: item.title,
+        imdb_id: item.imdbId,
+        douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbJp]
   );
 
   const tmdbPeopleCards = useMemo(
@@ -874,8 +909,9 @@ function HomeClient() {
     prefetchedHome?.latestTv ??
     mergeCards(mapDoubanCards(latestTvDouban, 'tv'), effectiveTmdbOnAir);
 
-  const [hotTvShowsCn, hotTvShowsKrJp, hotTvShowsUsEu] = useMemo(() => {
-    const krjpList: DoubanItem[] = [];
+  const [hotTvShowsCn, hotTvShowsKr, hotTvShowsJp, hotTvShowsUsEu] = useMemo(() => {
+    const krList: DoubanItem[] = [];
+    const jpList: DoubanItem[] = [];
     const cnList: DoubanItem[] = [];
     const usEuList: DoubanItem[] = [];
     const regionFromItem = (item: DoubanItem) => {
@@ -909,26 +945,39 @@ function HomeClient() {
     };
     (hotTvShows || []).forEach((item) => {
       const region = regionFromItem(item);
-      if (region === 'kr' || region === 'jp' || isKrJpTitle(item.title)) {
-        krjpList.push(item);
+      if (region === 'kr') {
+        krList.push(item);
+      } else if (region === 'jp') {
+        jpList.push(item);
+      } else if (isKrJpTitle(item.title)) {
+        jpList.push(item);
       } else if (region === 'cn' || isCnTitle(item.title)) {
         cnList.push(item);
       } else {
         usEuList.push(item);
       }
     });
-    return [cnList, krjpList, usEuList];
+    return [cnList, krList, jpList, usEuList];
   }, [hotTvShows]);
 
-  const isKrJpTmdb = useCallback((item: CardItem) => {
+  const isKrTmdb = useCallback((item: CardItem) => {
     const lang = (item.originalLanguage || '').toLowerCase();
-    if (lang === 'ja' || lang === 'ko') return true;
+    if (lang === 'ko') return true;
     const countries = Array.isArray(item.originCountry) ? item.originCountry : [];
-    if (countries.includes('JP') || countries.includes('KR')) return true;
+    if (countries.includes('KR')) return true;
     const title = item.title || '';
     if (/[가-힣]/.test(title)) return true;
+    return /韩剧|韓劇|韓/.test(title);
+  }, []);
+
+  const isJpTmdb = useCallback((item: CardItem) => {
+    const lang = (item.originalLanguage || '').toLowerCase();
+    if (lang === 'ja') return true;
+    const countries = Array.isArray(item.originCountry) ? item.originCountry : [];
+    if (countries.includes('JP')) return true;
+    const title = item.title || '';
     if (/[ぁ-ゔァ-ヴ]/.test(title)) return true;
-    return /日剧|日劇|日版|日本|韩剧|韓劇|韓/.test(title);
+    return /日剧|日劇|日版|日本/.test(title);
   }, []);
 
   const categoryData = useMemo<
@@ -952,11 +1001,17 @@ function HomeClient() {
           seeMore: '/douban?type=tv&region=cn',
           hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
         },
-        'tv-krjp': {
-          label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-          items: applyKidsFilter(prefetchedHome.tvKrJp || []),
-          seeMore: '/douban?type=tv&region=krjp',
-          hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
+        'tv-kr': {
+          label: tt('Korean TV', '韩剧', '韓劇'),
+          items: applyKidsFilter(prefetchedHome.tvKr || []),
+          seeMore: '/douban?type=tv&region=kr',
+          hint: tt('Korean hits', '热门韩剧', '熱門韓劇'),
+        },
+        'tv-jp': {
+          label: tt('Japanese TV', '日剧', '日劇'),
+          items: applyKidsFilter(prefetchedHome.tvJp || []),
+          seeMore: '/douban?type=tv&region=jp',
+          hint: tt('Japanese hits', '热门日剧', '熱門日劇'),
         },
         'tv-us': {
           label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
@@ -993,13 +1048,27 @@ function HomeClient() {
       false,
       posterMap
     );
-    const tmdbTvKrJp = mergeCards(
-      tmdbTvCards.filter(isKrJpTmdb),
-      tmdbKrJpCards
+    const tmdbTvKr = mergeCards(
+      tmdbTvCards.filter(isKrTmdb),
+      tmdbKrCards,
+      true,
+      posterMap
     );
-    const mergedTvKrJp = mergeCards(
-      mapDoubanCards(hotTvShowsKrJp, 'tv'),
-      tmdbTvKrJp,
+    const tmdbTvJp = mergeCards(
+      tmdbTvCards.filter(isJpTmdb),
+      tmdbJpCards,
+      true,
+      posterMap
+    );
+    const mergedTvKr = mergeCards(
+      mapDoubanCards(hotTvShowsKr, 'tv'),
+      tmdbTvKr,
+      true,
+      posterMap
+    );
+    const mergedTvJp = mergeCards(
+      mapDoubanCards(hotTvShowsJp, 'tv'),
+      tmdbTvJp,
       true,
       posterMap
     );
@@ -1024,11 +1093,17 @@ function HomeClient() {
         seeMore: '/douban?type=tv&region=cn',
         hint: tt('Domestic picks', '热门华语剧', '熱門華語劇'),
       },
-      'tv-krjp': {
-        label: tt('KR/JP TV', '日韩剧集', '日韓劇集'),
-        items: applyKidsFilter(mergedTvKrJp),
-        seeMore: '/douban?type=tv&region=krjp',
-        hint: tt('Korean & Japanese hits', '热门日韩剧', '熱門日韓劇'),
+      'tv-kr': {
+        label: tt('Korean TV', '韩剧', '韓劇'),
+        items: applyKidsFilter(mergedTvKr),
+        seeMore: '/douban?type=tv&region=kr',
+        hint: tt('Korean hits', '热门韩剧', '熱門韓劇'),
+      },
+      'tv-jp': {
+        label: tt('Japanese TV', '日剧', '日劇'),
+        items: applyKidsFilter(mergedTvJp),
+        seeMore: '/douban?type=tv&region=jp',
+        hint: tt('Japanese hits', '热门日剧', '熱門日劇'),
       },
       'tv-us': {
         label: tt('US/Europe TV', '欧美剧集', '歐美劇集'),
@@ -1054,12 +1129,14 @@ function HomeClient() {
     prefetchedHome,
     hotMovies,
     hotTvShowsCn,
-    hotTvShowsKrJp,
+    hotTvShowsKr,
+    hotTvShowsJp,
     hotTvShowsUsEu,
     hotVarietyShows,
     tmdbMovies,
     tmdbTv,
-    tmdbKrJp,
+    tmdbKr,
+    tmdbJp,
     tmdbPeople,
     applyKidsFilter,
     mapDoubanCards,
@@ -1568,9 +1645,16 @@ function HomeClient() {
                         tt={tt}
                       />
                       <ContentRail
-                        title={tt('Hot KR/JP TV', '热门日韩剧', '熱門日韓劇')}
-                        href="/douban?type=tv&region=krjp"
-                        items={categoryData['tv-krjp'].items}
+                        title={tt('Hot KR TV', '热门韩剧', '熱門韓劇')}
+                        href="/douban?type=tv&region=kr"
+                        items={categoryData['tv-kr'].items}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                      <ContentRail
+                        title={tt('Hot JP TV', '热门日剧', '熱門日劇')}
+                        href="/douban?type=tv&region=jp"
+                        items={categoryData['tv-jp'].items}
                         screenMode={screenMode}
                         tt={tt}
                       />
