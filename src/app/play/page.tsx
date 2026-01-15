@@ -1453,7 +1453,104 @@ function PlayPageClient() {
     },
     [tt]
   );
-  const englishVideoTitle = imdbVideoTitle ?? undefined;
+  const splitOmdbList = useCallback((value?: string) => {
+    if (!value) return [];
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }, []);
+  const normalizeDetailList = useCallback((value: unknown) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) =>
+          item === null || item === undefined ? '' : String(item).trim()
+        )
+        .filter(Boolean);
+    }
+    if (typeof value === 'string') {
+      return value
+        .split(/[,/]/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, []);
+  const mergeMetadataList = useCallback(
+    (primary: string[], fallback: string[]) => {
+      if (!primary.length) return fallback;
+      if (!fallback.length) return primary;
+      const seen = new Set(
+        primary.map((item) => item.trim().toLowerCase()).filter(Boolean)
+      );
+      const merged = [...primary];
+      fallback.forEach((item) => {
+        const key = item.trim().toLowerCase();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        merged.push(item);
+      });
+      return merged;
+    },
+    []
+  );
+  const metadataLists = useMemo(() => {
+    const detailAny = detail as any;
+    const detailGenres = normalizeDetailList(detailAny?.genres);
+    const detailCountries = normalizeDetailList(detailAny?.countries);
+    const detailRegions = normalizeDetailList(detailAny?.regions);
+    const detailLanguages = normalizeDetailList(detailAny?.languages);
+    const detailDirectors = normalizeDetailList(detailAny?.directors);
+    const detailWriters = normalizeDetailList(detailAny?.writers);
+    const detailActors = normalizeDetailList(detailAny?.actors);
+
+    return {
+      genres: mergeMetadataList(detailGenres, splitOmdbList(omdbData?.genres)),
+      regions: mergeMetadataList(
+        [...detailCountries, ...detailRegions],
+        splitOmdbList(omdbData?.countries)
+      ),
+      languages: mergeMetadataList(
+        detailLanguages,
+        splitOmdbList(omdbData?.languages)
+      ),
+      directors: mergeMetadataList(
+        detailDirectors,
+        splitOmdbList(omdbData?.directors)
+      ),
+      writers: mergeMetadataList(
+        detailWriters,
+        splitOmdbList(omdbData?.writers)
+      ),
+      actors: mergeMetadataList(detailActors, splitOmdbList(omdbData?.actors)),
+    };
+  }, [
+    detail,
+    mergeMetadataList,
+    normalizeDetailList,
+    omdbData,
+    splitOmdbList,
+  ]);
+  const mergedDurations = useMemo(() => {
+    const detailAny = detail as any;
+    const detailDurations = normalizeDetailList(detailAny?.durations);
+    if (detailDurations.length > 0) {
+      return detailDurations;
+    }
+    return omdbData?.runtime ? [omdbData.runtime] : [];
+  }, [detail, normalizeDetailList, omdbData]);
+  const mergedReleaseDates = useMemo(() => {
+    const detailAny = detail as any;
+    const detailReleaseDates = normalizeDetailList(detailAny?.releaseDates);
+    if (detailReleaseDates.length > 0) {
+      return detailReleaseDates;
+    }
+    return omdbData?.released ? [omdbData.released] : [];
+  }, [detail, normalizeDetailList, omdbData]);
+  const showOmdbRuntime =
+    omdbData?.runtime && !mergedDurations.includes(omdbData.runtime);
+  const englishVideoTitle =
+    imdbVideoTitle || omdbData?.title || undefined;
   const displayVideoTitle = useMemo(
     () => convertToTraditional(videoTitle),
     [videoTitle]
@@ -1466,26 +1563,24 @@ function PlayPageClient() {
   const introTags = useMemo(() => {
     const tags: string[] = [];
     const detailAny = detail as any;
-    if (detailAny?.genres?.length) {
-      tags.push(...detailAny.genres);
-    }
-    if (detailAny?.countries?.length) {
-      tags.push(...detailAny.countries);
-    }
-    if (detailAny?.regions?.length) {
-      tags.push(...detailAny.regions);
-    }
-    if (detailAny?.languages?.length) {
-      tags.push(...detailAny.languages);
-    }
-    if (detailAny?.tags?.length) {
-      tags.push(...detailAny.tags);
+    tags.push(...metadataLists.genres);
+    tags.push(...metadataLists.regions);
+    tags.push(...metadataLists.languages);
+    const detailTags = normalizeDetailList(detailAny?.tags);
+    if (detailTags.length) {
+      tags.push(...detailTags);
     }
     if (detail?.class) {
       tags.push(detail.class);
     }
     if (detail?.type_name) {
       tags.push(detail.type_name);
+    }
+    if (omdbData?.rated) {
+      tags.push(omdbData.rated);
+    }
+    if (omdbData?.runtime) {
+      tags.push(omdbData.runtime);
     }
     if (detail?.source_name) {
       tags.push(detail.source_name);
@@ -1500,7 +1595,15 @@ function PlayPageClient() {
     );
 
     return normalized.slice(0, 12);
-  }, [detail]);
+  }, [detail, metadataLists, normalizeDetailList, omdbData]);
+  const synopsisText =
+    detail?.desc?.trim() ||
+    imdbDescription?.trim() ||
+    omdbData?.plot?.trim() ||
+    '';
+  const metadataSynopsis = detail?.desc?.trim()
+    ? imdbDescription?.trim() || omdbData?.plot?.trim() || ''
+    : '';
   const refreshOfflineAvailability = useCallback(
     async (url: string) => {
       if (
@@ -4103,9 +4206,9 @@ function PlayPageClient() {
                     </span>
                   </h1>
                   <div className='mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300'>
-                    {(detail?.year || videoYear) && (
+                    {(detail?.year || videoYear || omdbData?.year) && (
                       <span className='px-2 py-[2px] rounded-full bg-gray-200/70 dark:bg-white/10'>
-                        {detail?.year || videoYear}
+                        {detail?.year || videoYear || omdbData?.year}
                       </span>
                     )}
                     {introTags.map((tag, idx) => (
@@ -4122,7 +4225,7 @@ function PlayPageClient() {
                         target='_blank'
                         rel='noreferrer'
                         className='px-2 py-[2px] rounded-full bg-yellow-500/10 text-yellow-700 dark:bg-yellow-500/15 dark:text-yellow-300 hover:underline'
-                        title={imdbVideoTitle || imdbVideoId}
+                        title={englishVideoTitle || imdbVideoId}
                       >
                         IMDb {imdbVideoId}
                       </a>
@@ -4149,12 +4252,12 @@ function PlayPageClient() {
               {/* 简介 + 重点信息 */}
               <div className='grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 min-h-0'>
                 <div className='min-h-0'>
-                  {detail?.desc ? (
+                  {synopsisText ? (
                     <div
                       className='text-base leading-relaxed opacity-90 overflow-y-auto pr-2 flex-1 min-h-0 scrollbar-hide'
                       style={{ whiteSpace: 'pre-line' }}
                     >
-                      {convertToTraditional(detail.desc) || detail.desc}
+                      {convertToTraditional(synopsisText) || synopsisText}
                     </div>
                   ) : (
                     <div className='text-sm text-gray-500 dark:text-gray-400'>
@@ -4203,7 +4306,7 @@ function PlayPageClient() {
                         </span>
                       </div>
                     )}
-                    {omdbData && (omdbData.imdbRating || omdbData.metascore || omdbData.rottenTomatoesScore) && (
+                    {omdbData && (omdbData.imdbRating || omdbData.metascore || omdbData.rottenTomatoesScore || omdbData.awards) && (
                       <div className='pt-2 border-t border-gray-200 dark:border-gray-800 space-y-2'>
                         <div className='text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold'>
                           {tt('Ratings', '评分', '評分')}
@@ -4247,55 +4350,62 @@ function PlayPageClient() {
                         )}
                       </div>
                     )}
-                  {(detail?.class || detail?.type_name) && (
+                  {(detail?.class || detail?.type_name || omdbData?.type) && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Category', '类型', '類型')}
                       </span>
                       <span className='font-medium text-right'>
-                        {convertToTraditional(detail?.type_name || detail?.class || '') ||
+                        {convertToTraditional(
+                          detail?.type_name || detail?.class || omdbData?.type || ''
+                        ) ||
                           detail?.type_name ||
-                          detail?.class}
+                          detail?.class ||
+                          omdbData?.type}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.genres &&
-                    Array.isArray((detail as any).genres) &&
-                    (detail as any).genres.length > 0 && (
+                  {omdbData?.rated && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Rated', '分级', '分級')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {omdbData.rated}
+                      </span>
+                    </div>
+                  )}
+                  {metadataLists.genres.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Genres', '类型', '類型')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).genres
+                        {metadataLists.genres
                           .map((g: string) => convertToTraditional(g) || g)
                           .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.countries &&
-                    Array.isArray((detail as any).countries) &&
-                    (detail as any).countries.length > 0 && (
+                  {metadataLists.regions.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Regions', '地区', '地區')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).countries
+                        {metadataLists.regions
                           .map((c: string) => convertToTraditional(c) || c)
                           .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.languages &&
-                    Array.isArray((detail as any).languages) &&
-                    (detail as any).languages.length > 0 && (
+                  {metadataLists.languages.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Languages', '语言', '語言')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).languages
+                        {metadataLists.languages
                           .map((l: string) => convertToTraditional(l) || l)
                           .join(' / ')}
                       </span>
@@ -4311,85 +4421,136 @@ function PlayPageClient() {
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.durations &&
-                    Array.isArray((detail as any).durations) &&
-                    (detail as any).durations.length > 0 && (
+                  {mergedDurations.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Duration', '片长', '片長')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).durations.join(' / ')}
+                        {mergedDurations.join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.releaseDates &&
-                    Array.isArray((detail as any).releaseDates) &&
-                    (detail as any).releaseDates.length > 0 && (
+                  {showOmdbRuntime && omdbData?.runtime && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Runtime (OMDb)', '片长 (OMDb)', '片長 (OMDb)')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {omdbData.runtime}
+                      </span>
+                    </div>
+                  )}
+                  {mergedReleaseDates.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Release dates', '上映日期', '上映日期')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).releaseDates.join(' / ')}
+                        {mergedReleaseDates.join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.directors &&
-                    Array.isArray((detail as any).directors) &&
-                    (detail as any).directors.length > 0 && (
+                  {metadataLists.directors.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Directors', '导演', '導演')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).directors
+                        {metadataLists.directors
                           .map((d: string) => convertToTraditional(d) || d)
                           .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail as any)?.actors &&
-                    Array.isArray((detail as any).actors) &&
-                    (detail as any).actors.length > 0 && (
+                  {metadataLists.writers.length > 0 && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Writers', '编剧', '編劇')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {metadataLists.writers
+                          .map((w: string) => convertToTraditional(w) || w)
+                          .join(' / ')}
+                      </span>
+                    </div>
+                  )}
+                  {metadataLists.actors.length > 0 && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Actors', '主演', '主演')}
                       </span>
                       <span className='font-medium text-right'>
-                        {(detail as any).actors
+                        {metadataLists.actors
                           .map((a: string) => convertToTraditional(a) || a)
                           .join(' / ')}
                       </span>
                     </div>
                   )}
-                  {(detail?.year || videoYear) && (
+                  {(detail?.year || videoYear || omdbData?.year) && (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
                         {tt('Year', '年份', '年份')}
                       </span>
-                        <span className='font-medium text-right'>
-                          {detail?.year || videoYear}
-                        </span>
+                      <span className='font-medium text-right'>
+                        {detail?.year || videoYear || omdbData?.year}
+                      </span>
+                    </div>
+                  )}
+                  {omdbData?.boxOffice && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Box office', '票房', '票房')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {omdbData.boxOffice}
+                      </span>
+                    </div>
+                  )}
+                  {omdbData?.production && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Production', '制片公司', '製片公司')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {omdbData.production}
+                      </span>
+                    </div>
+                  )}
+                  {omdbData?.website && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Website', '官网', '官網')}
+                      </span>
+                      <a
+                        className='font-medium text-right text-green-600 dark:text-green-400 underline'
+                        href={omdbData.website}
+                        target='_blank'
+                        rel='noreferrer'
+                      >
+                        {omdbData.website}
+                      </a>
+                    </div>
+                  )}
+                  {detail?.source_name && (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Initial source', '初始来源', '初始來源')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {convertToTraditional(detail.source_name) ||
+                          detail.source_name}
+                      </span>
+                    </div>
+                  )}
+                  {metadataSynopsis && (
+                    <div className='pt-2 border-t border-gray-200 dark:border-gray-800 text-sm leading-relaxed text-gray-700 dark:text-gray-300'>
+                      <div className='text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1'>
+                        {tt('Synopsis', '简介', '簡介')}
                       </div>
-                    )}
-                    {detail?.source_name && (
-                      <div className='flex justify-between gap-3'>
-                        <span className='text-gray-500 dark:text-gray-400'>
-                          {tt('Initial source', '初始来源', '初始來源')}
-                        </span>
-                        <span className='font-medium text-right'>
-                          {convertToTraditional(detail.source_name) ||
-                            detail.source_name}
-                        </span>
+                      <div>
+                        {convertToTraditional(metadataSynopsis) || metadataSynopsis}
                       </div>
-                    )}
-                    {imdbDescription && (
-                      <div className='pt-2 border-t border-gray-200 dark:border-gray-800 text-sm leading-relaxed text-gray-700 dark:text-gray-300'>
-                        <div className='text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1'>
-                          IMDb
-                        </div>
-                        <div>{imdbDescription}</div>
                     </div>
                   )}
                   {tmdbSeasons.length > 0 && (

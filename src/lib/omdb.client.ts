@@ -35,6 +35,18 @@ export interface OMDBData {
 }
 
 export interface OMDBEnrichment {
+  title?: string;
+  year?: string;
+  released?: string;
+  genres?: string;
+  countries?: string;
+  languages?: string;
+  directors?: string;
+  writers?: string;
+  actors?: string;
+  plot?: string;
+  type?: string;
+  poster?: string;
   imdbRating?: string;
   imdbVotes?: string;
   metascore?: string;
@@ -44,6 +56,7 @@ export interface OMDBEnrichment {
   rated?: string; // PG, R, etc.
   boxOffice?: string;
   production?: string;
+  website?: string;
 }
 
 /**
@@ -105,16 +118,34 @@ export async function getOMDBData(imdbId: string): Promise<OMDBEnrichment | null
       }
     }
 
+    const normalize = (value?: string) => {
+      if (!value || value === 'N/A') return undefined;
+      return value;
+    };
+
     return {
-      imdbRating: data.imdbRating !== 'N/A' ? data.imdbRating : undefined,
-      imdbVotes: data.imdbVotes !== 'N/A' ? data.imdbVotes : undefined,
-      metascore: data.Metascore !== 'N/A' ? data.Metascore : undefined,
-      rottenTomatoesScore: rottenTomatoesScore,
-      awards: data.Awards !== 'N/A' ? data.Awards : undefined,
-      runtime: data.Runtime !== 'N/A' ? data.Runtime : undefined,
-      rated: data.Rated !== 'N/A' ? data.Rated : undefined,
-      boxOffice: data.BoxOffice !== 'N/A' ? data.BoxOffice : undefined,
-      production: data.Production !== 'N/A' ? data.Production : undefined,
+      title: normalize(data.Title),
+      year: normalize(data.Year),
+      released: normalize(data.Released),
+      genres: normalize(data.Genre),
+      countries: normalize(data.Country),
+      languages: normalize(data.Language),
+      directors: normalize(data.Director),
+      writers: normalize(data.Writer),
+      actors: normalize(data.Actors),
+      plot: normalize(data.Plot),
+      type: normalize(data.Type),
+      poster: normalize(data.Poster),
+      imdbRating: normalize(data.imdbRating),
+      imdbVotes: normalize(data.imdbVotes),
+      metascore: normalize(data.Metascore),
+      rottenTomatoesScore: normalize(rottenTomatoesScore),
+      awards: normalize(data.Awards),
+      runtime: normalize(data.Runtime),
+      rated: normalize(data.Rated),
+      boxOffice: normalize(data.BoxOffice),
+      production: normalize(data.Production),
+      website: normalize(data.Website),
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
