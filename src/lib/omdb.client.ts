@@ -31,6 +31,7 @@ export interface OMDBData {
   Production: string;
   Website: string;
   Response: string;
+  Error?: string; // Error message when Response is 'False'
 }
 
 export interface OMDBEnrichment {
