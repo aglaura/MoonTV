@@ -248,3 +248,10 @@ div[data-media-provider] video {
     display: none !important;
   }
 }
+
+/* Tablet: make progress bar thicker for easier scrubbing */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .art-video-player {
+    --art-progress-height: 10px;
+  }
+}
