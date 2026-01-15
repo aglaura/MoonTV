@@ -455,6 +455,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const [posterSrc, setPosterSrc] = useState<string>(processedPosterUrl || '');
     const uploadInFlightRef = useRef(false);
     const retryCountRef = useRef(0);
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
       retryCountRef.current = 0;
@@ -535,6 +536,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       loadPoster();
       return () => {
         cancelled = true;
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = null;
+        }
       };
     }, [fallbackPosters, posterCandidates, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
 
@@ -1114,6 +1119,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 className={origin === 'live' ? 'object-contain' : 'object-cover'}
                 referrerPolicy='no-referrer'
                 loading='lazy'
+                onLoadingComplete={() => {
+                  if (retryTimerRef.current) {
+                    clearTimeout(retryTimerRef.current);
+                    retryTimerRef.current = null;
+                  }
+                }}
                 onError={(e) => {
                   const img = e.target as HTMLImageElement;
                   const directUrl =
@@ -1144,7 +1155,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                     }
                   }
 
-                  setPosterSrc(processedPosterUrl || directUrl || '');
+                  const base = candidates[0] || processedPosterUrl || directUrl || '';
+                  if (!retryTimerRef.current && base) {
+                    retryTimerRef.current = setTimeout(() => {
+                      retryTimerRef.current = null;
+                      retryCountRef.current = 0;
+                      const retryUrl = `${base}${base.includes('?') ? '&' : '?'}retry=${Date.now()}`;
+                      setPosterSrc(retryUrl);
+                    }, 1000);
+                  }
                 }}
                 style={
                   {
