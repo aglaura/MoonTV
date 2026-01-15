@@ -139,6 +139,22 @@ async function fetchTmdbList(
     .slice(0, 40);
 }
 
+async function fetchTmdbKrJpTv(apiKey: string): Promise<TmdbItem[]> {
+  const [kr, jp] = await Promise.all([
+    fetchTmdbList(
+      apiKey,
+      '/discover/tv?sort_by=popularity.desc&with_original_language=ko&with_origin_country=KR',
+      'tv'
+    ),
+    fetchTmdbList(
+      apiKey,
+      '/discover/tv?sort_by=popularity.desc&with_original_language=ja&with_origin_country=JP',
+      'tv'
+    ),
+  ]);
+  return dedup([...kr, ...jp]).slice(0, 30);
+}
+
 async function fetchTmdbPeople(apiKey: string) {
   const url = `${TMDB_BASE}/trending/person/day?api_key=${encodeURIComponent(
     apiKey
@@ -311,6 +327,7 @@ export async function GET() {
     let people: Array<Omit<TmdbItem, 'mediaType'>> = [];
     let nowPlayingMovies: TmdbItem[] = [];
     let onAirTv: TmdbItem[] = [];
+    let krjpTv: TmdbItem[] = [];
 
     if (apiKey) {
       try {
@@ -322,6 +339,7 @@ export async function GET() {
           trendingPeople,
           nowPlaying,
           onAir,
+          krjpDiscovery,
         ] =
           await Promise.all([
             fetchTmdbList(apiKey, '/trending/movie/day?sort_by=popularity.desc', 'movie'),
@@ -331,6 +349,7 @@ export async function GET() {
             fetchTmdbPeople(apiKey),
             fetchTmdbList(apiKey, '/movie/now_playing?', 'movie'),
             fetchTmdbList(apiKey, '/tv/on_the_air?', 'tv'),
+            fetchTmdbKrJpTv(apiKey),
           ]);
 
         const localizedMovies = await Promise.all(
@@ -343,9 +362,15 @@ export async function GET() {
             .slice(0, 30)
             .map((item) => enrichTmdbItem(apiKey, item))
         );
+        const localizedKrJp = await Promise.all(
+          dedup(krjpDiscovery)
+            .slice(0, 20)
+            .map((item) => enrichTmdbItem(apiKey, item))
+        );
 
         movies = localizedMovies;
         tv = localizedTv;
+        krjpTv = localizedKrJp;
         people = trendingPeople;
         nowPlayingMovies = nowPlaying;
         onAirTv = onAir;
@@ -361,7 +386,15 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      { movies, tv, people, nowPlaying: nowPlayingMovies, onAir: onAirTv, error: fetchError ?? undefined },
+      {
+        movies,
+        tv,
+        krjpTv,
+        people,
+        nowPlaying: nowPlayingMovies,
+        onAir: onAirTv,
+        error: fetchError ?? undefined,
+      },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',

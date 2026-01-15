@@ -319,13 +319,14 @@ export async function GET(request: Request) {
       latestMovies?: DoubanItem[];
       latestTv?: DoubanItem[];
     };
-    const tmdbHome = (await tmdbRes.json()) as {
-      movies?: TmdbItem[];
-      tv?: TmdbItem[];
-      people?: TmdbPerson[];
-      nowPlaying?: TmdbItem[];
-      onAir?: TmdbItem[];
-    };
+  const tmdbHome = (await tmdbRes.json()) as {
+    movies?: TmdbItem[];
+    tv?: TmdbItem[];
+    krjpTv?: TmdbItem[];
+    people?: TmdbPerson[];
+    nowPlaying?: TmdbItem[];
+    onAir?: TmdbItem[];
+  };
 
     const doubanMovies = mapDoubanCards(doubanHome.movies || [], 'movie');
     const { cn: tvCnRaw, krjp: tvKrJpRaw, us: tvUsRaw } = splitTvByRegion(
@@ -338,11 +339,15 @@ export async function GET(request: Request) {
 
     const tmdbMovieCards = mapTmdbCards(tmdbHome.movies || []);
     const tmdbTvCards = mapTmdbCards(tmdbHome.tv || []);
+    const tmdbKrJpCards = mapTmdbCards(tmdbHome.krjpTv || []);
     const tmdbNowPlaying = mapTmdbCards(tmdbHome.nowPlaying || []);
     const tmdbOnAir = mapTmdbCards(tmdbHome.onAir || []);
     const tmdbPeople = mapTmdbPeople(tmdbHome.people || []);
 
-    const tmdbTvKrJp = tmdbTvCards.filter(isKrJpTmdb);
+    const tmdbTvKrJp = mergeCards(
+      tmdbTvCards.filter(isKrJpTmdb),
+      tmdbKrJpCards
+    );
 
     const mergedMovies = mergeCards(doubanMovies, tmdbMovieCards);
     const mergedTvCn = mergeCards(doubanTvCn, tmdbTvCards);
@@ -367,6 +372,7 @@ export async function GET(request: Request) {
       latestTv,
       tmdbMovies: tmdbMovieCards,
       tmdbTv: tmdbTvCards,
+      tmdbKrJp: tmdbKrJpCards,
       tmdbPeople,
       tmdbNowPlaying,
       tmdbOnAir,

@@ -64,6 +64,7 @@ type PrefetchedHome = {
   latestTv: CardItem[];
   tmdbMovies: CardItem[];
   tmdbTv: CardItem[];
+  tmdbKrJp?: CardItem[];
   tmdbPeople: CardItem[];
   tmdbNowPlaying: CardItem[];
   tmdbOnAir: CardItem[];
@@ -412,6 +413,7 @@ function HomeClient() {
   >([]);
   const [tmdbMovies, setTmdbMovies] = useState<TmdbListItem[]>([]);
   const [tmdbTv, setTmdbTv] = useState<TmdbListItem[]>([]);
+  const [tmdbKrJp, setTmdbKrJp] = useState<TmdbListItem[]>([]);
   const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
   const [tmdbNowPlaying, setTmdbNowPlaying] = useState<TmdbListItem[]>([]);
   const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
@@ -515,14 +517,15 @@ function HomeClient() {
             cache: 'force-cache',
           }).then(async (res) => {
             if (!res.ok) throw new Error(`TMDB list failed (${res.status})`);
-            return (await res.json()) as {
-              movies?: TmdbListItem[];
-              tv?: TmdbListItem[];
-              people?: TmdbPerson[];
-              nowPlaying?: TmdbListItem[];
-              onAir?: TmdbListItem[];
-            };
-          });
+          return (await res.json()) as {
+            movies?: TmdbListItem[];
+            tv?: TmdbListItem[];
+            krjpTv?: TmdbListItem[];
+            people?: TmdbPerson[];
+            nowPlaying?: TmdbListItem[];
+            onAir?: TmdbListItem[];
+          };
+        });
 
           const [doubanRes, tmdbRes] = await Promise.allSettled([
             doubanPromise,
@@ -552,6 +555,7 @@ function HomeClient() {
             const data = tmdbRes.value;
             setTmdbMovies(Array.isArray(data.movies) ? data.movies : []);
             setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
+            setTmdbKrJp(Array.isArray(data.krjpTv) ? data.krjpTv : []);
             setTmdbPeople(Array.isArray(data.people) ? data.people : []);
             setTmdbNowPlaying(
               Array.isArray(data.nowPlaying) ? data.nowPlaying : []
@@ -663,6 +667,29 @@ function HomeClient() {
         id: item.tmdbId,
       })),
     [tmdbTv]
+  );
+
+  const tmdbKrJpCards = useMemo(
+    () =>
+      (tmdbKrJp || []).map((item) => ({
+        title: item.title,
+        title_en: item.originalTitle,
+        poster: item.poster,
+        posterAlt: [item.poster].filter(Boolean),
+        posterTmdb: item.poster,
+        tmdbUrl: `https://www.themoviedb.org/tv/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
+        originalLanguage: item.originalLanguage,
+        originCountry: item.originCountry,
+        rate: '',
+        year: item.year,
+        type: 'tv',
+        query: item.title,
+        imdb_id: item.imdbId,
+        douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        source_name: 'TMDB',
+        id: item.tmdbId,
+      })),
+    [tmdbKrJp]
   );
 
   const tmdbPeopleCards = useMemo(
@@ -966,7 +993,10 @@ function HomeClient() {
       false,
       posterMap
     );
-    const tmdbTvKrJp = tmdbTvCards.filter(isKrJpTmdb);
+    const tmdbTvKrJp = mergeCards(
+      tmdbTvCards.filter(isKrJpTmdb),
+      tmdbKrJpCards
+    );
     const mergedTvKrJp = mergeCards(
       mapDoubanCards(hotTvShowsKrJp, 'tv'),
       tmdbTvKrJp,
@@ -1029,6 +1059,7 @@ function HomeClient() {
     hotVarietyShows,
     tmdbMovies,
     tmdbTv,
+    tmdbKrJp,
     tmdbPeople,
     applyKidsFilter,
     mapDoubanCards,
