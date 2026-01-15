@@ -176,6 +176,32 @@ function mapDoubanCards(items: DoubanItem[], type?: string): CardItem[] {
   }));
 }
 
+function dedupDouban(items: DoubanItem[]) {
+  const seen = new Set<string>();
+  const result: DoubanItem[] = [];
+  (items || []).forEach((item) => {
+    if (!item?.id) return;
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    result.push(item);
+  });
+  return result;
+}
+
+async function fetchDoubanTagList(origin: string, tag: string) {
+  try {
+    const url = `${origin}/api/douban?type=tv&tag=${encodeURIComponent(
+      tag
+    )}&pageSize=24&pageStart=0`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { list?: DoubanItem[] };
+    return Array.isArray(data?.list) ? data.list : [];
+  } catch {
+    return [];
+  }
+}
+
 function mapTmdbCards(items: TmdbItem[]): CardItem[] {
   return (items || []).map((item) => {
     const tmdbId = item.tmdbId?.replace('tmdb:', '') ?? '';
@@ -329,9 +355,31 @@ export async function GET(request: Request) {
   };
 
     const doubanMovies = mapDoubanCards(doubanHome.movies || [], 'movie');
-    const { cn: tvCnRaw, krjp: tvKrJpRaw, us: tvUsRaw } = splitTvByRegion(
-      doubanHome.tv || []
-    );
+    let tvCnRaw: DoubanItem[] = [];
+    let tvKrJpRaw: DoubanItem[] = [];
+    let tvUsRaw: DoubanItem[] = [];
+
+    const [tagCn, tagKr, tagJp, tagUs, tagUk] = await Promise.all([
+      fetchDoubanTagList(origin, '国产剧'),
+      fetchDoubanTagList(origin, '韩剧'),
+      fetchDoubanTagList(origin, '日剧'),
+      fetchDoubanTagList(origin, '美剧'),
+      fetchDoubanTagList(origin, '英剧'),
+    ]);
+
+    const tagCount =
+      tagCn.length + tagKr.length + tagJp.length + tagUs.length + tagUk.length;
+
+    if (tagCount > 0) {
+      tvCnRaw = dedupDouban(tagCn);
+      tvKrJpRaw = dedupDouban([...tagKr, ...tagJp]);
+      tvUsRaw = dedupDouban([...tagUs, ...tagUk]);
+    } else {
+      const split = splitTvByRegion(doubanHome.tv || []);
+      tvCnRaw = split.cn;
+      tvKrJpRaw = split.krjp;
+      tvUsRaw = split.us;
+    }
     const doubanTvCn = mapDoubanCards(tvCnRaw, 'tv');
     const doubanTvKrJp = mapDoubanCards(tvKrJpRaw, 'tv');
     const doubanTvUs = mapDoubanCards(tvUsRaw, 'tv');
