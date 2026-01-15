@@ -430,22 +430,31 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       return undefined;
     }, [dynamicDoubanId, imdbIdState]);
 
+    const directCandidates = useMemo(
+      () => fallbackPosters.filter(Boolean),
+      [fallbackPosters]
+    );
+    const proxyCandidates = useMemo(
+      () =>
+        fallbackPosters
+          .map((url) =>
+            processImageUrl(url, {
+              doubanId: dynamicDoubanId,
+              imdbId: imdbIdState,
+              preferCached: true,
+            })
+          )
+          .filter(Boolean),
+      [fallbackPosters, dynamicDoubanId, imdbIdState]
+    );
     const posterCandidates = useMemo(() => {
-      const direct = new Set<string>();
-      const proxied = new Set<string>();
-      fallbackPosters.forEach((url) => {
-        if (!url) return;
-        direct.add(url);
-        const processed = processImageUrl(url, {
-          doubanId: dynamicDoubanId,
-          imdbId: imdbIdState,
-          preferCached: true,
-        });
-        if (processed) proxied.add(processed);
-      });
-      // Try direct first, then proxies
-      return [...Array.from(direct), ...Array.from(proxied)];
-    }, [fallbackPosters, dynamicDoubanId, imdbIdState]);
+      const set = new Set<string>([...directCandidates, ...proxyCandidates]);
+      return Array.from(set);
+    }, [directCandidates, proxyCandidates]);
+    const directCandidateSet = useMemo(() => {
+      const normalize = (url: string) => url.split('?')[0];
+      return new Set(directCandidates.map(normalize));
+    }, [directCandidates]);
 
     const processedPosterUrl = useMemo(
       () => posterCandidates[0] || '',
@@ -456,6 +465,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const uploadInFlightRef = useRef(false);
     const retryCountRef = useRef(0);
     const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const backfillKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
       retryCountRef.current = 0;
@@ -468,8 +478,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           setPosterSrc('');
           return;
         }
-        const primaryOriginal = fallbackPosters[0];
-
         if (typeof window !== 'undefined' && 'caches' in window && posterCacheKey) {
           try {
             const cache = await caches.open('moontv-poster-cache');
@@ -490,18 +498,17 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         }
 
         const backfillRemoteCache = async () => {
-          if (uploadInFlightRef.current || posterCandidates.length === 0) return;
+          const proxyCandidate = proxyCandidates[0];
+          if (!proxyCandidate) return;
+          if (uploadInFlightRef.current) return;
+          if (backfillKeyRef.current === proxyCandidate) return;
           uploadInFlightRef.current = true;
+          backfillKeyRef.current = proxyCandidate;
           try {
-            const proxyCandidate = posterCandidates.find((u) =>
-              u.startsWith('/api/image-proxy')
-            );
-            if (proxyCandidate) {
-              await fetch(
-                `${proxyCandidate}${proxyCandidate.includes('?') ? '&' : '?'}bust=${Date.now()}`,
-                { cache: 'no-store' }
-              ).catch(() => {});
-            }
+            await fetch(
+              `${proxyCandidate}${proxyCandidate.includes('?') ? '&' : '?'}bust=${Date.now()}`,
+              { cache: 'no-store' }
+            ).catch(() => {});
           } finally {
             uploadInFlightRef.current = false;
           }
@@ -541,7 +548,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           retryTimerRef.current = null;
         }
       };
-    }, [fallbackPosters, posterCandidates, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
+    }, [directCandidates, proxyCandidates, posterCandidates, processedPosterUrl, posterCacheKey, dynamicDoubanId, imdbIdState]);
 
     // 获取收藏状态（搜索结果页面不检查）
     useEffect(() => {
@@ -1119,10 +1126,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 className={origin === 'live' ? 'object-contain' : 'object-cover'}
                 referrerPolicy='no-referrer'
                 loading='lazy'
-                onLoadingComplete={() => {
+                onLoadingComplete={(img) => {
                   if (retryTimerRef.current) {
                     clearTimeout(retryTimerRef.current);
                     retryTimerRef.current = null;
+                  }
+                  const normalize = (url: string) => url.split('?')[0];
+                  const current = normalize(img.currentSrc || img.src || '');
+                  if (directCandidateSet.has(current)) {
+                    const proxyCandidate = proxyCandidates[0];
+                    if (proxyCandidate && backfillKeyRef.current !== proxyCandidate) {
+                      fetch(
+                        `${proxyCandidate}${proxyCandidate.includes('?') ? '&' : '?'}bust=${Date.now()}`,
+                        { cache: 'no-store' }
+                      ).catch(() => {});
+                      backfillKeyRef.current = proxyCandidate;
+                    }
                   }
                 }}
                 onError={(e) => {
