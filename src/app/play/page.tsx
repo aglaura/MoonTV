@@ -3295,7 +3295,9 @@ function PlayPageClient() {
             html: '<div style="display:none"></div>',
             mounted: (art: any) => {
               if (!art || !art.template) return;
-              const baseDelay = screenMode === 'mobile' ? 2200 : 3200;
+              const isWide =
+                typeof window !== 'undefined' ? window.innerWidth >= 1024 : false;
+              const baseDelay = isWide ? 3200 : 2200;
               let timer: NodeJS.Timeout | null = null;
               const scheduleHide = () => {
                 if (timer) clearTimeout(timer);

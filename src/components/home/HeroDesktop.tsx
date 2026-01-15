@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 import VideoCard from '@/components/VideoCard';
 
 type Card = {
@@ -40,10 +42,13 @@ export function HeroDesktop({
           <div className='flex flex-col lg:flex-row gap-4 items-start lg:items-center'>
             <div className='relative w-40 sm:w-48 flex-shrink-0 rounded-xl overflow-hidden shadow-2xl border border-white/10'>
               {currentHero?.poster ? (
-                <img
+                <Image
                   src={currentHero.poster}
                   alt={currentHero.title}
-                  className='w-full h-full object-cover'
+                  fill
+                  sizes='(max-width: 1024px) 40vw, 240px'
+                  className='object-cover'
+                  priority
                 />
               ) : (
                 <div className='aspect-[2/3] bg-gray-700'></div>
@@ -106,13 +111,16 @@ export function HeroDesktop({
                     style={{ scrollSnapAlign: 'start' }}
                   >
                     <div className='aspect-[2/3] bg-gray-700'>
-                      {item.poster && (
-                        <img
-                          src={item.poster}
-                          alt={item.title}
-                          className='w-full h-full object-cover'
-                        />
-                      )}
+                    {item.poster && (
+                      <Image
+                        src={item.poster}
+                        alt={item.title}
+                        fill
+                        sizes='120px'
+                        className='object-cover'
+                        priority={idx < 3}
+                      />
+                    )}
                     </div>
                     <div className='p-2 text-[11px] text-gray-100 line-clamp-2 text-left bg-black/50'>
                       {item.title}
