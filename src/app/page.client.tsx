@@ -18,6 +18,7 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { convertToTraditional } from '@/lib/locale';
+import { detectDeviceInfo } from '@/lib/screenMode';
 import { DoubanItem } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -173,7 +174,7 @@ function ContentRail({
   title: string;
   href?: string;
   items: CardItem[];
-  screenMode: 'tv' | 'desktop' | 'mobile';
+  screenMode: 'tv' | 'desktop' | 'mobile' | 'tablet';
   tt: (en: string, zhHans: string, zhHant: string) => string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -435,14 +436,14 @@ function HomeClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
-  const [screenMode, setScreenMode] = useState<'tv' | 'desktop' | 'mobile'>(
-    'desktop'
-  );
+  const [screenMode, setScreenMode] = useState<
+    'tv' | 'desktop' | 'mobile' | 'tablet'
+  >('desktop');
   const topBarModeLabel = useMemo(() => {
     if (screenMode === 'tv') {
       return tt('TV mode', '电视模式', '電視模式');
     }
-    if (screenMode === 'desktop') {
+    if (screenMode === 'tablet') {
       return tt('Tablet mode', '平板模式', '平板模式');
     }
     return undefined;
@@ -609,14 +610,7 @@ function HomeClient() {
   useEffect(() => {
     const handleResize = () => {
       if (typeof window === 'undefined') return;
-      const w = window.innerWidth;
-      if (w >= 1600) {
-        setScreenMode('tv');
-      } else if (w >= 768) {
-        setScreenMode('desktop');
-      } else {
-        setScreenMode('mobile');
-      }
+      setScreenMode(detectDeviceInfo().screenMode);
     };
     handleResize();
     window.addEventListener('resize', handleResize);

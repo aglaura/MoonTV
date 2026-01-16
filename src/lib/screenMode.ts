@@ -19,8 +19,26 @@ function detectBrowser(ua: string): DeviceInfo['browser'] {
   return 'other';
 }
 
+function getAndroidMajorVersion(ua: string): number | null {
+  const match = ua.match(/Android\s+(\d+)(?:[._]\d+)?/i);
+  if (!match) return null;
+  const major = Number.parseInt(match[1], 10);
+  return Number.isNaN(major) ? null : major;
+}
+
 function detectTV(ua: string): boolean {
-  return /SmartTV|Tizen|Web0S|NetCast|HbbTV|Viera|AFT|CrKey|AppleTV|Android TV|GoogleTV/i.test(
+  const androidMajor = getAndroidMajorVersion(ua);
+  const androidTvMarkers =
+    /Android TV|AndroidTV|GoogleTV|Google TV|AFT|CrKey/i;
+  const androidTvDevices = /BRAVIA|SHIELD|MiTV|TV\s?Box/i;
+  if (
+    androidMajor !== null &&
+    (androidTvMarkers.test(ua) || androidTvDevices.test(ua))
+  ) {
+    return true;
+  }
+
+  return /SmartTV|Tizen|Web0S|NetCast|HbbTV|Viera|AFT|CrKey|AppleTV|Android TV|AndroidTV|GoogleTV|Google TV/i.test(
     ua
   );
 }
@@ -44,7 +62,7 @@ export function detectDeviceInfo(): DeviceInfo {
   const browser = detectBrowser(ua);
 
   let screenMode: ScreenMode;
-  if (isTV && w >= 1200) screenMode = 'tv';
+  if (isTV) screenMode = 'tv';
   else if (w < 768) screenMode = 'mobile';
   else if (w < 1200) screenMode = 'tablet';
   else screenMode = 'desktop';
@@ -66,4 +84,3 @@ export function useDeviceInfo(): DeviceInfo {
 
   return info;
 }
-
