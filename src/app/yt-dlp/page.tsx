@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 
@@ -9,6 +9,15 @@ const YtdlpPage = () => {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<number | null>(null);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const configJsonBase = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
+    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -21,15 +30,10 @@ const YtdlpPage = () => {
     setIsLoading(true);
     setError(null);
     setResultUrl(null);
+    setJobId(null);
+    setJobStatus(null);
+    setJobProgress(null);
     try {
-      const runtimeConfig =
-        (typeof window !== 'undefined' &&
-          (window as any).RUNTIME_CONFIG) ||
-        { CONFIGJSON: '' };
-      const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(
-        /\/+$/,
-        ''
-      );
       const endpoints: string[] = [];
       if (configJsonBase) {
         endpoints.push(`${configJsonBase}/posters/yt-dlp`);
@@ -38,6 +42,7 @@ const YtdlpPage = () => {
       endpoints.push('/api/yt-dlp');
 
       let resolvedUrl: string | null = null;
+      let queuedId: string | null = null;
       let lastError = 'Failed to generate download link.';
       for (const endpoint of endpoints) {
         // eslint-disable-next-line no-await-in-loop
@@ -52,9 +57,18 @@ const YtdlpPage = () => {
           resolvedUrl = candidate as string;
           break;
         }
+        if (resp.ok && data?.ok && data?.id) {
+          queuedId = String(data.id);
+          setJobId(queuedId);
+          setJobStatus(data.status || 'queued');
+          setJobProgress(
+            typeof data.progress === 'number' ? data.progress : 0
+          );
+          break;
+        }
         lastError = data?.error || lastError;
       }
-      if (!resolvedUrl) {
+      if (!resolvedUrl && !queuedId) {
         throw new Error(lastError);
       }
       setResultUrl(resolvedUrl);
@@ -64,6 +78,53 @@ const YtdlpPage = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!jobId || !configJsonBase) return;
+    const poll = async () => {
+      try {
+        const statusUrl = `${configJsonBase}/posters/yt-dlp.php?action=status&id=${encodeURIComponent(
+          jobId
+        )}`;
+        const resp = await fetch(statusUrl, { cache: 'no-store' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data?.ok === false) return;
+        const status = data?.status || 'queued';
+        setJobStatus(status);
+        setJobProgress(
+          typeof data?.progress === 'number' ? data.progress : 0
+        );
+        if (data?.url) {
+          const url = /^https?:\/\//i.test(data.url)
+            ? data.url
+            : `${configJsonBase.replace(/\/+$/, '')}/${String(data.url).replace(
+                /^\/+/,
+                ''
+              )}`;
+          setResultUrl(url);
+        }
+        if (status === 'downloaded' || status === 'error') {
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        }
+      } catch {
+        // ignore polling errors
+      }
+    };
+    poll();
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+    }
+    pollRef.current = setInterval(poll, 2000);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [configJsonBase, jobId]);
 
   return (
     <PageLayout activePath='/yt-dlp'>
@@ -102,6 +163,16 @@ const YtdlpPage = () => {
         {error && (
           <div className='mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-200'>
             {error}
+          </div>
+        )}
+
+        {jobId && (
+          <div className='mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200'>
+            <div className='font-semibold'>Queue status</div>
+            <div className='mt-1'>
+              {jobStatus || 'queued'}
+              {typeof jobProgress === 'number' ? ` · ${jobProgress}%` : ''}
+            </div>
           </div>
         )}
 

@@ -79,6 +79,11 @@ declare global {
 function PlayPageClient() {
   const { userLocale } = useUserLanguage();
   const searchParams = useSearchParams();
+  const configJsonBase = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
+    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+  }, []);
 
   type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
   const uiLocale: UiLocale =
@@ -311,6 +316,8 @@ function PlayPageClient() {
       );
     };
   }, [downloadStorageKey, downloadRecordKey]);
+  const downloadPollRef = useRef<NodeJS.Timeout | null>(null);
+  const downloadPollJobRef = useRef<string | null>(null);
   const upsertDownloadRecord = useCallback(
     (
       key: string,
@@ -348,6 +355,99 @@ function PlayPageClient() {
     },
     [downloadStorageKey]
   );
+  const normalizeDownloadUrl = useCallback(
+    (url: string) => {
+      if (!url) return '';
+      if (/^https?:\/\//i.test(url)) return url;
+      if (!configJsonBase) return url;
+      return `${configJsonBase.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+    },
+    [configJsonBase]
+  );
+  const pollDownloadJob = useCallback(
+    async (jobId: string, key: string) => {
+      if (!configJsonBase || !jobId || !key) return;
+      try {
+        const statusUrl = `${configJsonBase}/posters/yt-dlp.php?action=status&id=${encodeURIComponent(
+          jobId
+        )}`;
+        const resp = await fetch(statusUrl, { cache: 'no-store' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data?.ok === false) {
+          return;
+        }
+        const status = data?.status || 'queued';
+        const progress =
+          typeof data?.progress === 'number' ? data.progress : 0;
+        const urlCandidate = data?.url || data?.file || '';
+        const resolvedUrl = urlCandidate
+          ? normalizeDownloadUrl(String(urlCandidate))
+          : '';
+        const updates: Partial<DownloadRecord> = {
+          jobId,
+          status,
+          progress,
+        };
+        if (resolvedUrl) {
+          updates.url = resolvedUrl;
+        }
+        upsertDownloadRecord(key, updates);
+
+        if (status === 'downloaded' || status === 'error') {
+          if (downloadPollRef.current) {
+            clearInterval(downloadPollRef.current);
+            downloadPollRef.current = null;
+            downloadPollJobRef.current = null;
+          }
+        }
+      } catch {
+        // ignore polling errors
+      }
+    },
+    [configJsonBase, normalizeDownloadUrl, upsertDownloadRecord]
+  );
+  const startDownloadPolling = useCallback(
+    (jobId: string, key: string) => {
+      if (!jobId || !key || !configJsonBase) return;
+      if (downloadPollJobRef.current === jobId && downloadPollRef.current) {
+        return;
+      }
+      if (downloadPollRef.current) {
+        clearInterval(downloadPollRef.current);
+      }
+      downloadPollJobRef.current = jobId;
+      pollDownloadJob(jobId, key);
+      downloadPollRef.current = setInterval(() => {
+        pollDownloadJob(jobId, key);
+      }, 2000);
+    },
+    [configJsonBase, pollDownloadJob]
+  );
+  useEffect(() => {
+    if (!downloadRecord?.jobId || !downloadRecordKey) return;
+    const status = downloadRecord.status || 'queued';
+    if (
+      status === 'queued' ||
+      status === 'preparing' ||
+      status === 'downloading'
+    ) {
+      startDownloadPolling(downloadRecord.jobId, downloadRecordKey);
+    }
+  }, [
+    downloadRecord?.jobId,
+    downloadRecord?.status,
+    downloadRecordKey,
+    startDownloadPolling,
+  ]);
+  useEffect(() => {
+    return () => {
+      if (downloadPollRef.current) {
+        clearInterval(downloadPollRef.current);
+        downloadPollRef.current = null;
+        downloadPollJobRef.current = null;
+      }
+    };
+  }, []);
 
   const currentSourceRef = useRef(currentSource);
   const currentIdRef = useRef(currentId);
@@ -1794,21 +1894,6 @@ function PlayPageClient() {
       offline: false,
     });
 
-    const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
-    const triggerDownload = (href: string, name?: string) => {
-      const a = document.createElement('a');
-      a.href = href;
-      if (name) a.download = name;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => a.remove(), 0);
-    };
-
-    const runtimeConfig = (typeof window !== 'undefined' &&
-      (window as any).RUNTIME_CONFIG) || { CONFIGJSON: '', MUX_TOKEN: '' };
-    const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(/\/+$/, '');
-    const muxToken = runtimeConfig.MUX_TOKEN || '';
     if (!configJsonBase) {
       upsertDownloadRecord(downloadKey, {
         status: 'error',
@@ -1827,55 +1912,31 @@ function PlayPageClient() {
 
     const ytdlpEndpoint = `${configJsonBase}/posters/yt-dlp.php`;
     upsertDownloadRecord(downloadKey, {
-      status: 'downloading',
+      status: 'queued',
       progress: 0,
     });
     try {
       const resp = await fetch(ytdlpEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: videoUrl, title: recordTitle }),
+        body: JSON.stringify({
+          url: videoUrl,
+          title: recordTitle,
+          action: 'enqueue',
+        }),
         mode: 'cors',
       });
       const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data?.url) {
-        const ytdlpUrl = data.url as string;
-        const looksLikeM3u8 = ytdlpUrl.toLowerCase().includes('.m3u8');
-        if (looksLikeM3u8) {
-          const streamUrl = new URL(
-            `${configJsonBase}/posters/mux-stream.php`
-          );
-          streamUrl.searchParams.set('url', ytdlpUrl);
-          streamUrl.searchParams.set('name', `${safeName}.mp4`);
-          if (muxToken) streamUrl.searchParams.set('token', muxToken);
-
-          const streamHref = streamUrl.toString();
-          upsertDownloadRecord(downloadKey, {
-            title: recordTitle,
-            url: streamHref,
-            status: 'downloading',
-            progress: 0,
-            offline: false,
-          });
-          triggerDownload(streamHref, `${safeName}.mp4`);
-          upsertDownloadRecord(downloadKey, {
-            status: 'downloaded',
-            progress: 100,
-          });
-          return;
-        }
+      if (resp.ok && data?.ok && data?.id) {
+        const jobId = String(data.id);
         upsertDownloadRecord(downloadKey, {
           title: recordTitle,
-          url: ytdlpUrl,
-          status: 'downloading',
-          progress: 0,
+          jobId,
+          status: data.status || 'queued',
+          progress: typeof data.progress === 'number' ? data.progress : 0,
           offline: false,
         });
-        triggerDownload(ytdlpUrl, `${safeName}.mp4`);
-        upsertDownloadRecord(downloadKey, {
-          status: 'downloaded',
-          progress: 100,
-        });
+        startDownloadPolling(jobId, downloadKey);
         return;
       }
       const logLines = Array.isArray(data?.log)
@@ -1905,12 +1966,14 @@ function PlayPageClient() {
     }
     return;
   }, [
+    configJsonBase,
     videoUrl,
     displayTitleWithEnglish,
     searchTitle,
     detail?.episodes?.length,
     currentEpisodeIndex,
     upsertDownloadRecord,
+    startDownloadPolling,
     tt,
     reportError,
   ]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
@@ -28,15 +28,82 @@ const DownloadsPage = () => {
       return null;
     }
   }, []);
+  const configJsonBase = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
+    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+  }, []);
   const downloadStorageKey = useMemo(
     () => buildDownloadStorageKey(username),
     [username]
   );
   const [downloadRecords, setDownloadRecords] = useState<DownloadRecord[]>([]);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadDownloads = useCallback(() => {
     setDownloadRecords(readDownloadRecords(downloadStorageKey));
   }, [downloadStorageKey]);
+  const normalizeDownloadUrl = useCallback(
+    (url: string) => {
+      if (!url) return '';
+      if (/^https?:\/\//i.test(url)) return url;
+      if (!configJsonBase) return url;
+      return `${configJsonBase.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+    },
+    [configJsonBase]
+  );
+  const updateRecordByJobId = useCallback(
+    (jobId: string, updates: Partial<DownloadRecord>) => {
+      if (!jobId) return;
+      const existing = readDownloadRecords(downloadStorageKey);
+      const list = Array.isArray(existing) ? existing : [];
+      const idx = list.findIndex((rec) => rec.jobId === jobId);
+      if (idx < 0) return;
+      list[idx] = { ...list[idx], ...updates };
+      writeDownloadRecords(downloadStorageKey, list);
+    },
+    [downloadStorageKey]
+  );
+  const pollJobs = useCallback(async () => {
+    if (!configJsonBase) return;
+    const pending = downloadRecords.filter(
+      (rec) =>
+        rec.jobId &&
+        ['queued', 'preparing', 'downloading'].includes(
+          rec.status || 'queued'
+        )
+    );
+    if (!pending.length) return;
+    await Promise.all(
+      pending.map(async (rec) => {
+        try {
+          const statusUrl = `${configJsonBase}/posters/yt-dlp.php?action=status&id=${encodeURIComponent(
+            rec.jobId as string
+          )}`;
+          const resp = await fetch(statusUrl, { cache: 'no-store' });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || data?.ok === false) return;
+          const status = data?.status || 'queued';
+          const progress =
+            typeof data?.progress === 'number' ? data.progress : 0;
+          const urlCandidate = data?.url || data?.file || '';
+          const resolvedUrl = urlCandidate
+            ? normalizeDownloadUrl(String(urlCandidate))
+            : '';
+          const updates: Partial<DownloadRecord> = {
+            status,
+            progress,
+          };
+          if (resolvedUrl) {
+            updates.url = resolvedUrl;
+          }
+          updateRecordByJobId(rec.jobId as string, updates);
+        } catch {
+          // ignore polling errors
+        }
+      })
+    );
+  }, [configJsonBase, downloadRecords, normalizeDownloadUrl, updateRecordByJobId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -69,6 +136,36 @@ const DownloadsPage = () => {
       );
     };
   }, [downloadStorageKey, loadDownloads]);
+  useEffect(() => {
+    if (!configJsonBase) return;
+    const hasPending = downloadRecords.some(
+      (rec) =>
+        rec.jobId &&
+        ['queued', 'preparing', 'downloading'].includes(
+          rec.status || 'queued'
+        )
+    );
+    if (!hasPending) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+    pollJobs();
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+    }
+    pollRef.current = setInterval(() => {
+      pollJobs();
+    }, 3000);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [configJsonBase, downloadRecords, pollJobs]);
 
   const handleOpenDownload = (url: string) => {
     if (!url) return;

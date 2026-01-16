@@ -9,6 +9,7 @@ export type DownloadStatus =
 
 export type DownloadRecord = {
   key?: string;
+  jobId?: string;
   title: string;
   url: string;
   ts: number;
