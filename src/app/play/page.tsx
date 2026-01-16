@@ -1708,15 +1708,22 @@ function PlayPageClient() {
         triggerDownload(ytdlpUrl, `${safeName}.mp4`);
         return;
       }
-      const errMsg =
+      const logLines = Array.isArray(data?.log)
+        ? data.log.join('\n')
+        : typeof data?.log === 'string'
+        ? data.log
+        : '';
+      const baseMsg =
         data?.error ||
         `yt-dlp failed (${resp.status})`;
+      const errMsg = logLines
+        ? `yt-dlp error: ${baseMsg}\n\n${logLines}`
+        : `yt-dlp error: ${baseMsg}`;
       reportError(errMsg, 'playback');
     } catch (err) {
-      reportError(
-        err instanceof Error ? err.message : 'yt-dlp request failed',
-        'playback'
-      );
+      const msg =
+        err instanceof Error ? err.message : 'yt-dlp request failed';
+      reportError(`yt-dlp error: ${msg}`, 'playback');
     }
     return;
   }, [
@@ -4002,7 +4009,7 @@ function PlayPageClient() {
                           ? tt('Parameter error', '参数错误', '參數錯誤')
                           : tt('Error', '错误', '錯誤')}
                       </div>
-                      <div className='mt-1 text-sm font-medium break-words'>
+                      <div className='mt-1 text-sm font-medium break-words whitespace-pre-wrap'>
                         {error}
                       </div>
                       {(errorType === 'playback' || errorType === 'source') && (
