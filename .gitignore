@@ -44,3 +44,6 @@ sitemap-*.xml
 src/lib/runtime.ts
 public/manifest.jsonupdate_github
 update_github
+
+# build artifacts
+essaouira-twa-tv/app/build/

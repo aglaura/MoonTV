@@ -1,4 +1,0 @@
-#Fri Jan 16 01:43:43 UTC 2026
-base.0=/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
-renamed.0=classes.dex
-path.0=classes.dex
