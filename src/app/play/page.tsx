@@ -1707,37 +1707,17 @@ function PlayPageClient() {
         const ytdlpUrl = data.url as string;
         const looksLikeM3u8 = ytdlpUrl.toLowerCase().includes('.m3u8');
         if (looksLikeM3u8) {
-          try {
-            const muxUrl = `${configJsonBase}/posters/mux.php`;
-            const body = new URLSearchParams();
-            body.set('url', ytdlpUrl);
-            body.set('name', `${safeName}.mp4`);
-            body.set('title', recordTitle);
-            if (muxToken) body.set('token', muxToken);
+          const streamUrl = new URL(
+            `${configJsonBase}/posters/mux-stream.php`
+          );
+          streamUrl.searchParams.set('url', ytdlpUrl);
+          streamUrl.searchParams.set('name', `${safeName}.mp4`);
+          if (muxToken) streamUrl.searchParams.set('token', muxToken);
 
-            const muxResp = await fetch(muxUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: body.toString(),
-            });
-            const muxData = await muxResp.json().catch(() => ({}));
-            if (muxResp.ok && muxData?.url) {
-              const finalUrl = muxData.url as string;
-              persistDownloadRecord(recordTitle, finalUrl, { offline: false });
-              triggerDownload(finalUrl, `${safeName}.mp4`);
-              return;
-            }
-            const muxMsg =
-              muxData?.error ||
-              `Mux failed (${muxResp.status})`;
-            reportError(`mux error: ${muxMsg}`, 'playback');
-            return;
-          } catch (muxErr) {
-            const muxMsg =
-              muxErr instanceof Error ? muxErr.message : 'Mux request failed';
-            reportError(`mux error: ${muxMsg}`, 'playback');
-            return;
-          }
+          const streamHref = streamUrl.toString();
+          persistDownloadRecord(recordTitle, streamHref, { offline: false });
+          triggerDownload(streamHref, `${safeName}.mp4`);
+          return;
         }
         persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
         triggerDownload(ytdlpUrl, `${safeName}.mp4`);
