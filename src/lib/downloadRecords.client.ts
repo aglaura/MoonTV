@@ -1,10 +1,20 @@
 import { getAuthInfoFromBrowserCookie } from './auth';
 
+export type DownloadStatus =
+  | 'queued'
+  | 'preparing'
+  | 'downloading'
+  | 'downloaded'
+  | 'error';
+
 export type DownloadRecord = {
+  key?: string;
   title: string;
   url: string;
   ts: number;
   offline?: boolean;
+  status?: DownloadStatus;
+  progress?: number;
 };
 
 export const DOWNLOAD_RECORDS_EVENT = 'downloadRecordsUpdated';

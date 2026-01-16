@@ -45,6 +45,11 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadOpen: 'Open',
     downloadRemove: 'Remove',
     downloadClear: 'Clear all',
+    downloadQueued: 'Queued',
+    downloadPreparing: 'Preparing',
+    downloadDownloading: 'Downloading',
+    downloadFailed: 'Failed',
+    downloaded: 'Downloaded',
   },
   'zh-Hans': {
     settingsTitle: '设置',
@@ -74,6 +79,11 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadOpen: '打开',
     downloadRemove: '删除',
     downloadClear: '清空',
+    downloadQueued: '已排队',
+    downloadPreparing: '准备中',
+    downloadDownloading: '下载中',
+    downloadFailed: '失败',
+    downloaded: '已完成',
   },
   'zh-Hant': {
     settingsTitle: '設定',
@@ -103,6 +113,11 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadOpen: '開啟',
     downloadRemove: '刪除',
     downloadClear: '清空',
+    downloadQueued: '已排隊',
+    downloadPreparing: '準備中',
+    downloadDownloading: '下載中',
+    downloadFailed: '失敗',
+    downloaded: '已完成',
   },
 };
 
@@ -151,6 +166,13 @@ export const SettingsButton: React.FC = () => {
       key,
     [locale]
   );
+  const getStatusLabel = (status?: DownloadRecord['status']) => {
+    if (status === 'preparing') return t('downloadPreparing');
+    if (status === 'downloading') return t('downloadDownloading');
+    if (status === 'error') return t('downloadFailed');
+    if (status === 'queued') return t('downloadQueued');
+    return t('downloaded');
+  };
   const formatTime = (ts: number) => {
     try {
       return new Date(ts).toLocaleString();
@@ -521,7 +543,14 @@ export const SettingsButton: React.FC = () => {
                 downloadRecords
                   .slice()
                   .sort((a, b) => b.ts - a.ts)
-                  .map((rec, idx) => (
+                  .map((rec, idx) => {
+                    const status = rec.status || 'downloaded';
+                    const canOpen = status === 'downloaded' && !!rec.url;
+                    const progressLabel =
+                      status === 'downloading' && typeof rec.progress === 'number'
+                        ? ` ${Math.max(0, Math.min(100, Math.round(rec.progress)))}%`
+                        : '';
+                    return (
                     <div
                       key={`${rec.title}-${rec.ts}-${idx}`}
                       className='rounded-md border border-gray-200 dark:border-gray-700 p-2 flex items-start justify-between gap-3 bg-white/70 dark:bg-gray-900/60'
@@ -536,9 +565,21 @@ export const SettingsButton: React.FC = () => {
                               Offline
                             </span>
                           )}
+                          <span
+                            className={`px-2 py-[2px] rounded-full text-[11px] whitespace-nowrap ${
+                              status === 'error'
+                                ? 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-100'
+                                : status === 'downloaded'
+                                ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-100'
+                                : 'bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-100'
+                            }`}
+                          >
+                            {getStatusLabel(status)}
+                            {progressLabel}
+                          </span>
                         </div>
                         <div className='text-[11px] text-gray-500 dark:text-gray-400 truncate'>
-                          {rec.url}
+                          {rec.url || t('downloadPreparing')}
                         </div>
                         <div className='text-[11px] text-gray-400 dark:text-gray-500'>
                           {formatTime(rec.ts)}
@@ -547,7 +588,8 @@ export const SettingsButton: React.FC = () => {
                       <div className='flex items-center gap-2 flex-shrink-0'>
                         <button
                           onClick={() => handleOpenDownload(rec.url)}
-                          className='text-xs px-2 py-1 rounded-full bg-green-600 text-white hover:bg-green-700'
+                          className='text-xs px-2 py-1 rounded-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed'
+                          disabled={!canOpen}
                         >
                           {t('downloadOpen')}
                         </button>
@@ -559,7 +601,8 @@ export const SettingsButton: React.FC = () => {
                         </button>
                       </div>
                     </div>
-                  ))
+                  );
+                  })
               )}
             </div>
           </div>

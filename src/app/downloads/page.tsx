@@ -125,49 +125,74 @@ const DownloadsPage = () => {
               No downloads yet.
             </div>
           ) : (
-            sortedRecords.map((rec, idx) => (
-              <div
-                key={`${rec.title}-${rec.ts}-${idx}`}
-                className='rounded-lg border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70'
-              >
-                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-                  <div className='min-w-0'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <div className='text-sm font-semibold text-gray-900 dark:text-gray-100'>
-                        {rec.title || rec.url}
-                      </div>
-                      {rec.offline && (
-                        <span className='rounded-full bg-emerald-500/15 px-2 py-[2px] text-[11px] font-semibold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-100'>
-                          Offline
+            sortedRecords.map((rec, idx) => {
+              const status = rec.status || 'downloaded';
+              const canOpen = status === 'downloaded' && !!rec.url;
+              const progressLabel =
+                status === 'downloading' && typeof rec.progress === 'number'
+                  ? ` ${Math.max(0, Math.min(100, Math.round(rec.progress)))}%`
+                  : '';
+              return (
+                <div
+                  key={`${rec.title}-${rec.ts}-${idx}`}
+                  className='rounded-lg border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900/70'
+                >
+                  <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+                    <div className='min-w-0'>
+                      <div className='flex flex-wrap items-center gap-2'>
+                        <div className='text-sm font-semibold text-gray-900 dark:text-gray-100'>
+                          {rec.title || rec.url}
+                        </div>
+                        {rec.offline && (
+                          <span className='rounded-full bg-emerald-500/15 px-2 py-[2px] text-[11px] font-semibold text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-100'>
+                            Offline
+                          </span>
+                        )}
+                        <span
+                          className={`rounded-full px-2 py-[2px] text-[11px] font-semibold ${
+                            status === 'error'
+                              ? 'bg-rose-500/15 text-rose-700 dark:bg-rose-400/15 dark:text-rose-100'
+                              : status === 'downloaded'
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-100'
+                              : 'bg-amber-500/15 text-amber-700 dark:bg-amber-400/15 dark:text-amber-100'
+                          }`}
+                        >
+                          {status === 'preparing' && 'Preparing'}
+                          {status === 'queued' && 'Queued'}
+                          {status === 'downloading' && 'Downloading'}
+                          {status === 'error' && 'Failed'}
+                          {status === 'downloaded' && 'Downloaded'}
+                          {progressLabel}
                         </span>
-                      )}
+                      </div>
+                      <div className='mt-1 text-xs text-gray-500 break-all dark:text-gray-400'>
+                        {rec.url || 'Preparing download link...'}
+                      </div>
+                      <div className='mt-1 text-xs text-gray-400 dark:text-gray-500'>
+                        {formatTime(rec.ts)}
+                      </div>
                     </div>
-                    <div className='mt-1 text-xs text-gray-500 break-all dark:text-gray-400'>
-                      {rec.url}
+                    <div className='flex items-center gap-2'>
+                      <button
+                        type='button'
+                        onClick={() => handleOpenDownload(rec.url)}
+                        className='rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60'
+                        disabled={!canOpen}
+                      >
+                        Open
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => handleRemoveDownload(idx)}
+                        className='rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-600'
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <div className='mt-1 text-xs text-gray-400 dark:text-gray-500'>
-                      {formatTime(rec.ts)}
-                    </div>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                    <button
-                      type='button'
-                      onClick={() => handleOpenDownload(rec.url)}
-                      className='rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700'
-                    >
-                      Open
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => handleRemoveDownload(idx)}
-                      className='rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-600'
-                    >
-                      Remove
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

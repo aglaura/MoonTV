@@ -48,8 +48,10 @@ import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import {
+  DOWNLOAD_RECORDS_EVENT,
   readDownloadRecords,
   resolveDownloadStorageKey,
+  type DownloadRecord,
   writeDownloadRecords,
 } from '@/lib/downloadRecords.client';
 import {
@@ -257,16 +259,88 @@ function PlayPageClient() {
   }, [needPrefer]);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
   const downloadStorageKey = useMemo(() => resolveDownloadStorageKey(), []);
-  const persistDownloadRecord = useCallback(
-    (title: string, url: string, opts?: { offline?: boolean }) => {
-      if (typeof window === 'undefined' || !url) return;
+  const downloadRecordKey = useMemo(() => {
+    const baseKey =
+      currentSource && currentId
+        ? generateStorageKey(currentSource, currentId)
+        : videoUrl
+        ? `video:${videoUrl}`
+        : null;
+    return baseKey ? `${baseKey}:${currentEpisodeIndex}` : null;
+  }, [currentSource, currentId, currentEpisodeIndex, videoUrl]);
+  const [downloadRecord, setDownloadRecord] = useState<DownloadRecord | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!downloadRecordKey) {
+      setDownloadRecord(null);
+      return;
+    }
+    const loadRecord = () => {
+      const existing = readDownloadRecords(downloadStorageKey);
+      const found =
+        existing.find((rec) => rec.key === downloadRecordKey) || null;
+      setDownloadRecord(found);
+    };
+    loadRecord();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === downloadStorageKey) {
+        loadRecord();
+      }
+    };
+    const handleCustom = (event: Event) => {
+      const detail = (event as CustomEvent)?.detail;
+      if (detail?.key === downloadStorageKey) {
+        loadRecord();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(
+      DOWNLOAD_RECORDS_EVENT,
+      handleCustom as EventListener
+    );
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(
+        DOWNLOAD_RECORDS_EVENT,
+        handleCustom as EventListener
+      );
+    };
+  }, [downloadStorageKey, downloadRecordKey]);
+  const upsertDownloadRecord = useCallback(
+    (
+      key: string,
+      updates: Partial<DownloadRecord> & { title?: string }
+    ) => {
+      if (typeof window === 'undefined' || !key) return;
       try {
         const existing = readDownloadRecords(downloadStorageKey);
-        const next = [
-          { title, url, ts: Date.now(), offline: opts?.offline ?? false },
-          ...(Array.isArray(existing) ? existing : []),
-        ].slice(0, 100);
-        writeDownloadRecords(downloadStorageKey, next);
+        const list = Array.isArray(existing) ? existing : [];
+        const idx = list.findIndex((rec) => rec.key === key);
+        const now = Date.now();
+        const base: DownloadRecord = {
+          key,
+          title: updates.title || (idx >= 0 ? list[idx].title : ''),
+          url: '',
+          ts: idx >= 0 ? list[idx].ts : now,
+          status: 'preparing',
+          progress: 0,
+        };
+        const merged: DownloadRecord = {
+          ...base,
+          ...(idx >= 0 ? list[idx] : {}),
+          ...updates,
+          key,
+        };
+        if (idx >= 0) {
+          list[idx] = merged;
+        } else {
+          list.unshift(merged);
+        }
+        writeDownloadRecords(downloadStorageKey, list.slice(0, 100));
       } catch {
         // ignore storage failures
       }
@@ -1656,6 +1730,42 @@ function PlayPageClient() {
     };
   }, [videoUrl, refreshOfflineAvailability]);
   const playbackUrl = offlineUrl || videoUrl;
+  const downloadStatus = downloadRecord?.status;
+  const downloadProgress =
+    typeof downloadRecord?.progress === 'number'
+      ? Math.max(0, Math.min(100, Math.round(downloadRecord.progress)))
+      : null;
+  const downloadButtonLabel = useMemo(() => {
+    if (downloadStatus === 'preparing') {
+      return tt('Preparing…', '准备中…', '準備中…');
+    }
+    if (downloadStatus === 'queued') {
+      return tt('Queued…', '排队中…', '排隊中…');
+    }
+    if (downloadStatus === 'downloading') {
+      if (downloadProgress !== null) {
+        return tt(
+          `Downloading ${downloadProgress}%`,
+          `下载中 ${downloadProgress}%`,
+          `下載中 ${downloadProgress}%`
+        );
+      }
+      return tt('Downloading…', '下载中…', '下載中…');
+    }
+    if (downloadStatus === 'downloaded') {
+      return tt('Downloaded', '已下载', '已下載');
+    }
+    if (downloadStatus === 'error') {
+      return tt('Retry download', '重新下载', '重新下載');
+    }
+    return tt('Download', '下载到本地', '下載到本地');
+  }, [downloadProgress, downloadStatus, tt]);
+  const downloadButtonDisabled =
+    !playbackUrl ||
+    downloadStatus === 'preparing' ||
+    downloadStatus === 'queued' ||
+    downloadStatus === 'downloading' ||
+    downloadStatus === 'downloaded';
   const handleDownload = useCallback(async () => {
     if (!videoUrl) {
       reportError(
@@ -1671,6 +1781,19 @@ function PlayPageClient() {
         ? `${tt('Episode', '第', '第')} ${currentEpisodeIndex + 1}`
         : '';
     const recordTitle = [baseTitle, epLabel].filter(Boolean).join(' - ');
+    const baseKey =
+      currentSourceRef.current && currentIdRef.current
+        ? generateStorageKey(currentSourceRef.current, currentIdRef.current)
+        : `video:${videoUrl}`;
+    const downloadKey = `${baseKey}:${currentEpisodeIndexRef.current}`;
+    upsertDownloadRecord(downloadKey, {
+      title: recordTitle,
+      url: '',
+      ts: Date.now(),
+      status: 'preparing',
+      progress: 0,
+      offline: false,
+    });
 
     const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
     const triggerDownload = (href: string, name?: string) => {
@@ -1688,6 +1811,10 @@ function PlayPageClient() {
     const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(/\/+$/, '');
     const muxToken = runtimeConfig.MUX_TOKEN || '';
     if (!configJsonBase) {
+      upsertDownloadRecord(downloadKey, {
+        status: 'error',
+        progress: 0,
+      });
       reportError(
         tt(
           'CONFIGJSON is not set for yt-dlp downloads.',
@@ -1700,6 +1827,10 @@ function PlayPageClient() {
     }
 
     const ytdlpEndpoint = `${configJsonBase}/posters/yt-dlp.php`;
+    upsertDownloadRecord(downloadKey, {
+      status: 'downloading',
+      progress: 0,
+    });
     try {
       const resp = await fetch(ytdlpEndpoint, {
         method: 'POST',
@@ -1720,12 +1851,32 @@ function PlayPageClient() {
           if (muxToken) streamUrl.searchParams.set('token', muxToken);
 
           const streamHref = streamUrl.toString();
-          persistDownloadRecord(recordTitle, streamHref, { offline: false });
+          upsertDownloadRecord(downloadKey, {
+            title: recordTitle,
+            url: streamHref,
+            status: 'downloading',
+            progress: 0,
+            offline: false,
+          });
           triggerDownload(streamHref, `${safeName}.mp4`);
+          upsertDownloadRecord(downloadKey, {
+            status: 'downloaded',
+            progress: 100,
+          });
           return;
         }
-        persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
+        upsertDownloadRecord(downloadKey, {
+          title: recordTitle,
+          url: ytdlpUrl,
+          status: 'downloading',
+          progress: 0,
+          offline: false,
+        });
         triggerDownload(ytdlpUrl, `${safeName}.mp4`);
+        upsertDownloadRecord(downloadKey, {
+          status: 'downloaded',
+          progress: 100,
+        });
         return;
       }
       const logLines = Array.isArray(data?.log)
@@ -1739,10 +1890,18 @@ function PlayPageClient() {
       const errMsg = logLines
         ? `yt-dlp error: ${baseMsg}\n\n${logLines}\n\nM3U8: ${videoUrl}`
         : `yt-dlp error: ${baseMsg}\n\nM3U8: ${videoUrl}`;
+      upsertDownloadRecord(downloadKey, {
+        status: 'error',
+        progress: 0,
+      });
       reportError(errMsg, 'playback');
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'yt-dlp request failed';
+      upsertDownloadRecord(downloadKey, {
+        status: 'error',
+        progress: 0,
+      });
       reportError(`yt-dlp error: ${msg}\n\nM3U8: ${videoUrl}`, 'playback');
     }
     return;
@@ -1752,7 +1911,7 @@ function PlayPageClient() {
     searchTitle,
     detail?.episodes?.length,
     currentEpisodeIndex,
-    persistDownloadRecord,
+    upsertDownloadRecord,
     tt,
     reportError,
   ]);
@@ -3947,9 +4106,9 @@ function PlayPageClient() {
               type='button'
               onClick={handleDownload}
               className='px-3 py-1.5 rounded-full bg-green-600 text-white hover:bg-green-700 shadow-sm border border-green-500/40 disabled:opacity-60 disabled:cursor-not-allowed'
-              disabled={!playbackUrl}
+              disabled={downloadButtonDisabled}
             >
-              {tt('Download', '下载到本地', '下載到本地')}
+              {downloadButtonLabel}
             </button>
           </div>
         )}
