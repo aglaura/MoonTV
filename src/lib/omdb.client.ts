@@ -67,6 +67,7 @@ export async function getOMDBData(imdbId: string): Promise<OMDBEnrichment | null
   const apiKey = process.env.NEXT_PUBLIC_OMDB_API_KEY;
   
   if (!apiKey) {
+    // eslint-disable-next-line no-console
     console.warn('NEXT_PUBLIC_OMDB_API_KEY not configured');
     return null;
   }
@@ -96,6 +97,7 @@ export async function getOMDBData(imdbId: string): Promise<OMDBEnrichment | null
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      // eslint-disable-next-line no-console
       console.warn(`OMDb API error: ${response.status}`);
       return null;
     }
@@ -103,6 +105,7 @@ export async function getOMDBData(imdbId: string): Promise<OMDBEnrichment | null
     const data: OMDBData = await response.json();
 
     if (data.Response === 'False') {
+      // eslint-disable-next-line no-console
       console.warn(`OMDb: ${data.Error || 'Unknown error'}`);
       return null;
     }
@@ -149,8 +152,10 @@ export async function getOMDBData(imdbId: string): Promise<OMDBEnrichment | null
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
+      // eslint-disable-next-line no-console
       console.warn('OMDb fetch timeout');
     } else {
+      // eslint-disable-next-line no-console
       console.warn('OMDb fetch error:', error);
     }
     return null;

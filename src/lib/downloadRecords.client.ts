@@ -62,5 +62,6 @@ export const writeDownloadRecords = (
       })
     );
   } catch {
+    // ignore dispatch errors
   }
 };
