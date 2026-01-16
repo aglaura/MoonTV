@@ -7,6 +7,15 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import {
+  buildDownloadStorageKey,
+  DOWNLOAD_RECORDS_EVENT,
+  readDownloadRecords,
+  writeDownloadRecords,
+  type DownloadRecord,
+} from '@/lib/downloadRecords.client';
+
 const LOCALE_TEXTS: Record<string, Record<string, string>> = {
   en: {
     settingsTitle: 'Settings',
@@ -106,9 +115,7 @@ export const SettingsButton: React.FC = () => {
   const [enableOptimization, setEnableOptimization] = useState(true);
   const [enableImageProxy, setEnableImageProxy] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [downloadRecords, setDownloadRecords] = useState<
-    { title: string; url: string; ts: number; offline?: boolean }[]
-  >([]);
+  const [downloadRecords, setDownloadRecords] = useState<DownloadRecord[]>([]);
 
   const locale = useMemo(() => {
     if (typeof window === 'undefined') return 'en';
@@ -125,6 +132,17 @@ export const SettingsButton: React.FC = () => {
     }
     return 'en';
   }, []);
+  const username = useMemo(() => {
+    try {
+      return getAuthInfoFromBrowserCookie()?.username || null;
+    } catch {
+      return null;
+    }
+  }, []);
+  const downloadStorageKey = useMemo(
+    () => buildDownloadStorageKey(username),
+    [username]
+  );
 
   const t = useCallback(
     (key: string) =>
@@ -183,20 +201,43 @@ export const SettingsButton: React.FC = () => {
       if (savedEnableOptimization !== null) {
         setEnableOptimization(JSON.parse(savedEnableOptimization));
       }
-
-      const savedDownloads = localStorage.getItem('downloadRecords');
-      if (savedDownloads) {
-        try {
-          const parsed = JSON.parse(savedDownloads);
-          if (Array.isArray(parsed)) {
-            setDownloadRecords(parsed);
-          }
-        } catch {
-          // ignore
-        }
-      }
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const loadDownloads = () => {
+      setDownloadRecords(readDownloadRecords(downloadStorageKey));
+    };
+    loadDownloads();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === downloadStorageKey) {
+        loadDownloads();
+      }
+    };
+    const handleCustom = (event: Event) => {
+      const detail = (event as CustomEvent)?.detail;
+      if (
+        detail?.key === downloadStorageKey &&
+        Array.isArray(detail?.records)
+      ) {
+        setDownloadRecords(detail.records as DownloadRecord[]);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener(
+      DOWNLOAD_RECORDS_EVENT,
+      handleCustom as EventListener
+    );
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(
+        DOWNLOAD_RECORDS_EVENT,
+        handleCustom as EventListener
+      );
+    };
+  }, [downloadStorageKey]);
 
   // 保存设置到 localStorage
   const handleAggregateToggle = (value: boolean) => {
@@ -235,12 +276,10 @@ export const SettingsButton: React.FC = () => {
   };
 
   const persistDownloads = (
-    records: { title: string; url: string; ts: number; offline?: boolean }[]
+    records: DownloadRecord[]
   ) => {
     setDownloadRecords(records);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('downloadRecords', JSON.stringify(records));
-    }
+    writeDownloadRecords(downloadStorageKey, records);
   };
 
   const handleOpenDownload = (url: string) => {

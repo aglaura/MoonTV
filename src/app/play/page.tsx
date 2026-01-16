@@ -48,6 +48,11 @@ import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import {
+  readDownloadRecords,
+  resolveDownloadStorageKey,
+  writeDownloadRecords,
+} from '@/lib/downloadRecords.client';
+import {
   formatSpeedFromKBps,
   getQualityLabelFromRank,
   getQualityRank,
@@ -251,22 +256,22 @@ function PlayPageClient() {
     needPreferRef.current = needPrefer;
   }, [needPrefer]);
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState(0);
+  const downloadStorageKey = useMemo(() => resolveDownloadStorageKey(), []);
   const persistDownloadRecord = useCallback(
     (title: string, url: string, opts?: { offline?: boolean }) => {
       if (typeof window === 'undefined' || !url) return;
       try {
-        const existingRaw = localStorage.getItem('downloadRecords');
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const existing = readDownloadRecords(downloadStorageKey);
         const next = [
           { title, url, ts: Date.now(), offline: opts?.offline ?? false },
           ...(Array.isArray(existing) ? existing : []),
         ].slice(0, 100);
-        localStorage.setItem('downloadRecords', JSON.stringify(next));
+        writeDownloadRecords(downloadStorageKey, next);
       } catch {
         // ignore storage failures
       }
     },
-    []
+    [downloadStorageKey]
   );
 
   const currentSourceRef = useRef(currentSource);

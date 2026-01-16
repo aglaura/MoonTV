@@ -1,6 +1,6 @@
 'use client';
 
-import { Film, Home, Search } from 'lucide-react';
+import { Download, Film, Home, Search } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -37,6 +37,7 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
   const navItems: NavItem[] = [
     { icon: Home, label: t('Home', '首页', '首頁'), href: '/' },
     { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
+    { icon: Download, label: t('Downloads', '下载', '下載'), href: '/downloads' },
     {
       icon: Film,
       label: t('Category', '分类', '分類'),
