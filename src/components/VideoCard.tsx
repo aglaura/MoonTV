@@ -1284,9 +1284,13 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     return (
       <>
         <div
-          className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] ${sizeStyles.container}`}
+          className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] focus-visible:scale-[1.05] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 ${sizeStyles.container}`}
           onClick={handleCardClick}
           {...longPressProps}
+          tabIndex={0}
+          role='button'
+          aria-label={traditionalTitle || actualTitle}
+          data-tv-focusable='true'
           style={
             {
               // 禁用所有默认的长按和选择效果
@@ -1324,6 +1328,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             // 阻止拖拽
             e.preventDefault();
             return false;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleCardClick();
+            }
           }}
         >
           {/* 海报容器 */}
@@ -1436,7 +1446,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
             {/* 悬浮遮罩 */}
             <div
-              className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300 ease-in-out opacity-0 group-hover:opacity-100'
+              className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300 ease-in-out opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -1454,7 +1464,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             {config.showPlayButton && (
               <div
                 data-button='true'
-                className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
+                className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:scale-100'
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClick();
@@ -1494,7 +1504,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             {(config.showHeart || config.showCheckCircle) && (
               <div
                 data-button='true'
-                className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out sm:group-hover:opacity-100 sm:group-hover:translate-y-0'
+                className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out sm:group-hover:opacity-100 sm:group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0'
                 style={
                   {
                     WebkitUserSelect: 'none',

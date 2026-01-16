@@ -209,17 +209,17 @@ function ContentRail({
   if (isTV) {
     return (
       <div
-        className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-3 overflow-hidden group"
-        style={{ height: '540px' }}
+        className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/75 dark:bg-gray-900/70 p-4 overflow-hidden group focus-within:ring-4 focus-within:ring-emerald-400/60"
+        style={{ height: '620px' }}
       >
         <div className="flex items-center justify-between mb-2 px-1">
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
             {title}
           </h3>
           {href && (
             <Link
               href={href}
-              className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1"
+              className="text-base text-green-600 dark:text-green-400 flex items-center gap-1"
             >
               {tt('See more', '查看更多', '查看更多')}
               <ChevronRight className="w-4 h-4" />
@@ -229,7 +229,9 @@ function ContentRail({
 
         <div
           ref={scrollRef}
-          className="flex flex-col gap-3 overflow-y-auto pb-6 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-y snap-mandatory"
+          className="flex flex-col gap-4 overflow-y-auto pb-6 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-y snap-mandatory"
+          data-tv-group="rail"
+          data-tv-direction="vertical"
         >
           {noData && (
             <div className="text-gray-500 text-center py-4">
@@ -1259,10 +1261,16 @@ function HomeClient() {
   const isTV = screenMode === 'tv';
   const isMobile = screenMode === 'mobile';
   const mainLayoutClass = isTV
-    ? 'flex flex-col gap-6 xl:gap-8'
+    ? 'flex flex-col gap-8 xl:gap-10'
     : isMobile
     ? 'flex flex-col gap-6'
     : 'flex flex-col gap-6 xl:gap-8';
+  const tvCategoryButtonClass = isTV
+    ? 'px-5 py-2.5 text-base'
+    : 'px-4 py-2 text-sm';
+  const tvSortButtonClass = isTV
+    ? 'px-4 py-2 text-sm'
+    : 'px-3 py-1.5 text-xs sm:text-sm';
 
   const currentTvSection =
     isTV && activeTab === 'home' ? TV_SECTIONS[tvSectionIndex] : null;
@@ -1270,8 +1278,8 @@ function HomeClient() {
   const tvSectionClass = (id: TvSectionId) =>
     isTV && activeTab === 'home'
       ? currentTvSection === id
-        ? 'ring-4 ring-emerald-400 shadow-[0_0_0_1px_rgba(16,185,129,0.7)] shadow-emerald-700/40 scale-[1.01]'
-        : 'opacity-60 hover:opacity-80'
+        ? 'ring-4 ring-emerald-400 shadow-[0_0_0_1px_rgba(16,185,129,0.7)] shadow-emerald-700/40 scale-[1.01] focus-within:ring-4 focus-within:ring-emerald-400/70'
+        : 'opacity-60 hover:opacity-80 focus-within:opacity-100 focus-within:ring-4 focus-within:ring-emerald-400/70'
       : '';
 
   // Global TV Up/Down navigation across sections
@@ -1279,6 +1287,46 @@ function HomeClient() {
     if (!isTV || activeTab !== 'home') return;
 
     const handleKey = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement as HTMLElement | null;
+      const group = activeEl?.closest<HTMLElement>('[data-tv-group]');
+      if (group && activeEl) {
+        const direction = group.getAttribute('data-tv-direction') || 'grid';
+        const focusables = Array.from(
+          group.querySelectorAll<HTMLElement>('[data-tv-focusable="true"]')
+        );
+        const currentIndex = focusables.indexOf(activeEl);
+        if (currentIndex >= 0) {
+          const forwardKeys =
+            direction === 'horizontal'
+              ? ['ArrowRight']
+              : direction === 'vertical'
+              ? ['ArrowDown']
+              : ['ArrowRight', 'ArrowDown'];
+          const backKeys =
+            direction === 'horizontal'
+              ? ['ArrowLeft']
+              : direction === 'vertical'
+              ? ['ArrowUp']
+              : ['ArrowLeft', 'ArrowUp'];
+
+          if (forwardKeys.includes(e.key)) {
+            const next = focusables[currentIndex + 1];
+            if (next) {
+              e.preventDefault();
+              next.focus();
+              return;
+            }
+          } else if (backKeys.includes(e.key)) {
+            const prev = focusables[currentIndex - 1];
+            if (prev) {
+              e.preventDefault();
+              prev.focus();
+              return;
+            }
+          }
+        }
+      }
+
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setTvSectionIndex((prev) =>
@@ -1311,6 +1359,20 @@ function HomeClient() {
     window.scrollTo({ top: offset, behavior: 'smooth' });
   }, [currentTvSection, isTV, activeTab]);
 
+  useEffect(() => {
+    if (!isTV || activeTab !== 'home') return;
+    if (!currentTvSection) return;
+
+    const sectionEl = document.querySelector<HTMLElement>(
+      `[data-tv-section="${currentTvSection}"]`
+    );
+    if (!sectionEl) return;
+    const focusable =
+      sectionEl.querySelector<HTMLElement>('[data-tv-focusable="true"]') ||
+      sectionEl.querySelector<HTMLElement>('button, [tabindex="0"]');
+    focusable?.focus({ preventScroll: true });
+  }, [currentTvSection, isTV, activeTab]);
+
   return (
     <PageLayout>
       <div className="px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full">
@@ -1322,7 +1384,11 @@ function HomeClient() {
           </div>
         )}
         {/* 顶部 Tab 切换 */}
-        <div className="mb-6 sm:mb-8 flex justify-center">
+        <div
+          className="mb-6 sm:mb-8 flex justify-center"
+          data-tv-group="tabs"
+          data-tv-direction="horizontal"
+        >
           <CapsuleSwitch
             options={[
               { label: tt('Home', '首页', '首頁'), value: 'home' },
@@ -1333,6 +1399,7 @@ function HomeClient() {
             ]}
             active={activeTab}
             onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
+            className={isTV ? 'scale-110' : ''}
           />
         </div>
 
@@ -1388,7 +1455,7 @@ function HomeClient() {
                     data-tv-section="continue"
                     className={tvSectionClass('continue')}
                   >
-                    <ContinueWatching />
+                    <ContinueWatching isTV={isTV} />
                   </section>
 
                   {/* 错误提示 */}
@@ -1419,7 +1486,11 @@ function HomeClient() {
                     )}`}
                   >
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-wrap gap-2">
+                      <div
+                        className="flex flex-wrap gap-2"
+                        data-tv-group="category"
+                        data-tv-direction="horizontal"
+                      >
                         {(Object.keys(categoryData) as CategoryKey[]).map(
                           (key) => {
                             const cfg = categoryData[key];
@@ -1428,7 +1499,8 @@ function HomeClient() {
                               <button
                                 key={key}
                                 onClick={() => setCategory(key)}
-                                className={`relative px-4 py-2 rounded-full text-sm font-semibold transition focus:outline-none ${
+                                data-tv-focusable="true"
+                                className={`relative ${tvCategoryButtonClass} rounded-full font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/70 ${
                                   active
                                     ? 'bg-gradient-to-r from-emerald-900 to-green-700 text-white shadow-md shadow-emerald-900/30'
                                     : 'bg-white/80 dark:bg-gray-800/70 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 hover:border-green-500'
@@ -1440,7 +1512,11 @@ function HomeClient() {
                           }
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+                      <div
+                        className="flex flex-wrap items-center gap-2 text-xs sm:text-sm"
+                        data-tv-group="sort"
+                        data-tv-direction="horizontal"
+                      >
                         {(['trending', 'newest', 'rating'] as const).map(
                           (mode) => {
                             const active = sortMode === mode;
@@ -1453,7 +1529,8 @@ function HomeClient() {
                               <button
                                 key={mode}
                                 onClick={() => setSortMode(mode)}
-                                className={`px-3 py-1.5 rounded-full border transition ${
+                                data-tv-focusable="true"
+                                className={`${tvSortButtonClass} rounded-full border transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/70 ${
                                   active
                                     ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 border-transparent shadow-sm'
                                     : 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-green-500'
@@ -1465,7 +1542,11 @@ function HomeClient() {
                           }
                         )}
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between">
+                      <div
+                        className={`text-gray-600 dark:text-gray-400 flex items-center justify-between ${
+                          isTV ? 'text-base' : 'text-sm'
+                        }`}
+                      >
                         <span>{currentCategory?.hint}</span>
                         {currentCategory?.seeMore && (
                           <Link
@@ -1483,20 +1564,28 @@ function HomeClient() {
                   <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-gray-900/70 shadow-sm max-w-6xl mx-auto w-full'>
                     <div className='px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between'>
                       <div className='space-y-1'>
-                        <div className='flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-green-700 dark:text-green-300'>
+                        <div
+                          className={`flex items-center gap-2 uppercase tracking-[0.2em] text-green-700 dark:text-green-300 ${
+                            isTV ? 'text-sm' : 'text-xs'
+                          }`}
+                        >
                           <span>{currentCategory.label}</span>
                           <span className='w-1 h-1 rounded-full bg-green-700 dark:bg-green-500'></span>
                           <span className='text-gray-600 dark:text-gray-300'>
                             {tt('Spotlight', '精选轮播', '精選輪播')}
                           </span>
                         </div>
-                        <p className='text-sm text-gray-600 dark:text-gray-300'>
+                        <p className={`${isTV ? 'text-base' : 'text-sm'} text-gray-600 dark:text-gray-300`}>
                           {tt('Swipe through highlights; tap to open.', '左右滑动浏览精选，点击打开播放。', '左右滑動瀏覽精選，點擊開啟播放。')}
                         </p>
                       </div>
                     </div>
                     <div className='px-3 sm:px-4 pb-4'>
-                      <div className='flex gap-3 overflow-x-auto [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'>
+                      <div
+                        className='flex gap-3 overflow-x-auto [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+                        data-tv-group={isTV ? 'hero' : undefined}
+                        data-tv-direction={isTV ? 'horizontal' : undefined}
+                      >
                         {heroItems.slice(0, 12).map((item, idx) => {
                           const safeLength = heroItems.length || 1;
                           const activeIndex =
@@ -1528,6 +1617,8 @@ function HomeClient() {
                                 type={item.type}
                                 query={item.query || item.title}
                                 source_name={item.source_name}
+                                size={isTV ? 'lg' : undefined}
+                                compactMeta={isTV}
                               />
                             </div>
                           );
@@ -1548,8 +1639,12 @@ function HomeClient() {
                       className={`grid ${
                         screenMode === 'mobile'
                           ? 'grid-cols-2 gap-3'
+                          : isTV
+                          ? 'grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5'
                           : 'grid-cols-3 sm:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5'
                       }`}
+                      data-tv-group={isTV ? 'spotlight' : undefined}
+                      data-tv-direction={isTV ? 'grid' : undefined}
                     >
                       {loading &&
                         Array.from({ length: 12 }).map((_, idx) => (
@@ -1584,6 +1679,8 @@ function HomeClient() {
                                 type={item.type}
                                 query={item.query}
                                 source_name={item.source_name}
+                                size={isTV ? 'lg' : undefined}
+                                compactMeta={isTV}
                               />
                             </div>
                           );

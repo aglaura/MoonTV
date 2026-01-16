@@ -17,9 +17,13 @@ import VideoCard from '@/components/VideoCard';
 
 interface ContinueWatchingProps {
   className?: string;
+  isTV?: boolean;
 }
 
-export default function ContinueWatching({ className }: ContinueWatchingProps) {
+export default function ContinueWatching({
+  className,
+  isTV = false,
+}: ContinueWatchingProps) {
   const { userLocale } = useUserLanguage();
   const uiLocale =
     userLocale === 'en' || userLocale === 'zh-Hans' || userLocale === 'zh-Hant'
@@ -89,12 +93,18 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
   return (
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
-        <h2 className='text-xl font-bold text-gray-800 dark:text-gray-200'>
+        <h2
+          className={`font-bold text-gray-800 dark:text-gray-200 ${
+            isTV ? 'text-2xl' : 'text-xl'
+          }`}
+        >
           {tt('Continue watching', '继续观看', '繼續觀看')}
         </h2>
         {!loading && playRecords.length > 0 && (
           <button
-            className='text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            className={`text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ${
+              isTV ? 'text-base' : 'text-sm'
+            }`}
             onClick={async () => {
               await clearAllPlayRecords();
               setPlayRecords([]);
@@ -104,13 +114,15 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
           </button>
         )}
       </div>
-      <ScrollableRow>
+      <ScrollableRow dataTvGroup='continue' dataTvDirection='horizontal'>
         {loading
           ? // 加载状态显示灰色占位数据
             Array.from({ length: 6 }).map((_, index) => (
               <div
                 key={index}
-                className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
+                className={`min-w-[96px] w-24 sm:min-w-[180px] sm:w-44 ${
+                  isTV ? 'lg:min-w-[220px] lg:w-52' : ''
+                }`}
               >
                 <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
                   <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
@@ -124,7 +136,9 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
               return (
                 <div
                   key={record.key}
-                  className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
+                  className={`min-w-[96px] w-24 sm:min-w-[180px] sm:w-44 ${
+                    isTV ? 'lg:min-w-[220px] lg:w-52' : ''
+                  }`}
                 >
                   <VideoCard
                     // Render like a normal aggregated card; let /play find the best source
@@ -137,6 +151,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                     from='search'
                     isAggregate={true}
                     type={record.total_episodes > 1 ? 'tv' : ''}
+                    size={isTV ? 'lg' : undefined}
                   />
                 </div>
               );

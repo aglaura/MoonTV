@@ -4026,20 +4026,12 @@ function PlayPageClient() {
                   {displayTitleText}
                   {totalEpisodes > 1 && ` · E${currentEpisodeIndex + 1}`}
                 </div>
-                {currentPlayingInfo?.quality && (
-                  <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
-                    {localizeInfoLabel(currentPlayingInfo.quality)}
-                  </div>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    scrollSidebarIntoView();
-                  }}
-                  className='ml-auto text-xs px-2 py-1 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white font-medium'
-                >
-                  {tt('Sources', '换源', '換源')}
-                </button>
+                <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
+                  {actualPlaybackInfo?.quality ||
+                    (currentPlayingInfo?.quality
+                      ? localizeInfoLabel(currentPlayingInfo.quality)
+                      : 'NA')}
+                </div>
               </div>
               {error && (
                 <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
