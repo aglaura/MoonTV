@@ -1717,13 +1717,13 @@ function PlayPageClient() {
         data?.error ||
         `yt-dlp failed (${resp.status})`;
       const errMsg = logLines
-        ? `yt-dlp error: ${baseMsg}\n\n${logLines}`
-        : `yt-dlp error: ${baseMsg}`;
+        ? `yt-dlp error: ${baseMsg}\n\n${logLines}\n\nM3U8: ${videoUrl}`
+        : `yt-dlp error: ${baseMsg}\n\nM3U8: ${videoUrl}`;
       reportError(errMsg, 'playback');
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'yt-dlp request failed';
-      reportError(`yt-dlp error: ${msg}`, 'playback');
+      reportError(`yt-dlp error: ${msg}\n\nM3U8: ${videoUrl}`, 'playback');
     }
     return;
   }, [
