@@ -1684,6 +1684,37 @@ function PlayPageClient() {
     const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(/\/+$/, '');
     const muxToken = runtimeConfig.MUX_TOKEN || '';
     const isIOS = isIOSDevice();
+    const tryYtdlp = async (endpoint: string) => {
+      if (!endpoint) return null;
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: videoUrl, title: recordTitle }),
+          mode: 'cors',
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data?.url) {
+          return data.url as string;
+        }
+        console.warn('yt-dlp backend error', data);
+      } catch (err) {
+        console.warn('yt-dlp request failed', err);
+      }
+      return null;
+    };
+
+    const ytdlpEndpoint = configJsonBase
+      ? `${configJsonBase}/api/yt-dlp`
+      : '/api/yt-dlp';
+    const ytdlpUrl =
+      (await tryYtdlp(ytdlpEndpoint)) ||
+      (configJsonBase ? await tryYtdlp('/api/yt-dlp') : null);
+    if (ytdlpUrl) {
+      persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
+      triggerDownload(ytdlpUrl, `${safeName}.mp4`);
+      return;
+    }
 
     // iOS special path: ask CONFIGJSON mux.php to produce MP4
     if (isIOS && configJsonBase) {
