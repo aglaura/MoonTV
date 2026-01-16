@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 86400;
@@ -51,13 +52,7 @@ function buildPoster(path?: string) {
 }
 
 function buildCacheBase(): string | null {
-  const raw = process.env.CONFIGJSON?.trim();
-  if (!raw) return null;
-  let base = raw;
-  if (base.toLowerCase().endsWith('config.json')) {
-    base = base.slice(0, -'config.json'.length);
-  }
-  return base.replace(/\/+$/, '');
+  return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
 function sanitizeKey(value: string) {

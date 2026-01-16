@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 import { fetchJsonWithRetry } from '@/lib/fetchRetry.server';
 import { DoubanItem } from '@/lib/types';
 
@@ -71,13 +72,7 @@ async function fetchRecentHot(kind: 'tv' | 'movie', category: string, type: stri
 }
 
 function buildPosterBase(): string | null {
-  const raw = process.env.CONFIGJSON?.trim();
-  if (!raw) return null;
-  let base = raw;
-  if (base.toLowerCase().endsWith('config.json')) {
-    base = base.slice(0, -'config.json'.length);
-  }
-  return base.replace(/\/+$/, '');
+  return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
 async function cachePoster(url: string, doubanId: string) {

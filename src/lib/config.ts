@@ -4,6 +4,7 @@ import { db, getStorage } from '@/lib/db';
 
 import { AdminConfig } from './admin.types';
 import runtimeConfig from './runtime';
+import { normalizeConfigJsonUrl } from './configjson';
 import { IStorage } from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
 
@@ -11,11 +12,7 @@ const DEFAULT_ANNOUNCEMENT =
   '本站僅提供影視資訊搜尋服務，所有內容均來自第三方網站。本站不存儲任何影片資源，對任何內容之準確性、合法性、完整性不承擔責任。';
 
 function buildRemoteConfigUrl(raw?: string | null): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  if (/\.json($|\?)/i.test(trimmed)) return trimmed;
-  return `${trimmed.replace(/\/+$/, '')}/config.json`;
+  return normalizeConfigJsonUrl(raw);
 }
 
 export interface ApiSite {

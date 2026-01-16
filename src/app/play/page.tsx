@@ -54,6 +54,7 @@ import {
   type DownloadRecord,
   writeDownloadRecords,
 } from '@/lib/downloadRecords.client';
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 import {
   formatSpeedFromKBps,
   getQualityLabelFromRank,
@@ -82,7 +83,7 @@ function PlayPageClient() {
   const configJsonBase = useMemo(() => {
     if (typeof window === 'undefined') return '';
     const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
-    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+    return normalizeConfigJsonBase(runtimeConfig.CONFIGJSON || '') || '';
   }, []);
 
   type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';

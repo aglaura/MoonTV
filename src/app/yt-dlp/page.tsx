@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 
 const YtdlpPage = () => {
   const [inputUrl, setInputUrl] = useState('');
@@ -16,7 +17,7 @@ const YtdlpPage = () => {
   const configJsonBase = useMemo(() => {
     if (typeof window === 'undefined') return '';
     const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
-    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+    return normalizeConfigJsonBase(runtimeConfig.CONFIGJSON || '') || '';
   }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {

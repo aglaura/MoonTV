@@ -3,16 +3,12 @@ import path from 'path';
 
 import { NextResponse } from 'next/server';
 
+import { normalizeConfigJsonBase } from '@/lib/configjson';
+
 export const runtime = 'nodejs';
 
 function buildBaseUrl(raw?: string | null): string | null {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  if (trimmed.toLowerCase().endsWith('config.json')) {
-    return trimmed.replace(/\/+$/, '').slice(0, -'config.json'.length);
-  }
-  return trimmed.replace(/\/+$/, '');
+  return normalizeConfigJsonBase(raw);
 }
 
 export async function POST() {

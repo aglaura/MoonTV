@@ -5,6 +5,7 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 import './globals.css';
 
 import { getConfig } from '@/lib/config';
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 import { type Locale,getDefaultLocale, getUserLanguage } from '@/lib/userLanguage';
 
 import { SiteProvider } from '../components/SiteProvider';
@@ -113,9 +114,9 @@ export default async function RootLayout({
     ENABLE_REGISTER: enableRegister,
     IMAGE_PROXY: imageProxy,
     CONFIGJSON:
-      process.env.CONFIGJSON ||
-      process.env.NEXT_PUBLIC_CONFIGJSON ||
-      '',
+      normalizeConfigJsonBase(
+        process.env.CONFIGJSON || process.env.NEXT_PUBLIC_CONFIGJSON || ''
+      ) || '',
     MUX_TOKEN: process.env.NEXT_PUBLIC_MUX_TOKEN || '',
   };
 

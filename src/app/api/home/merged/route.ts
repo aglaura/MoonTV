@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 import { DoubanItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -46,13 +47,7 @@ type CardItem = {
 };
 
 function buildCacheBase(): string | null {
-  const raw = process.env.CONFIGJSON?.trim();
-  if (!raw) return null;
-  let base = raw;
-  if (base.toLowerCase().endsWith('config.json')) {
-    base = base.slice(0, -'config.json'.length);
-  }
-  return base.replace(/\/+$/, '');
+  return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
 async function tryFetchCache(url: string) {

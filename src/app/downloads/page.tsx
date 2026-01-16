@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { normalizeConfigJsonBase } from '@/lib/configjson';
 import {
   buildDownloadStorageKey,
   DOWNLOAD_RECORDS_EVENT,
@@ -31,7 +32,7 @@ const DownloadsPage = () => {
   const configJsonBase = useMemo(() => {
     if (typeof window === 'undefined') return '';
     const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
-    return (runtimeConfig.CONFIGJSON || '').toString().replace(/\/+$/, '');
+    return normalizeConfigJsonBase(runtimeConfig.CONFIGJSON || '') || '';
   }, []);
   const downloadStorageKey = useMemo(
     () => buildDownloadStorageKey(username),
