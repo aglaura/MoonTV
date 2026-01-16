@@ -1,0 +1,404 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<!--
+3    Copyright 2019 Google Inc. All Rights Reserved.
+4
+5     Licensed under the Apache License, Version 2.0 (the "License");
+6     you may not use this file except in compliance with the License.
+7     You may obtain a copy of the License at
+8
+9         http://www.apache.org/licenses/LICENSE-2.0
+10
+11     Unless required by applicable law or agreed to in writing, software
+12     distributed under the License is distributed on an "AS IS" BASIS,
+13     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+14     See the License for the specific language governing permissions and
+15     limitations under the License.
+16-->
+17<!--
+18 The "package" attribute is rewritten by the Gradle build with the value of applicationId.
+19     It is still required here, as it is used to derive paths, for instance when referring
+20     to an Activity by ".MyActivity" instead of the full name. If more Activities are added to the
+21     application, the package attribute will need to reflect the correct path in order to use
+22     the abbreviated format.
+23-->
+24<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+25    package="app.vercel.essaouira.twa"
+26    android:versionCode="1"
+27    android:versionName="1" >
+28
+29    <uses-sdk
+30        android:minSdkVersion="21"
+31        android:targetSdkVersion="35" />
+32
+33    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+33-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:26:9-80
+33-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:26:26-78
+34
+35    <queries>
+35-->[com.google.androidbrowserhelper:androidbrowserhelper:2.6.2] /home/aaron/.gradle/caches/8.11.1/transforms/5053e02be90783e54992393be394bb70/transformed/androidbrowserhelper-2.6.2/AndroidManifest.xml:22:5-30:15
+36        <intent>
+36-->[com.google.androidbrowserhelper:androidbrowserhelper:2.6.2] /home/aaron/.gradle/caches/8.11.1/transforms/5053e02be90783e54992393be394bb70/transformed/androidbrowserhelper-2.6.2/AndroidManifest.xml:23:9-29:18
+37            <action android:name="android.intent.action.VIEW" />
+37-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:152:17-68
+37-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:152:25-66
+38
+39            <category android:name="android.intent.category.BROWSABLE" />
+39-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:154:17-77
+39-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:154:27-75
+40
+41            <data android:scheme="https" />
+41-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:155:17-158:19
+41-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:155:23-45
+42        </intent>
+43    </queries>
+44
+45    <permission
+45-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:22:5-24:47
+46        android:name="app.vercel.essaouira.twa.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+46-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:23:9-81
+47        android:protectionLevel="signature" />
+47-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:24:9-44
+48
+49    <uses-permission android:name="app.vercel.essaouira.twa.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+49-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:26:5-97
+49-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:26:22-94
+50
+51    <application
+51-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:35:5-207:19
+52        android:name="app.vercel.essaouira.twa.Application"
+52-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:36:9-35
+53        android:allowBackup="true"
+53-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:37:9-35
+54        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+54-->[androidx.core:core:1.13.0] /home/aaron/.gradle/caches/8.11.1/transforms/a5429f7b20c607b890f08b5283ad4ec0/transformed/core-1.13.0/AndroidManifest.xml:28:18-86
+55        android:extractNativeLibs="true"
+56        android:icon="@mipmap/ic_launcher"
+56-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:38:9-43
+57        android:label="@string/appName"
+57-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:39:9-40
+58        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+58-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:41:9-105
+59        android:supportsRtl="true"
+59-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:43:9-35
+60        android:theme="@android:style/Theme.Translucent.NoTitleBar" >
+60-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:44:9-68
+61        <meta-data
+61-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:46:9-48:58
+62            android:name="asset_statements"
+62-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:47:13-44
+63            android:resource="@string/assetStatements" />
+63-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:48:13-55
+64        <meta-data
+64-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:51:13-53:58
+65            android:name="web_manifest_url"
+65-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:52:17-48
+66            android:value="@string/webManifestUrl" />
+66-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:53:17-55
+67        <meta-data
+67-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:56:9-58:52
+68            android:name="twa_generator"
+68-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:57:13-41
+69            android:value="@string/generatorApp" />
+69-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:58:13-49
+70
+71        <activity
+71-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:65:13-78:24
+72            android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
+72-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:65:23-104
+73            android:enabled="true"
+73-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:68:17-39
+74            android:excludeFromRecents="true"
+74-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:69:17-50
+75            android:exported="false"
+75-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:67:17-41
+76            android:screenOrientation="landscape" >
+76-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:66:9-46
+77            <meta-data
+77-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:70:17-72:57
+78                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+78-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:71:21-87
+79                android:value="@string/launchUrl" />
+79-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:72:21-54
+80
+81            <intent-filter>
+81-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:73:17-77:33
+82                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+82-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:17-85
+82-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:27-83
+83
+84                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
+84-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:75:21-92
+84-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:75:29-89
+85
+86                <category android:name="android.intent.category.DEFAULT" />
+86-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:21-80
+86-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:31-77
+87            </intent-filter>
+88        </activity>
+89        <activity
+89-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:81:9-164:20
+90            android:name="app.vercel.essaouira.twa.LauncherActivity"
+90-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:81:19-50
+91            android:alwaysRetainTaskState="true"
+91-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:83:13-49
+92            android:exported="true"
+92-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:85:13-36
+93            android:label="@string/launcherName"
+93-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:84:13-49
+94            android:screenOrientation="landscape" >
+94-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:82:9-46
+95            <meta-data
+95-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:86:13-87:53
+96                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+96-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:86:24-85
+97                android:value="@string/launchUrl" />
+97-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:87:17-50
+98            <meta-data
+98-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:89:13-91:58
+99                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+99-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:90:17-83
+100                android:resource="@color/colorPrimary" />
+100-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:91:17-55
+101            <meta-data
+101-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:95:13-97:62
+102                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR_DARK"
+102-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:96:17-88
+103                android:resource="@color/colorPrimaryDark" />
+103-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:97:17-59
+104            <meta-data
+104-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:99:13-101:61
+105                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+105-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:100:17-87
+106                android:resource="@color/navigationColor" />
+106-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:101:17-58
+107            <meta-data
+107-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:103:13-105:65
+108                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR_DARK"
+108-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:104:17-92
+109                android:resource="@color/navigationColorDark" />
+109-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:105:17-62
+110            <meta-data
+110-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:107:13-109:68
+111                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR"
+111-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:108:17-84
+112                android:resource="@color/navigationDividerColor" />
+112-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:109:17-65
+113            <meta-data
+113-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:111:13-113:72
+114                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR_DARK"
+114-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:112:17-89
+115                android:resource="@color/navigationDividerColorDark" />
+115-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:113:17-69
+116            <meta-data
+116-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:115:13-116:54
+117                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+117-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:115:24-95
+118                android:resource="@drawable/splash" />
+118-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:116:17-52
+119            <meta-data
+119-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:118:13-119:60
+120                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+120-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:118:24-104
+121                android:resource="@color/backgroundColor" />
+121-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:119:17-58
+122            <meta-data
+122-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:121:13-122:71
+123                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+123-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:121:24-105
+124                android:value="@integer/splashScreenFadeOutDuration" />
+124-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:122:17-69
+125            <meta-data
+125-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:124:13-125:60
+126                android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
+126-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:124:24-97
+127                android:value="@string/providerAuthority" />
+127-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:125:17-58
+128            <meta-data
+128-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:127:13-97
+129                android:name="android.app.shortcuts"
+129-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:127:24-60
+130                android:resource="@xml/shortcuts" />
+130-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:127:61-94
+131            <meta-data
+131-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:129:13-130:56
+132                android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
+132-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:129:24-91
+133                android:value="@string/fallbackType" />
+133-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:130:17-53
+134            <meta-data
+134-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:136:13-137:54
+135                android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
+135-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:136:24-92
+136                android:value="@string/orientation" />
+136-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:137:17-52
+137
+138            <intent-filter>
+138-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:145:13-149:29
+139                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+139-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:17-85
+139-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:27-83
+140
+141                <action android:name="android.intent.action.MAIN" />
+141-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:147:17-69
+141-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:147:25-66
+142
+143                <category android:name="android.intent.category.LAUNCHER" />
+143-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:148:17-77
+143-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:148:27-74
+144            </intent-filter>
+145            <intent-filter android:autoVerify="true" >
+145-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:151:13-159:29
+145-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:151:28-53
+146                <action android:name="android.intent.action.VIEW" />
+146-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:152:17-68
+146-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:152:25-66
+147
+148                <category android:name="android.intent.category.DEFAULT" />
+148-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:21-80
+148-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:31-77
+149                <category android:name="android.intent.category.BROWSABLE" />
+149-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:154:17-77
+149-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:154:27-75
+150
+151                <data
+151-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:155:17-158:19
+152                    android:host="@string/hostName"
+152-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:156:21-52
+153                    android:scheme="https" />
+153-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:155:23-45
+154            </intent-filter>
+155        </activity>
+156        <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
+156-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:166:9-90
+156-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:166:19-87
+157        android:screenOrientation="landscape"
+158        <activity
+158-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:169:9-171:62
+159            android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
+159-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:169:19-97
+160            android:configChanges="orientation|screenSize"
+160-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:171:13-59
+161            android:screenOrientation="landscape" />
+161-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:170:9-46
+162
+163        <provider
+163-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:173:9-181:20
+164            android:name="androidx.core.content.FileProvider"
+164-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:174:13-62
+165            android:authorities="@string/providerAuthority"
+165-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:175:13-60
+166            android:exported="false"
+166-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:177:13-37
+167            android:grantUriPermissions="true" >
+167-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:176:13-47
+168            <meta-data
+168-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:178:13-180:53
+169                android:name="android.support.FILE_PROVIDER_PATHS"
+169-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:179:17-67
+170                android:resource="@xml/filepaths" />
+170-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:180:17-50
+171        </provider>
+172
+173        <service
+173-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:183:9-199:19
+174            android:name="app.vercel.essaouira.twa.DelegationService"
+174-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:184:13-46
+175            android:enabled="@bool/enableNotification"
+175-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:185:13-55
+176            android:exported="@bool/enableNotification" >
+176-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:186:13-56
+177            <meta-data
+177-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:189:17-191:73
+178                android:name="android.support.customtabs.trusted.SMALL_ICON"
+178-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:190:21-81
+179                android:resource="@drawable/ic_notification_icon" />
+179-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:191:21-70
+180
+181            <intent-filter>
+181-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:194:13-198:29
+182                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+182-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:17-85
+182-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:74:27-83
+183
+184                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+184-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:196:17-105
+184-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:196:25-103
+185
+186                <category android:name="android.intent.category.DEFAULT" />
+186-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:21-80
+186-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:76:31-77
+187            </intent-filter>
+188        </service>
+189
+190        <activity android:name="com.google.androidbrowserhelper.trusted.NotificationPermissionRequestActivity" />
+190-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:202:13-118
+190-->/home/aaron/openbmc/openBMC_71D/build/sp7/workspace/sources/MoonTV/essaouira-twa-tv/app/src/main/AndroidManifest.xml:202:23-115
+191        android:screenOrientation="landscape"
+192        <provider
+192-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+193            android:name="androidx.startup.InitializationProvider"
+193-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:25:13-67
+194            android:authorities="app.vercel.essaouira.twa.androidx-startup"
+194-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:26:13-68
+195            android:exported="false" >
+195-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:27:13-37
+196            <meta-data
+196-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+197                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+197-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+198                android:value="androidx.startup" />
+198-->[androidx.emoji2:emoji2:1.3.0] /home/aaron/.gradle/caches/8.11.1/transforms/5cb7738f5242d8c4e38c8ffa2b265b31/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+199            <meta-data
+199-->[androidx.lifecycle:lifecycle-process:2.6.2] /home/aaron/.gradle/caches/8.11.1/transforms/4bc52031417e9743197e36b704fe409f/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:29:13-31:52
+200                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+200-->[androidx.lifecycle:lifecycle-process:2.6.2] /home/aaron/.gradle/caches/8.11.1/transforms/4bc52031417e9743197e36b704fe409f/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:30:17-78
+201                android:value="androidx.startup" />
+201-->[androidx.lifecycle:lifecycle-process:2.6.2] /home/aaron/.gradle/caches/8.11.1/transforms/4bc52031417e9743197e36b704fe409f/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:31:17-49
+202            <meta-data
+202-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+203                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+203-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+204                android:value="androidx.startup" />
+204-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+205        </provider>
+206
+207        <receiver
+207-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+208            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+208-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+209            android:directBootAware="false"
+209-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+210            android:enabled="true"
+210-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+211            android:exported="true"
+211-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+212            android:permission="android.permission.DUMP" >
+212-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+213            <intent-filter>
+213-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+214                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+214-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+214-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+215            </intent-filter>
+216            <intent-filter>
+216-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+217                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+217-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+217-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+218            </intent-filter>
+219            <intent-filter>
+219-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+220                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+220-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+220-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+221            </intent-filter>
+222            <intent-filter>
+222-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+223                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+223-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+223-->[androidx.profileinstaller:profileinstaller:1.3.1] /home/aaron/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+224            </intent-filter>
+225        </receiver>
+226    </application>
+227
+228</manifest>
