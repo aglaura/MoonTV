@@ -29,7 +29,7 @@ function getAndroidMajorVersion(ua: string): number | null {
 function detectTV(ua: string): boolean {
   const androidMajor = getAndroidMajorVersion(ua);
   const androidTvMarkers =
-    /Android TV|AndroidTV|GoogleTV|Google TV|AFT|CrKey/i;
+    /Android TV|AndroidTV|GoogleTV|Google TV|Leanback|AFT|CrKey/i;
   const androidTvDevices = /BRAVIA|SHIELD|MiTV|TV\s?Box/i;
   if (
     androidMajor !== null &&
@@ -38,7 +38,7 @@ function detectTV(ua: string): boolean {
     return true;
   }
 
-  return /SmartTV|Tizen|Web0S|NetCast|HbbTV|Viera|AFT|CrKey|AppleTV|Android TV|AndroidTV|GoogleTV|Google TV/i.test(
+  return /SmartTV|Tizen|Web0S|NetCast|HbbTV|Viera|AFT|CrKey|AppleTV|Android TV|AndroidTV|GoogleTV|Google TV|Leanback/i.test(
     ua
   );
 }
@@ -55,16 +55,18 @@ export function detectDeviceInfo(): DeviceInfo {
   }
 
   const w = window.innerWidth;
+  const h = window.innerHeight;
   const ua = navigator.userAgent || '';
   const isTV = detectTV(ua);
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
   const browser = detectBrowser(ua);
 
+  const smallestWidth = Math.min(w, h);
   let screenMode: ScreenMode;
   if (isTV) screenMode = 'tv';
-  else if (w < 768) screenMode = 'mobile';
-  else if (w < 1200) screenMode = 'tablet';
+  else if (smallestWidth < 600) screenMode = 'mobile';
+  else if (smallestWidth < 1200) screenMode = 'tablet';
   else screenMode = 'desktop';
 
   return { screenMode, isTV, isIOS, isAndroid, browser };
