@@ -22,16 +22,42 @@ const YtdlpPage = () => {
     setError(null);
     setResultUrl(null);
     try {
-      const resp = await fetch('/api/yt-dlp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmed }),
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data?.url) {
-        throw new Error(data?.error || 'Failed to generate download link.');
+      const runtimeConfig =
+        (typeof window !== 'undefined' &&
+          (window as any).RUNTIME_CONFIG) ||
+        { CONFIGJSON: '' };
+      const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(
+        /\/+$/,
+        ''
+      );
+      const endpoints: string[] = [];
+      if (configJsonBase) {
+        endpoints.push(`${configJsonBase}/posters/yt-dlp`);
+        endpoints.push(`${configJsonBase}/posters/yt-dlp.php`);
       }
-      setResultUrl(data.url as string);
+      endpoints.push('/api/yt-dlp');
+
+      let resolvedUrl: string | null = null;
+      let lastError = 'Failed to generate download link.';
+      for (const endpoint of endpoints) {
+        // eslint-disable-next-line no-await-in-loop
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: trimmed }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        const candidate = data?.url || (data?.ok ? data?.url : null);
+        if (resp.ok && candidate) {
+          resolvedUrl = candidate as string;
+          break;
+        }
+        lastError = data?.error || lastError;
+      }
+      if (!resolvedUrl) {
+        throw new Error(lastError);
+      }
+      setResultUrl(resolvedUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Request failed.');
     } finally {

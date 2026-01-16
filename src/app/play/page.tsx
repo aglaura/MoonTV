@@ -1694,8 +1694,10 @@ function PlayPageClient() {
           mode: 'cors',
         });
         const data = await resp.json().catch(() => ({}));
-        if (resp.ok && data?.url) {
-          return data.url as string;
+        const resolvedUrl =
+          data?.url || (data?.ok ? data?.url : null);
+        if (resp.ok && resolvedUrl) {
+          return resolvedUrl as string;
         }
         console.warn('yt-dlp backend error', data);
       } catch (err) {
@@ -1704,12 +1706,19 @@ function PlayPageClient() {
       return null;
     };
 
-    const ytdlpEndpoint = configJsonBase
-      ? `${configJsonBase}/api/yt-dlp`
-      : '/api/yt-dlp';
-    const ytdlpUrl =
-      (await tryYtdlp(ytdlpEndpoint)) ||
-      (configJsonBase ? await tryYtdlp('/api/yt-dlp') : null);
+    const ytdlpEndpoints: string[] = [];
+    if (configJsonBase) {
+      ytdlpEndpoints.push(`${configJsonBase}/posters/yt-dlp`);
+      ytdlpEndpoints.push(`${configJsonBase}/posters/yt-dlp.php`);
+    }
+    ytdlpEndpoints.push('/api/yt-dlp');
+
+    let ytdlpUrl: string | null = null;
+    for (const endpoint of ytdlpEndpoints) {
+      // eslint-disable-next-line no-await-in-loop
+      ytdlpUrl = await tryYtdlp(endpoint);
+      if (ytdlpUrl) break;
+    }
     if (ytdlpUrl) {
       persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
       triggerDownload(ytdlpUrl, `${safeName}.mp4`);
