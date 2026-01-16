@@ -1,16 +1,16 @@
 <?php
 /**
- * Stream-mux helper for MoonTV (progressive download).
+ * yt-dlp stream helper for MoonTV.
  *
- * Place this file on the CONFIGJSON site under /posters/mux-stream.php
- * and ensure ffmpeg is installed on the host.
+ * Place this file on the CONFIGJSON site under /posters/yt-dlp-stream.php
+ * and ensure yt-dlp is installed on the host.
  *
  * Accepts POST/GET:
- *   url   - required .m3u8 URL
- *   name  - optional target filename (will be sanitized)
- *   token - optional shared secret (set MUX_SHARED_TOKEN env or edit below)
+ *   url   - required video URL (m3u8)
+ *   name  - optional target filename
+ *   token - optional shared secret (set YTDLP_STREAM_TOKEN env)
  *
- * Outputs an MP4 stream directly to the client.
+ * Streams the yt-dlp output directly to the client (no remux/conversion).
  */
 
 header('Access-Control-Allow-Origin: *');
@@ -38,32 +38,55 @@ function sanitize_filename($name) {
     return $name;
 }
 
-$sharedToken = getenv('MUX_SHARED_TOKEN') ?: '';
+$sharedToken = getenv('YTDLP_STREAM_TOKEN') ?: '';
 $requestToken = $_POST['token'] ?? $_GET['token'] ?? '';
 if ($sharedToken !== '' && $requestToken !== $sharedToken) {
     respond_json(401, ['ok' => false, 'error' => 'Unauthorized']);
 }
 
-$m3u8 = $_POST['url'] ?? $_GET['url'] ?? '';
-$m3u8 = trim($m3u8);
-if ($m3u8 === '' || !preg_match('#^https?://#i', $m3u8)) {
+$url = $_POST['url'] ?? $_GET['url'] ?? '';
+$url = trim($url);
+if ($url === '' || !preg_match('#^https?://#i', $url)) {
     respond_json(400, ['ok' => false, 'error' => 'Invalid url']);
 }
 
-$rawName = $_POST['name'] ?? $_GET['name'] ?? 'video-' . time() . '.mp4';
+$rawName = $_POST['name'] ?? $_GET['name'] ?? 'video';
 $safeName = sanitize_filename($rawName);
-if (!preg_match('/\.mp4$/i', $safeName)) {
-    $safeName .= '.mp4';
-}
 
-$ffmpeg = getenv('FFMPEG_PATH') ?: 'ffmpeg';
-$timeoutSec = intval(getenv('MUX_STREAM_TIMEOUT_SEC') ?: 0);
+$ytdlp = getenv('YTDLP_PATH') ?: 'yt-dlp';
+$timeoutSec = intval(getenv('YTDLP_STREAM_TIMEOUT_SEC') ?: 0);
 set_time_limit(0);
 
+// Resolve a filename suggestion from yt-dlp when available.
+$resolvedName = '';
+try {
+    $nameCmd = sprintf(
+        '%s --no-playlist --no-warnings -f best --print filename -o %s %s',
+        escapeshellcmd($ytdlp),
+        escapeshellarg('%(title)s.%(ext)s'),
+        escapeshellarg($url)
+    );
+    $nameOut = [];
+    $nameCode = 1;
+    @exec($nameCmd . ' 2>&1', $nameOut, $nameCode);
+    if ($nameCode === 0 && !empty($nameOut)) {
+        $resolvedName = trim($nameOut[0]);
+    }
+} catch (Throwable $e) {
+    $resolvedName = '';
+}
+
+if ($resolvedName !== '') {
+    $resolvedName = sanitize_filename($resolvedName);
+    if (strpos($resolvedName, '.') !== false) {
+        $safeName = $resolvedName;
+    }
+}
+
 $cmd = sprintf(
-    '%s -i %s -c copy -bsf:a aac_adtstoasc -movflags +frag_keyframe+empty_moov+default_base_moof -f mp4 -',
-    escapeshellcmd($ffmpeg),
-    escapeshellarg($m3u8)
+    '%s --no-playlist --no-warnings -f best -o - %s',
+    escapeshellcmd($ytdlp),
+    escapeshellarg($url)
 );
 
 if ($timeoutSec > 0) {
@@ -74,9 +97,9 @@ $descriptors = [
     1 => ['pipe', 'w'],
     2 => ['pipe', 'w'],
 ];
-$process = @proc_open($cmd, $descriptors, $pipes);
+$process = @proc_open(['/bin/sh', '-c', $cmd], $descriptors, $pipes);
 if (!is_resource($process)) {
-    respond_json(500, ['ok' => false, 'error' => 'Unable to start ffmpeg']);
+    respond_json(500, ['ok' => false, 'error' => 'Unable to start stream']);
 }
 
 stream_set_blocking($pipes[1], false);
@@ -124,7 +147,7 @@ if (!$hasOutput) {
         fclose($pipe);
     }
     proc_close($process);
-    $errMsg = trim($stderr) !== '' ? trim($stderr) : 'ffmpeg failed';
+    $errMsg = trim($stderr) !== '' ? trim($stderr) : 'yt-dlp stream failed';
     respond_json(500, ['ok' => false, 'error' => $errMsg]);
 }
 
@@ -132,7 +155,7 @@ while (ob_get_level() > 0) {
     ob_end_flush();
 }
 
-header('Content-Type: video/mp4');
+header('Content-Type: application/octet-stream');
 header('Content-Disposition: attachment; filename="' . $safeName . '"');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Pragma: no-cache');

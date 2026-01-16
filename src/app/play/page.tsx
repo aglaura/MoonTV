@@ -1890,19 +1890,31 @@ function PlayPageClient() {
       title: recordTitle,
       url: '',
       ts: Date.now(),
-      status: 'preparing',
+      status: 'downloading',
       progress: 0,
       offline: false,
     });
 
-    if (!configJsonBase) {
+    const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
+    const triggerDownload = (href: string, name?: string) => {
+      const a = document.createElement('a');
+      a.href = href;
+      if (name) a.download = name;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 0);
+    };
+
+    const looksLikeM3u8 = videoUrl.toLowerCase().includes('.m3u8');
+    if (looksLikeM3u8 && !configJsonBase) {
       upsertDownloadRecord(downloadKey, {
         status: 'error',
         progress: 0,
       });
       reportError(
         tt(
-          'CONFIGJSON is not set for yt-dlp downloads.',
+          'CONFIGJSON is not set for yt-dlp streaming.',
           '未配置 CONFIGJSON，无法使用 yt-dlp 下载。',
           '未配置 CONFIGJSON，無法使用 yt-dlp 下載。'
         ),
@@ -1911,60 +1923,39 @@ function PlayPageClient() {
       return;
     }
 
-    const ytdlpEndpoint = `${configJsonBase}/posters/yt-dlp.php`;
-    upsertDownloadRecord(downloadKey, {
-      status: 'queued',
-      progress: 0,
-    });
-    try {
-      const resp = await fetch(ytdlpEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: videoUrl,
-          title: recordTitle,
-          action: 'enqueue',
-        }),
-        mode: 'cors',
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (resp.ok && data?.ok && data?.id) {
-        const jobId = String(data.id);
-        upsertDownloadRecord(downloadKey, {
-          title: recordTitle,
-          jobId,
-          status: data.status || 'queued',
-          progress: typeof data.progress === 'number' ? data.progress : 0,
-          offline: false,
-        });
-        startDownloadPolling(jobId, downloadKey);
-        return;
-      }
-      const logLines = Array.isArray(data?.log)
-        ? data.log.join('\n')
-        : typeof data?.log === 'string'
-        ? data.log
-        : '';
-      const baseMsg =
-        data?.error ||
-        `yt-dlp failed (${resp.status})`;
-      const errMsg = logLines
-        ? `yt-dlp error: ${baseMsg}\n\n${logLines}\n\nM3U8: ${videoUrl}`
-        : `yt-dlp error: ${baseMsg}\n\nM3U8: ${videoUrl}`;
+    if (looksLikeM3u8 && configJsonBase) {
+      const streamUrl = new URL(
+        `${configJsonBase}/posters/yt-dlp-stream.php`
+      );
+      streamUrl.searchParams.set('url', videoUrl);
+      streamUrl.searchParams.set('name', safeName);
+      triggerDownload(streamUrl.toString());
       upsertDownloadRecord(downloadKey, {
-        status: 'error',
-        progress: 0,
+        url: streamUrl.toString(),
+        status: 'downloaded',
+        progress: 100,
       });
-      reportError(errMsg, 'playback');
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'yt-dlp request failed';
-      upsertDownloadRecord(downloadKey, {
-        status: 'error',
-        progress: 0,
-      });
-      reportError(`yt-dlp error: ${msg}\n\nM3U8: ${videoUrl}`, 'playback');
+      return;
     }
+
+    if (!videoUrl) {
+      upsertDownloadRecord(downloadKey, {
+        status: 'error',
+        progress: 0,
+      });
+      reportError(
+        tt('No playable source to download.', '暂无可下载的播放源。', '暫無可下載的播放源。'),
+        'playback'
+      );
+      return;
+    }
+
+    triggerDownload(videoUrl, `${safeName}.mp4`);
+    upsertDownloadRecord(downloadKey, {
+      url: videoUrl,
+      status: 'downloaded',
+      progress: 100,
+    });
     return;
   }, [
     configJsonBase,
@@ -1974,7 +1965,6 @@ function PlayPageClient() {
     detail?.episodes?.length,
     currentEpisodeIndex,
     upsertDownloadRecord,
-    startDownloadPolling,
     tt,
     reportError,
   ]);
