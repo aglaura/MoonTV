@@ -438,6 +438,15 @@ function HomeClient() {
   const [screenMode, setScreenMode] = useState<'tv' | 'desktop' | 'mobile'>(
     'desktop'
   );
+  const topBarModeLabel = useMemo(() => {
+    if (screenMode === 'tv') {
+      return tt('TV mode', '电视模式', '電視模式');
+    }
+    if (screenMode === 'desktop') {
+      return tt('Tablet mode', '平板模式', '平板模式');
+    }
+    return undefined;
+  }, [screenMode, tt]);
   const [sortMode, setSortMode] = useState<'trending' | 'newest' | 'rating'>(
     'trending'
   );
@@ -1374,7 +1383,7 @@ function HomeClient() {
   }, [currentTvSection, isTV, activeTab]);
 
   return (
-    <PageLayout>
+    <PageLayout topBarModeLabel={topBarModeLabel}>
       <div className="px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full">
         {isKidsMode && (
           <div className="mb-3 flex justify-center">

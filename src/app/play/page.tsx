@@ -4153,7 +4153,7 @@ function PlayPageClient() {
             {/* 选集和换源 - 在移动端始终顯示，在 lg 及以上可折叠 */}
             {!hideSidePanels && (
               <div
-                className={`h-[300px] lg:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${
+                className={`h-[300px] xl:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${
                   isEpisodeSelectorCollapsed
                     ? 'md:col-span-1 lg:hidden lg:opacity-0 lg:scale-95'
                     : 'md:col-span-1 lg:opacity-100 lg:scale-100'

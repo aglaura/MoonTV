@@ -13,12 +13,14 @@ interface PageLayoutProps {
   children: React.ReactNode;
   activePath?: string;
   hideTopBar?: boolean;
+  topBarModeLabel?: string;
 }
 
 const PageLayout = ({
   children,
   activePath = '/',
   hideTopBar = false,
+  topBarModeLabel,
 }: PageLayoutProps) => {
   return (
     <div className='w-full min-h-screen'>
@@ -48,6 +50,11 @@ const PageLayout = ({
           {/* 桌面端顶部按钮 */}
           {!hideTopBar && (
             <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
+              {topBarModeLabel && (
+                <span className='rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30'>
+                  {topBarModeLabel}
+                </span>
+              )}
               <SettingsButton />
               <LanguageSelector variant='compact' />
               <UserBadge />
