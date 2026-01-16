@@ -1666,7 +1666,6 @@ function PlayPageClient() {
         ? `${tt('Episode', '第', '第')} ${currentEpisodeIndex + 1}`
         : '';
     const recordTitle = [baseTitle, epLabel].filter(Boolean).join(' - ');
-    let cached = false;
 
     const safeName = `${recordTitle || 'video'}`.replace(/[\\/:*?"<>|]+/g, '_');
     const triggerDownload = (href: string, name?: string) => {
@@ -1680,107 +1679,46 @@ function PlayPageClient() {
     };
 
     const runtimeConfig = (typeof window !== 'undefined' &&
-      (window as any).RUNTIME_CONFIG) || { CONFIGJSON: '', MUX_TOKEN: '' };
+      (window as any).RUNTIME_CONFIG) || { CONFIGJSON: '' };
     const configJsonBase = (runtimeConfig.CONFIGJSON || '').replace(/\/+$/, '');
-    const muxToken = runtimeConfig.MUX_TOKEN || '';
-    const isIOS = isIOSDevice();
-    const tryYtdlp = async (endpoint: string) => {
-      if (!endpoint) return null;
-      try {
-        const resp = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: videoUrl, title: recordTitle }),
-          mode: 'cors',
-        });
-        const data = await resp.json().catch(() => ({}));
-        const resolvedUrl =
-          data?.url || (data?.ok ? data?.url : null);
-        if (resp.ok && resolvedUrl) {
-          return resolvedUrl as string;
-        }
-        console.warn('yt-dlp backend error', data);
-      } catch (err) {
-        console.warn('yt-dlp request failed', err);
-      }
-      return null;
-    };
-
-    const ytdlpEndpoints: string[] = [];
-    if (configJsonBase) {
-      ytdlpEndpoints.push(`${configJsonBase}/posters/yt-dlp`);
-      ytdlpEndpoints.push(`${configJsonBase}/posters/yt-dlp.php`);
-    }
-    ytdlpEndpoints.push('/api/yt-dlp');
-
-    let ytdlpUrl: string | null = null;
-    for (const endpoint of ytdlpEndpoints) {
-      // eslint-disable-next-line no-await-in-loop
-      ytdlpUrl = await tryYtdlp(endpoint);
-      if (ytdlpUrl) break;
-    }
-    if (ytdlpUrl) {
-      persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
-      triggerDownload(ytdlpUrl, `${safeName}.mp4`);
+    if (!configJsonBase) {
+      reportError(
+        tt(
+          'CONFIGJSON is not set for yt-dlp downloads.',
+          '未配置 CONFIGJSON，无法使用 yt-dlp 下载。',
+          '未配置 CONFIGJSON，無法使用 yt-dlp 下載。'
+        ),
+        'playback'
+      );
       return;
     }
 
-    // iOS special path: ask CONFIGJSON mux.php to produce MP4
-    if (isIOS && configJsonBase) {
-      try {
-        const muxUrl = `${configJsonBase}/posters/mux.php`;
-        const body = new URLSearchParams();
-        body.set('url', videoUrl);
-        body.set('name', `${safeName}.mp4`);
-        body.set('title', recordTitle);
-        if (muxToken) body.set('token', muxToken);
-
-        const resp = await fetch(muxUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: body.toString(),
-        });
-        const data = await resp.json().catch(() => ({}));
-        if (resp.ok && data?.url) {
-          const finalUrl = data.url as string;
-          persistDownloadRecord(recordTitle, finalUrl, { offline: false });
-          triggerDownload(finalUrl, `${safeName}.mp4`);
-          return;
-        }
-        console.warn('Server mux download failed', data);
-      } catch (err) {
-        console.warn('Server mux error', err);
-      }
-    }
-
-    // Try to fetch and save without opening a new tab (desktop / non-iOS)
+    const ytdlpEndpoint = `${configJsonBase}/posters/yt-dlp.php`;
     try {
-      const res = await fetch(videoUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const resForCache = res.clone();
-      const blob = await res.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      triggerDownload(objectUrl, `${safeName}.mp4`);
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-      if (typeof window !== 'undefined' && 'caches' in window) {
-        try {
-          const cache = await caches.open('moontv-downloads');
-          await cache.put(videoUrl, resForCache);
-          cached = true;
-        } catch (cacheErr) {
-          console.warn('Caching download failed', cacheErr);
-        }
+      const resp = await fetch(ytdlpEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: videoUrl, title: recordTitle }),
+        mode: 'cors',
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.url) {
+        const ytdlpUrl = data.url as string;
+        persistDownloadRecord(recordTitle, ytdlpUrl, { offline: false });
+        triggerDownload(ytdlpUrl, `${safeName}.mp4`);
+        return;
       }
-      persistDownloadRecord(recordTitle, videoUrl, { offline: cached });
-      refreshOfflineAvailability(videoUrl);
-      return;
+      const errMsg =
+        data?.error ||
+        `yt-dlp failed (${resp.status})`;
+      reportError(errMsg, 'playback');
     } catch (err) {
-      console.warn('Background download failed, falling back', err);
+      reportError(
+        err instanceof Error ? err.message : 'yt-dlp request failed',
+        'playback'
+      );
     }
-
-    // Fallback: direct download link (may open depending on browser)
-    triggerDownload(videoUrl, `${safeName}.mp4`);
-    persistDownloadRecord(recordTitle, videoUrl, { offline: cached });
+    return;
   }, [
     videoUrl,
     displayTitleWithEnglish,
@@ -1790,7 +1728,6 @@ function PlayPageClient() {
     persistDownloadRecord,
     tt,
     reportError,
-    refreshOfflineAvailability,
   ]);
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
