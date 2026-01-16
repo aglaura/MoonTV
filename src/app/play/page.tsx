@@ -236,6 +236,7 @@ function PlayPageClient() {
     searchParams.get('source') || ''
   );
   const [currentId, setCurrentId] = useState(searchParams.get('id') || '');
+  const [videoUrl, setVideoUrl] = useState('');
   const targetDoubanId = useMemo(() => {
     const raw = searchParams.get('douban_id');
     if (!raw) return null;
@@ -428,8 +429,6 @@ function PlayPageClient() {
       cancelled = true;
     };
   }, [detail?.douban_id]);
-
-  const [videoUrl, setVideoUrl] = useState('');
 
   const totalEpisodes = detail?.episodes?.length || 0;
 
