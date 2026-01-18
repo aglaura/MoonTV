@@ -1629,9 +1629,16 @@ function HomeClient() {
                       data-tv-section="hero"
                       className={tvSectionClass('hero')}
                     >
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {heroItems.slice(0, 6).map((item, idx) => (
-                          <div key={idx} className="col-span-1">
+                      <div
+                        className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory scroll-smooth"
+                        data-tv-group="hero"
+                        data-tv-direction="horizontal"
+                      >
+                        {heroItems.slice(0, 10).map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="min-w-[240px] max-w-[320px] snap-start"
+                          >
                             <VideoCard
                               query={item.query}
                               {...item}
@@ -1639,7 +1646,6 @@ function HomeClient() {
                               size="lg"
                               compactMeta
                               from="douban"
-                              data-tv-focusable="true"
                             />
                           </div>
                         ))}
