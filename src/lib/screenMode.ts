@@ -34,7 +34,7 @@ type UAData = {
   mobile?: boolean;
 };
 
-function detectTV(ua: string, uaData?: UAData, hasTouch?: boolean): boolean {
+function detectTV(ua: string, uaData?: UAData): boolean {
   const uaDataDeviceType = uaData?.deviceType?.toLowerCase?.() || '';
   const uaDataPlatform = uaData?.platform?.toLowerCase?.() || '';
   const uaListMatches =
@@ -80,9 +80,12 @@ export function detectDeviceInfo(): DeviceInfo {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const ua = navigator.userAgent || '';
-  const uaData: UAData | undefined = (navigator as any).userAgentData;
-  const hasTouch =
-    'maxTouchPoints' in navigator && (navigator as any).maxTouchPoints > 0;
+  const nav = navigator as Navigator & {
+    userAgentData?: UAData;
+    maxTouchPoints?: number;
+  };
+  const uaData: UAData | undefined = nav.userAgentData;
+  const hasTouch = typeof nav.maxTouchPoints === 'number' && nav.maxTouchPoints > 0;
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
   const isWindows = /windows/i.test(ua);
@@ -92,8 +95,8 @@ export function detectDeviceInfo(): DeviceInfo {
     /linux/i.test(ua);
   const isOtherPlatform =
     !isAndroid && !isIOS && !isWindows && !/macintosh|mac os x/i.test(ua);
-  let isTV =
-    detectTV(ua, uaData, hasTouch) ||
+  const isTV =
+    detectTV(ua, uaData) ||
     // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
     isLinuxDesktop ||
     // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
