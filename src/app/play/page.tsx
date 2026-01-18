@@ -4211,13 +4211,22 @@ function PlayPageClient() {
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2.5'>
           <div
-            className={`grid gap-3 md:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
+            className={`relative grid gap-3 md:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
+                : 'grid-cols-1 md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)]'
             }`}
             ref={panelGestureRef}
           >
+            {!hideSidePanels && isEpisodeSelectorCollapsed && (
+              <button
+                type='button'
+                className='hidden md:flex absolute top-2 right-2 z-30 items-center gap-1 px-3 py-1.5 rounded-md bg-white/80 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
+                onClick={() => setIsEpisodeSelectorCollapsed(false)}
+              >
+                {tt('Show episodes', '显示选集', '顯示選集')}
+              </button>
+            )}
             {/* 播放器 */}
             <div
               className={`h-full min-w-0 transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
@@ -4359,12 +4368,21 @@ function PlayPageClient() {
             {/* 选集和换源 - 在移动端始终顯示，在 lg 及以上可折叠 */}
             {!hideSidePanels && (
               <div
-                className={`h-[300px] md:h-full md:overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${
+                className={`relative h-[300px] md:h-full md:overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${
                   isEpisodeSelectorCollapsed
                     ? 'lg:hidden lg:opacity-0 lg:scale-95'
                     : 'md:col-span-1 lg:col-span-1 lg:opacity-100 lg:scale-100'
                 }`}
               >
+                {!isEpisodeSelectorCollapsed && !hideSidePanels && (
+                  <button
+                    type='button'
+                    className='hidden md:flex absolute top-2 right-2 z-30 items-center gap-1 px-2.5 py-1 rounded-md bg-white/85 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-[11px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
+                    onClick={() => setIsEpisodeSelectorCollapsed(true)}
+                  >
+                    {tt('Hide panel', '隐藏面板', '隱藏面板')}
+                  </button>
+                )}
                 <EpisodeSelector
                   totalEpisodes={totalEpisodes}
                   value={currentEpisodeIndex + 1}
