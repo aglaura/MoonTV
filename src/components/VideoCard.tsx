@@ -1288,7 +1288,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              handleCardClick(e as unknown as React.MouseEvent);
+              handleCardClick();
             }
           }}
           {...longPressProps}
