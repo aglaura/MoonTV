@@ -1325,66 +1325,146 @@ function HomeClient() {
         : 'opacity-60 hover:opacity-80 focus-within:opacity-100 focus-within:ring-4 focus-within:ring-emerald-400/70'
       : '';
 
-  // Global TV Up/Down navigation across sections
+  // Global TV remote navigation (DPAD)
   useEffect(() => {
     if (!isTV || activeTab !== 'home') return;
+
+    const getFocusables = (root: HTMLElement | Document = document) =>
+      Array.from(
+        root.querySelectorAll<HTMLElement>(
+          '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]'
+        )
+      ).filter((el) => !el.hasAttribute('disabled'));
+
+    const focusFirstInSection = (id: TvSectionId | null) => {
+      if (!id) return false;
+      const sectionEl = document.querySelector<HTMLElement>(
+        `[data-tv-section="${id}"]`
+      );
+      if (!sectionEl) return false;
+      const focusable = getFocusables(sectionEl)[0];
+      if (focusable) {
+        focusable.focus({ preventScroll: true });
+        return true;
+      }
+      return false;
+    };
+
+    const moveInGroup = (
+      group: HTMLElement,
+      activeEl: HTMLElement,
+      key: string
+    ) => {
+      const direction = group.getAttribute('data-tv-direction') || 'grid';
+      const focusables = getFocusables(group);
+      const currentIndex = focusables.indexOf(activeEl);
+      if (currentIndex < 0) return false;
+      const forwardKeys =
+        direction === 'horizontal'
+          ? ['ArrowRight']
+          : direction === 'vertical'
+          ? ['ArrowDown']
+          : ['ArrowRight', 'ArrowDown'];
+      const backKeys =
+        direction === 'horizontal'
+          ? ['ArrowLeft']
+          : direction === 'vertical'
+          ? ['ArrowUp']
+          : ['ArrowLeft', 'ArrowUp'];
+
+      if (forwardKeys.includes(key)) {
+        const next = focusables[currentIndex + 1];
+        if (next) {
+          next.focus({ preventScroll: true });
+          return true;
+        }
+      }
+      if (backKeys.includes(key)) {
+        const prev = focusables[currentIndex - 1];
+        if (prev) {
+          prev.focus({ preventScroll: true });
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const moveInSectionLinear = (direction: 'next' | 'prev') => {
+      if (!currentTvSection) return false;
+      const sectionEl = document.querySelector<HTMLElement>(
+        `[data-tv-section="${currentTvSection}"]`
+      );
+      if (!sectionEl) return false;
+      const focusables = getFocusables(sectionEl);
+      if (focusables.length === 0) return false;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const idx = activeEl ? focusables.indexOf(activeEl) : -1;
+      const next =
+        direction === 'next'
+          ? focusables[Math.min(idx + 1, focusables.length - 1)]
+          : focusables[Math.max(idx - 1, 0)];
+      if (next) {
+        next.focus({ preventScroll: true });
+        return true;
+      }
+      return false;
+    };
 
     const handleKey = (e: KeyboardEvent) => {
       const activeEl = document.activeElement as HTMLElement | null;
       const group = activeEl?.closest<HTMLElement>('[data-tv-group]');
-      if (group && activeEl) {
-        const direction = group.getAttribute('data-tv-direction') || 'grid';
-        const focusables = Array.from(
-          group.querySelectorAll<HTMLElement>('[data-tv-focusable="true"]')
-        );
-        const currentIndex = focusables.indexOf(activeEl);
-        if (currentIndex >= 0) {
-          const forwardKeys =
-            direction === 'horizontal'
-              ? ['ArrowRight']
-              : direction === 'vertical'
-              ? ['ArrowDown']
-              : ['ArrowRight', 'ArrowDown'];
-          const backKeys =
-            direction === 'horizontal'
-              ? ['ArrowLeft']
-              : direction === 'vertical'
-              ? ['ArrowUp']
-              : ['ArrowLeft', 'ArrowUp'];
 
-          if (forwardKeys.includes(e.key)) {
-            const next = focusables[currentIndex + 1];
-            if (next) {
-              e.preventDefault();
-              next.focus();
-              return;
-            }
-          } else if (backKeys.includes(e.key)) {
-            const prev = focusables[currentIndex - 1];
-            if (prev) {
-              e.preventDefault();
-              prev.focus();
-              return;
-            }
-          }
+      // Move within grouped rails/grids first
+      if (group && activeEl) {
+        const moved = moveInGroup(group, activeEl, e.key);
+        if (moved) {
+          e.preventDefault();
+          return;
         }
       }
 
+      if (e.key === 'ArrowRight') {
+        const moved = moveInSectionLinear('next');
+        if (moved) {
+          e.preventDefault();
+          return;
+        }
+      }
+      if (e.key === 'ArrowLeft') {
+        const moved = moveInSectionLinear('prev');
+        if (moved) {
+          e.preventDefault();
+          return;
+        }
+      }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setTvSectionIndex((prev) =>
-          prev < TV_SECTIONS.length - 1 ? prev + 1 : prev
-        );
+        setTvSectionIndex((prev) => {
+          const next = prev < TV_SECTIONS.length - 1 ? prev + 1 : prev;
+          setTimeout(() => focusFirstInSection(TV_SECTIONS[next]), 0);
+          return next;
+        });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setTvSectionIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        setTvSectionIndex((prev) => {
+          const next = prev > 0 ? prev - 1 : prev;
+          setTimeout(() => focusFirstInSection(TV_SECTIONS[next]), 0);
+          return next;
+        });
+      } else if (e.key === 'Enter') {
+        // Let focused element handle click/keypress naturally
+        const target = document.activeElement as HTMLElement | null;
+        if (target) {
+          const evt = new MouseEvent('click', { bubbles: true });
+          target.dispatchEvent(evt);
+          e.preventDefault();
+        }
       }
-      // ArrowLeft / ArrowRight / Enter can be wired per-section later
     };
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [isTV, activeTab]);
+  }, [isTV, activeTab, currentTvSection]);
 
   // Auto-scroll to focused TV section
   useEffect(() => {
