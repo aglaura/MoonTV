@@ -30,7 +30,7 @@ import PageLayout from '@/components/PageLayout';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
 
-const TvHome = dynamic(() => import('../components/home/TvHome.tsx'), { ssr: false });
+const TvHome = dynamic(() => import('../components/home/TvHome'), { ssr: false });
 
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
