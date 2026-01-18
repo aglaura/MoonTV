@@ -210,7 +210,7 @@ function ContentRail({
   if (isTV) {
     return (
       <div
-        className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/75 dark:bg-gray-900/70 p-4 overflow-hidden group focus-within:ring-4 focus-within:ring-emerald-400/60"
+        className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/75 dark:bg-gray-900/70 p-4 overflow-hidden group"
       >
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-3">
@@ -249,7 +249,7 @@ function ContentRail({
           {items.map((item, idx) => (
             <div
               key={idx}
-              className="transition-all duration-200 opacity-95 snap-start focus-within:ring-4 focus-within:ring-emerald-400/70 rounded-2xl min-w-[240px] max-w-[320px]"
+              className="transition-all duration-200 opacity-95 snap-start rounded-2xl min-w-[240px] max-w-[320px]"
             >
               <VideoCard
                 from="douban"

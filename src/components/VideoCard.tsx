@@ -1283,7 +1283,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     return (
       <>
         <div
-          className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] focus-visible:scale-[1.05] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 ${sizeStyles.container}`}
+          className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] focus-visible:scale-[1.1] focus-visible:outline-none focus-visible:ring-0 focus-visible:drop-shadow-[0_0_12px_rgba(16,185,129,0.35)] focus-visible:translate-y-[-2px] focus-visible:translate-x-[2px] ${sizeStyles.container}`}
           onClick={handleCardClick}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1337,11 +1337,11 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         >
           {/* 海报容器 */}
           <div
-            className={`relative aspect-[2/3] overflow-hidden rounded-lg ${sizeStyles.poster} ${
-              origin === 'live'
-                ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
-                : ''
-            }`}
+              className={`relative aspect-[2/3] overflow-hidden rounded-lg ${sizeStyles.poster} ${
+                origin === 'live'
+                  ? 'ring-1 ring-gray-300/80 dark:ring-gray-600/80'
+                  : ''
+              }`}
             style={
               {
                 WebkitUserSelect: 'none',
