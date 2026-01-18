@@ -1396,6 +1396,41 @@ function HomeClient() {
   useEffect(() => {
     if (!isTV || activeTab !== 'home') return;
 
+    const normalizeKey = (event: KeyboardEvent) => {
+      const raw = event.key;
+      if (raw.startsWith('Arrow')) return raw;
+      switch (raw) {
+        case 'Left':
+          return 'ArrowLeft';
+        case 'Right':
+          return 'ArrowRight';
+        case 'Up':
+          return 'ArrowUp';
+        case 'Down':
+          return 'ArrowDown';
+        case 'OK':
+        case 'Select':
+          return 'Enter';
+        default:
+          break;
+      }
+      switch (event.keyCode) {
+        case 37:
+          return 'ArrowLeft';
+        case 38:
+          return 'ArrowUp';
+        case 39:
+          return 'ArrowRight';
+        case 40:
+          return 'ArrowDown';
+        case 13:
+          return 'Enter';
+        default:
+          break;
+      }
+      return raw;
+    };
+
     const getFocusables = (root: HTMLElement | Document = document) =>
       Array.from(
         root.querySelectorAll<HTMLElement>(
@@ -1478,29 +1513,40 @@ function HomeClient() {
     };
 
     const handleKey = (e: KeyboardEvent) => {
+      const key = normalizeKey(e);
+      const isArrow =
+        key === 'ArrowLeft' ||
+        key === 'ArrowRight' ||
+        key === 'ArrowUp' ||
+        key === 'ArrowDown';
+
+      if (isArrow) {
+        e.preventDefault();
+      }
+
       const activeEl = document.activeElement as HTMLElement | null;
+      if (isArrow && (!activeEl || activeEl === document.body)) {
+        focusFirstInSection(currentTvSection || tvSectionList[0] || null);
+      }
       const group = activeEl?.closest<HTMLElement>('[data-tv-group]');
 
       // Move within grouped rails/grids first
       if (group && activeEl) {
-        const moved = moveInGroup(group, activeEl, e.key);
+        const moved = moveInGroup(group, activeEl, key);
         if (moved) {
-          e.preventDefault();
           return;
         }
       }
 
-      if (e.key === 'ArrowRight') {
+      if (key === 'ArrowRight') {
         const moved = moveInSectionLinear('next');
         if (moved) {
-          e.preventDefault();
           return;
         }
       }
-      if (e.key === 'ArrowLeft') {
+      if (key === 'ArrowLeft') {
         const moved = moveInSectionLinear('prev');
         if (moved) {
-          e.preventDefault();
           return;
         }
         const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
@@ -1508,26 +1554,23 @@ function HomeClient() {
           const focusables = getFocusables(sidebar);
           if (focusables.length > 0) {
             focusables[0].focus({ preventScroll: true });
-            e.preventDefault();
             return;
           }
         }
       }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
+      if (key === 'ArrowDown') {
         setTvSectionIndex((prev) => {
           const next = prev < tvSectionList.length - 1 ? prev + 1 : prev;
           setTimeout(() => focusFirstInSection(tvSectionList[next]), 0);
           return next;
         });
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
+      } else if (key === 'ArrowUp') {
         setTvSectionIndex((prev) => {
           const next = prev > 0 ? prev - 1 : prev;
           setTimeout(() => focusFirstInSection(tvSectionList[next]), 0);
           return next;
         });
-      } else if (e.key === 'Enter') {
+      } else if (key === 'Enter') {
         // Let focused element handle click/keypress naturally
         const target = document.activeElement as HTMLElement | null;
         if (target) {
@@ -1538,9 +1581,16 @@ function HomeClient() {
       }
     };
 
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [isTV, activeTab, currentTvSection]);
+    window.addEventListener('keydown', handleKey, { capture: true });
+    return () => window.removeEventListener('keydown', handleKey, { capture: true });
+  }, [isTV, activeTab, currentTvSection, tvSectionList]);
+
+  useEffect(() => {
+    if (!isTV) return;
+    const root = document.documentElement;
+    root.classList.add('tv-cursor-hidden');
+    return () => root.classList.remove('tv-cursor-hidden');
+  }, [isTV]);
 
   // Auto-scroll to focused TV section
   useEffect(() => {
@@ -1568,7 +1618,10 @@ function HomeClient() {
     if (!sectionEl) return;
     const focusable =
       sectionEl.querySelector<HTMLElement>('[data-tv-focusable="true"]') ||
-      sectionEl.querySelector<HTMLElement>('button, [tabindex="0"]');
+      sectionEl.querySelector<HTMLElement>('button, [tabindex="0"]') ||
+      document.querySelector<HTMLElement>(
+        '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]'
+      );
     focusable?.focus({ preventScroll: true });
   }, [currentTvSection, isTV, activeTab]);
 
