@@ -1622,6 +1622,29 @@ function HomeClient() {
               </div>
               <div className={mainLayoutClass}>
                 <div className="flex flex-col gap-6 sm:gap-8">
+                  {/* 精选推荐 */}
+                  {!loading && !error && (
+                    <section
+                      data-tv-section="hero"
+                      className={tvSectionClass('hero')}
+                    >
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {selectedItems.slice(0, 6).map((item, idx) => (
+                          <div key={idx} className="col-span-1">
+                            <VideoCard
+                              query={item.query}
+                              {...item}
+                              size="lg"
+                              compactMeta
+                              from="douban"
+                              data-tv-focusable="true"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
                   {/* 继续观看 */}
                   <section
                     data-tv-section="continue"
@@ -1652,84 +1675,6 @@ function HomeClient() {
 
                   {!loading && !error && (
                     <>
-                      {/* 分类与排序 */}
-                      <section
-                        className={`rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-3 sm:p-4 ${tvSectionClass(
-                          'category'
-                        )}`}
-                        data-tv-section="category"
-                      >
-                        <div className="flex flex-wrap gap-2 items-center justify-between">
-                          <div className="flex flex-wrap gap-2">
-                            {(
-                              [
-                                { key: 'movie', label: tt('Movies', '电影', '電影') },
-                                { key: 'tv-cn', label: tt('CN Shows', '华语剧', '華語劇') },
-                                { key: 'tv-kr', label: tt('KR Shows', '韩剧', '韓劇') },
-                                { key: 'tv-jp', label: tt('JP Shows', '日剧', '日劇') },
-                                { key: 'tv-us', label: tt('US/UK', '欧美剧', '歐美劇') },
-                                { key: 'variety', label: tt('Variety', '综艺', '綜藝') },
-                                { key: 'anime', label: tt('Anime', '动画', '動畫') },
-                              ] as const
-                            ).map((c) => (
-                              <button
-                                key={c.key}
-                                data-tv-focusable="true"
-                                onClick={() => setCategory(c.key as CategoryKey)}
-                                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
-                                  category === c.key
-                                    ? 'bg-emerald-500 text-white border-emerald-500'
-                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
-                                }`}
-                              >
-                                {c.label}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="flex gap-2 items-center">
-                            {([
-                              { key: 'trending', label: tt('Trending', '热门', '熱門') },
-                              { key: 'newest', label: tt('Newest', '最新', '最新') },
-                              { key: 'rating', label: tt('Rating', '评分', '評分') },
-                            ] as const).map((s) => (
-                              <button
-                                key={s.key}
-                                data-tv-focusable="true"
-                                onClick={() => setSortMode(s.key)}
-                                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
-                                  sortMode === s.key
-                                    ? 'bg-emerald-500 text-white border-emerald-500'
-                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
-                                }`}
-                              >
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </section>
-
-                      {/* 精选推荐 */}
-                      <section
-                        data-tv-section="hero"
-                        className={tvSectionClass('hero')}
-                      >
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                          {selectedItems.slice(0, 6).map((item, idx) => (
-                            <div key={idx} className="col-span-1">
-                              <VideoCard
-                                query={item.query}
-                                {...item}
-                                size="lg"
-                                compactMeta
-                                from="douban"
-                                data-tv-focusable="true"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-
                       {/* Rails */}
                       <section
                         data-tv-section="rail-movie"
@@ -1774,20 +1719,6 @@ function HomeClient() {
                           title={tt('Hot CN TV', '热门华语剧', '熱門華語劇')}
                           href="/douban?type=tv&region=cn"
                           items={categoryData['tv-cn'].items}
-                          screenMode={screenMode}
-                          tt={tt}
-                        />
-                        <ContentRail
-                          title={tt('Hot KR TV', '热门韩剧', '熱門韓劇')}
-                          href="/douban?type=tv&region=kr"
-                          items={categoryData['tv-kr'].items}
-                          screenMode={screenMode}
-                          tt={tt}
-                        />
-                        <ContentRail
-                          title={tt('Hot JP TV', '热门日剧', '熱門日劇')}
-                          href="/douban?type=tv&region=jp"
-                          items={categoryData['tv-jp'].items}
                           screenMode={screenMode}
                           tt={tt}
                         />
