@@ -95,6 +95,8 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     }
     return false; // 默认展开
   });
+  const sidebarRef = useRef<HTMLDivElement | null>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 首次挂载时读取 localStorage，以便刷新后仍保持上次的折叠状态
   useLayoutEffect(() => {
@@ -116,6 +118,40 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       }
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const el = sidebarRef.current;
+    if (!el) return;
+
+    const handleFocusIn = () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+      setIsCollapsed(false);
+    };
+
+    const handleFocusOut = () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+      blurTimeoutRef.current = setTimeout(() => {
+        const active = document.activeElement;
+        if (active && el.contains(active)) return;
+        setIsCollapsed(true);
+      }, 80);
+    };
+
+    el.addEventListener('focusin', handleFocusIn);
+    el.addEventListener('focusout', handleFocusOut);
+    return () => {
+      el.removeEventListener('focusin', handleFocusIn);
+      el.removeEventListener('focusout', handleFocusOut);
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [active, setActive] = useState(activePath);
 
@@ -174,6 +210,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
           className={`fixed top-0 left-0 h-screen bg-white/40 backdrop-blur-xl transition-all duration-300 border-r border-gray-200/50 z-10 shadow-lg dark:bg-gray-900/70 dark:border-gray-700/50 ${
             isCollapsed ? 'w-16' : 'w-64'
           }`}
+          ref={sidebarRef}
           style={{
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',

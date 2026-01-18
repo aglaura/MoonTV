@@ -23,7 +23,6 @@ import { DoubanItem } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
-import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
 import PageLayout from '@/components/PageLayout';
 import { useSite } from '@/components/SiteProvider';
@@ -665,6 +664,12 @@ function HomeClient() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [computeResolutionTag]);
+
+  useEffect(() => {
+    if (screenMode === 'tv' && activeTab !== 'home' && activeTab !== 'favorites') {
+      setActiveTab('home');
+    }
+  }, [screenMode, activeTab]);
 
   const animeList = useMemo(() => {
     if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
@@ -1329,6 +1334,44 @@ function HomeClient() {
       ? tvSectionList[Math.min(tvSectionIndex, tvSectionList.length - 1)] || null
       : null;
 
+  const renderFavorites = () => (
+    <section className="mb-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
+          {tt('My favorites', '我的收藏', '我的收藏')}
+        </h2>
+        {favoriteItems.length > 0 && (
+          <button
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={async () => {
+              await clearAllFavorites();
+              setFavoriteItems([]);
+            }}
+          >
+            {tt('Clear', '清空', '清空')}
+          </button>
+        )}
+      </div>
+      <div className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8">
+        {favoriteItems.map((item) => (
+          <div key={item.id + item.source} className="w-full">
+            <VideoCard
+              query={item.search_title}
+              {...item}
+              from="favorite"
+              type={item.episodes > 1 ? 'tv' : ''}
+            />
+          </div>
+        ))}
+        {favoriteItems.length === 0 && (
+          <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
+            {tt('No favorites yet', '暂无收藏内容', '暫無收藏內容')}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
   const tvSectionClass = (id: TvSectionId) =>
     isTV && activeTab === 'home'
       ? currentTvSection === id
@@ -1517,68 +1560,291 @@ function HomeClient() {
             </span>
           </div>
         )}
-        {/* 顶部 Tab 切换 */}
-        <div
-          className="mb-6 sm:mb-8 flex justify-center"
-          data-tv-group="tabs"
-          data-tv-direction="horizontal"
-        >
-          <CapsuleSwitch
-            options={[
-              { label: tt('Home', '首页', '首頁'), value: 'home' },
-              {
-                label: tt('Favorites', '收藏夹', '收藏夾'),
-                value: 'favorites',
-              },
-            ]}
-            active={activeTab}
-            onChange={(value) => setActiveTab(value as 'home' | 'favorites')}
-            className={isTV ? 'scale-110' : ''}
-          />
-        </div>
-
+        {isTV && (
+          <div className="fixed left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
+            <button
+              data-tv-focusable="true"
+              onClick={() => setActiveTab('home')}
+              className={`px-4 py-2 rounded-full text-sm font-bold border shadow-sm ${
+                activeTab === 'home'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              {tt('Home', '首页', '首頁')}
+            </button>
+            <button
+              data-tv-focusable="true"
+              onClick={() => setActiveTab('favorites')}
+              className={`px-4 py-2 rounded-full text-sm font-bold border shadow-sm ${
+                activeTab === 'favorites'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700'
+              }`}
+            >
+              {tt('Favorites', '收藏夹', '收藏夾')}
+            </button>
+          </div>
+        )}
+        {!isTV && (
+          <div className="mb-6 sm:mb-8 flex justify-center gap-2">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                activeTab === 'home'
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+              }`}
+            >
+              {tt('Home', '首页', '首頁')}
+            </button>
+            <button
+              onClick={() => setActiveTab('favorites')}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                activeTab === 'favorites'
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+              }`}
+            >
+              {tt('Favorites', '收藏夹', '收藏夾')}
+            </button>
+          </div>
+        )}
         <div className="w-full">
-          {activeTab === 'favorites' ? (
-            // 收藏夾視圖
-            <section className="mb-8">
+          {isTV ? (
+            activeTab === 'favorites' ? (
+              renderFavorites()
+            ) : (
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
-                  {tt('My favorites', '我的收藏', '我的收藏')}
+                  {tt('Home', '首页', '首頁')}
                 </h2>
-                {favoriteItems.length > 0 && (
-                  <button
-                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                    onClick={async () => {
-                      await clearAllFavorites();
-                      setFavoriteItems([]);
-                    }}
+              </div>
+              <div className={mainLayoutClass}>
+                <div className="flex flex-col gap-6 sm:gap-8">
+                  {/* 继续观看 */}
+                  <section
+                    data-tv-section="continue"
+                    className={tvSectionClass('continue')}
                   >
-                    {tt('Clear', '清空', '清空')}
-                  </button>
-                )}
+                    <ContinueWatching isTV={isTV} />
+                  </section>
+
+                  {/* 错误提示 */}
+                  {error && (
+                    <div className="mb-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                      <p className="font-bold">
+                        {tt(
+                          '⚠️ Data load issue',
+                          '⚠️ 数据加载异常',
+                          '⚠️ 資料載入異常'
+                        )}
+                      </p>
+                      <p>
+                        {tt(
+                          'Unable to fetch data from Douban and other third-party APIs. Check your network and try again later.',
+                          '无法从豆瓣等第三方接口获取数据，请检查网络连接或稍后重试。',
+                          '無法從豆瓣等第三方介面取得資料，請檢查網路連線或稍後再試。'
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  {!loading && !error && (
+                    <>
+                      {/* 分类与排序 */}
+                      <section
+                        className={`rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-3 sm:p-4 ${tvSectionClass(
+                          'category'
+                        )}`}
+                        data-tv-section="category"
+                      >
+                        <div className="flex flex-wrap gap-2 items-center justify-between">
+                          <div className="flex flex-wrap gap-2">
+                            {(
+                              [
+                                { key: 'movie', label: tt('Movies', '电影', '電影') },
+                                { key: 'tv-cn', label: tt('CN Shows', '华语剧', '華語劇') },
+                                { key: 'tv-kr', label: tt('KR Shows', '韩剧', '韓劇') },
+                                { key: 'tv-jp', label: tt('JP Shows', '日剧', '日劇') },
+                                { key: 'tv-us', label: tt('US/UK', '欧美剧', '歐美劇') },
+                                { key: 'variety', label: tt('Variety', '综艺', '綜藝') },
+                                { key: 'anime', label: tt('Anime', '动画', '動畫') },
+                              ] as const
+                            ).map((c) => (
+                              <button
+                                key={c.key}
+                                data-tv-focusable="true"
+                                onClick={() => setCategory(c.key as CategoryKey)}
+                                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                                  category === c.key
+                                    ? 'bg-emerald-500 text-white border-emerald-500'
+                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+                                }`}
+                              >
+                                {c.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex gap-2 items-center">
+                            {([
+                              { key: 'trending', label: tt('Trending', '热门', '熱門') },
+                              { key: 'newest', label: tt('Newest', '最新', '最新') },
+                              { key: 'rating', label: tt('Rating', '评分', '評分') },
+                            ] as const).map((s) => (
+                              <button
+                                key={s.key}
+                                data-tv-focusable="true"
+                                onClick={() => setSortMode(s.key)}
+                                className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                                  sortMode === s.key
+                                    ? 'bg-emerald-500 text-white border-emerald-500'
+                                    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+                                }`}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* 精选推荐 */}
+                      <section
+                        data-tv-section="hero"
+                        className={tvSectionClass('hero')}
+                      >
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          {selectedItems.slice(0, 6).map((item, idx) => (
+                            <div key={idx} className="col-span-1">
+                              <VideoCard
+                                query={item.query}
+                                {...item}
+                                size="lg"
+                                compactMeta
+                                from="douban"
+                                data-tv-focusable="true"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+
+                      {/* Rails */}
+                      <section
+                        data-tv-section="rail-movie"
+                        className={tvSectionClass('rail-movie')}
+                      >
+                        <ContentRail
+                          title={tt('Hot movies', '热门电影', '熱門電影')}
+                          href="/douban?type=movie"
+                          items={categoryData.movie.items}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                      <section className={tvSectionClass('rail-movie')}>
+                        <ContentRail
+                          title={tt('Trending movies (TMDB)', 'TMDB 热门电影', 'TMDB 熱門電影')}
+                          href="#"
+                          items={applyKidsFilter(
+                            applyPosterOverrides(effectiveTmdbMovies)
+                          )}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                      <section className={tvSectionClass('rail-movie')}>
+                        <ContentRail
+                          title={tt('Latest movies', '最新电影', '最新電影')}
+                          href="#"
+                          items={applyKidsFilter(
+                            applyPosterOverrides(effectiveLatestMovies)
+                          )}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+
+                      <section
+                        data-tv-section="rail-tv"
+                        className={tvSectionClass('rail-tv')}
+                      >
+                        <ContentRail
+                          title={tt('Hot CN TV', '热门华语剧', '熱門華語劇')}
+                          href="/douban?type=tv&region=cn"
+                          items={categoryData['tv-cn'].items}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                        <ContentRail
+                          title={tt('Hot KR TV', '热门韩剧', '熱門韓劇')}
+                          href="/douban?type=tv&region=kr"
+                          items={categoryData['tv-kr'].items}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                        <ContentRail
+                          title={tt('Hot JP TV', '热门日剧', '熱門日劇')}
+                          href="/douban?type=tv&region=jp"
+                          items={categoryData['tv-jp'].items}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                        <ContentRail
+                          title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
+                          href="#"
+                          items={applyKidsFilter(
+                            applyPosterOverrides(effectiveTmdbTv)
+                          )}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                        <ContentRail
+                          title={tt('Latest TV', '最新剧集', '最新劇集')}
+                          href="#"
+                          items={applyKidsFilter(
+                            applyPosterOverrides(effectiveLatestTv)
+                          )}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                      {effectiveTmdbPeople.length > 0 && (
+                        <section className={tvSectionClass('rail-variety')}>
+                          <ContentRail
+                            title={tt('Trending people (TMDB)', 'TMDB 热门影人', 'TMDB 熱門影人')}
+                            href="#"
+                            items={effectiveTmdbPeople}
+                            screenMode={screenMode}
+                            tt={tt}
+                          />
+                        </section>
+                      )}
+                      <section
+                        data-tv-section="rail-variety"
+                        className={tvSectionClass('rail-variety')}
+                      >
+                        <ContentRail
+                          title={tt('Hot variety', '热门综艺', '熱門綜藝')}
+                          href="#"
+                          items={categoryData.variety.items}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8">
-                {favoriteItems.map((item) => (
-                  <div key={item.id + item.source} className="w-full">
-                    <VideoCard
-                      query={item.search_title}
-                      {...item}
-                      from="favorite"
-                      type={item.episodes > 1 ? 'tv' : ''}
-                    />
-                  </div>
-                ))}
-                {favoriteItems.length === 0 && (
-                  <div className="col-span-full text-center text-gray-500 py-8 dark:text-gray-400">
-                    {tt(
-                      'No favorites yet',
-                      '暂无收藏内容',
-                      '暫無收藏內容'
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
+              {loading && (
+                <div className="w-full h-64 flex items-center justify-center text-gray-500">
+                  {tt('Loading...', '加载中...', '載入中...')}
+                </div>
+              )}
+            )
+          ) : activeTab === 'favorites' ? (
+            renderFavorites()
           ) : (
             // 首頁視圖
             <>
