@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 
 import ContinueWatching from '@/components/ContinueWatching';
 import VideoCard from '@/components/VideoCard';
@@ -69,6 +69,13 @@ const TvHome = ({
   ContentRail,
 }: TvHomeProps) => {
   const isTV = screenMode === 'tv';
+  const HERO_COUNT = 8;
+  const RAIL_COUNT = 24;
+  const heroList = useMemo(() => heroItems.slice(0, HERO_COUNT), [heroItems]);
+  const railSlice = useCallback(
+    (items: CardItem[] = []) => items.slice(0, RAIL_COUNT),
+    []
+  );
 
   return (
     <>
@@ -87,7 +94,7 @@ const TvHome = ({
                 data-tv-group='hero'
                 data-tv-direction='horizontal'
               >
-                {heroItems.slice(0, 10).map((item, idx) => (
+                {heroList.map((item, idx) => (
                   <div key={idx} className='min-w-[240px] max-w-[320px] snap-start'>
                     <VideoCard
                       query={item.query}
@@ -130,7 +137,7 @@ const TvHome = ({
                 <ContentRail
                   title={tt('Hot movies', '热门电影', '熱門電影')}
                   href='/douban?type=movie'
-                  items={categoryData.movie?.items || []}
+                  items={railSlice(categoryData.movie?.items || [])}
                   screenMode={screenMode}
                   tt={tt}
                 />
@@ -139,7 +146,7 @@ const TvHome = ({
                 <ContentRail
                   title={tt('Trending movies (TMDB)', 'TMDB 热门电影', 'TMDB 熱門電影')}
                   href='#'
-                  items={applyKidsFilter(applyPosterOverrides(effectiveTmdbMovies))}
+                  items={railSlice(applyKidsFilter(applyPosterOverrides(effectiveTmdbMovies)))}
                   screenMode={screenMode}
                   tt={tt}
                 />
@@ -148,7 +155,7 @@ const TvHome = ({
                 <ContentRail
                   title={tt('Latest movies', '最新电影', '最新電影')}
                   href='#'
-                  items={applyKidsFilter(applyPosterOverrides(effectiveLatestMovies))}
+                  items={railSlice(applyKidsFilter(applyPosterOverrides(effectiveLatestMovies)))}
                   screenMode={screenMode}
                   tt={tt}
                 />
@@ -158,21 +165,21 @@ const TvHome = ({
                 <ContentRail
                   title={tt('Hot CN TV', '热门华语剧', '熱門華語劇')}
                   href='/douban?type=tv&region=cn'
-                  items={categoryData['tv-cn']?.items || []}
+                  items={railSlice(categoryData['tv-cn']?.items || [])}
                   screenMode={screenMode}
                   tt={tt}
                 />
                 <ContentRail
                   title={tt('Trending TV (TMDB)', 'TMDB 热门剧集', 'TMDB 熱門劇集')}
                   href='#'
-                  items={applyKidsFilter(applyPosterOverrides(effectiveTmdbTv))}
+                  items={railSlice(applyKidsFilter(applyPosterOverrides(effectiveTmdbTv)))}
                   screenMode={screenMode}
                   tt={tt}
                 />
                 <ContentRail
                   title={tt('Latest TV', '最新剧集', '最新劇集')}
                   href='#'
-                  items={applyKidsFilter(applyPosterOverrides(effectiveLatestTv))}
+                  items={railSlice(applyKidsFilter(applyPosterOverrides(effectiveLatestTv)))}
                   screenMode={screenMode}
                   tt={tt}
                 />
@@ -182,7 +189,7 @@ const TvHome = ({
                   <ContentRail
                     title={tt('Trending people (TMDB)', 'TMDB 热门影人', 'TMDB 熱門影人')}
                     href='#'
-                    items={effectiveTmdbPeople}
+                    items={railSlice(effectiveTmdbPeople)}
                     screenMode={screenMode}
                     tt={tt}
                   />
@@ -192,7 +199,7 @@ const TvHome = ({
                 <ContentRail
                   title={tt('Hot variety', '热门综艺', '熱門綜藝')}
                   href='#'
-                  items={categoryData.variety?.items || []}
+                  items={railSlice(categoryData.variety?.items || [])}
                   screenMode={screenMode}
                   tt={tt}
                 />
@@ -210,4 +217,4 @@ const TvHome = ({
   );
 };
 
-export default TvHome;
+export default memo(TvHome);
