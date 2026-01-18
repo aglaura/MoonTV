@@ -439,15 +439,27 @@ function HomeClient() {
   const [screenMode, setScreenMode] = useState<
     'tv' | 'desktop' | 'mobile' | 'tablet'
   >('desktop');
+  const [resolutionTag, setResolutionTag] = useState('');
+  const computeResolutionTag = useCallback(() => {
+    if (typeof window === 'undefined') return '';
+    const w = Math.max(Math.round(window.innerWidth), 1);
+    const h = Math.max(Math.round(window.innerHeight), 1);
+    const dpr = Math.max(window.devicePixelRatio || 1, 1);
+    const physicalW = Math.round(w * dpr);
+    const physicalH = Math.round(h * dpr);
+    const density = dpr > 1 ? ` @${Number(dpr.toFixed(2))}x` : '';
+    return `${physicalW}x${physicalH}${density}`;
+  }, []);
   const topBarModeLabel = useMemo(() => {
+    const resSuffix = resolutionTag ? ` · ${resolutionTag}` : '';
     if (screenMode === 'tv') {
-      return tt('TV mode · 4K 2K 1080p', '电视模式 · 4K 2K 1080p', '電視模式 · 4K 2K 1080p');
+      return `${tt('TV mode', '电视模式', '電視模式')}${resSuffix}`;
     }
     if (screenMode === 'tablet') {
-      return tt('Tablet mode · 4K 2K 1080p', '平板模式 · 4K 2K 1080p', '平板模式 · 4K 2K 1080p');
+      return `${tt('Tablet mode', '平板模式', '平板模式')}${resSuffix}`;
     }
     return undefined;
-  }, [screenMode, tt]);
+  }, [resolutionTag, screenMode, tt]);
   const [sortMode, setSortMode] = useState<'trending' | 'newest' | 'rating'>(
     'trending'
   );
@@ -610,12 +622,14 @@ function HomeClient() {
   useEffect(() => {
     const handleResize = () => {
       if (typeof window === 'undefined') return;
-      setScreenMode(detectDeviceInfo().screenMode);
+      const nextInfo = detectDeviceInfo();
+      setScreenMode(nextInfo.screenMode);
+      setResolutionTag(computeResolutionTag());
     };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [computeResolutionTag]);
 
   const animeList = useMemo(() => {
     if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
