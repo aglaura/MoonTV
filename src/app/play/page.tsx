@@ -4202,16 +4202,18 @@ function PlayPageClient() {
             className={`grid gap-3 lg:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
+                : 'grid-cols-1 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
             }`}
           >
             {/* 播放器 */}
             <div
-            className={`h-full transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
-              hideSidePanels || isEpisodeSelectorCollapsed ? 'col-span-1' : 'md:col-span-1'
-            }`}
-          >
-            <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
+              className={`h-full min-w-0 transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30 ${
+                hideSidePanels || isEpisodeSelectorCollapsed
+                  ? 'col-span-1'
+                  : 'lg:col-span-1'
+              }`}
+            >
+              <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
               <div className='absolute top-2 left-2 z-[605] flex flex-wrap items-center gap-2 bg-black/60 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
                 <div className='text-sm font-semibold truncate max-w-[60%]'>
                   {displayTitleText}
@@ -4344,10 +4346,10 @@ function PlayPageClient() {
             {/* 选集和换源 - 在移动端始终顯示，在 lg 及以上可折叠 */}
             {!hideSidePanels && (
               <div
-                className={`h-[300px] xl:h-full md:overflow-hidden transition-all duration-300 ease-in-out ${
+                className={`h-[300px] xl:h-full md:overflow-hidden min-w-0 transition-all duration-300 ease-in-out ${
                   isEpisodeSelectorCollapsed
-                    ? 'md:col-span-1 lg:hidden lg:opacity-0 lg:scale-95'
-                    : 'md:col-span-1 lg:opacity-100 lg:scale-100'
+                    ? 'lg:hidden lg:opacity-0 lg:scale-95'
+                    : 'lg:col-span-1 lg:opacity-100 lg:scale-100'
                 }`}
               >
                 <EpisodeSelector

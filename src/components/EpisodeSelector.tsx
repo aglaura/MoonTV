@@ -806,7 +806,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   return (
     <div
       id='source-panel'
-      className='md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'
+      className='w-full min-w-0 md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'
     >
       {/* 主要的 Tab 切换 - 无缝融入设计 */}
       <div className='flex mb-1 -mx-2 sm:-mx-3 flex-shrink-0 relative z-[10]'>
