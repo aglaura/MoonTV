@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line simple-import-sort/imports
-import { Download, Film, Home, Menu, Search } from 'lucide-react';
+import { Download, Film, Heart, Home, Menu, Search, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import { useUserLanguage } from '@/lib/userLanguage.client';
+import { useDeviceInfo } from '@/lib/screenMode';
 import { useSite } from './SiteProvider';
 
 interface SidebarContextType {
@@ -86,6 +87,8 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { screenMode } = useDeviceInfo();
+  const isTV = screenMode === 'tv';
   // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (
@@ -189,18 +192,67 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     isCollapsed,
   };
 
-  const menuItems: NavItem[] = [
-    {
-      icon: Film,
-      label: t(
-        'Category',
-        '分类',
-        '分類',
-      ),
-      href: '/douban?type=movie',
-      matchTypes: ['movie', 'tv', 'show', 'anime'],
-    },
-  ];
+  const menuItems: NavItem[] = isTV
+    ? [
+        {
+          icon: Home,
+          label: t('Home', '首页', '首頁'),
+          href: '/?tab=home',
+        },
+        {
+          icon: Heart,
+          label: t('Favorites', '收藏夹', '收藏夾'),
+          href: '/?tab=favorites',
+        },
+        {
+          icon: Film,
+          label: t('Movies', '电影', '電影'),
+          href: '/douban?type=movie',
+          matchTypes: ['movie'],
+        },
+        {
+          icon: Tv,
+          label: t('CN TV', '华语剧', '華語劇'),
+          href: '/douban?type=tv&region=cn',
+        },
+        {
+          icon: Tv,
+          label: t('KR TV', '韩剧', '韓劇'),
+          href: '/douban?type=tv&region=kr',
+        },
+        {
+          icon: Tv,
+          label: t('JP TV', '日剧', '日劇'),
+          href: '/douban?type=tv&region=jp',
+        },
+        {
+          icon: Tv,
+          label: t('US/UK TV', '欧美剧', '歐美劇'),
+          href: '/douban?type=tv&region=us',
+        },
+        {
+          icon: Film,
+          label: t('Variety', '综艺', '綜藝'),
+          href: '/douban?type=show',
+        },
+        {
+          icon: Film,
+          label: t('Anime', '动画', '動畫'),
+          href: '/douban?type=anime',
+        },
+      ]
+    : [
+        {
+          icon: Film,
+          label: t(
+            'Category',
+            '分类',
+            '分類',
+          ),
+          href: '/douban?type=movie',
+          matchTypes: ['movie', 'tv', 'show', 'anime'],
+        },
+      ];
 
   return (
     <SidebarContext.Provider value={contextValue}>

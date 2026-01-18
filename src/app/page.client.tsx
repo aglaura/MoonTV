@@ -5,6 +5,7 @@
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 import {
   BangumiCalendarData,
@@ -424,6 +425,15 @@ function HomeClient() {
   );
 
   const [activeTab, setActiveTab] = useState<'home' | 'favorites'>('home');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  useEffect(() => {
+    if (tabParam === 'favorites') {
+      setActiveTab('favorites');
+    } else if (tabParam === 'home') {
+      setActiveTab('home');
+    }
+  }, [tabParam]);
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
   const [latestMoviesDouban, setLatestMoviesDouban] = useState<DoubanItem[]>([]);
@@ -1490,6 +1500,15 @@ function HomeClient() {
           e.preventDefault();
           return;
         }
+        const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+        if (sidebar) {
+          const focusables = getFocusables(sidebar);
+          if (focusables.length > 0) {
+            focusables[0].focus({ preventScroll: true });
+            e.preventDefault();
+            return;
+          }
+        }
       }
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -1558,32 +1577,6 @@ function HomeClient() {
             <span className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold dark:bg-amber-900/60 dark:text-amber-50 border border-amber-200 dark:border-amber-700">
               {tt('Kids mode is on', '少儿模式已开启', '少兒模式已開啟')}
             </span>
-          </div>
-        )}
-        {isTV && (
-          <div className="fixed left-3 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-2">
-            <button
-              data-tv-focusable="true"
-              onClick={() => setActiveTab('home')}
-              className={`px-4 py-2 rounded-full text-sm font-bold border shadow-sm ${
-                activeTab === 'home'
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              {tt('Home', '首页', '首頁')}
-            </button>
-            <button
-              data-tv-focusable="true"
-              onClick={() => setActiveTab('favorites')}
-              className={`px-4 py-2 rounded-full text-sm font-bold border shadow-sm ${
-                activeTab === 'favorites'
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-gray-800 dark:bg-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              {tt('Favorites', '收藏夹', '收藏夾')}
-            </button>
           </div>
         )}
         {!isTV && (
