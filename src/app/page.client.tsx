@@ -113,7 +113,7 @@ type TvSectionId =
   | 'rail-tv'
   | 'rail-variety';
 
-const TV_SECTIONS: TvSectionId[] = [
+const DEFAULT_TV_SECTIONS: TvSectionId[] = [
   'continue',
   'category',
   'hero',
@@ -501,6 +501,21 @@ function HomeClient() {
 
   // TV section focus index
   const [tvSectionIndex, setTvSectionIndex] = useState(0);
+  const tvSectionList = useMemo<TvSectionId[]>(() => {
+    if (isTV) {
+      return [
+        'hero',
+        'continue',
+        'rail-movie',
+        'rail-tv',
+        'rail-variety',
+      ];
+    }
+    return DEFAULT_TV_SECTIONS;
+  }, [isTV]);
+  useEffect(() => {
+    setTvSectionIndex(0);
+  }, [tvSectionList]);
 
   // 检查公告弹窗状态
   useEffect(() => {
@@ -1316,7 +1331,9 @@ function HomeClient() {
     : 'px-3 py-1.5 text-xs sm:text-sm';
 
   const currentTvSection =
-    isTV && activeTab === 'home' ? TV_SECTIONS[tvSectionIndex] : null;
+    isTV && activeTab === 'home'
+      ? tvSectionList[Math.min(tvSectionIndex, tvSectionList.length - 1)] || null
+      : null;
 
   const tvSectionClass = (id: TvSectionId) =>
     isTV && activeTab === 'home'
@@ -1440,15 +1457,15 @@ function HomeClient() {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         setTvSectionIndex((prev) => {
-          const next = prev < TV_SECTIONS.length - 1 ? prev + 1 : prev;
-          setTimeout(() => focusFirstInSection(TV_SECTIONS[next]), 0);
+          const next = prev < tvSectionList.length - 1 ? prev + 1 : prev;
+          setTimeout(() => focusFirstInSection(tvSectionList[next]), 0);
           return next;
         });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setTvSectionIndex((prev) => {
           const next = prev > 0 ? prev - 1 : prev;
-          setTimeout(() => focusFirstInSection(TV_SECTIONS[next]), 0);
+          setTimeout(() => focusFirstInSection(tvSectionList[next]), 0);
           return next;
         });
       } else if (e.key === 'Enter') {
