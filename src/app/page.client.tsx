@@ -212,24 +212,24 @@ function ContentRail({
       <div
         className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/75 dark:bg-gray-900/70 p-4 overflow-hidden group"
       >
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-3">
-            <span className="px-2 py-1 text-[11px] font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+        <div className="flex items-center justify-between mb-4 px-1">
+          <div className="flex items-center gap-4">
+            <span className="px-3 py-1.5 text-sm font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
               {tt('TV remote', '电视遥控', '電視遙控')}
             </span>
-            <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h3 className="text-4xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">
               {title}
             </h3>
           </div>
           {href && (
             <Link
               href={href}
-              className="text-base text-green-600 dark:text-green-400 flex items-center gap-1 px-3 py-1.5 rounded-full border border-green-400/50 bg-white/70 dark:bg-white/5"
+              className="text-lg font-semibold text-green-700 dark:text-green-400 flex items-center gap-2 px-4 py-2 rounded-full border border-green-400/50 bg-white/70 dark:bg-white/5"
               data-tv-focusable="true"
               tabIndex={0}
             >
               {tt('See more', '查看更多', '查看更多')}
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-5 h-5" />
             </Link>
           )}
         </div>
