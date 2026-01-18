@@ -174,7 +174,7 @@ function ContentRail({
   title: string;
   href?: string;
   items: CardItem[];
-  screenMode: 'tv' | 'desktop' | 'mobile' | 'tablet';
+  screenMode: 'tv' | 'desktop' | 'mobile' | 'tablet' | 'pc';
   tt: (en: string, zhHans: string, zhHant: string) => string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
