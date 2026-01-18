@@ -42,7 +42,7 @@ const PageLayout = ({
         <div className='relative min-w-0 flex-1 transition-all duration-300'>
           {/* 桌面端左上角返回按钮 */}
           {['/play'].includes(activePath) && !hideTopBar && (
-            <div className='absolute top-3 left-1 z-20 hidden md:flex'>
+            <div className='absolute top-4 left-4 z-20 hidden md:flex bg-white/80 dark:bg-gray-900/70 backdrop-blur-md rounded-full shadow-sm border border-gray-200/70 dark:border-gray-700/70 px-1 py-1'>
               <BackButton />
             </div>
           )}

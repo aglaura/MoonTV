@@ -83,17 +83,24 @@ export function detectDeviceInfo(): DeviceInfo {
   const uaData: UAData | undefined = (navigator as any).userAgentData;
   const hasTouch =
     'maxTouchPoints' in navigator && (navigator as any).maxTouchPoints > 0;
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isChromebook = /CrOS/i.test(ua);
   const isLinuxDesktop =
-    !/android|windows|iphone|ipad|ipod|macintosh|mac os x/i.test(ua) &&
+    !/android|windows|iphone|ipad|ipod|macintosh|mac os x|cros/i.test(ua) &&
     /linux/i.test(ua);
-  const isTV =
+  const isOtherPlatform =
+    !isAndroid && !isIOS && !/windows/i.test(ua) && !/macintosh|mac os x/i.test(ua);
+  let isTV =
     detectTV(ua, uaData, hasTouch) ||
     // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
     isLinuxDesktop ||
+    // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
+    isOtherPlatform ||
+    // Android + not mobile + non-Chromebook = likely TV/box.
+    (isAndroid && uaData?.mobile === false && !isChromebook) ||
     // Fallback heuristic: large Android screens without touch are likely TVs.
-    (/Android/i.test(ua) && Math.max(w, h) >= 1700 && !hasTouch);
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isAndroid = /Android/i.test(ua);
+    (isAndroid && Math.max(w, h) >= 1280 && !hasTouch);
   const browser = detectBrowser(ua);
 
   const smallestWidth = Math.min(w, h);
