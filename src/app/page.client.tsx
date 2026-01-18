@@ -1635,6 +1635,7 @@ function HomeClient() {
                             <VideoCard
                               query={item.query}
                               {...item}
+                              id={item.id ? String(item.id) : undefined}
                               size="lg"
                               compactMeta
                               from="douban"
