@@ -3519,7 +3519,7 @@ function PlayPageClient() {
             ? 'zh-tw'
             : 'en',
         hotkey: false,
-        fastForward: true,
+        fastForward: false,
         autoOrientation: true,
         lock: true,
         moreVideoAttr: ({
