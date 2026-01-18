@@ -211,16 +211,22 @@ function ContentRail({
     return (
       <div
         className="relative rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/75 dark:bg-gray-900/70 p-4 overflow-hidden group focus-within:ring-4 focus-within:ring-emerald-400/60"
-        style={{ height: '620px' }}
       >
-        <div className="flex items-center justify-between mb-2 px-1">
-          <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            {title}
-          </h3>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-3">
+            <span className="px-2 py-1 text-[11px] font-semibold rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+              {tt('TV remote', '电视遥控', '電視遙控')}
+            </span>
+            <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+              {title}
+            </h3>
+          </div>
           {href && (
             <Link
               href={href}
-              className="text-base text-green-600 dark:text-green-400 flex items-center gap-1"
+              className="text-base text-green-600 dark:text-green-400 flex items-center gap-1 px-3 py-1.5 rounded-full border border-green-400/50 bg-white/70 dark:bg-white/5"
+              data-tv-focusable="true"
+              tabIndex={0}
             >
               {tt('See more', '查看更多', '查看更多')}
               <ChevronRight className="w-4 h-4" />
@@ -230,12 +236,12 @@ function ContentRail({
 
         <div
           ref={scrollRef}
-          className="flex flex-col gap-4 overflow-y-auto pb-6 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-y snap-mandatory"
+          className="flex gap-4 overflow-x-auto pb-4 pt-2 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory scroll-smooth"
           data-tv-group="rail"
-          data-tv-direction="vertical"
+          data-tv-direction="horizontal"
         >
           {noData && (
-            <div className="text-gray-500 text-center py-4">
+            <div className="text-gray-500 text-center py-4 min-w-[240px]">
               {tt('No data', '暂无数据', '暫無資料')}
             </div>
           )}
@@ -243,7 +249,7 @@ function ContentRail({
           {items.map((item, idx) => (
             <div
               key={idx}
-              className="transition-all duration-200 opacity-95 snap-start focus-within:ring-4 focus-within:ring-emerald-400/70 rounded-2xl"
+              className="transition-all duration-200 opacity-95 snap-start focus-within:ring-4 focus-within:ring-emerald-400/70 rounded-2xl min-w-[240px] max-w-[320px]"
             >
               <VideoCard
                 from="douban"
@@ -265,6 +271,10 @@ function ContentRail({
               />
             </div>
           ))}
+        </div>
+
+        <div className="absolute bottom-2 right-3 text-[12px] text-gray-600 dark:text-gray-300 bg-white/70 dark:bg-gray-800/80 rounded-full px-3 py-1 border border-gray-200/70 dark:border-gray-700/70 shadow-sm">
+          {tt('Use ← → to move, OK to open', '使用 ← → 导航，确认键进入', '使用 ← → 導航，確認鍵進入')}
         </div>
       </div>
     );
@@ -467,6 +477,12 @@ function HomeClient() {
     }
     if (screenMode === 'tablet') {
       return `${tt('Tablet mode', '平板模式', '平板模式')}${resSuffix}`;
+    }
+    if (screenMode === 'pc') {
+      return `${tt('PC mode', '桌面模式', '桌面模式')}${resSuffix}`;
+    }
+    if (screenMode === 'desktop') {
+      return `${tt('Desktop mode', '桌面模式', '桌面模式')}${resSuffix}`;
     }
     return undefined;
   }, [resolutionTag, screenMode, tt]);

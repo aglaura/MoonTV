@@ -1286,6 +1286,12 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         <div
           className={`group relative w-full rounded-lg bg-transparent cursor-pointer transition-all duration-300 ease-in-out hover:scale-[1.05] hover:z-[500] focus-visible:scale-[1.05] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/30 ${sizeStyles.container}`}
           onClick={handleCardClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleCardClick(e as unknown as React.MouseEvent);
+            }
+          }}
           {...longPressProps}
           tabIndex={0}
           role='button'
