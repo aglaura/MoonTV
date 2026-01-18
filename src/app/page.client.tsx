@@ -502,17 +502,11 @@ function HomeClient() {
   // TV section focus index
   const [tvSectionIndex, setTvSectionIndex] = useState(0);
   const tvSectionList = useMemo<TvSectionId[]>(() => {
-    if (isTV) {
-      return [
-        'hero',
-        'continue',
-        'rail-movie',
-        'rail-tv',
-        'rail-variety',
-      ];
+    if (screenMode === 'tv') {
+      return ['hero', 'continue', 'rail-movie', 'rail-tv', 'rail-variety'];
     }
     return DEFAULT_TV_SECTIONS;
-  }, [isTV]);
+  }, [screenMode]);
   useEffect(() => {
     setTvSectionIndex(0);
   }, [tvSectionList]);
