@@ -1585,13 +1585,6 @@ function HomeClient() {
     return () => window.removeEventListener('keydown', handleKey, { capture: true });
   }, [isTV, activeTab, currentTvSection, tvSectionList]);
 
-  useEffect(() => {
-    if (!isTV) return;
-    const root = document.documentElement;
-    root.classList.add('tv-cursor-hidden');
-    return () => root.classList.remove('tv-cursor-hidden');
-  }, [isTV]);
-
   // Auto-scroll to focused TV section
   useEffect(() => {
     if (!isTV || activeTab !== 'home') return;

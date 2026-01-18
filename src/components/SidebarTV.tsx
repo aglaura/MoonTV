@@ -1,7 +1,6 @@
 'use client';
 
-// eslint-disable-next-line simple-import-sort/imports
-import { Download, Film, Home, Menu, Search } from 'lucide-react';
+import { Download, Film, Heart, Home, Menu, RefreshCw, Search, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -27,31 +26,6 @@ const SidebarContext = createContext<SidebarContextType>({
 
 export const useSidebar = () => useContext(SidebarContext);
 
-// 可替换为你自己的 logo 图片
-const Logo = () => {
-  const { siteName } = useSite();
-  return (
-    <Link
-      href='/'
-      className='flex items-center justify-center h-16 select-none hover:opacity-80 transition-opacity duration-200 gap-2'
-    >
-      <div className='w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 bg-white dark:bg-black flex items-center justify-center p-1.5'>
-        <picture>
-          <source srcSet='/logo-dark.png' media='(prefers-color-scheme: dark)' />
-          <img
-            src='/logo.png'
-            alt={siteName}
-            className='w-full h-full object-contain'
-          />
-        </picture>
-      </div>
-      <span className='text-2xl font-bold text-green-600 tracking-tight'>
-        {siteName}
-      </span>
-    </Link>
-  );
-};
-
 interface SidebarProps {
   onToggle?: (collapsed: boolean) => void;
   activePath?: string;
@@ -60,7 +34,7 @@ interface SidebarProps {
 // 在浏览器环境下通过全局变量缓存折叠状态，避免组件重新挂载时出现初始值闪烁
 declare global {
   interface Window {
-    __sidebarCollapsed?: boolean;
+    __sidebarCollapsedTv?: boolean;
   }
 }
 
@@ -68,10 +42,9 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   href: string;
-  matchTypes?: string[];
 };
 
-const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
+const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const { userLocale } = useUserLanguage();
   const locale =
     userLocale === 'zh-Hans' || userLocale === 'zh-Hant' ? userLocale : 'en';
@@ -81,31 +54,36 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       if (locale === 'zh-Hant') return zhHant;
       return en;
     },
-    [locale],
+    [locale]
   );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
+  const { siteName } = useSite();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (
       typeof window !== 'undefined' &&
-      typeof window.__sidebarCollapsed === 'boolean'
+      typeof window.__sidebarCollapsedTv === 'boolean'
     ) {
-      return window.__sidebarCollapsed;
+      return window.__sidebarCollapsedTv;
     }
-    return false; // 默认展开
+    return true;
   });
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const getCurrentFullPath = useCallback(() => {
+    const queryString = searchParams.toString();
+    return queryString ? `${pathname}?${queryString}` : pathname;
+  }, [pathname, searchParams]);
+
   // 首次挂载时读取 localStorage，以便刷新后仍保持上次的折叠状态
   useLayoutEffect(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
+    const saved = localStorage.getItem('sidebarCollapsedTv');
     if (saved !== null) {
       const val = JSON.parse(saved);
       setIsCollapsed(val);
-      window.__sidebarCollapsed = val;
+      window.__sidebarCollapsedTv = val;
     }
   }, []);
 
@@ -119,6 +97,14 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       }
     }
   }, [isCollapsed]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add('tv-mode', 'tv-cursor-hidden');
+    return () => {
+      root.classList.remove('tv-mode', 'tv-cursor-hidden');
+    };
+  }, []);
 
   useEffect(() => {
     const el = sidebarRef.current;
@@ -156,28 +142,21 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
 
   const [active, setActive] = useState(activePath);
 
-  const getCurrentFullPath = useCallback(() => {
-    const queryString = searchParams.toString();
-    return queryString ? `${pathname}?${queryString}` : pathname;
-  }, [pathname, searchParams]);
-
   useEffect(() => {
-    // 优先使用传入的 activePath
-    if (activePath) {
+    if (activePath && activePath !== '/') {
       setActive(activePath);
-    } else {
-      // 否则使用当前路径
-      const fullPath = getCurrentFullPath();
-      setActive(fullPath);
+      return;
     }
+    const fullPath = getCurrentFullPath();
+    setActive(fullPath);
   }, [activePath, getCurrentFullPath]);
 
   const handleToggle = useCallback(() => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
+    localStorage.setItem('sidebarCollapsedTv', JSON.stringify(newState));
     if (typeof window !== 'undefined') {
-      window.__sidebarCollapsed = newState;
+      window.__sidebarCollapsedTv = newState;
     }
     onToggle?.(newState);
   }, [isCollapsed, onToggle]);
@@ -186,25 +165,81 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     router.push('/search');
   }, [router]);
 
-  const contextValue = {
-    isCollapsed,
-  };
+  const handleFocusNavigate = useCallback(
+    (href: string) => {
+      if (!href || href === '#') return;
+      const current = getCurrentFullPath();
+      if (current === href) {
+        setActive(href);
+        return;
+      }
+      router.push(href);
+      setActive(href);
+    },
+    [getCurrentFullPath, router]
+  );
 
   const menuItems: NavItem[] = [
     {
+      icon: Home,
+      label: t('Home', '首页', '首頁'),
+      href: '/?tab=home',
+    },
+    {
+      icon: RefreshCw,
+      label: t('Refresh', '刷新', '重新整理'),
+      href: '#',
+    },
+    {
+      icon: Heart,
+      label: t('Favorites', '收藏夹', '收藏夾'),
+      href: '/?tab=favorites',
+    },
+    {
       icon: Film,
-      label: t('Category', '分类', '分類'),
+      label: t('Movies', '电影', '電影'),
       href: '/douban?type=movie',
-      matchTypes: ['movie', 'tv', 'show', 'anime'],
+    },
+    {
+      icon: Tv,
+      label: t('CN TV', '华语剧', '華語劇'),
+      href: '/douban?type=tv&region=cn',
+    },
+    {
+      icon: Tv,
+      label: t('KR TV', '韩剧', '韓劇'),
+      href: '/douban?type=tv&region=kr',
+    },
+    {
+      icon: Tv,
+      label: t('JP TV', '日剧', '日劇'),
+      href: '/douban?type=tv&region=jp',
+    },
+    {
+      icon: Tv,
+      label: t('US/UK TV', '欧美剧', '歐美劇'),
+      href: '/douban?type=tv&region=us',
+    },
+    {
+      icon: Film,
+      label: t('Variety', '综艺', '綜藝'),
+      href: '/douban?type=show',
+    },
+    {
+      icon: Film,
+      label: t('Anime', '动画', '動畫'),
+      href: '/douban?type=anime',
     },
   ];
 
   return (
-    <SidebarContext.Provider value={contextValue}>
+    <SidebarContext.Provider value={{ isCollapsed }}>
       {/* 在移动端隐藏侧边栏 */}
       <div className='hidden md:flex'>
         <aside
           data-sidebar
+          data-tv-group='sidebar'
+          data-tv-direction='vertical'
           className={`fixed top-0 left-0 h-screen bg-white/40 backdrop-blur-xl transition-all duration-300 border-r border-gray-200/50 z-10 shadow-lg dark:bg-gray-900/70 dark:border-gray-700/50 ${
             isCollapsed ? 'w-16' : 'w-64'
           }`}
@@ -222,9 +257,28 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   isCollapsed ? 'opacity-0' : 'opacity-100'
                 }`}
               >
-                <div className='w-[calc(100%-4rem)] flex justify-center'>
-                  {!isCollapsed && <Logo />}
-                </div>
+                <Link
+                  href='/?tab=home'
+                  onFocus={() => handleFocusNavigate('/?tab=home')}
+                  className='flex items-center justify-center h-16 select-none hover:opacity-80 transition-opacity duration-200 gap-2'
+                >
+                  <div className='w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 bg-white dark:bg-black flex items-center justify-center p-1.5'>
+                    <picture>
+                      <source
+                        srcSet='/logo-dark.png'
+                        media='(prefers-color-scheme: dark)'
+                      />
+                      <img
+                        src='/logo.png'
+                        alt={siteName}
+                        className='w-full h-full object-contain'
+                      />
+                    </picture>
+                  </div>
+                  <span className='text-2xl font-bold text-green-600 tracking-tight'>
+                    {siteName}
+                  </span>
+                </Link>
               </div>
               <button
                 onClick={handleToggle}
@@ -236,12 +290,13 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
               </button>
             </div>
 
-            {/* 首页和搜索导航 */}
+            {/* 首页导航 */}
             <nav className='px-2 mt-4 space-y-1'>
               <Link
-                href='/'
-                onClick={() => setActive('/')}
-                data-active={active === '/'}
+                href='/?tab=home'
+                onClick={() => setActive('/?tab=home')}
+                onFocus={() => handleFocusNavigate('/?tab=home')}
+                data-active={active === '/?tab=home'}
                 className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
                   isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
                 } gap-3 justify-start`}
@@ -262,6 +317,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   handleSearchClick();
                   setActive('/search');
                 }}
+                onFocus={() => handleFocusNavigate('/search')}
                 data-active={active === '/search'}
                 className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
                   isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
@@ -279,6 +335,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
               <Link
                 href='/downloads'
                 onClick={() => setActive('/downloads')}
+                onFocus={() => handleFocusNavigate('/downloads')}
                 data-active={active === '/downloads'}
                 className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
                   isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
@@ -299,15 +356,13 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
             <div className='flex-1 overflow-y-auto px-2 pt-4'>
               <div className='space-y-1'>
                 {menuItems.map((item) => {
-                  // 解码URL以进行正确的比较
                   const decodedActive = decodeURIComponent(active);
                   const decodedItemHref = decodeURIComponent(item.href);
                   const activeType = decodedActive.match(/type=([^&]+)/)?.[1];
 
                   const isActive =
                     decodedActive === decodedItemHref ||
-                    (!!activeType &&
-                      item.matchTypes?.some((t) => decodedActive.includes(`type=${t}`)));
+                    (!!activeType && decodedItemHref.includes(`type=${activeType}`));
 
                   const Icon = item.icon;
                   return (
@@ -322,6 +377,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                         }
                         setActive(item.href);
                       }}
+                      onFocus={() => handleFocusNavigate(item.href)}
                       data-active={isActive}
                       className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-sm text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
                         isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
@@ -352,4 +408,4 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   );
 };
 
-export default Sidebar;
+export default SidebarTV;

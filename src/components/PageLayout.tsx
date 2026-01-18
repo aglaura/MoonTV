@@ -1,11 +1,13 @@
 'use client';
 
+import { useDeviceInfo } from '@/lib/screenMode';
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
 import MobileBottomNav from './MobileBottomNav';
 import MobileHeader from './MobileHeader';
 import { SettingsButton } from './SettingsButton';
 import Sidebar from './Sidebar';
+import SidebarTV from './SidebarTV';
 import { ThemeToggle } from './ThemeToggle';
 import UserBadge from './UserBadge';
 
@@ -22,6 +24,9 @@ const PageLayout = ({
   hideTopBar = false,
   topBarModeLabel,
 }: PageLayoutProps) => {
+  const { screenMode } = useDeviceInfo();
+  const isTV = screenMode === 'tv';
+
   return (
     <div className='w-full min-h-screen'>
       {/* 移动端头部 */}
@@ -34,7 +39,11 @@ const PageLayout = ({
         {/* 侧边栏 - 桌面端显示，移动端隐藏 */}
         {!hideTopBar && (
           <div className='hidden md:block'>
-            <Sidebar activePath={activePath} />
+            {isTV ? (
+              <SidebarTV activePath={activePath} />
+            ) : (
+              <Sidebar activePath={activePath} />
+            )}
           </div>
         )}
 
