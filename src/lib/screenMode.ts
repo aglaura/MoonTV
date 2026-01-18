@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export type ScreenMode = 'mobile' | 'tablet' | 'desktop' | 'tv';
+export type ScreenMode = 'mobile' | 'tablet' | 'desktop' | 'tv' | 'pc';
 
 export interface DeviceInfo {
   screenMode: ScreenMode;
@@ -85,12 +85,13 @@ export function detectDeviceInfo(): DeviceInfo {
     'maxTouchPoints' in navigator && (navigator as any).maxTouchPoints > 0;
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
+  const isWindows = /windows/i.test(ua);
   const isChromebook = /CrOS/i.test(ua);
   const isLinuxDesktop =
     !/android|windows|iphone|ipad|ipod|macintosh|mac os x|cros/i.test(ua) &&
     /linux/i.test(ua);
   const isOtherPlatform =
-    !isAndroid && !isIOS && !/windows/i.test(ua) && !/macintosh|mac os x/i.test(ua);
+    !isAndroid && !isIOS && !isWindows && !/macintosh|mac os x/i.test(ua);
   let isTV =
     detectTV(ua, uaData, hasTouch) ||
     // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
@@ -106,6 +107,7 @@ export function detectDeviceInfo(): DeviceInfo {
   const smallestWidth = Math.min(w, h);
   let screenMode: ScreenMode;
   if (isTV) screenMode = 'tv';
+  else if (isWindows) screenMode = 'pc';
   else if (smallestWidth < 600) screenMode = 'mobile';
   else if (smallestWidth < 1200) screenMode = 'tablet';
   else screenMode = 'desktop';

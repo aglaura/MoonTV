@@ -437,7 +437,7 @@ function HomeClient() {
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
   const [screenMode, setScreenMode] = useState<
-    'tv' | 'desktop' | 'mobile' | 'tablet'
+    'tv' | 'desktop' | 'mobile' | 'tablet' | 'pc'
   >(() => (typeof window === 'undefined' ? 'desktop' : detectDeviceInfo().screenMode));
   const [resolutionTag, setResolutionTag] = useState(() =>
     typeof window === 'undefined' ? '' : (() => {
