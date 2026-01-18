@@ -83,8 +83,13 @@ export function detectDeviceInfo(): DeviceInfo {
   const uaData: UAData | undefined = (navigator as any).userAgentData;
   const hasTouch =
     'maxTouchPoints' in navigator && (navigator as any).maxTouchPoints > 0;
+  const isLinuxDesktop =
+    !/android|windows|iphone|ipad|ipod|macintosh|mac os x/i.test(ua) &&
+    /linux/i.test(ua);
   const isTV =
     detectTV(ua, uaData, hasTouch) ||
+    // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
+    isLinuxDesktop ||
     // Fallback heuristic: large Android screens without touch are likely TVs.
     (/Android/i.test(ua) && Math.max(w, h) >= 1700 && !hasTouch);
   const isIOS = /iPhone|iPad|iPod/i.test(ua);

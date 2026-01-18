@@ -4221,10 +4221,11 @@ function PlayPageClient() {
             {!hideSidePanels && isEpisodeSelectorCollapsed && (
               <button
                 type='button'
-                className='hidden md:flex absolute top-2 right-2 z-30 items-center gap-1 px-3 py-1.5 rounded-md bg-white/80 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
+                aria-label={tt('Show episodes', '显示选集', '顯示選集')}
+                className='hidden md:flex absolute top-2 right-2 z-30 items-center justify-center w-8 h-8 rounded-full bg-white/80 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
                 onClick={() => setIsEpisodeSelectorCollapsed(false)}
               >
-                {tt('Show episodes', '显示选集', '顯示選集')}
+                ◀
               </button>
             )}
             {/* 播放器 */}
@@ -4377,10 +4378,11 @@ function PlayPageClient() {
                 {!isEpisodeSelectorCollapsed && !hideSidePanels && (
                   <button
                     type='button'
-                    className='hidden md:flex absolute top-2 right-2 z-30 items-center gap-1 px-2.5 py-1 rounded-md bg-white/85 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-[11px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
+                    aria-label={tt('Hide panel', '隐藏面板', '隱藏面板')}
+                    className='hidden md:flex absolute top-2 right-2 z-30 items-center justify-center w-8 h-8 rounded-full bg-white/85 dark:bg-gray-800/90 border border-gray-200/70 dark:border-gray-700/60 shadow-sm text-gray-700 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
                     onClick={() => setIsEpisodeSelectorCollapsed(true)}
                   >
-                    {tt('Hide panel', '隐藏面板', '隱藏面板')}
+                    ▶
                   </button>
                 )}
                 <EpisodeSelector

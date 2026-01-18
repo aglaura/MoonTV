@@ -438,8 +438,18 @@ function HomeClient() {
   const [category, setCategory] = useState<CategoryKey>('movie');
   const [screenMode, setScreenMode] = useState<
     'tv' | 'desktop' | 'mobile' | 'tablet'
-  >('desktop');
-  const [resolutionTag, setResolutionTag] = useState('');
+  >(() => (typeof window === 'undefined' ? 'desktop' : detectDeviceInfo().screenMode));
+  const [resolutionTag, setResolutionTag] = useState(() =>
+    typeof window === 'undefined' ? '' : (() => {
+      const w = Math.max(Math.round(window.innerWidth), 1);
+      const h = Math.max(Math.round(window.innerHeight), 1);
+      const dpr = Math.max(window.devicePixelRatio || 1, 1);
+      const physicalW = Math.round(w * dpr);
+      const physicalH = Math.round(h * dpr);
+      const density = dpr > 1 ? ` @${Number(dpr.toFixed(2))}x` : '';
+      return `${physicalW}x${physicalH}${density}`;
+    })()
+  );
   const computeResolutionTag = useCallback(() => {
     if (typeof window === 'undefined') return '';
     const w = Math.max(Math.round(window.innerWidth), 1);
