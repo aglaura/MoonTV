@@ -1630,7 +1630,7 @@ function HomeClient() {
                       className={tvSectionClass('hero')}
                     >
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {selectedItems.slice(0, 6).map((item, idx) => (
+                        {heroItems.slice(0, 6).map((item, idx) => (
                           <div key={idx} className="col-span-1">
                             <VideoCard
                               query={item.query}
