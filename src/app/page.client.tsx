@@ -1615,6 +1615,7 @@ function HomeClient() {
             activeTab === 'favorites' ? (
               renderFavorites()
             ) : (
+              <>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-gray-800 dark:text-gray-200">
                   {tt('Home', '首页', '首頁')}
@@ -1773,6 +1774,7 @@ function HomeClient() {
                   {tt('Loading...', '加载中...', '載入中...')}
                 </div>
               )}
+              </>
             )
           ) : activeTab === 'favorites' ? (
             renderFavorites()
