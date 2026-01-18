@@ -1404,6 +1404,7 @@ function PlayPageClient() {
 
   const [isEpisodeSelectorCollapsed, setIsEpisodeSelectorCollapsed] =
     useState(false);
+  const panelGestureRef = useRef<HTMLDivElement | null>(null);
 
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoLoadingStage, setVideoLoadingStage] = useState<
@@ -1461,6 +1462,47 @@ function PlayPageClient() {
     }
     return 'h-[300px] md:h-full lg:h-full';
   }, [forceRotate, isFullscreen]);
+
+  // Tablet/TV swipe gesture to toggle the selector instead of relying on buttons.
+  useEffect(() => {
+    const el = panelGestureRef.current;
+    if (!el || hideSidePanels) return;
+    let startX = 0;
+    let startY = 0;
+    let startTime = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!e.touches || e.touches.length === 0) return;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
+      startTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      const dt = Date.now() - startTime;
+      if (dt > 800) return;
+      if (Math.abs(dx) <= Math.abs(dy)) return;
+      if (Math.abs(dx) < 50) return;
+      if (dx < -50) {
+        setIsEpisodeSelectorCollapsed(true);
+      } else if (dx > 50) {
+        setIsEpisodeSelectorCollapsed(false);
+      }
+    };
+
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      el.removeEventListener('touchstart', handleTouchStart);
+      el.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [hideSidePanels]);
   const actualPlaybackInfoRef = useRef(actualPlaybackInfo);
   useEffect(() => {
     actualPlaybackInfoRef.current = actualPlaybackInfo;
@@ -4168,42 +4210,13 @@ function PlayPageClient() {
 
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2.5'>
-          {/* 面板切换（平板/桌面） */}
-          {!hideSidePanels && (
-            <div className='hidden md:flex justify-end'>
-              <div className='inline-flex items-center gap-1 rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200/60 dark:border-gray-700/60 shadow-sm p-1'>
-                <button
-                  type='button'
-                  onClick={() => setIsEpisodeSelectorCollapsed(true)}
-                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-                    isEpisodeSelectorCollapsed
-                      ? 'bg-emerald-500 text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10'
-                  }`}
-                >
-                  {tt('Player', '播放器', '播放器')}
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setIsEpisodeSelectorCollapsed(false)}
-                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-                    isEpisodeSelectorCollapsed
-                      ? 'text-gray-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/10'
-                      : 'bg-emerald-500 text-white shadow-sm'
-                  }`}
-                >
-                  {tt('Episodes', '选集', '選集')}
-                </button>
-              </div>
-            </div>
-          )}
-
           <div
             className={`grid gap-3 md:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
                 : 'grid-cols-1 md:grid-cols-[minmax(0,3fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
             }`}
+            ref={panelGestureRef}
           >
             {/* 播放器 */}
             <div
