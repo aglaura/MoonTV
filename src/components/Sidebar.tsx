@@ -1,7 +1,7 @@
 'use client';
 
 // eslint-disable-next-line simple-import-sort/imports
-import { Download, Film, Heart, Home, Menu, Search, Tv } from 'lucide-react';
+import { Download, Film, Heart, Home, Menu, RefreshCw, Search, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -200,6 +200,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
           href: '/?tab=home',
         },
         {
+          icon: RefreshCw,
+          label: t('Refresh', '刷新', '重新整理'),
+          href: '#',
+        },
+        {
           icon: Heart,
           label: t('Favorites', '收藏夹', '收藏夾'),
           href: '/?tab=favorites',
@@ -369,7 +374,14 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                     <Link
                       key={item.label}
                       href={item.href}
-                      onClick={() => setActive(item.href)}
+                      onClick={(e) => {
+                        if (item.label === t('Refresh', '刷新', '重新整理')) {
+                          e.preventDefault();
+                          window.location.reload();
+                          return;
+                        }
+                        setActive(item.href);
+                      }}
                       data-active={isActive}
                       className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-sm text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
                         isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
