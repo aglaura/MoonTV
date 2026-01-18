@@ -129,7 +129,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       posterAlt,
       posterDouban,
       posterTmdb,
-      doubanUrl,
       tmdbUrl,
       episodes,
       source,
@@ -721,7 +720,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               return;
             }
           } catch (err) {
-            console.warn('poster cache fetch failed', err);
+            // Swallow poster cache failures; not critical for UI.
           }
         }
 
@@ -1334,12 +1333,6 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             // 阻止拖拽
             e.preventDefault();
             return false;
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleCardClick();
-            }
           }}
         >
           {/* 海报容器 */}

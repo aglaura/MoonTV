@@ -39,11 +39,14 @@ const PageLayout = ({
         )}
 
         {/* 主内容区域 */}
-        <div className='relative min-w-0 flex-1 transition-all duration-300 md:pl-14'>
+        <div className='relative min-w-0 flex-1 transition-all duration-300 md:pl-16'>
           {/* 桌面端左上角返回按钮 */}
           {['/play'].includes(activePath) && !hideTopBar && (
-            <div className='absolute top-3 left-3 z-20 hidden md:flex bg-white/85 dark:bg-gray-900/75 backdrop-blur-md rounded-full shadow-sm border border-gray-200/70 dark:border-gray-700/70 p-1 scale-90'>
-              <BackButton />
+            <div className='absolute top-3 left-3 z-20 hidden md:flex items-center gap-3'>
+              <div className='bg-white/85 dark:bg-gray-900/75 backdrop-blur-md rounded-full shadow-sm border border-gray-200/70 dark:border-gray-700/70 p-1 scale-90'>
+                <BackButton />
+              </div>
+              <div className='w-12' aria-hidden='true' />
             </div>
           )}
 
