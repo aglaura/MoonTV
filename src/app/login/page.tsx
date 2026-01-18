@@ -9,6 +9,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import LanguageSelector from '@/components/LanguageSelector';
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useDeviceInfo } from '@/lib/screenMode';
 
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
@@ -50,6 +51,8 @@ function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { siteName } = useSite();
+  const { screenMode } = useDeviceInfo();
+  const isTV = screenMode === 'tv';
 
   const [group, setGroup] = useState<string>('family');
   const [password, setPassword] = useState('');
@@ -67,6 +70,7 @@ function LoginPageClient() {
   const [autoSelectPending, setAutoSelectPending] = useState(false);
   const [stage, setStage] = useState<'group' | 'password'>('group');
   const passwordRef = useRef<HTMLInputElement | null>(null);
+  const loginButtonRef = useRef<HTMLButtonElement | null>(null);
   const [groupOptions, setGroupOptions] = useState<string[]>(['family', 'guest']);
   const groupButtonRefs = useRef<HTMLButtonElement[]>([]);
   const userButtonRefs = useRef<HTMLButtonElement[]>([]);
@@ -257,6 +261,105 @@ function LoginPageClient() {
       passwordRef.current.focus();
     }
   }, [stage]);
+
+  // TV affordances: hide cursor, larger typography, DPAD navigation.
+  useEffect(() => {
+    if (!isTV) return;
+    const root = document.documentElement;
+    root.classList.add('tv-mode', 'tv-cursor-hidden');
+    return () => {
+      root.classList.remove('tv-mode', 'tv-cursor-hidden');
+    };
+  }, [isTV]);
+
+  useEffect(() => {
+    if (!isTV) return;
+    const focusGroupButton = (idx: number) => {
+      const el = groupButtonRefs.current[idx];
+      el?.focus({ preventScroll: true });
+    };
+    const focusUserButton = (idx: number) => {
+      const el = userButtonRefs.current[idx];
+      el?.focus({ preventScroll: true });
+    };
+
+    // Initial focus per stage
+    if (stage === 'group') {
+      focusGroupButton(groupFocusIndex);
+    } else if (requiresSelection) {
+      focusUserButton(userFocusIndex);
+    } else if (stage === 'password') {
+      passwordRef.current?.focus({ preventScroll: true });
+    }
+
+    const handleKey = (e: KeyboardEvent) => {
+      const key = e.key;
+      const isArrow =
+        key === 'ArrowLeft' ||
+        key === 'ArrowRight' ||
+        key === 'ArrowUp' ||
+        key === 'ArrowDown';
+      if (!isArrow && key !== 'Enter') return;
+
+      if (stage === 'group') {
+        e.preventDefault();
+        const cols = 2;
+        const total = groupOptions.length;
+        let next = groupFocusIndex;
+        if (key === 'ArrowRight') next = Math.min(groupFocusIndex + 1, total - 1);
+        if (key === 'ArrowLeft') next = Math.max(groupFocusIndex - 1, 0);
+        if (key === 'ArrowDown') next = Math.min(groupFocusIndex + cols, total - 1);
+        if (key === 'ArrowUp') next = Math.max(groupFocusIndex - cols, 0);
+        if (next !== groupFocusIndex) {
+          setGroupFocusIndex(next);
+          focusGroupButton(next);
+        }
+        return;
+      }
+
+      if (requiresSelection) {
+        e.preventDefault();
+        const total = availableUsers.length;
+        if (total === 0) return;
+        let next = userFocusIndex;
+        if (key === 'ArrowDown') next = Math.min(userFocusIndex + 1, total - 1);
+        if (key === 'ArrowUp') next = Math.max(userFocusIndex - 1, 0);
+        if (next !== userFocusIndex) {
+          setUserFocusIndex(next);
+          focusUserButton(next);
+        }
+        if (key === 'Enter') {
+          const targetUser = availableUsers[next];
+          if (targetUser) handleUserSelect(targetUser);
+        }
+        return;
+      }
+
+      if (stage === 'password') {
+        if (key === 'ArrowUp') {
+          e.preventDefault();
+          passwordRef.current?.focus({ preventScroll: true });
+        }
+        if (key === 'ArrowDown') {
+          e.preventDefault();
+          loginButtonRef.current?.focus({ preventScroll: true });
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKey, { capture: true });
+    return () => window.removeEventListener('keydown', handleKey, { capture: true });
+  }, [
+    availableUsers.length,
+    groupFocusIndex,
+    groupOptions.length,
+    handleUserSelect,
+    isTV,
+    requiresSelection,
+    stage,
+    userFocusIndex,
+  ]);
 
   const focusGroupButton = useCallback(
     (idx: number) => {
@@ -676,6 +779,7 @@ function LoginPageClient() {
               <button
                 type='submit'
                 disabled={!password || loading}
+                ref={loginButtonRef}
                 className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50'
               >
                 {loading
