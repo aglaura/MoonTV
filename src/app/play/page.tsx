@@ -4202,7 +4202,7 @@ function PlayPageClient() {
             className={`grid gap-3 md:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out ${
               hideSidePanels || isEpisodeSelectorCollapsed
                 ? 'grid-cols-1'
-                : 'grid-cols-1 md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
+                : 'grid-cols-1 md:grid-cols-[minmax(0,5fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
             }`}
           >
             {/* 播放器 */}
