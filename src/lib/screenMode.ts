@@ -26,11 +26,34 @@ function getAndroidMajorVersion(ua: string): number | null {
   return Number.isNaN(major) ? null : major;
 }
 
-function detectTV(ua: string): boolean {
+type UAData = {
+  deviceType?: string;
+  platform?: string;
+  uaList?: Array<{ ua: string }>;
+  brands?: Array<{ brand: string }>;
+  mobile?: boolean;
+};
+
+function detectTV(ua: string, uaData?: UAData, hasTouch?: boolean): boolean {
+  const uaDataDeviceType = uaData?.deviceType?.toLowerCase?.() || '';
+  const uaDataPlatform = uaData?.platform?.toLowerCase?.() || '';
+  const uaListMatches =
+    uaData?.uaList?.some((item) => /tv|crkey|aft/i.test(item.ua)) ?? false;
+  const uaDataBrands =
+    uaData?.brands?.some((item) => /crkey|aft/i.test(item.brand)) ?? false;
+  if (
+    uaDataDeviceType === 'tv' ||
+    uaDataPlatform.includes('tv') ||
+    uaListMatches ||
+    uaDataBrands
+  ) {
+    return true;
+  }
+
   const androidMajor = getAndroidMajorVersion(ua);
   const androidTvMarkers =
     /Android TV|AndroidTV|GoogleTV|Google TV|Leanback|AFT|CrKey/i;
-  const androidTvDevices = /BRAVIA|SHIELD|MiTV|TV\s?Box/i;
+  const androidTvDevices = /BRAVIA|SHIELD|MiTV|MiBox|MIBOX|TV\s?Box/i;
   if (
     androidMajor !== null &&
     (androidTvMarkers.test(ua) || androidTvDevices.test(ua))
@@ -57,7 +80,13 @@ export function detectDeviceInfo(): DeviceInfo {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const ua = navigator.userAgent || '';
-  const isTV = detectTV(ua);
+  const uaData: UAData | undefined = (navigator as any).userAgentData;
+  const hasTouch =
+    'maxTouchPoints' in navigator && (navigator as any).maxTouchPoints > 0;
+  const isTV =
+    detectTV(ua, uaData, hasTouch) ||
+    // Fallback heuristic: large Android screens without touch are likely TVs.
+    (/Android/i.test(ua) && Math.max(w, h) >= 1700 && !hasTouch);
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
   const browser = detectBrowser(ua);

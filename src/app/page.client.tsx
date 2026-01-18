@@ -441,10 +441,10 @@ function HomeClient() {
   >('desktop');
   const topBarModeLabel = useMemo(() => {
     if (screenMode === 'tv') {
-      return tt('TV mode', '电视模式', '電視模式');
+      return tt('TV mode · 4K 2K 1080p', '电视模式 · 4K 2K 1080p', '電視模式 · 4K 2K 1080p');
     }
     if (screenMode === 'tablet') {
-      return tt('Tablet mode', '平板模式', '平板模式');
+      return tt('Tablet mode · 4K 2K 1080p', '平板模式 · 4K 2K 1080p', '平板模式 · 4K 2K 1080p');
     }
     return undefined;
   }, [screenMode, tt]);
