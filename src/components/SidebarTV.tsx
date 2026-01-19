@@ -83,6 +83,14 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const [isPeek, setIsPeek] = useState(false);
 
   const sidebarRef = useRef<HTMLDivElement | null>(null);
+  const peekedOnceRef = useRef(false);
+  const collapsedRef = useRef(isCollapsed);
+  const peekRef = useRef(isPeek);
+
+  useEffect(() => {
+    collapsedRef.current = isCollapsed;
+    peekRef.current = isPeek;
+  }, [isCollapsed, isPeek]);
 
   const getCurrentFullPath = useCallback(() => {
     const queryString = searchParams.toString();
@@ -165,11 +173,33 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
 
   useEffect(() => {
     const onPeek = () => {
-      if (isCollapsed) setIsPeek(true);
+      const collapsed = collapsedRef.current;
+      const peek = peekRef.current;
+
+      if (collapsed && !peek) {
+        setIsPeek(true);
+        peekedOnceRef.current = true;
+        return;
+      }
+
+      if (peek && peekedOnceRef.current) {
+        setIsPeek(false);
+        setIsCollapsed(false);
+        peekedOnceRef.current = false;
+
+        requestAnimationFrame(() => {
+          const el = sidebarRef.current;
+          const first = el?.querySelector<HTMLElement>(
+            '[data-tv-focusable=\"true\"]'
+          );
+          first?.focus({ preventScroll: true });
+        });
+      }
     };
+
     window.addEventListener('tv:sidebar-peek', onPeek as EventListener);
     return () => window.removeEventListener('tv:sidebar-peek', onPeek as EventListener);
-  }, [isCollapsed]);
+  }, []);
 
   useEffect(() => {
     const el = sidebarRef.current;
@@ -178,6 +208,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
     const handleFocusIn = () => {
       setIsPeek(false);
       setIsCollapsed(false);
+      peekedOnceRef.current = false;
     };
 
     el.addEventListener('focusin', handleFocusIn);
@@ -232,6 +263,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
           setIsCollapsed(false);
         }
 
+        peekedOnceRef.current = false;
         (document.activeElement as HTMLElement | null)?.blur();
         return;
       }
@@ -245,6 +277,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
       if (e.key === 'Backspace' || e.key === 'Escape') {
         setIsPeek(false);
         setIsCollapsed(true);
+        peekedOnceRef.current = false;
         (document.activeElement as HTMLElement | null)?.blur();
       }
     };

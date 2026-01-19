@@ -76,6 +76,8 @@ type RailItem = {
   href: string;
 };
 
+const HOME_STATE_KEY = 'tv-home-state-v1';
+
 /* =========================
    Utils
 ========================= */
@@ -217,6 +219,7 @@ const TvHome = ({
 
   const lastContentFocus = useRef<FocusKey>('hero:play');
   const rowMemory = useRef<Record<string, number>>({});
+  const hasRestoredRef = useRef(false);
   const focusableSelector =
     '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
 
@@ -272,37 +275,51 @@ const TvHome = ({
     if (f.area !== 'rail') lastContentFocus.current = focus;
   }, [focus, parseFocus]);
 
-  const getFocusableElements = useCallback(
-    (root: HTMLElement) =>
-      Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-        (el) => !el.hasAttribute('disabled')
-      ),
-    [focusableSelector]
-  );
-
-  const focusSidebar = useCallback(() => {
-    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
-    if (!sidebar) return false;
-    const focusables = getFocusableElements(sidebar);
-    if (!focusables.length) return false;
-    setRailOpen(false);
-    focusables[0].focus({ preventScroll: true });
-    return true;
-  }, [getFocusableElements]);
-
-  useEffect(() => {
-    if (heroList.length === 0) return;
-    setFocus('hero:play');
-  }, [heroList.length]);
-
-  const openRail = useCallback(() => {
+  const requestSidebarPeek = useCallback(() => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
     }
-    if (focusSidebar()) return;
-    setRailOpen(true);
-    setFocus(`rail:${activeRail}`);
-  }, [activeRail, focusSidebar]);
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+    if (!sidebar) {
+      setRailOpen(true);
+      setFocus(`rail:${activeRail}`);
+    }
+  }, [activeRail]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!rows.length) return;
+    const raw = sessionStorage.getItem(HOME_STATE_KEY);
+    if (!raw) return;
+
+    try {
+      const state = JSON.parse(raw);
+      if (state?.rowMemory) rowMemory.current = state.rowMemory;
+      if (typeof state?.heroIndex === 'number') setHeroIndex(state.heroIndex);
+      if (typeof state?.focus === 'string') setFocus(state.focus);
+      hasRestoredRef.current = true;
+    } catch {
+      // ignore malformed state
+    }
+  }, [rows.length]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window === 'undefined') return;
+      const state = {
+        focus,
+        rowMemory: rowMemory.current,
+        heroIndex,
+      };
+      sessionStorage.setItem(HOME_STATE_KEY, JSON.stringify(state));
+    };
+  }, [focus, heroIndex]);
+
+  useEffect(() => {
+    if (heroList.length === 0) return;
+    if (hasRestoredRef.current) return;
+    setFocus('hero:play');
+  }, [heroList.length]);
 
   const closeRail = useCallback(() => {
     setRailOpen(false);
@@ -351,7 +368,7 @@ const TvHome = ({
       }
 
       if (f.area === 'hero') {
-        if (dir === 'left') return openRail();
+        if (dir === 'left') return requestSidebarPeek();
         if (dir === 'right')
           setFocus(f.btn === 'play' ? 'hero:info' : 'hero:play');
         if (dir === 'down') {
@@ -375,7 +392,7 @@ const TvHome = ({
               rowMemory.current[row.id] ?? 0,
               0
             );
-            openRail();
+            requestSidebarPeek();
           } else {
             setFocus(`row:${row.id}:${f.index - 1}`);
           }
@@ -407,7 +424,7 @@ const TvHome = ({
         }
       }
     },
-    [closeRail, focus, openRail, parseFocus, railItems, rows]
+    [closeRail, focus, parseFocus, railItems, requestSidebarPeek, rows]
   );
 
   useEffect(() => {
@@ -443,7 +460,7 @@ const TvHome = ({
     };
     window.addEventListener('keydown', h, { passive: false });
     return () => window.removeEventListener('keydown', h);
-  }, [closeRail, focus, getFocusableElements, move, railOpen]);
+  }, [closeRail, focus, move, railOpen]);
 
   if (loading) {
     return (
@@ -625,6 +642,8 @@ function PosterRow({
   const SPAN = CARD_W + GAP;
 
   const scroller = useRef<HTMLDivElement | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const parts = focus.split(':');
@@ -633,6 +652,33 @@ function PosterRow({
       left: Number(parts[2]) * SPAN,
       behavior: 'smooth',
     });
+  }, [focus, row.id]);
+
+  useEffect(() => {
+    const parts = focus.split(':');
+    if (parts[0] !== 'row' || parts[1] !== row.id) {
+      setPreviewIndex(null);
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current);
+        previewTimer.current = null;
+      }
+      return;
+    }
+
+    const index = Number(parts[2]);
+    if (previewTimer.current) {
+      clearTimeout(previewTimer.current);
+    }
+    previewTimer.current = setTimeout(() => {
+      setPreviewIndex(index);
+    }, 700);
+
+    return () => {
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current);
+        previewTimer.current = null;
+      }
+    };
   }, [focus, row.id]);
 
   return (
@@ -705,6 +751,14 @@ function PosterRow({
                       </div>
                     )}
                   </>
+                )}
+                {!isPerson && previewIndex === i && (
+                  <div className='absolute inset-0 z-10 bg-black/30'>
+                    <div className='absolute inset-0 animate-pulse bg-white/10' />
+                    <div className='absolute bottom-3 left-3 text-xs bg-black/70 px-2 py-1 rounded'>
+                      Preview
+                    </div>
+                  </div>
                 )}
               </button>
             );
