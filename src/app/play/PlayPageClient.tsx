@@ -2870,11 +2870,13 @@ export function PlayPageClient({
     let inAdBlock = false;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      const rawLine = lines[i];
+      const line = rawLine.trim();
 
       if (
         line.startsWith('#EXT-X-CUE-OUT') ||
-        (line.startsWith('#EXT-X-DATERANGE') && line.includes('CLASS="ad"'))
+        (line.startsWith('#EXT-X-DATERANGE') &&
+          /CLASS=.*ad|SCTE35-OUT|X-ASSET-URI/i.test(line))
       ) {
         inAdBlock = true;
         continue;
@@ -2885,9 +2887,15 @@ export function PlayPageClient({
         continue;
       }
 
+      if (inAdBlock && line.startsWith('#EXT-X-DISCONTINUITY')) {
+        inAdBlock = false;
+        output.push(rawLine);
+        continue;
+      }
+
       if (inAdBlock) continue;
 
-      output.push(lines[i]);
+      output.push(rawLine);
     }
 
     return output.join('\n');
