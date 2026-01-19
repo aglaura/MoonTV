@@ -4300,6 +4300,7 @@ export function PlayPageClient({
           localizeInfoLabel={localizeInfoLabel}
           downloadButtonLabel={downloadButtonLabel}
           downloadButtonDisabled={downloadButtonDisabled}
+          isPlaying={isPlaying}
           onDownload={handleDownload}
           onTogglePlayback={handleTogglePlayback}
           artRef={artRef}
