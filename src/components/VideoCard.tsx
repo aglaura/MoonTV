@@ -396,6 +396,15 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         ? 'movie'
         : 'tv'
       : type;
+    const personId = useMemo(() => {
+      if (actualSearchType !== 'person') return undefined;
+      return parseTmdbId(actualId) || parseTmdbId(tmdbUrl);
+    }, [actualId, actualSearchType, tmdbUrl]);
+    const personUrl = useMemo(() => {
+      if (!personId) return '/person';
+      const normalized = personId.replace(/^tmdb:/, '');
+      return normalized ? `/person/${encodeURIComponent(normalized)}` : '/person';
+    }, [personId]);
     const englishTitleToShow = useMemo(() => {
       const sanitized = sanitizeEnglishTitle(englishTitle);
       if (sanitized) {
@@ -880,11 +889,14 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const longPressTriggeredRef = useRef(false);
 
-    const detailPath = isTV ? '/tv/detail' : '/play';
-    const playPath = isTV ? '/tv/play' : '/play';
+    const detailPath = isTV ? '/play/tvdetail' : '/play';
+    const playPath = isTV ? '/play/tvplay' : '/play';
 
     const buildSearchUrl = useCallback(
       () => {
+        if (actualSearchType === 'person') {
+          return personUrl;
+        }
         const doubanParam =
           dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
             ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
@@ -916,11 +928,16 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         actualQuery,
         rate,
         detailPath,
+        personUrl,
       ]
     );
 
     const handleClick = useCallback(() => {
       longPressTriggeredRef.current = false;
+      if (actualSearchType === 'person') {
+        router.push(personUrl);
+        return;
+      }
       const doubanParam =
         dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
           ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
@@ -979,6 +996,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       imdbIdState,
       detailPath,
       playPath,
+      personUrl,
     ]);
 
     const handleIntro = useCallback(() => {
@@ -992,6 +1010,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         longPressTriggeredRef.current = false;
         return;
       }
+      if (actualSearchType === 'person') {
+        router.push(personUrl);
+        return;
+      }
       if (origin === 'live' || from === 'playrecord') {
         handleClick();
         return;
@@ -1001,6 +1023,10 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     // 新标签页播放处理函数
     const handlePlayInNewTab = useCallback(() => {
+      if (actualSearchType === 'person') {
+        window.open(personUrl, '_blank');
+        return;
+      }
       const doubanParam =
         dynamicDoubanId && Number.isFinite(Number(dynamicDoubanId))
           ? `&douban_id=${encodeURIComponent(String(dynamicDoubanId))}`
@@ -1058,6 +1084,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       imdbIdState,
       detailPath,
       playPath,
+      personUrl,
     ]);
 
     // 检查搜索结果的收藏状态

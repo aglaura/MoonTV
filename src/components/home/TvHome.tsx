@@ -111,11 +111,11 @@ function buildPlayUrl(item: CardItem, basePath = '/play') {
 }
 
 function buildTvDetailUrl(item: CardItem) {
-  return buildPlayUrl(item, '/tv/detail');
+  return buildPlayUrl(item, '/play/tvdetail');
 }
 
 function buildTvPlayUrl(item: CardItem) {
-  return buildPlayUrl(item, '/tv/play');
+  return buildPlayUrl(item, '/play/tvplay');
 }
 
 function buildPersonUrl(item: CardItem) {

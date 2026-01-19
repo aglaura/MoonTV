@@ -98,7 +98,7 @@ export default function TvDetailPage() {
 
   const playUrl = useMemo(() => {
     const qs = searchParams.toString();
-    return qs ? `/tv/play?${qs}` : '/tv/play';
+    return qs ? `/play/tvplay?${qs}` : '/play/tvplay';
   }, [searchParams]);
 
   const chips = useMemo(() => {
@@ -120,7 +120,7 @@ export default function TvDetailPage() {
     tt('No synopsis available yet.', '暂无简介。', '暫無簡介。');
 
   return (
-    <PageLayout activePath='/tv/detail'>
+    <PageLayout activePath='/play/tvdetail'>
       <div className='px-6 py-10 lg:px-12'>
         <div className='mx-auto max-w-6xl space-y-8'>
           <section className='relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 lg:p-10'>
