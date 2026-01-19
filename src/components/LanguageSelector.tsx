@@ -51,7 +51,7 @@ export default function LanguageSelector({
         onChange={(lang) => changeLanguage(lang.value)}
       >
         <div className='relative'>
-          <Listbox.Button className={buttonClassName}>
+          <Listbox.Button className={buttonClassName} data-tv-focusable="true">
             <span className='block truncate'>{currentLanguage.label}</span>
             <span className='pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2'>
               <ChevronsUpDown

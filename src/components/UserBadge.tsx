@@ -239,6 +239,7 @@ export default function UserBadge() {
       <button
         ref={buttonRef}
         title={`${t('loggedInAs', locale)} ${username}`}
+        data-tv-focusable="true"
         className={`max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000] ${
           isKidsMode
             ? 'border-amber-300 dark:border-amber-400/70 ring-amber-200/60'

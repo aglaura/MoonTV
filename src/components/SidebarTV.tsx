@@ -9,6 +9,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react';
 
 import { Download, Film, Home, Menu, Search, Tv } from 'lucide-react';
@@ -16,6 +17,11 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { useUserLanguage } from '@/lib/userLanguage.client';
+import LanguageSelector from './LanguageSelector';
+import { LogoutButton } from './LogoutButton';
+import { SettingsButton } from './SettingsButton';
+import { ThemeToggle } from './ThemeToggle';
+import UserBadge from './UserBadge';
 import { useSite } from './SiteProvider';
 
 interface SidebarContextType {
@@ -33,6 +39,8 @@ export const useSidebar = () => useContext(SidebarContext);
 interface SidebarProps {
   onToggle?: (collapsed: boolean) => void;
   activePath?: string;
+  modeLabel?: ReactNode;
+  onModeClick?: () => void;
 }
 
 declare global {
@@ -52,7 +60,12 @@ function isTvMode() {
   return document.documentElement.classList.contains('tv-mode');
 }
 
-const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
+const SidebarTV = ({
+  onToggle,
+  activePath = '/',
+  modeLabel,
+  onModeClick,
+}: SidebarProps) => {
   const { userLocale } = useUserLanguage();
   const locale =
     userLocale === 'zh-Hans' || userLocale === 'zh-Hant' ? userLocale : 'en';
@@ -293,6 +306,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
     return 'w-64';
   }, [isCollapsed, isPeek]);
 
+  const showLabels = !isPeek && !isCollapsed;
   const decodedActive = useMemo(() => decodeURIComponent(active), [active]);
 
   return (
@@ -433,7 +447,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
               </div>
             </div>
 
-            <div className="px-2 pb-4">
+            <div className="px-2 pb-4 space-y-3">
               <button
                 type="button"
                 tabIndex={-1}
@@ -457,6 +471,90 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   </span>
                 )}
               </button>
+
+              <div className="space-y-2 pt-3 border-t border-gray-200/60 dark:border-gray-700/60">
+                {modeLabel &&
+                  (onModeClick ? (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      data-tv-focusable="true"
+                      onClick={onModeClick}
+                      className="w-full rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30 hover:bg-emerald-500/25 transition"
+                    >
+                      {modeLabel}
+                    </button>
+                  ) : (
+                    <div className="w-full rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30">
+                      {modeLabel}
+                    </div>
+                  ))}
+
+                <div
+                  className={`flex items-center ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  } rounded-lg px-2 py-1.5`}
+                >
+                  {showLabels && (
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      {t('Account', '账号', '帳號')}
+                    </span>
+                  )}
+                  <UserBadge />
+                </div>
+
+                <div
+                  className={`flex items-center ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  } rounded-lg px-2 py-1.5`}
+                >
+                  {showLabels && (
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      {t('Settings', '设置', '設定')}
+                    </span>
+                  )}
+                  <SettingsButton />
+                </div>
+
+                <div
+                  className={`flex items-center ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  } rounded-lg px-2 py-1.5`}
+                >
+                  {showLabels && (
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      {t('Language', '语言', '語言')}
+                    </span>
+                  )}
+                  <LanguageSelector variant="compact" />
+                </div>
+
+                <div
+                  className={`flex items-center ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  } rounded-lg px-2 py-1.5`}
+                >
+                  {showLabels && (
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      {t('Theme', '主题', '主題')}
+                    </span>
+                  )}
+                  <ThemeToggle />
+                </div>
+
+                <div
+                  className={`flex items-center ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  } rounded-lg px-2 py-1.5`}
+                >
+                  {showLabels && (
+                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
+                      {t('Log out', '退出登录', '登出')}
+                    </span>
+                  )}
+                  <LogoutButton />
+                </div>
+              </div>
             </div>
           </div>
         </aside>
