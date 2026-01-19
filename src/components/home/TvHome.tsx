@@ -182,7 +182,7 @@ const TvHome = ({
     const latestTvItems = normalizeItems(effectiveLatestTv).slice(0, 14);
     const peopleItems = normalizeItems(effectiveTmdbPeople).slice(0, 10);
 
-    return [
+    const list: Row[] = [
       {
         id: 'continue',
         title: tt('Continue Watching', '继续观看', '繼續觀看'),
@@ -209,7 +209,9 @@ const TvHome = ({
         tiles: peopleItems,
         kind: 'person',
       },
-    ].filter((row) => row.tiles.length > 0);
+    ];
+
+    return list.filter((row) => row.tiles.length > 0);
   }, [
     effectiveLatestMovies,
     effectiveTmdbMovies,
