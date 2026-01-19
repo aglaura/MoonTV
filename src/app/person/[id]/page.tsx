@@ -1,12 +1,13 @@
 'use client';
 
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
-import { processImageUrl } from '@/lib/utils';
 import { useUserLanguage } from '@/lib/userLanguage.client';
+import { processImageUrl } from '@/lib/utils';
 
 type Credit = {
   tmdbId?: string;
@@ -116,8 +117,9 @@ export default function PersonPage() {
             : tt('Failed to load person details.', '加载影人失败。', '載入影人失敗。');
         setError(message);
       } finally {
-        if (!isActive) return;
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
 
@@ -169,24 +171,26 @@ export default function PersonPage() {
             <section className="relative overflow-hidden rounded-3xl border border-gray-200/60 dark:border-gray-800 bg-white/85 dark:bg-gray-900/70">
               {profileUrl && (
                 <div className="absolute inset-0">
-                  <img
+                  <Image
                     src={profileUrl}
                     alt={person.name}
-                    className="h-full w-full object-cover opacity-20 scale-110 blur-2xl"
-                    loading="lazy"
+                    fill
+                    sizes="100vw"
+                    className="object-cover opacity-20 scale-110 blur-2xl"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-white/30 dark:from-gray-900/90 dark:via-gray-900/70 dark:to-gray-900/30" />
                 </div>
               )}
               <div className="relative z-10 grid gap-6 p-6 md:p-8 md:grid-cols-[220px_1fr]">
                 <div className="flex justify-center md:justify-start">
-                  <div className="w-40 h-40 md:w-52 md:h-52 rounded-full overflow-hidden bg-gray-200/70 dark:bg-gray-800 ring-2 ring-emerald-500/30 shadow-lg">
+                  <div className="relative w-40 h-40 md:w-52 md:h-52 rounded-full overflow-hidden bg-gray-200/70 dark:bg-gray-800 ring-2 ring-emerald-500/30 shadow-lg">
                     {profileUrl ? (
-                      <img
+                      <Image
                         src={profileUrl}
                         alt={person.name}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
+                        fill
+                        sizes="208px"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center text-3xl font-semibold text-gray-500">
