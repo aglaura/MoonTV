@@ -246,6 +246,13 @@ const SidebarTV = ({
 
   const showLabels = !isPeek && !isCollapsed;
   const decodedActive = useMemo(() => decodeURIComponent(active), [active]);
+  const navItemClass =
+    'group flex items-center gap-3 justify-start rounded-xl px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-150 min-h-[44px] hover:bg-white/40 dark:hover:bg-white/10 data-[active=true]:bg-white/70 dark:data-[active=true]:bg-white/15 data-[active=true]:text-gray-900 dark:data-[active=true]:text-white';
+  const navIconClass = 'h-4 w-4 text-gray-500 dark:text-gray-400';
+  const utilityRowClass = 'flex items-center justify-center rounded-xl px-2 py-2';
+  const utilityButtonClass = `group flex items-center rounded-xl px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-150 min-h-[44px] hover:bg-white/40 dark:hover:bg-white/10 w-full ${
+    isCollapsed && !isPeek ? 'justify-center' : 'justify-start gap-3'
+  }`;
 
   return (
     <SidebarContext.Provider value={{ isCollapsed: isCollapsed && !isPeek, isPeek }}>
@@ -310,10 +317,10 @@ const SidebarTV = ({
                 onFocus={() => handleFocusNavigate('/?tab=home')}
                 data-active={decodedActive === '/?tab=home'}
                 data-tv-index={0}
-                className="group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 gap-3 justify-start"
+                className={navItemClass}
               >
                 <div className="w-4 h-4 flex items-center justify-center">
-                  <Home className="h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400" />
+                  <Home className={navIconClass} />
                 </div>
                 {!(isCollapsed && !isPeek) && !isPeek && (
                   <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
@@ -334,10 +341,10 @@ const SidebarTV = ({
                 onFocus={() => handleFocusNavigate('/search')}
                 data-active={decodedActive === '/search'}
                 data-tv-index={1}
-                className="group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 gap-3 justify-start"
+                className={navItemClass}
               >
                 <div className="w-4 h-4 flex items-center justify-center">
-                  <Search className="h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400" />
+                  <Search className={navIconClass} />
                 </div>
                 {!(isCollapsed && !isPeek) && !isPeek && (
                   <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
@@ -368,10 +375,10 @@ const SidebarTV = ({
                       onClick={() => setActive(item.href)}
                       onFocus={() => handleFocusNavigate(item.href)}
                       data-active={isActive}
-                      className="group flex items-center rounded-lg px-2 py-2 pl-4 text-sm text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 gap-3 justify-start"
+                      className={navItemClass}
                     >
                       <div className="w-4 h-4 flex items-center justify-center">
-                        <Icon className="h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400" />
+                        <Icon className={navIconClass} />
                       </div>
 
                       {!(isCollapsed && !isPeek) && !isPeek && (
@@ -396,12 +403,10 @@ const SidebarTV = ({
                   router.push('/downloads');
                 }}
                 onFocus={() => handleFocusNavigate('/downloads')}
-                className={`group flex items-center rounded-xl px-3 py-3 text-sm font-semibold text-gray-700 bg-white/70 hover:bg-white hover:text-green-700 transition-colors duration-200 w-full dark:text-gray-200 dark:bg-gray-800/80 dark:hover:bg-gray-700 ${
-                  isCollapsed && !isPeek ? 'justify-center' : 'justify-start gap-3'
-                }`}
+                className={utilityButtonClass}
               >
                 <div className="w-5 h-5 flex items-center justify-center">
-                  <Download className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  <Download className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </div>
                 {!(isCollapsed && !isPeek) && !isPeek && (
                   <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
@@ -418,78 +423,33 @@ const SidebarTV = ({
                       tabIndex={-1}
                       data-tv-focusable="true"
                       onClick={onModeClick}
-                      className="w-full rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30 hover:bg-emerald-500/25 transition"
+                      className="w-full rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/20 transition"
                     >
                       {modeLabel}
                     </button>
                   ) : (
-                    <div className="w-full rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30">
+                    <div className="w-full rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10">
                       {modeLabel}
                     </div>
                   ))}
 
-                <div
-                  className={`flex items-center ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  } rounded-lg px-2 py-1.5`}
-                >
-                  {showLabels && (
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      {t('Account', '账号', '帳號')}
-                    </span>
-                  )}
+                <div className={utilityRowClass}>
                   <UserBadge />
                 </div>
 
-                <div
-                  className={`flex items-center ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  } rounded-lg px-2 py-1.5`}
-                >
-                  {showLabels && (
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      {t('Settings', '设置', '設定')}
-                    </span>
-                  )}
+                <div className={utilityRowClass}>
                   <SettingsButton />
                 </div>
 
-                <div
-                  className={`flex items-center ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  } rounded-lg px-2 py-1.5`}
-                >
-                  {showLabels && (
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      {t('Language', '语言', '語言')}
-                    </span>
-                  )}
+                <div className={utilityRowClass}>
                   <LanguageSelector variant="compact" />
                 </div>
 
-                <div
-                  className={`flex items-center ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  } rounded-lg px-2 py-1.5`}
-                >
-                  {showLabels && (
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      {t('Theme', '主题', '主題')}
-                    </span>
-                  )}
+                <div className={utilityRowClass}>
                   <ThemeToggle />
                 </div>
 
-                <div
-                  className={`flex items-center ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  } rounded-lg px-2 py-1.5`}
-                >
-                  {showLabels && (
-                    <span className="text-[11px] uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400">
-                      {t('Log out', '退出登录', '登出')}
-                    </span>
-                  )}
+                <div className={utilityRowClass}>
                   <LogoutButton />
                 </div>
               </div>
