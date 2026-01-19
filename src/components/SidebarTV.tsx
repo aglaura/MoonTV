@@ -1,8 +1,5 @@
 'use client';
 
-import { Download, Film, Home, Menu, Search, Tv } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -13,6 +10,10 @@ import {
   useRef,
   useState,
 } from 'react';
+
+import { Download, Film, Home, Menu, Search, Tv } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import { useSite } from './SiteProvider';
@@ -190,7 +191,7 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
         requestAnimationFrame(() => {
           const el = sidebarRef.current;
           const first = el?.querySelector<HTMLElement>(
-            '[data-tv-focusable=\"true\"]'
+            '[data-tv-focusable="true"]'
           );
           first?.focus({ preventScroll: true });
         });
