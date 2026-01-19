@@ -296,6 +296,9 @@ const TvHome = ({
   }, [heroList.length]);
 
   const openRail = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+    }
     if (focusSidebar()) return;
     setRailOpen(true);
     setFocus(`rail:${activeRail}`);
@@ -412,35 +415,9 @@ const TvHome = ({
       const activeEl = document.activeElement as HTMLElement | null;
       const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
       if (sidebar && activeEl && sidebar.contains(activeEl)) {
-        if (
-          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
-        ) {
-          e.preventDefault();
-        }
-        const focusables = getFocusableElements(sidebar);
-        const idx = focusables.indexOf(activeEl);
-        if (e.key === 'ArrowDown') {
-          const next = focusables[Math.min(idx + 1, focusables.length - 1)];
-          if (next && next !== activeEl) {
-            next.focus({ preventScroll: true });
-          }
-          return;
-        }
-        if (e.key === 'ArrowUp') {
-          const prev = focusables[Math.max(idx - 1, 0)];
-          if (prev && prev !== activeEl) {
-            prev.focus({ preventScroll: true });
-          }
-          return;
-        }
         if (e.key === 'ArrowRight') {
-          closeRail();
-          return;
-        }
-        if (e.key === 'Enter') {
-          activeEl.click();
           e.preventDefault();
-          return;
+          closeRail();
         }
         return;
       }
