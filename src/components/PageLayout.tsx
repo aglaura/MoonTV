@@ -105,7 +105,6 @@ const PageLayout = ({
             </main>
           </div>
         </div>
-      </div>
 
         {/* 移动端底部导航 */}
         {!hideTopBar && (

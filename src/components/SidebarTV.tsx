@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Download, Film, Home, Menu, Search, Tv } from 'lucide-react';
+import { Clapperboard, Download, Film, Home, Menu, Search, Sparkles, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -174,8 +174,12 @@ const SidebarTV = ({
     () => [
       { icon: Film, label: t('Movies', '电影', '電影'), href: '/douban?type=movie' },
       { icon: Tv, label: t('Series', '剧集', '劇集'), href: '/douban?type=tv' },
-      { icon: Film, label: t('Variety', '综艺', '綜藝'), href: '/douban?type=show' },
-      { icon: Film, label: t('Anime', '动画', '動畫'), href: '/douban?type=anime' },
+      {
+        icon: Clapperboard,
+        label: t('Variety', '综艺', '綜藝'),
+        href: '/douban?type=show',
+      },
+      { icon: Sparkles, label: t('Anime', '动画', '動畫'), href: '/douban?type=anime' },
     ],
     [t]
   );
@@ -405,8 +409,8 @@ const SidebarTV = ({
                 onFocus={() => handleFocusNavigate('/downloads')}
                 className={utilityButtonClass}
               >
-                <div className="w-5 h-5 flex items-center justify-center">
-                  <Download className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <div className="w-4 h-4 flex items-center justify-center">
+                  <Download className={navIconClass} />
                 </div>
                 {!(isCollapsed && !isPeek) && !isPeek && (
                   <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
@@ -423,13 +427,23 @@ const SidebarTV = ({
                       tabIndex={-1}
                       data-tv-focusable="true"
                       onClick={onModeClick}
-                      className="w-full rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/20 transition"
+                      className={`flex items-center gap-2 rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/20 transition ${
+                        showLabels ? 'w-full justify-start' : 'justify-center'
+                      }`}
+                      aria-label={t('TV mode', '电视模式', '電視模式')}
                     >
-                      {modeLabel}
+                      <Tv className="h-3.5 w-3.5" />
+                      {showLabels && <span>{modeLabel}</span>}
                     </button>
                   ) : (
-                    <div className="w-full rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10">
-                      {modeLabel}
+                    <div
+                      className={`flex items-center gap-2 rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 ${
+                        showLabels ? 'w-full justify-start' : 'justify-center'
+                      }`}
+                      aria-label={t('TV mode', '电视模式', '電視模式')}
+                    >
+                      <Tv className="h-3.5 w-3.5" />
+                      {showLabels && <span>{modeLabel}</span>}
                     </div>
                   ))}
 
