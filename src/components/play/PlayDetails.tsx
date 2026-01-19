@@ -22,7 +22,7 @@ type DetailData = {
   type_name?: string;
   class?: string;
   source_name?: string;
-  episodes?: number;
+  episodes?: number | string[];
 };
 
 type PlayDetailsProps = {
@@ -313,16 +313,22 @@ const PlayDetails = ({
                       </span>
                     </div>
                   )}
-                {typeof detail?.episodes === 'number' && detail.episodes > 0 && (
-                  <div className='flex justify-between gap-3'>
-                    <span className='text-gray-500 dark:text-gray-400'>
-                      {tt('Episodes', '集数', '集數')}
-                    </span>
-                    <span className='font-medium text-right'>
-                      {detail.episodes}
-                    </span>
-                  </div>
-                )}
+                {(() => {
+                  const episodeCount = Array.isArray(detail?.episodes)
+                    ? detail.episodes.length
+                    : detail?.episodes;
+                  if (!episodeCount || episodeCount <= 0) return null;
+                  return (
+                    <div className='flex justify-between gap-3'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Episodes', '集数', '集數')}
+                      </span>
+                      <span className='font-medium text-right'>
+                        {episodeCount}
+                      </span>
+                    </div>
+                  );
+                })()}
                 {mergedDurations.length > 0 && (
                   <div className='flex justify-between gap-3'>
                     <span className='text-gray-500 dark:text-gray-400'>

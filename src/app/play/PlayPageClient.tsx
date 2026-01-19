@@ -122,6 +122,7 @@ export type TvPlayLayoutProps = {
   localizeInfoLabel: (label: string) => string;
   downloadButtonLabel: string;
   downloadButtonDisabled: boolean;
+  isPlaying: boolean;
   onDownload: () => void;
   onTogglePlayback: () => void;
   artRef: RefObject<HTMLDivElement>;
@@ -1478,6 +1479,7 @@ export function PlayPageClient({
   const [videoLoadingStage, setVideoLoadingStage] = useState<
     'initing' | 'sourceChanging'
   >('initing');
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
@@ -3917,6 +3919,7 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('video:canplay', () => {
         refreshActualPlaybackInfo();
+        setIsPlaying(!artPlayerRef.current?.paused);
         hasStartedRef.current = true;
         autoSwitchLockedRef.current = true;
         if (loadTimeoutRef.current) {
@@ -3963,11 +3966,16 @@ export function PlayPageClient({
         setIsVideoLoading(false);
       });
 
+      artPlayerRef.current.on('play', () => {
+        setIsPlaying(true);
+      });
+
       artPlayerRef.current.on('video:ended', () => {
         const d = detailRef.current;
         if (!d?.episodes) return;
         const idx = currentEpisodeIndexRef.current;
         if (idx >= d.episodes.length - 1) return;
+        setIsPlaying(false);
         cancelAutoNext();
         autoNextTimeoutRef.current = setTimeout(() => {
           const detail = detailRef.current;
@@ -3993,6 +4001,7 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('pause', () => {
         cancelAutoNext();
+        setIsPlaying(false);
         saveCurrentPlayProgress();
       });
 
