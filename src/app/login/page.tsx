@@ -272,6 +272,50 @@ function LoginPageClient() {
     };
   }, [isTV]);
 
+  const handleUserSelect = useCallback(
+    async (user: string) => {
+      setError(null);
+      setPendingUser(user);
+      try {
+        setLoading(true);
+        const res = await fetch('/api/login/select', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          setError(
+            data.error ??
+              tt(
+                'Failed to select user',
+                '选择用户失败',
+                '選擇使用者失敗'
+              )
+          );
+          return;
+        }
+
+        const redirect = searchParams.get('redirect') || '/';
+        router.replace(redirect);
+      } catch (err) {
+        setError(
+          tt(
+            'Network error. Please try again later.',
+            '网络错误，请稍后再试。',
+            '網路錯誤，請稍後再試'
+          )
+        );
+      } finally {
+        setLoading(false);
+        setPendingUser(null);
+      }
+    },
+    [router, searchParams]
+  );
+
   useEffect(() => {
     if (!isTV) return;
     const focusGroupButton = (idx: number) => {
@@ -396,50 +440,6 @@ function LoginPageClient() {
       focusUserButton(userFocusIndex);
     }
   }, [requiresSelection, userFocusIndex, focusUserButton, availableUsers]);
-
-  const handleUserSelect = useCallback(
-    async (user: string) => {
-      setError(null);
-      setPendingUser(user);
-      try {
-        setLoading(true);
-        const res = await fetch('/api/login/select', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user }),
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        if (!res.ok) {
-          setError(
-            data.error ??
-              tt(
-                'Failed to select user',
-                '选择用户失败',
-                '選擇使用者失敗'
-              )
-          );
-          return;
-        }
-
-        const redirect = searchParams.get('redirect') || '/';
-        router.replace(redirect);
-      } catch (err) {
-        setError(
-          tt(
-            'Network error. Please try again later.',
-            '网络错误，请稍后再试。',
-            '網路錯誤，請稍後再試'
-          )
-        );
-      } finally {
-        setLoading(false);
-        setPendingUser(null);
-      }
-    },
-    [router, searchParams]
-  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
