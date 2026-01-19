@@ -254,9 +254,6 @@ const SidebarTV = ({
     'group flex items-center gap-3 justify-start rounded-xl px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-150 min-h-[44px] hover:bg-white/40 dark:hover:bg-white/10 data-[active=true]:bg-white/70 dark:data-[active=true]:bg-white/15 data-[active=true]:text-gray-900 dark:data-[active=true]:text-white';
   const navIconClass = 'h-4 w-4 text-gray-500 dark:text-gray-400';
   const utilityRowClass = 'flex items-center justify-center rounded-xl px-2 py-2';
-  const utilityButtonClass = `group flex items-center rounded-xl px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-150 min-h-[44px] hover:bg-white/40 dark:hover:bg-white/10 w-full ${
-    isCollapsed && !isPeek ? 'justify-center' : 'justify-start gap-3'
-  }`;
 
   return (
     <SidebarContext.Provider value={{ isCollapsed: isCollapsed && !isPeek, isPeek }}>
@@ -393,32 +390,32 @@ const SidebarTV = ({
                     </Link>
                   );
                 })}
+
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  data-tv-focusable="true"
+                  data-tv-index={menuItems.length + 2}
+                  onClick={() => {
+                    setActive('/downloads');
+                    router.push('/downloads');
+                  }}
+                  onFocus={() => handleFocusNavigate('/downloads')}
+                  className={`${navItemClass} w-full`}
+                >
+                  <div className="w-4 h-4 flex items-center justify-center">
+                    <Download className={navIconClass} />
+                  </div>
+                  {!(isCollapsed && !isPeek) && !isPeek && (
+                    <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
+                      {t('Downloads', '下载', '下載')}
+                    </span>
+                  )}
+                </button>
               </div>
             </div>
 
-            <div className="px-2 pb-4 space-y-3">
-              <button
-                type="button"
-                tabIndex={-1}
-                data-tv-focusable="true"
-                data-tv-index={999}
-                onClick={() => {
-                  setActive('/downloads');
-                  router.push('/downloads');
-                }}
-                onFocus={() => handleFocusNavigate('/downloads')}
-                className={utilityButtonClass}
-              >
-                <div className="w-4 h-4 flex items-center justify-center">
-                  <Download className={navIconClass} />
-                </div>
-                {!(isCollapsed && !isPeek) && !isPeek && (
-                  <span className="whitespace-nowrap transition-opacity duration-200 opacity-100">
-                    {t('Downloads', '下载', '下載')}
-                  </span>
-                )}
-              </button>
-
+            <div className="px-2 pb-4 space-y-3 mt-auto">
               <div className="space-y-2 pt-3 border-t border-gray-200/60 dark:border-gray-700/60">
                 {modeLabel &&
                   (onModeClick ? (
