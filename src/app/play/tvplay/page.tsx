@@ -37,6 +37,15 @@ const useSpatialNavigation = (
   useEffect(() => {
     let cached: HTMLElement[] | null = null;
     let cacheRaf = 0;
+    let lastActivate = 0;
+    let lastNavTime = 0;
+    const ACTIVATE_COOLDOWN = 300;
+    const NAV_COOLDOWN = 80;
+    const isActivateKey = (event: KeyboardEvent) =>
+      event.key === 'Enter' ||
+      event.code === 'Enter' ||
+      event.keyCode === 13 ||
+      event.keyCode === 23;
     const scheduleCacheClear = () => {
       if (cacheRaf) return;
       if (typeof window === 'undefined') return;
@@ -122,13 +131,29 @@ const useSpatialNavigation = (
       ) {
         return;
       }
-      if (e.key === 'Enter') {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+        e.preventDefault();
+        return;
+      }
+      if (isActivateKey(e)) {
+        const now = Date.now();
+        if (now - lastActivate < ACTIVATE_COOLDOWN) return;
+        lastActivate = now;
         active.click();
         e.preventDefault();
         return;
       }
       const dir = dirMap[e.key];
       if (!dir) return;
+
+      const now = Date.now();
+      if (now - lastNavTime < NAV_COOLDOWN) {
+        onNavigate?.();
+        e.preventDefault();
+        return;
+      }
+      lastNavTime = now;
 
       onNavigate?.();
       e.preventDefault();
@@ -273,6 +298,35 @@ const TvPlayLayout = ({
     rowFocusMap.current.set(row.id, el);
   }, []);
 
+  const getLastFocused = useCallback(() => {
+    const values = Array.from(rowFocusMap.current.values());
+    for (let i = values.length - 1; i >= 0; i -= 1) {
+      const el = values[i];
+      if (el && document.contains(el)) return el;
+    }
+    return null;
+  }, []);
+
+  const restoreFocusIfLost = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      const last = getLastFocused();
+      last?.focus({ preventScroll: true });
+    });
+  }, [getLastFocused]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const restore = () => {
+      const last = getLastFocused();
+      last?.focus({ preventScroll: true });
+    };
+    window.addEventListener('focus', restore);
+    return () => window.removeEventListener('focus', restore);
+  }, [getLastFocused]);
+
   const centerFocusInView = useCallback((el: HTMLElement | null, direction?: Direction) => {
     if (!el || !rootRef.current || !rootRef.current.contains(el)) return;
     rememberRowFocus(el);
@@ -321,6 +375,11 @@ const TvPlayLayout = ({
   const focusPlayer = useCallback(() => {
     playerFocusRef.current?.focus({ preventScroll: true });
     centerFocusInView(playerFocusRef.current);
+    if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+      });
+    }
   }, [centerFocusInView]);
 
   useEffect(() => {
@@ -627,6 +686,7 @@ const TvPlayLayout = ({
                 gap={16}
                 overscan={4}
                 className='px-2 pb-2'
+                onRangeChange={restoreFocusIfLost}
                 renderItem={(rec, index) => {
                   const titleText = rec?.name || rec?.title || '';
                   const imagePath = rec?.backdrop_path || rec?.poster_path || '';
@@ -707,8 +767,11 @@ const TvPlayLayout = ({
         :global(.tv-player-focus) {
           transition: transform 120ms ease, box-shadow 120ms ease;
         }
+        :global([data-focusable='true']:focus),
         :global([data-focusable='true']:focus-visible),
+        :global([data-tv-focusable='true']:focus),
         :global([data-tv-focusable='true']:focus-visible),
+        :global(.tv-player-focus:focus),
         :global(.tv-player-focus:focus-visible) {
           outline: none;
           transform: scale(1.05);
@@ -720,12 +783,14 @@ const TvPlayLayout = ({
             opacity 180ms ease, box-shadow 180ms ease;
           will-change: transform;
         }
+        :global(.tv-card:focus),
         :global(.tv-card:focus-visible) {
           outline: none;
           transform: scale(1.08) translateY(-4px);
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7),
             0 0 0 3px rgba(255, 255, 255, 0.9);
         }
+        :global(.tv-card-lite:focus),
         :global(.tv-card-lite:focus-visible) {
           transform: none;
           box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);

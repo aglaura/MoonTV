@@ -9,6 +9,7 @@ type VirtualizedRowProps<T> = {
   overscan?: number;
   className?: string;
   contentClassName?: string;
+  onRangeChange?: (range: { start: number; end: number }) => void;
   renderItem: (item: T, index: number) => ReactNode;
 };
 
@@ -19,6 +20,7 @@ export const VirtualizedRow = <T,>({
   overscan = 3,
   className,
   contentClassName,
+  onRangeChange,
   renderItem,
 }: VirtualizedRowProps<T>) => {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -60,7 +62,8 @@ export const VirtualizedRow = <T,>({
     setRange((prev) =>
       prev.start === start && prev.end === end ? prev : { start, end }
     );
-  }, [gap, itemWidth, items.length, overscan]);
+    onRangeChange?.({ start, end });
+  }, [gap, itemWidth, items.length, onRangeChange, overscan]);
 
   useEffect(() => {
     updateRange();

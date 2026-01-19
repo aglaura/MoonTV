@@ -332,6 +332,7 @@ div[data-media-provider] video {
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
+[data-tv-focusable="true"]:focus,
 [data-tv-focusable="true"]:focus-visible {
   outline: none;
   transform: scale(1.08);

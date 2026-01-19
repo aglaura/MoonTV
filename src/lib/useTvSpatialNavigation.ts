@@ -21,7 +21,7 @@ const findNext = (
   current: HTMLElement,
   direction: Direction,
   candidates: HTMLElement[]
-) => {
+): HTMLElement | null => {
   const currentRect = current.getBoundingClientRect();
   const currentCenterX = currentRect.left + currentRect.width / 2;
   const currentCenterY = currentRect.top + currentRect.height / 2;
@@ -60,13 +60,31 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
   useEffect(() => {
     if (!enabled) return;
 
+    let lastActivate = 0;
+    let lastNavTime = 0;
+    const ACTIVATE_COOLDOWN = 300;
+    const NAV_COOLDOWN = 80;
+    const isActivateKey = (event: KeyboardEvent) =>
+      event.key === 'Enter' ||
+      event.code === 'Enter' ||
+      event.keyCode === 13 ||
+      event.keyCode === 23;
+
     const onKey = (event: KeyboardEvent) => {
       const active = document.activeElement as HTMLElement | null;
       if (!active) return;
       if (isEditable(active)) return;
       if (isWithinManualNav(active)) return;
 
-      if (event.key === 'Enter') {
+      if (event.key === 'Escape' || event.key === 'Backspace') {
+        window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+        event.preventDefault();
+        return;
+      }
+      if (isActivateKey(event)) {
+        const now = Date.now();
+        if (now - lastActivate < ACTIVATE_COOLDOWN) return;
+        lastActivate = now;
         active.click();
         event.preventDefault();
         return;
@@ -80,6 +98,13 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       };
       const dir = map[event.key];
       if (!dir) return;
+
+      const now = Date.now();
+      if (now - lastNavTime < NAV_COOLDOWN) {
+        event.preventDefault();
+        return;
+      }
+      lastNavTime = now;
 
       const inSidebar = Boolean(active.closest('[data-sidebar]'));
       const focusables = Array.from(
