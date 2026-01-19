@@ -116,7 +116,7 @@ const TvPlayLayout = ({
   useEffect(() => {
     const focusableSelector =
       '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
-    const getFocusable = (root: HTMLElement | null) => {
+    const getFocusable = (root: HTMLElement | null): HTMLElement[] => {
       if (!root) return [];
       return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
@@ -160,7 +160,7 @@ const TvPlayLayout = ({
       list: HTMLElement[],
       current: HTMLElement,
       direction: 'left' | 'right' | 'up' | 'down'
-    ) => {
+    ): HTMLElement | null => {
       const currentRect = current.getBoundingClientRect();
       const currentCenterX = currentRect.left + currentRect.width / 2;
       const currentCenterY = currentRect.top + currentRect.height / 2;

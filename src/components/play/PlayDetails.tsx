@@ -314,9 +314,10 @@ const PlayDetails = ({
                     </div>
                   )}
                 {(() => {
-                  const episodeCount = Array.isArray(detail?.episodes)
-                    ? detail.episodes.length
-                    : detail?.episodes;
+                  const episodes = detail?.episodes;
+                  const episodeCount = Array.isArray(episodes)
+                    ? episodes.length
+                    : episodes;
                   if (!episodeCount || episodeCount <= 0) return null;
                   return (
                     <div className='flex justify-between gap-3'>
