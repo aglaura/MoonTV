@@ -217,6 +217,8 @@ const TvHome = ({
 
   const lastContentFocus = useRef<FocusKey>('hero:play');
   const rowMemory = useRef<Record<string, number>>({});
+  const focusableSelector =
+    '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
 
   const focusRefs = useRef<Map<FocusKey, HTMLElement>>(new Map());
   const register = useCallback(
@@ -270,15 +272,34 @@ const TvHome = ({
     if (f.area !== 'rail') lastContentFocus.current = focus;
   }, [focus, parseFocus]);
 
+  const getFocusableElements = useCallback(
+    (root: HTMLElement) =>
+      Array.from(root.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (el) => !el.hasAttribute('disabled')
+      ),
+    [focusableSelector]
+  );
+
+  const focusSidebar = useCallback(() => {
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+    if (!sidebar) return false;
+    const focusables = getFocusableElements(sidebar);
+    if (!focusables.length) return false;
+    setRailOpen(false);
+    focusables[0].focus({ preventScroll: true });
+    return true;
+  }, [getFocusableElements]);
+
   useEffect(() => {
     if (heroList.length === 0) return;
     setFocus('hero:play');
   }, [heroList.length]);
 
   const openRail = useCallback(() => {
+    if (focusSidebar()) return;
     setRailOpen(true);
     setFocus(`rail:${activeRail}`);
-  }, [activeRail]);
+  }, [activeRail, focusSidebar]);
 
   const closeRail = useCallback(() => {
     setRailOpen(false);
@@ -388,6 +409,41 @@ const TvHome = ({
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement as HTMLElement | null;
+      const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+      if (sidebar && activeEl && sidebar.contains(activeEl)) {
+        if (
+          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
+        ) {
+          e.preventDefault();
+        }
+        const focusables = getFocusableElements(sidebar);
+        const idx = focusables.indexOf(activeEl);
+        if (e.key === 'ArrowDown') {
+          const next = focusables[Math.min(idx + 1, focusables.length - 1)];
+          if (next && next !== activeEl) {
+            next.focus({ preventScroll: true });
+          }
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          const prev = focusables[Math.max(idx - 1, 0)];
+          if (prev && prev !== activeEl) {
+            prev.focus({ preventScroll: true });
+          }
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          closeRail();
+          return;
+        }
+        if (e.key === 'Enter') {
+          activeEl.click();
+          e.preventDefault();
+          return;
+        }
+        return;
+      }
       if (
         ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
       ) {
@@ -410,7 +466,7 @@ const TvHome = ({
     };
     window.addEventListener('keydown', h, { passive: false });
     return () => window.removeEventListener('keydown', h);
-  }, [closeRail, focus, move, railOpen]);
+  }, [closeRail, focus, getFocusableElements, move, railOpen]);
 
   if (loading) {
     return (
