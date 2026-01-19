@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 
 export type ScreenMode = 'mobile' | 'tablet' | 'desktop' | 'tv' | 'pc';
+export type OsFamily = 'windows' | 'ios' | 'macos' | 'android' | 'linux' | 'other';
+export type ScreenModeOverride = 'tv' | 'tablet';
 
 export interface DeviceInfo {
   screenMode: ScreenMode;
@@ -8,6 +10,24 @@ export interface DeviceInfo {
   isIOS: boolean;
   isAndroid: boolean;
   browser: 'safari' | 'chrome' | 'firefox' | 'edge' | 'other';
+  osFamily: OsFamily;
+}
+
+const SCREEN_MODE_OVERRIDE_KEY = 'moontv_screen_mode_override';
+
+export function getScreenModeOverride(): ScreenModeOverride | null {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(SCREEN_MODE_OVERRIDE_KEY);
+  return raw === 'tv' || raw === 'tablet' ? raw : null;
+}
+
+export function setScreenModeOverride(value: ScreenModeOverride | null): void {
+  if (typeof window === 'undefined') return;
+  if (value) {
+    window.localStorage.setItem(SCREEN_MODE_OVERRIDE_KEY, value);
+  } else {
+    window.localStorage.removeItem(SCREEN_MODE_OVERRIDE_KEY);
+  }
 }
 
 function detectBrowser(ua: string): DeviceInfo['browser'] {
@@ -74,6 +94,7 @@ export function detectDeviceInfo(): DeviceInfo {
       isIOS: false,
       isAndroid: false,
       browser: 'other',
+      osFamily: 'other',
     };
   }
 
@@ -96,34 +117,56 @@ export function detectDeviceInfo(): DeviceInfo {
     /linux/i.test(ua);
   const isOtherPlatform =
     !isAndroid && !isIOS && !isWindows && !isMac;
+  const osFamily: OsFamily = isIOS
+    ? 'ios'
+    : isAndroid
+    ? 'android'
+    : isWindows
+    ? 'windows'
+    : isMac
+    ? 'macos'
+    : isLinuxDesktop
+    ? 'linux'
+    : 'other';
+  const smallestWidth = Math.min(w, h);
+  const isMobileLayout = smallestWidth < 600;
+  const allowTv = !isWindows && !isIOS && !isMac;
+  const requestedOverride = getScreenModeOverride();
+  const override =
+    requestedOverride === 'tv' && !allowTv ? null : requestedOverride;
   let isTV = false;
-  if (isWindows || isIOS || isMac) {
-    isTV = false;
-  } else if (w >= 3600) {
-    isTV = true;
-  } else {
-    isTV =
-      detectTV(ua, uaData) ||
-      // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
-      isLinuxDesktop ||
-      // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
-      isOtherPlatform ||
-      // Android + not mobile + non-Chromebook = likely TV/box.
-      (isAndroid && uaData?.mobile === false && !isChromebook) ||
-      // Fallback heuristic: large Android screens without touch are likely TVs.
-      (isAndroid && Math.max(w, h) >= 1280 && !hasTouch);
+  if (!isMobileLayout) {
+    if (override === 'tv') {
+      isTV = true;
+    } else if (override === 'tablet') {
+      isTV = false;
+    } else if (allowTv && w >= 3600) {
+      isTV = true;
+    } else {
+      isTV =
+        detectTV(ua, uaData) ||
+        // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
+        isLinuxDesktop ||
+        // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
+        isOtherPlatform ||
+        // Android + not mobile + non-Chromebook = likely TV/box.
+        (isAndroid && uaData?.mobile === false && !isChromebook) ||
+        // Fallback heuristic: large Android screens without touch are likely TVs.
+        (isAndroid && Math.max(w, h) >= 1280 && !hasTouch);
+    }
   }
   const browser = detectBrowser(ua);
 
-  const smallestWidth = Math.min(w, h);
   let screenMode: ScreenMode;
-  if (isTV) screenMode = 'tv';
+  if (isMobileLayout) screenMode = 'mobile';
+  else if (override === 'tv') screenMode = 'tv';
+  else if (override === 'tablet') screenMode = 'tablet';
+  else if (isTV) screenMode = 'tv';
   else if (isWindows) screenMode = 'pc';
-  else if (smallestWidth < 600) screenMode = 'mobile';
   else if (smallestWidth < 1200) screenMode = 'tablet';
   else screenMode = 'desktop';
 
-  return { screenMode, isTV, isIOS, isAndroid, browser };
+  return { screenMode, isTV, isIOS, isAndroid, browser, osFamily };
 }
 
 export function useDeviceInfo(): DeviceInfo {

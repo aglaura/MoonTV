@@ -15,7 +15,8 @@ interface PageLayoutProps {
   children: React.ReactNode;
   activePath?: string;
   hideTopBar?: boolean;
-  topBarModeLabel?: string;
+  topBarModeLabel?: React.ReactNode;
+  onTopBarModeClick?: () => void;
 }
 
 const PageLayout = ({
@@ -23,6 +24,7 @@ const PageLayout = ({
   activePath = '/',
   hideTopBar = false,
   topBarModeLabel,
+  onTopBarModeClick,
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
@@ -63,9 +65,21 @@ const PageLayout = ({
           {!hideTopBar && (
             <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
               {topBarModeLabel && (
-                <span className='rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30'>
-                  {topBarModeLabel}
-                </span>
+                <>
+                  {onTopBarModeClick ? (
+                    <button
+                      type='button'
+                      onClick={onTopBarModeClick}
+                      className='rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30 hover:bg-emerald-500/25 transition'
+                    >
+                      {topBarModeLabel}
+                    </button>
+                  ) : (
+                    <span className='rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-emerald-500/30'>
+                      {topBarModeLabel}
+                    </span>
+                  )}
+                </>
               )}
               <SettingsButton />
               <LanguageSelector variant='compact' />

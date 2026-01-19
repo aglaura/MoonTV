@@ -20,7 +20,11 @@ import {
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { convertToTraditional } from '@/lib/locale';
-import { detectDeviceInfo } from '@/lib/screenMode';
+import {
+  detectDeviceInfo,
+  setScreenModeOverride,
+} from '@/lib/screenMode';
+import type { OsFamily, ScreenMode, ScreenModeOverride } from '@/lib/screenMode';
 import { DoubanItem } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -458,9 +462,12 @@ function HomeClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
-  const [screenMode, setScreenMode] = useState<
-    'tv' | 'desktop' | 'mobile' | 'tablet' | 'pc'
-  >(() => (typeof window === 'undefined' ? 'desktop' : detectDeviceInfo().screenMode));
+  const [screenMode, setScreenMode] = useState<ScreenMode>(() =>
+    typeof window === 'undefined' ? 'desktop' : detectDeviceInfo().screenMode
+  );
+  const [osFamily, setOsFamily] = useState<OsFamily>(() =>
+    typeof window === 'undefined' ? 'other' : detectDeviceInfo().osFamily
+  );
   const [resolutionTag, setResolutionTag] = useState(() =>
     typeof window === 'undefined' ? '' : (() => {
       const w = Math.max(Math.round(window.innerWidth), 1);
@@ -482,22 +489,53 @@ function HomeClient() {
     const density = dpr > 1 ? ` @${Number(dpr.toFixed(2))}x` : '';
     return `${physicalW}x${physicalH}${density}`;
   }, []);
+  const osLabel = useMemo(() => {
+    switch (osFamily) {
+      case 'windows':
+        return 'Windows';
+      case 'ios':
+        return 'iOS';
+      case 'macos':
+        return 'macOS';
+      case 'android':
+        return 'Android';
+      case 'linux':
+        return 'Linux';
+      default:
+        return 'Other';
+    }
+  }, [osFamily]);
   const topBarModeLabel = useMemo(() => {
     const resSuffix = resolutionTag ? ` · ${resolutionTag}` : '';
+    const osSuffix = osLabel ? ` · ${osLabel}` : '';
     if (screenMode === 'tv') {
-      return `${tt('TV mode', '电视模式', '電視模式')}${resSuffix}`;
+      return `${tt('TV mode', '电视模式', '電視模式')}${osSuffix}${resSuffix}`;
     }
     if (screenMode === 'tablet') {
-      return `${tt('Tablet mode', '平板模式', '平板模式')}${resSuffix}`;
+      return `${tt('Tablet mode', '平板模式', '平板模式')}${osSuffix}${resSuffix}`;
     }
     if (screenMode === 'pc') {
-      return `${tt('PC mode', '桌面模式', '桌面模式')}${resSuffix}`;
+      return `${tt('PC mode', '桌面模式', '桌面模式')}${osSuffix}${resSuffix}`;
     }
     if (screenMode === 'desktop') {
-      return `${tt('Desktop mode', '桌面模式', '桌面模式')}${resSuffix}`;
+      return `${tt('Desktop mode', '桌面模式', '桌面模式')}${osSuffix}${resSuffix}`;
     }
     return undefined;
-  }, [resolutionTag, screenMode, tt]);
+  }, [osLabel, resolutionTag, screenMode, tt]);
+  const canToggleMode = useMemo(
+    () => osFamily !== 'windows' && osFamily !== 'ios' && osFamily !== 'macos',
+    [osFamily]
+  );
+  const handleToggleMode = useCallback(() => {
+    if (screenMode === 'mobile') return;
+    if (!canToggleMode) return;
+    const nextMode: ScreenModeOverride = screenMode === 'tv' ? 'tablet' : 'tv';
+    setScreenModeOverride(nextMode);
+    const nextInfo = detectDeviceInfo();
+    setScreenMode(nextInfo.screenMode);
+    setOsFamily(nextInfo.osFamily);
+    setResolutionTag(computeResolutionTag());
+  }, [canToggleMode, computeResolutionTag, screenMode]);
   const [sortMode, setSortMode] = useState<'trending' | 'newest' | 'rating'>(
     'trending'
   );
@@ -671,6 +709,7 @@ function HomeClient() {
       if (typeof window === 'undefined') return;
       const nextInfo = detectDeviceInfo();
       setScreenMode(nextInfo.screenMode);
+      setOsFamily(nextInfo.osFamily);
       setResolutionTag(computeResolutionTag());
     };
     handleResize();
@@ -1619,7 +1658,12 @@ function HomeClient() {
   }, [currentTvSection, isTV, activeTab]);
 
   return (
-    <PageLayout topBarModeLabel={topBarModeLabel}>
+    <PageLayout
+      topBarModeLabel={topBarModeLabel}
+      onTopBarModeClick={
+        topBarModeLabel && canToggleMode ? handleToggleMode : undefined
+      }
+    >
       <div className="px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full">
         {isKidsMode && (
           <div className="mb-3 flex justify-center">
