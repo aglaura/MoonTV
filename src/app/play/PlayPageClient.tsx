@@ -173,6 +173,16 @@ export function PlayPageClient({
     },
     [uiLocale]
   );
+  const formatTimeLabel = useCallback((seconds: number) => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safe / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const secs = safe % 60;
+    if (hours > 0) {
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(secs).padStart(2, '0')}`;
+  }, []);
 
   const delayInitialPlaybackRef = useRef<boolean>(
     !(searchParams.get('source') && searchParams.get('id'))
@@ -603,7 +613,31 @@ export function PlayPageClient({
   const totalEpisodes = detail?.episodes?.length || 0;
 
   const resumeTimeRef = useRef<number | null>(null);
+  const resumePreviewTimeRef = useRef<number | null>(null);
+  const resumePreviewEpisodeRef = useRef<number | null>(null);
+  const resumePreviewTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const resumePreviewElRef = useRef<HTMLDivElement | null>(null);
+  const resumePreviewMarkerRef = useRef<HTMLDivElement | null>(null);
+  const resumePreviewCleanupRef = useRef<(() => void) | null>(null);
+  const preloadedNextUrlRef = useRef<string | null>(null);
+  const preconnectOriginsRef = useRef<Set<string>>(new Set());
+  const preloadNextAbortRef = useRef<AbortController | null>(null);
   const loadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const setResumePreviewTime = useCallback(
+    (time: number | null, episodeIndex?: number | null) => {
+      const safeTime =
+        typeof time === 'number' && Number.isFinite(time) && time > 0
+          ? time
+          : null;
+      resumePreviewTimeRef.current = safeTime;
+      if (typeof episodeIndex === 'number') {
+        resumePreviewEpisodeRef.current = episodeIndex;
+      } else if (!safeTime) {
+        resumePreviewEpisodeRef.current = null;
+      }
+    },
+    []
+  );
   const lastVolumeRef = useRef<number>(0.7);
   const [sourceSearchLoading, setSourceSearchLoading] = useState(false);
   const hasStartedRef = useRef<boolean>(false);
@@ -913,6 +947,7 @@ export function PlayPageClient({
 
         resumeAppliedRef.current = true;
         resumeTimeRef.current = record.play_time ?? 0;
+        setResumePreviewTime(resumeTimeRef.current, clampedIndex);
         setCurrentEpisodeIndex(clampedIndex);
         currentEpisodeIndexRef.current = clampedIndex;
         // Do not lock to the previous provider; let sorting pick the best.
@@ -953,11 +988,12 @@ export function PlayPageClient({
 
     resumeAppliedRef.current = true;
     resumeTimeRef.current = record.play_time ?? 0;
+    setResumePreviewTime(resumeTimeRef.current, clampedIndex);
     setCurrentEpisodeIndex(clampedIndex);
     currentEpisodeIndexRef.current = clampedIndex;
     // Let source selection pick the best provider; only restore progress.
     return null;
-  }, [normalizeTitle, searchTitle]);
+  }, [normalizeTitle, searchTitle, setResumePreviewTime]);
 
   useEffect(() => {
     const fetchResumeByTitle = async () => {
@@ -1513,6 +1549,214 @@ export function PlayPageClient({
       autoNextTimeoutRef.current = null;
     }
   }, []);
+  const hideResumePreview = useCallback(() => {
+    const previewEl = resumePreviewElRef.current;
+    if (previewEl) {
+      previewEl.classList.remove('is-visible');
+    }
+    if (resumePreviewTimerRef.current) {
+      clearTimeout(resumePreviewTimerRef.current);
+      resumePreviewTimerRef.current = null;
+    }
+  }, []);
+  const updateResumePreviewPosition = useCallback(() => {
+    const player = artPlayerRef.current;
+    const previewEl = resumePreviewElRef.current;
+    const markerEl = resumePreviewMarkerRef.current;
+    if (!player || !previewEl || !markerEl) return;
+
+    const targetEpisode = resumePreviewEpisodeRef.current;
+    if (
+      typeof targetEpisode === 'number' &&
+      targetEpisode !== currentEpisodeIndexRef.current
+    ) {
+      markerEl.style.display = 'none';
+      hideResumePreview();
+      return;
+    }
+
+    const previewTime = resumePreviewTimeRef.current;
+    const duration = player.duration || 0;
+    if (!previewTime || !duration) {
+      markerEl.style.display = 'none';
+      hideResumePreview();
+      return;
+    }
+
+    const clampedTime = Math.min(Math.max(previewTime, 0), duration);
+    if (clampedTime < 2 || clampedTime > duration - 2) {
+      markerEl.style.display = 'none';
+      hideResumePreview();
+      return;
+    }
+
+    const progress = player.template?.$progress as HTMLElement | undefined;
+    if (!progress) return;
+
+    const ratio = duration > 0 ? clampedTime / duration : 0;
+    markerEl.style.display = 'block';
+    markerEl.style.left = `${Math.min(100, Math.max(0, ratio * 100))}%`;
+
+    const thumb = previewEl.querySelector(
+      '.art-resume-thumb'
+    ) as HTMLElement | null;
+    const title = previewEl.querySelector(
+      '.art-resume-title'
+    ) as HTMLElement | null;
+    const time = previewEl.querySelector(
+      '.art-resume-time'
+    ) as HTMLElement | null;
+    const poster = player.poster || videoCover || '';
+    if (thumb) {
+      thumb.style.backgroundImage = poster ? `url("${poster}")` : '';
+    }
+    if (title) {
+      title.textContent = tt('Resume', '续播', '續播');
+    }
+    if (time) {
+      time.textContent = formatTimeLabel(clampedTime);
+    }
+
+    const previewWidth = previewEl.offsetWidth || 220;
+    const left = progress.clientWidth * ratio - previewWidth / 2;
+    const clampedLeft = Math.max(
+      8,
+      Math.min(progress.clientWidth - previewWidth - 8, left)
+    );
+    previewEl.style.left = `${clampedLeft}px`;
+  }, [formatTimeLabel, hideResumePreview, tt, videoCover]);
+  const showResumePreview = useCallback(
+    (autoHide: boolean) => {
+      if (!resumePreviewTimeRef.current) return;
+      updateResumePreviewPosition();
+      const previewEl = resumePreviewElRef.current;
+      if (!previewEl) return;
+      previewEl.classList.add('is-visible');
+      if (resumePreviewTimerRef.current) {
+        clearTimeout(resumePreviewTimerRef.current);
+        resumePreviewTimerRef.current = null;
+      }
+      if (autoHide) {
+        resumePreviewTimerRef.current = setTimeout(() => {
+          hideResumePreview();
+        }, 2200);
+      }
+    },
+    [hideResumePreview, updateResumePreviewPosition]
+  );
+  const attachResumePreview = useCallback(
+    (player: any) => {
+      const progress = player?.template?.$progress as HTMLElement | undefined;
+      if (!progress) return () => {};
+
+      const previewEl = document.createElement('div');
+      previewEl.className = 'art-resume-preview';
+      previewEl.innerHTML =
+        '<div class="art-resume-thumb"></div><div class="art-resume-meta"><div class="art-resume-title"></div><div class="art-resume-time"></div></div>';
+      progress.appendChild(previewEl);
+
+      const markerEl = document.createElement('div');
+      markerEl.className = 'art-resume-marker';
+      const inner =
+        progress.querySelector('.art-control-progress-inner') || progress;
+      inner.appendChild(markerEl);
+
+      resumePreviewElRef.current = previewEl;
+      resumePreviewMarkerRef.current = markerEl;
+
+      const handleEnter = () => {
+        updateResumePreviewPosition();
+        showResumePreview(false);
+      };
+      const handleMove = () => {
+        updateResumePreviewPosition();
+      };
+      const handleLeave = () => {
+        hideResumePreview();
+      };
+
+      progress.addEventListener('mouseenter', handleEnter);
+      progress.addEventListener('mousemove', handleMove);
+      progress.addEventListener('mouseleave', handleLeave);
+
+      updateResumePreviewPosition();
+
+      return () => {
+        progress.removeEventListener('mouseenter', handleEnter);
+        progress.removeEventListener('mousemove', handleMove);
+        progress.removeEventListener('mouseleave', handleLeave);
+        previewEl.remove();
+        markerEl.remove();
+        resumePreviewElRef.current = null;
+        resumePreviewMarkerRef.current = null;
+      };
+    },
+    [hideResumePreview, showResumePreview, updateResumePreviewPosition]
+  );
+  const preconnectToOrigin = useCallback((url: string) => {
+    if (typeof document === 'undefined') return;
+    let origin: string | null = null;
+    try {
+      origin = new URL(url).origin;
+    } catch {
+      return;
+    }
+    if (!origin || preconnectOriginsRef.current.has(origin)) return;
+    preconnectOriginsRef.current.add(origin);
+
+    const preconnect = document.createElement('link');
+    preconnect.rel = 'preconnect';
+    preconnect.href = origin;
+    preconnect.crossOrigin = 'anonymous';
+    document.head.appendChild(preconnect);
+
+    const dnsPrefetch = document.createElement('link');
+    dnsPrefetch.rel = 'dns-prefetch';
+    dnsPrefetch.href = origin;
+    document.head.appendChild(dnsPrefetch);
+  }, []);
+  const preloadNextEpisodeUrl = useCallback(
+    (url: string) => {
+      if (!url || preloadedNextUrlRef.current === url) return;
+      preloadedNextUrlRef.current = url;
+      preconnectToOrigin(url);
+
+      if (!/\.m3u8($|\?)/i.test(url)) {
+        return;
+      }
+
+      if (preloadNextAbortRef.current) {
+        preloadNextAbortRef.current.abort();
+      }
+      const controller = new AbortController();
+      preloadNextAbortRef.current = controller;
+      const timeout = setTimeout(() => {
+        controller.abort();
+      }, 1500);
+
+      fetch(url, {
+        method: 'GET',
+        mode: 'no-cors',
+        credentials: 'omit',
+        signal: controller.signal,
+      })
+        .catch(() => {})
+        .finally(() => {
+          clearTimeout(timeout);
+        });
+    },
+    [preconnectToOrigin]
+  );
+  useEffect(() => {
+    if (
+      typeof resumePreviewEpisodeRef.current === 'number' &&
+      resumePreviewEpisodeRef.current !== currentEpisodeIndex
+    ) {
+      resumePreviewEpisodeRef.current = null;
+      resumePreviewTimeRef.current = null;
+      hideResumePreview();
+    }
+  }, [currentEpisodeIndex, hideResumePreview]);
   const currentPlayingInfo = useMemo<CurrentPlayingInfo | null>(() => {
     const bySourceKey =
       precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
@@ -2668,6 +2912,14 @@ export function PlayPageClient({
   useEffect(() => {
     updateVideoUrl(detail, currentEpisodeIndex);
   }, [detail, currentEpisodeIndex]);
+  useEffect(() => {
+    if (!detail?.episodes || detail.episodes.length === 0) return;
+    const nextIndex = currentEpisodeIndex + 1;
+    if (nextIndex >= detail.episodes.length) return;
+    const nextUrl = detail.episodes[nextIndex];
+    if (!nextUrl) return;
+    preloadNextEpisodeUrl(nextUrl);
+  }, [currentEpisodeIndex, detail, preloadNextEpisodeUrl]);
 
   useEffect(() => {
     const streamSourcesData = async (query: string) => {
@@ -3059,6 +3311,7 @@ export function PlayPageClient({
           }
 
           resumeTimeRef.current = targetTime;
+          setResumePreviewTime(targetTime, targetIndex);
         }
       } catch (err) {
         console.error('讀取播放紀錄失敗:', err);
@@ -3114,11 +3367,13 @@ export function PlayPageClient({
 
         if (targetIndex !== currentEpisodeIndexRef.current) {
           resumeTimeRef.current = 0;
+          setResumePreviewTime(0, targetIndex);
         } else if (
           (!resumeTimeRef.current || resumeTimeRef.current === 0) &&
           currentPlayTime > 1
         ) {
           resumeTimeRef.current = currentPlayTime;
+          setResumePreviewTime(currentPlayTime, targetIndex);
         }
 
         const newUrl = new URL(window.location.href);
@@ -3144,7 +3399,7 @@ export function PlayPageClient({
         );
       }
     },
-    [getValuationKey, reportError, tt]
+    [getValuationKey, reportError, setResumePreviewTime, tt]
   );
 
   const trySwitchToNextSource = useCallback((): boolean => {
@@ -3613,6 +3868,10 @@ export function PlayPageClient({
     }
 
     if (artPlayerRef.current) {
+      if (resumePreviewCleanupRef.current) {
+        resumePreviewCleanupRef.current();
+        resumePreviewCleanupRef.current = null;
+      }
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
       }
@@ -3752,6 +4011,14 @@ export function PlayPageClient({
                 localStorage.setItem('enable_blockad', String(newVal));
                 if (artPlayerRef.current) {
                   resumeTimeRef.current = artPlayerRef.current.currentTime;
+                  setResumePreviewTime(
+                    resumeTimeRef.current,
+                    currentEpisodeIndexRef.current
+                  );
+                  if (resumePreviewCleanupRef.current) {
+                    resumePreviewCleanupRef.current();
+                    resumePreviewCleanupRef.current = null;
+                  }
                   if (
                     artPlayerRef.current.video &&
                     artPlayerRef.current.video.hls
@@ -3897,6 +4164,9 @@ export function PlayPageClient({
           },
         ],
       });
+      resumePreviewCleanupRef.current = attachResumePreview(
+        artPlayerRef.current
+      );
       artPlayerRef.current.title = tt(
         `${displayTitleWithEnglish} - Episode ${currentEpisodeIndex + 1}`,
         `${displayTitleWithEnglish} - 第 ${currentEpisodeIndex + 1} 集`,
@@ -3905,6 +4175,17 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('ready', () => {
         clearError();
+        updateResumePreviewPosition();
+      });
+      artPlayerRef.current.on('control', (visible: boolean) => {
+        if (visible) {
+          showResumePreview(true);
+        } else {
+          hideResumePreview();
+        }
+      });
+      artPlayerRef.current.on('resize', () => {
+        updateResumePreviewPosition();
       });
 
       // Expose for debugging in browser devtools
@@ -3940,6 +4221,8 @@ export function PlayPageClient({
           }
         }
         resumeTimeRef.current = null;
+        updateResumePreviewPosition();
+        showResumePreview(true);
 
         setTimeout(() => {
           if (
@@ -4083,8 +4366,12 @@ export function PlayPageClient({
     trySwitchToNextSource,
     uiLocale,
     playbackUrl,
+    attachResumePreview,
     autoRotateToFit,
+    hideResumePreview,
+    showResumePreview,
     unlockScreenOrientation,
+    updateResumePreviewPosition,
   ]);
 
   useEffect(() => {
