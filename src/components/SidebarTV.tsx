@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Film, Heart, Home, Menu, RefreshCw, Search, Tv } from 'lucide-react';
+import { Download, Film, Home, Menu, Search, Tv } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -181,44 +181,14 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
 
   const menuItems: NavItem[] = [
     {
-      icon: Home,
-      label: t('Home', '首页', '首頁'),
-      href: '/?tab=home',
-    },
-    {
-      icon: RefreshCw,
-      label: t('Refresh', '刷新', '重新整理'),
-      href: '#',
-    },
-    {
-      icon: Heart,
-      label: t('Favorites', '收藏夹', '收藏夾'),
-      href: '/?tab=favorites',
-    },
-    {
       icon: Film,
       label: t('Movies', '电影', '電影'),
       href: '/douban?type=movie',
     },
     {
       icon: Tv,
-      label: t('CN TV', '华语剧', '華語劇'),
-      href: '/douban?type=tv&region=cn',
-    },
-    {
-      icon: Tv,
-      label: t('KR TV', '韩剧', '韓劇'),
-      href: '/douban?type=tv&region=kr',
-    },
-    {
-      icon: Tv,
-      label: t('JP TV', '日剧', '日劇'),
-      href: '/douban?type=tv&region=jp',
-    },
-    {
-      icon: Tv,
-      label: t('US/UK TV', '欧美剧', '歐美劇'),
-      href: '/douban?type=tv&region=us',
+      label: t('Series', '剧集', '劇集'),
+      href: '/douban?type=tv',
     },
     {
       icon: Film,
@@ -332,24 +302,6 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   </span>
                 )}
               </Link>
-              <Link
-                href='/downloads'
-                onClick={() => setActive('/downloads')}
-                onFocus={() => handleFocusNavigate('/downloads')}
-                data-active={active === '/downloads'}
-                className={`group flex items-center rounded-lg px-2 py-2 pl-4 text-gray-700 hover:bg-gray-100/30 hover:text-green-600 data-[active=true]:bg-green-500/20 data-[active=true]:text-green-700 font-medium transition-colors duration-200 min-h-[40px] dark:text-gray-300 dark:hover:text-green-400 dark:data-[active=true]:bg-green-500/10 dark:data-[active=true]:text-green-400 ${
-                  isCollapsed ? 'w-full max-w-none mx-0' : 'mx-0'
-                } gap-3 justify-start`}
-              >
-                <div className='w-4 h-4 flex items-center justify-center'>
-                  <Download className='h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400' />
-                </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    {t('Downloads', '下载', '下載')}
-                  </span>
-                )}
-              </Link>
             </nav>
 
             {/* 菜单项 */}
@@ -395,6 +347,29 @@ const SidebarTV = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   );
                 })}
               </div>
+            </div>
+            <div className='px-2 pb-4'>
+              <button
+                type='button'
+                onClick={() => {
+                  setActive('/downloads');
+                  router.push('/downloads');
+                }}
+                onFocus={() => handleFocusNavigate('/downloads')}
+                data-tv-focusable='true'
+                className={`group flex items-center rounded-xl px-3 py-3 text-sm font-semibold text-gray-700 bg-white/70 hover:bg-white hover:text-green-700 transition-colors duration-200 w-full dark:text-gray-200 dark:bg-gray-800/80 dark:hover:bg-gray-700 ${
+                  isCollapsed ? 'justify-center' : 'justify-start gap-3'
+                }`}
+              >
+                <div className='w-5 h-5 flex items-center justify-center'>
+                  <Download className='h-5 w-5 text-green-600 dark:text-green-400' />
+                </div>
+                {!isCollapsed && (
+                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
+                    {t('Downloads', '下载', '下載')}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </aside>
