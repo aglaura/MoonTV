@@ -95,7 +95,7 @@ function resolvePoster(item: CardItem) {
   );
 }
 
-function buildPlayUrl(item: CardItem) {
+function buildPlayUrl(item: CardItem, basePath = '/play') {
   const title = item.title?.trim() || '';
   const year = item.year ? `&year=${encodeURIComponent(item.year)}` : '';
   const type = item.type ? `&stype=${encodeURIComponent(item.type)}` : '';
@@ -107,7 +107,15 @@ function buildPlayUrl(item: CardItem) {
       ? `&douban_id=${item.douban_id}`
       : '';
   const imdb = item.imdb_id ? `&imdbId=${encodeURIComponent(item.imdb_id)}` : '';
-  return `/play?title=${encodeURIComponent(title)}${year}${type}${query}${douban}${imdb}`;
+  return `${basePath}?title=${encodeURIComponent(title)}${year}${type}${query}${douban}${imdb}`;
+}
+
+function buildTvDetailUrl(item: CardItem) {
+  return buildPlayUrl(item, '/tv/detail');
+}
+
+function buildTvPlayUrl(item: CardItem) {
+  return buildPlayUrl(item, '/tv/play');
 }
 
 function buildPersonUrl(item: CardItem) {
@@ -332,7 +340,7 @@ const TvHome = ({
         router.push(buildPersonUrl(item));
         return;
       }
-      router.push(buildPlayUrl(item));
+      router.push(buildTvDetailUrl(item));
     },
     [router]
   );
@@ -341,10 +349,10 @@ const TvHome = ({
     (action: 'play' | 'info') => {
       if (!activeHero) return;
       if (action === 'play') {
-        router.push(buildPlayUrl(activeHero));
+        router.push(buildTvPlayUrl(activeHero));
         return;
       }
-      router.push(buildPlayUrl(activeHero));
+      router.push(buildTvDetailUrl(activeHero));
     },
     [activeHero, router]
   );

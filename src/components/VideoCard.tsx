@@ -31,6 +31,7 @@ import {
 } from '@/lib/db.client';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
+import { useDeviceInfo } from '@/lib/screenMode';
 import { processImageUrl } from '@/lib/utils';
 
 import MobileActionSheet from '@/components/MobileActionSheet';
@@ -152,6 +153,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     ref
   ) {
     const router = useRouter();
+    const { screenMode } = useDeviceInfo();
+    const isTV = screenMode === 'tv';
     const [favorited, setFavorited] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
@@ -877,6 +880,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const longPressTriggeredRef = useRef(false);
 
+    const detailPath = isTV ? '/tv/detail' : '/play';
+    const playPath = isTV ? '/tv/play' : '/play';
+
     const buildSearchUrl = useCallback(
       () => {
         const doubanParam =
@@ -886,22 +892,30 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         const imdbParam = imdbIdState
           ? `&imdbId=${encodeURIComponent(imdbIdState)}`
           : '';
-        return `/play?title=${encodeURIComponent(actualTitle.trim())}${
+        const posterParam =
+          actualPoster && actualPoster.trim()
+            ? `&poster=${encodeURIComponent(actualPoster.trim())}`
+            : '';
+        const rateParam = rate ? `&rate=${encodeURIComponent(rate)}` : '';
+        return `${detailPath}?title=${encodeURIComponent(actualTitle.trim())}${
           actualYear ? `&year=${actualYear}` : ''
         }${actualSearchType ? `&stype=${actualSearchType}` : ''}${
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${doubanParam}${imdbParam}`;
+        }${doubanParam}${imdbParam}${posterParam}${rateParam}`;
       },
       [
         dynamicDoubanId,
         imdbIdState,
+        actualPoster,
         actualTitle,
         actualYear,
         actualSearchType,
         isAggregate,
         actualQuery,
+        rate,
+        detailPath,
       ]
     );
 
@@ -927,16 +941,21 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         !actualSource ||
         !actualId
       ) {
-        const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${
+        const posterParam =
+          actualPoster && actualPoster.trim()
+            ? `&poster=${encodeURIComponent(actualPoster.trim())}`
+            : '';
+        const rateParam = rate ? `&rate=${encodeURIComponent(rate)}` : '';
+        const url = `${detailPath}?title=${encodeURIComponent(actualTitle.trim())}${
           actualYear ? `&year=${actualYear}` : ''
         }${actualSearchType ? `&stype=${actualSearchType}` : ''}${
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${doubanParam}${imdbParam}`;
+        }${doubanParam}${imdbParam}${posterParam}${rateParam}`;
         router.push(url);
       } else if (actualSource && actualId) {
-        const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
+        const url = `${playPath}?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
           actualTitle
         )}${actualYear ? `&year=${actualYear}` : ''}${
           isAggregate ? '&prefer=true' : ''
@@ -958,6 +977,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       actualSearchType,
       dynamicDoubanId,
       imdbIdState,
+      detailPath,
+      playPath,
     ]);
 
     const handleIntro = useCallback(() => {
@@ -1000,16 +1021,21 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         !actualSource ||
         !actualId
       ) {
-        const url = `/play?title=${encodeURIComponent(actualTitle.trim())}${
+        const posterParam =
+          actualPoster && actualPoster.trim()
+            ? `&poster=${encodeURIComponent(actualPoster.trim())}`
+            : '';
+        const rateParam = rate ? `&rate=${encodeURIComponent(rate)}` : '';
+        const url = `${detailPath}?title=${encodeURIComponent(actualTitle.trim())}${
           actualYear ? `&year=${actualYear}` : ''
         }${actualSearchType ? `&stype=${actualSearchType}` : ''}${
           isAggregate ? '&prefer=true' : ''
         }${
           actualQuery ? `&stitle=${encodeURIComponent(actualQuery.trim())}` : ''
-        }${doubanParam}${imdbParam}`;
+        }${doubanParam}${imdbParam}${posterParam}${rateParam}`;
         window.open(url, '_blank');
       } else if (actualSource && actualId) {
-        const url = `/play?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
+        const url = `${playPath}?source=${actualSource}&id=${actualId}&title=${encodeURIComponent(
           actualTitle
         )}${actualYear ? `&year=${actualYear}` : ''}${
           isAggregate ? '&prefer=true' : ''
@@ -1030,6 +1056,8 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       actualSearchType,
       dynamicDoubanId,
       imdbIdState,
+      detailPath,
+      playPath,
     ]);
 
     // 检查搜索结果的收藏状态
