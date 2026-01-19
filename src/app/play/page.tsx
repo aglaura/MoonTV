@@ -65,6 +65,7 @@ import {
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 import PlayDetails from '@/components/play/PlayDetails';
+import TvPlayLayout from '@/components/play/TvPlayLayout';
 
 declare global {
   interface HTMLVideoElement {
@@ -76,7 +77,9 @@ declare global {
   }
 }
 
-function PlayPageClient() {
+export type PlayPageVariant = 'default' | 'tv';
+
+export function PlayPageClient({ variant = 'default' }: { variant?: PlayPageVariant }) {
   const { userLocale } = useUserLanguage();
   const searchParams = useSearchParams();
   const configJsonBase = useMemo(() => {
@@ -1460,6 +1463,13 @@ function PlayPageClient() {
       return 'h-[75vh] lg:h-[90vh]';
     }
     return 'h-[300px] md:h-full lg:h-full';
+  }, [forceRotate, isFullscreen]);
+
+  const tvPlayerHeightClass = useMemo(() => {
+    if (forceRotate || (isFullscreen && isIOSDevice())) {
+      return 'h-[70vh] lg:h-[85vh]';
+    }
+    return 'h-[54vh] lg:h-[68vh] xl:h-[72vh]';
   }, [forceRotate, isFullscreen]);
 
   // Tablet/TV swipe gesture to toggle the selector instead of relying on buttons.
@@ -4009,9 +4019,13 @@ function PlayPageClient() {
     }
   }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
 
+  const isTvVariant = variant === 'tv';
+  const layoutActivePath = isTvVariant ? '/play/tvplay' : '/play';
+  const hideLayoutBars = isTvVariant ? true : hideNavInFullscreen;
+
   if (loading) {
     return (
-      <PageLayout activePath='/play'>
+      <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
         <div className='flex items-center justify-center min-h-screen bg-transparent'>
           <div className='text-center max-w-md mx-auto px-6'>
             {/* 动画影院图标 */}
@@ -4139,8 +4153,68 @@ function PlayPageClient() {
     );
   }
 
+  const episodeSelector = (
+    <EpisodeSelector
+      totalEpisodes={totalEpisodes}
+      value={currentEpisodeIndex + 1}
+      onChange={handleEpisodeChange}
+      onSourceChange={handleSourceChange}
+      currentSource={currentSource}
+      currentId={currentId}
+      videoTitle={searchTitle || videoTitle}
+      availableSources={availableSources}
+      sourceSearchLoading={sourceSearchLoading}
+      sourceSearchError={sourceSearchError}
+      precomputedVideoInfo={precomputedVideoInfo}
+      providerCount={providerCount}
+      searchStats={searchStats}
+    />
+  );
+
+  if (isTvVariant) {
+    const episodeLabel =
+      totalEpisodes > 1 ? `E${currentEpisodeIndex + 1}` : '';
+    return (
+      <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
+        <TvPlayLayout
+          title={displayTitleText}
+          englishTitle={englishVideoTitle}
+          episodeLabel={episodeLabel}
+          introTags={introTags}
+          synopsisText={synopsisText}
+          clientInfo={clientInfo}
+          sourceName={detail?.source_name}
+          currentSource={currentSource}
+          currentPlayingInfo={currentPlayingInfo}
+          actualPlaybackInfo={actualPlaybackInfo}
+          localizeInfoLabel={localizeInfoLabel}
+          downloadButtonLabel={downloadButtonLabel}
+          downloadButtonDisabled={downloadButtonDisabled}
+          onDownload={handleDownload}
+          artRef={artRef}
+          playerHeightClass={tvPlayerHeightClass}
+          forceRotate={forceRotate}
+          error={error}
+          errorType={errorType}
+          onClearError={clearError}
+          onTryNextSource={trySwitchToNextSource}
+          isVideoLoading={isVideoLoading}
+          videoLoadingStage={videoLoadingStage}
+          hideSidePanels={hideSidePanels}
+          isEpisodeSelectorCollapsed={isEpisodeSelectorCollapsed}
+          onShowEpisodes={() => setIsEpisodeSelectorCollapsed(false)}
+          onHideEpisodes={() => setIsEpisodeSelectorCollapsed(true)}
+          panelGestureRef={panelGestureRef}
+          episodeSelector={episodeSelector}
+          tt={tt}
+          convertToTraditional={convertToTraditional}
+        />
+      </PageLayout>
+    );
+  }
+
   return (
-      <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
+      <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
       <div className='flex flex-col gap-2 py-2 px-2.5 sm:px-3.5 md:pt-10 lg:pt-2 lg:px-5 xl:px-7'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>
@@ -4384,21 +4458,7 @@ function PlayPageClient() {
                     ▶
                   </button>
                 )}
-                <EpisodeSelector
-                  totalEpisodes={totalEpisodes}
-                  value={currentEpisodeIndex + 1}
-                  onChange={handleEpisodeChange}
-                  onSourceChange={handleSourceChange}
-                  currentSource={currentSource}
-                  currentId={currentId}
-                  videoTitle={searchTitle || videoTitle}
-                  availableSources={availableSources}
-                  sourceSearchLoading={sourceSearchLoading}
-                  sourceSearchError={sourceSearchError}
-                  precomputedVideoInfo={precomputedVideoInfo}
-                  providerCount={providerCount}
-                  searchStats={searchStats}
-                />
+                {episodeSelector}
               </div>
             )}
           </div>
