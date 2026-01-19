@@ -72,6 +72,7 @@ type RowKind = 'poster' | 'person';
 type Row = { id: string; title: string; tiles: Tile[]; kind?: RowKind };
 
 type FocusKey = string;
+type SpotlightKind = 'movie' | 'tv' | 'variety' | 'anime' | 'person';
 
 type RailItem = {
   id: string;
@@ -142,12 +143,72 @@ function buildPersonUrl(item: CardItem) {
   return normalized ? `/person/${encodeURIComponent(normalized)}` : '/';
 }
 
+function getItemKey(item: CardItem) {
+  if (typeof item.douban_id === 'number' && item.douban_id > 0) {
+    return `douban:${item.douban_id}`;
+  }
+  if (item.imdb_id) return `imdb:${item.imdb_id.toLowerCase()}`;
+  if (item.id !== undefined && item.id !== null) return `id:${item.id}`;
+  const title = (item.title || '').trim().toLowerCase().replace(/\s+/g, '');
+  return `${title}__${item.year || ''}`;
+}
+
+function dedupeItems(items: CardItem[]) {
+  const seen = new Set<string>();
+  const result: CardItem[] = [];
+  items.forEach((item) => {
+    const key = getItemKey(item);
+    if (!key) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    result.push(item);
+  });
+  return result;
+}
+
+function normalizeSpotlightKind(type?: string): SpotlightKind | null {
+  if (!type) return null;
+  const raw = type.toLowerCase();
+  if (raw.includes('person')) return 'person';
+  if (raw.includes('movie')) return 'movie';
+  if (raw.includes('tv') || raw.includes('series')) return 'tv';
+  if (raw.includes('show') || raw.includes('variety')) return 'variety';
+  if (raw.includes('anime') || raw.includes('animation')) return 'anime';
+  return null;
+}
+
+function inferSpotlightKind(
+  item: CardItem | undefined,
+  categoryData: CategoryData
+): SpotlightKind {
+  if (!item) return 'movie';
+  const normalized = normalizeSpotlightKind(item.type);
+  if (normalized) return normalized;
+
+  const itemKey = getItemKey(item);
+  if (!itemKey) return 'movie';
+
+  const entries = Object.entries(categoryData);
+  for (const [key, value] of entries) {
+    if (!value || !Array.isArray(value.items)) continue;
+    const match = value.items.some((entry) => getItemKey(entry) === itemKey);
+    if (!match) continue;
+    if (key === 'movie') return 'movie';
+    if (key.startsWith('tv-')) return 'tv';
+    if (key === 'variety') return 'variety';
+    if (key === 'anime') return 'anime';
+  }
+
+  return 'movie';
+}
+
 /* =========================
    Main Page
 ========================= */
 const TvHome = ({
   tt,
   heroItems,
+  categoryData,
   effectiveTmdbMovies,
   effectiveLatestMovies,
   effectiveTmdbTv,
@@ -193,57 +254,119 @@ const TvHome = ({
     [heroItems, normalizeItems]
   );
 
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  const activeHero = heroList.length
+    ? heroList[Math.abs(heroIndex) % heroList.length]
+    : undefined;
+  const spotlightKind = useMemo(
+    () => inferSpotlightKind(activeHero, categoryData),
+    [activeHero, categoryData]
+  );
+
   const rows = useMemo<Row[]>(() => {
-    const continueItems = normalizeItems(effectiveLatestMovies).slice(0, 12);
-    const trendingItems = normalizeItems(effectiveTmdbMovies).slice(0, 14);
-    const recommendedItems = normalizeItems(effectiveTmdbTv).slice(0, 16);
-    const latestTvItems = normalizeItems(effectiveLatestTv).slice(0, 14);
+    const movieItems = normalizeItems(categoryData.movie?.items || []);
+    const tvItems = normalizeItems(
+      dedupeItems([
+        ...(categoryData['tv-cn']?.items || []),
+        ...(categoryData['tv-kr']?.items || []),
+        ...(categoryData['tv-jp']?.items || []),
+        ...(categoryData['tv-us']?.items || []),
+      ])
+    );
+    const varietyItems = normalizeItems(categoryData.variety?.items || []);
+    const animeItems = normalizeItems(categoryData.anime?.items || []);
+    const trendingMovies = normalizeItems(effectiveTmdbMovies);
+    const latestMovies = normalizeItems(effectiveLatestMovies);
+    const trendingTv = normalizeItems(effectiveTmdbTv);
+    const latestTv = normalizeItems(effectiveLatestTv);
     const peopleItems = normalizeItems(effectiveTmdbPeople).slice(0, 10);
 
+    const heroKey = activeHero ? getItemKey(activeHero) : '';
+    const buildItems = (items: CardItem[], limit: number) => {
+      const output: CardItem[] = [];
+      const seen = new Set<string>();
+      items.forEach((item) => {
+        if (output.length >= limit) return;
+        const key = getItemKey(item);
+        if (!key) return;
+        if (heroKey && key === heroKey) return;
+        if (seen.has(key)) return;
+        seen.add(key);
+        output.push(item);
+      });
+      return output;
+    };
+
+    let relatedTitle = tt('More like this', '更多类似内容', '更多類似內容');
+    let trendingTitle = tt('Trending picks', '热门推荐', '熱門推薦');
+    let latestTitle = tt('Latest picks', '最新推荐', '最新推薦');
+    let relatedItems: CardItem[] = [];
+    let trendingItems: CardItem[] = [];
+    let latestItems: CardItem[] = [];
+
+    if (spotlightKind === 'tv') {
+      relatedTitle = tt('More series like this', '更多类似剧集', '更多類似劇集');
+      trendingTitle = tt('Trending series', '热门剧集', '熱門劇集');
+      latestTitle = tt('Latest series', '最新剧集', '最新劇集');
+      relatedItems = buildItems(tvItems.length ? tvItems : trendingTv, 14);
+      trendingItems = buildItems(trendingTv.length ? trendingTv : tvItems, 14);
+      latestItems = buildItems(latestTv.length ? latestTv : tvItems, 14);
+    } else if (spotlightKind === 'variety') {
+      relatedTitle = tt('More variety like this', '更多类似综艺', '更多類似綜藝');
+      trendingTitle = tt('Trending variety', '热门综艺', '熱門綜藝');
+      latestTitle = tt('Latest variety', '最新综艺', '最新綜藝');
+      relatedItems = buildItems(varietyItems, 14);
+      trendingItems = buildItems(varietyItems, 14);
+      latestItems = buildItems(varietyItems, 14);
+    } else if (spotlightKind === 'anime') {
+      relatedTitle = tt('More anime like this', '更多类似动画', '更多類似動畫');
+      trendingTitle = tt('Trending anime', '热门动画', '熱門動畫');
+      latestTitle = tt('Latest anime', '最新动画', '最新動畫');
+      relatedItems = buildItems(animeItems, 14);
+      trendingItems = buildItems(animeItems, 14);
+      latestItems = buildItems(animeItems, 14);
+    } else {
+      relatedTitle = tt('More movies like this', '更多类似电影', '更多類似電影');
+      trendingTitle = tt('Trending movies', '热门电影', '熱門電影');
+      latestTitle = tt('Latest movies', '最新电影', '最新電影');
+      relatedItems = buildItems(movieItems.length ? movieItems : trendingMovies, 14);
+      trendingItems = buildItems(trendingMovies.length ? trendingMovies : movieItems, 14);
+      latestItems = buildItems(latestMovies.length ? latestMovies : movieItems, 14);
+    }
+
     const list: Row[] = [
-      {
-        id: 'continue',
-        title: tt('Continue Watching', '继续观看', '繼續觀看'),
-        tiles: continueItems,
-      },
-      {
-        id: 'trending',
-        title: tt('Trending Now', '正在流行', '正在流行'),
-        tiles: trendingItems,
-      },
-      {
-        id: 'recommended',
-        title: tt('Recommended', '为你推荐', '為你推薦'),
-        tiles: recommendedItems,
-      },
-      {
-        id: 'latest-tv',
-        title: tt('Latest TV', '最新剧集', '最新劇集'),
-        tiles: latestTvItems,
-      },
-      {
+      { id: 'related', title: relatedTitle, tiles: relatedItems },
+      { id: 'trending', title: trendingTitle, tiles: trendingItems },
+      { id: 'latest', title: latestTitle, tiles: latestItems },
+    ];
+
+    if (peopleItems.length > 0 && spotlightKind !== 'person') {
+      list.push({
         id: 'people',
         title: tt('Popular People', '热门人物', '熱門人物'),
         tiles: peopleItems,
         kind: 'person',
-      },
-    ];
+      });
+    }
 
     return list.filter((row) => row.tiles.length > 0);
   }, [
+    activeHero,
+    categoryData,
     effectiveLatestMovies,
-    effectiveTmdbMovies,
-    effectiveTmdbTv,
     effectiveLatestTv,
+    effectiveTmdbMovies,
     effectiveTmdbPeople,
+    effectiveTmdbTv,
     normalizeItems,
+    spotlightKind,
     tt,
   ]);
 
   const [focus, setFocus] = useState<FocusKey>('hero:play');
   const [activeRail, setActiveRail] = useState('home');
   const [railOpen, setRailOpen] = useState(false);
-  const [heroIndex, setHeroIndex] = useState(0);
 
   const lastContentFocus = useRef<FocusKey>('hero:play');
   const rowMemory = useRef<Record<string, number>>({});
@@ -283,10 +406,6 @@ const TvHome = ({
     return () => clearInterval(timer);
   }, [heroList.length, focus]);
 
-  const activeHero = heroList.length
-    ? heroList[Math.abs(heroIndex) % heroList.length]
-    : undefined;
-
   useEffect(() => {
     const el = focusRefs.current.get(focus);
     el?.focus({ preventScroll: true });
@@ -302,6 +421,24 @@ const TvHome = ({
     if (f.area === 'row') rowMemory.current[f.rowId] = f.index;
     if (f.area !== 'rail') lastContentFocus.current = focus;
   }, [focus, parseFocus]);
+
+  useEffect(() => {
+    const f = parseFocus(focus);
+    if (f.area !== 'row') return;
+    const row = rows.find((item) => item.id === f.rowId);
+    if (!row) {
+      if (rows.length > 0) {
+        setFocus(`row:${rows[0].id}:0`);
+      } else {
+        setFocus('hero:play');
+      }
+      return;
+    }
+    if (f.index >= row.tiles.length) {
+      const nextIndex = Math.max(row.tiles.length - 1, 0);
+      setFocus(`row:${row.id}:${nextIndex}`);
+    }
+  }, [focus, parseFocus, rows]);
 
   const requestSidebarPeek = useCallback(() => {
     if (typeof window !== 'undefined') {

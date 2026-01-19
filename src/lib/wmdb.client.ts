@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable no-console */
+
 import type { DoubanSubjectDetail } from './types';
 
 type WmdbPayload = Record<string, unknown>;
@@ -48,7 +50,7 @@ function splitList(value: unknown): string[] {
   }
   if (typeof value === 'string') {
     return value
-      .split(/[\/,|;]/)
+      .split(/[/,|;]/)
       .map((item) => item.trim())
       .filter(Boolean);
   }
