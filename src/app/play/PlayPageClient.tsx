@@ -4556,6 +4556,9 @@ export function PlayPageClient({
       precomputedVideoInfo={precomputedVideoInfo}
       providerCount={providerCount}
       searchStats={searchStats}
+      variant={isTvVariant ? 'tv' : 'default'}
+      episodeRuntimeLabel={mergedDurations[0]}
+      videoCover={videoCover}
     />
   );
 

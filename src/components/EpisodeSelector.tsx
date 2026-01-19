@@ -62,6 +62,12 @@ interface EpisodeSelectorProps {
     empty?: number;
     failed?: number;
   };
+  /** 布局变体 */
+  variant?: 'default' | 'tv';
+  /** 剧集时长显示 */
+  episodeRuntimeLabel?: string;
+  /** 封面图 */
+  videoCover?: string;
 }
 
 /**
@@ -82,7 +88,11 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
   precomputedVideoInfo,
   providerCount = 0,
   searchStats = { total: 0, found: 0, notFound: 0 },
+  variant = 'default',
+  episodeRuntimeLabel,
+  videoCover,
 }) => {
+  const isTvVariant = variant === 'tv';
   const parseChineseNumber = useCallback((text: string): number | null => {
     const map: Record<string, number> = {
       一: 1,
@@ -399,6 +409,14 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#e5e7eb" offset="0%"/><stop stop-color="#cbd5e1" offset="100%"/></linearGradient></defs><rect width="120" height="180" fill="url(#g)"/><text x="50%" y="50%" fill="#475569" font-size="14" font-family="Arial, sans-serif" font-weight="600" text-anchor="middle" dominant-baseline="middle">${label}</text></svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }, []);
+
+  const seriesPoster = useMemo(() => {
+    if (videoCover) return videoCover;
+    const fromSource = availableSources.find((source) => source.poster)?.poster;
+    return fromSource || buildPosterPlaceholder(videoTitle);
+  }, [availableSources, buildPosterPlaceholder, videoCover, videoTitle]);
+
+  const runtimeText = episodeRuntimeLabel || '--';
 
   // 当分页切换时，将激活的分页标签滚动到视口中间
   useEffect(() => {
@@ -811,11 +829,21 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     currentStart + episodesPerPage - 1,
     totalEpisodes
   );
+  const episodeNumbers = useMemo(() => {
+    const len = currentEnd - currentStart + 1;
+    return Array.from({ length: len }, (_, i) =>
+      descending ? currentEnd - i : currentStart + i
+    );
+  }, [currentEnd, currentStart, descending]);
 
   return (
     <div
       id='source-panel'
-      className='w-full min-w-0 md:ml-0 px-2 sm:px-3 py-0 h-full rounded-xl bg-black/10 dark:bg-white/5 flex flex-col border border-white/0 dark:border-white/30 overflow-hidden'
+      className={`w-full min-w-0 md:ml-0 px-2 sm:px-3 py-0 rounded-xl flex flex-col ${
+        isTvVariant
+          ? 'bg-white/5 border border-white/10 overflow-visible'
+          : 'h-full bg-black/10 dark:bg-white/5 border border-white/0 dark:border-white/30 overflow-hidden'
+      }`}
     >
       {/* 主要的 Tab 切换 - 无缝融入设计 */}
       <div className='flex mb-1 -mx-2 sm:-mx-3 flex-shrink-0 relative z-[10]'>
@@ -904,32 +932,62 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             </button>
           </div>
 
-          {/* 集数网格 */}
-          <div className='grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] auto-rows-[40px] gap-x-3 gap-y-3 overflow-y-auto h-full pb-4'>
-            {(() => {
-              const len = currentEnd - currentStart + 1;
-              const episodes = Array.from({ length: len }, (_, i) =>
-                descending ? currentEnd - i : currentStart + i
-              );
-              return episodes;
-            })().map((episodeNumber) => {
-              const isActive = episodeNumber === value;
-              return (
-                <button
-                  key={episodeNumber}
-                  onClick={() => handleEpisodeClick(episodeNumber - 1)}
-                  className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
-                    ${
+          {/* 集数列表 */}
+          {isTvVariant ? (
+            <div className='flex gap-4 overflow-x-auto pb-4 pr-2'>
+              {episodeNumbers.map((episodeNumber) => {
+                const isActive = episodeNumber === value;
+                return (
+                  <button
+                    key={episodeNumber}
+                    onClick={() => handleEpisodeClick(episodeNumber - 1)}
+                    className={`tv-card group relative flex-shrink-0 w-[200px] sm:w-[220px] lg:w-[240px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
                       isActive
-                        ? 'bg-green-800 text-white shadow-lg shadow-green-800/25 dark:bg-green-700'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
-                    }`.trim()}
-                >
-                  {episodeNumber}
-                </button>
-              );
-            })}
-          </div>
+                        ? 'border-emerald-300/70 ring-2 ring-emerald-300/50'
+                        : 'border-white/10'
+                    }`}
+                    aria-current={isActive ? 'true' : undefined}
+                  >
+                    <div
+                      className='aspect-[16/9] w-full bg-black/50 bg-cover bg-center'
+                      style={{ backgroundImage: `url(${seriesPoster})` }}
+                    />
+                    <div className='px-3 py-3'>
+                      <div className='text-[10px] uppercase tracking-[0.35em] text-white/50'>
+                        Episode
+                      </div>
+                      <div className='mt-1 text-base font-semibold text-white'>
+                        E{episodeNumber}
+                      </div>
+                      <div className='mt-1 text-xs text-white/60'>
+                        Runtime {runtimeText}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className='grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] auto-rows-[40px] gap-x-3 gap-y-3 overflow-y-auto h-full pb-4'>
+              {episodeNumbers.map((episodeNumber) => {
+                const isActive = episodeNumber === value;
+                return (
+                  <button
+                    key={episodeNumber}
+                    onClick={() => handleEpisodeClick(episodeNumber - 1)}
+                    className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
+                      ${
+                        isActive
+                          ? 'bg-green-800 text-white shadow-lg shadow-green-800/25 dark:bg-green-700'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
+                      }`.trim()}
+                  >
+                    {episodeNumber}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
 

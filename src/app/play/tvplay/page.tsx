@@ -68,6 +68,7 @@ const TvPlayLayout = ({
   const playerFocusRef = useRef<HTMLButtonElement | null>(null);
   const sectionIndexRef = useRef({ header: 0, rail: 0 });
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [cinemaMode, setCinemaMode] = useState(false);
   const controlsTimerRef = useRef<number | null>(null);
 
   const showControlsTemporarily = useCallback(() => {
@@ -77,8 +78,12 @@ const TvPlayLayout = ({
     }
     controlsTimerRef.current = window.setTimeout(() => {
       setControlsVisible(false);
-    }, 3000);
+    }, 2000);
   }, []);
+
+  useEffect(() => {
+    setCinemaMode(!controlsVisible);
+  }, [controlsVisible]);
 
   const focusPlayer = useCallback(() => {
     playerFocusRef.current?.focus({ preventScroll: true });
@@ -301,7 +306,8 @@ const TvPlayLayout = ({
     };
   }, [focusPlayer, onTogglePlayback, showControlsTemporarily]);
 
-  const controlsVisibilityClass = controlsVisible
+  const showAuxInfo = controlsVisible || Boolean(error);
+  const controlsVisibilityClass = showAuxInfo
     ? 'opacity-100'
     : 'opacity-0 pointer-events-none lg:opacity-0 lg:pointer-events-none';
 
@@ -360,9 +366,11 @@ const TvPlayLayout = ({
                   {tt('Source', '来源', '來源')}: {displaySource}
                 </span>
               )}
-              <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
-              </span>
+              {showAuxInfo && (
+                <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                  {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
+                </span>
+              )}
               <button
                 type='button'
                 onClick={onDownload}
@@ -378,17 +386,15 @@ const TvPlayLayout = ({
 
         <section
           ref={panelGestureRef}
-          className={`grid gap-5 ${
-            hideSidePanels || isEpisodeSelectorCollapsed
-              ? 'grid-cols-1'
-              : 'lg:grid-cols-[minmax(0,3.2fr)_minmax(0,1.2fr)]'
-          }`}
+          className='grid gap-5 grid-rows-[auto_1fr_auto]'
         >
           <div className='space-y-4'>
             <div
               ref={playerSectionRef}
               data-tv-section='player'
-              className='relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden'
+              className={`relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden transition-all duration-500 ${
+                cinemaMode ? 'scale-[1.02] brightness-105' : ''
+              }`}
             >
               <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
                 <div
@@ -400,9 +406,11 @@ const TvPlayLayout = ({
                     {title}
                     {episodeLabel ? ` · ${episodeLabel}` : ''}
                   </div>
-                  <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
-                    {qualityLabel}
-                  </div>
+                  {showAuxInfo && (
+                    <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
+                      {qualityLabel}
+                    </div>
+                  )}
                 </div>
                 {error && (
                   <div
@@ -518,33 +526,37 @@ const TvPlayLayout = ({
             <div
               className={`flex flex-wrap items-center gap-2 text-xs text-white/70 transition-opacity duration-300 ${controlsVisibilityClass}`}
             >
-              {clientInfo && (
-                <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                  {clientInfo}
-                </span>
-              )}
-              {currentPlayingInfo && !currentPlayingInfo.hasError && (
+              {showAuxInfo && (
                 <>
-                  <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                    {tt('Resolution', '解析度', '解析度')}: {qualityLabel}
-                  </span>
-                  <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                    {tt('Load', '载入', '載入')}:{' '}
-                    {localizeInfoLabel(currentPlayingInfo.loadSpeed)}
-                  </span>
-                  <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                    {tt('Ping', '延迟', '延遲')}: {currentPlayingInfo.pingTime}ms
-                  </span>
+                  {clientInfo && (
+                    <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                      {clientInfo}
+                    </span>
+                  )}
+                  {currentPlayingInfo && !currentPlayingInfo.hasError && (
+                    <>
+                      <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                        {tt('Resolution', '解析度', '解析度')}: {qualityLabel}
+                      </span>
+                      <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                        {tt('Load', '载入', '載入')}:{' '}
+                        {localizeInfoLabel(currentPlayingInfo.loadSpeed)}
+                      </span>
+                      <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                        {tt('Ping', '延迟', '延遲')}: {currentPlayingInfo.pingTime}ms
+                      </span>
+                    </>
+                  )}
+                  {introTags.map((tag, idx) => (
+                    <span
+                      key={`${tag}-${idx}`}
+                      className='px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60'
+                    >
+                      {tag}
+                    </span>
+                  ))}
                 </>
               )}
-              {introTags.map((tag, idx) => (
-                <span
-                  key={`${tag}-${idx}`}
-                  className='px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60'
-                >
-                  {tag}
-                </span>
-              ))}
             </div>
 
             <div
@@ -563,7 +575,7 @@ const TvPlayLayout = ({
               data-tv-section='rail'
               className={`tv-episode-rail rounded-[28px] border border-white/15 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
                 isEpisodeSelectorCollapsed
-                  ? 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto lg:max-w-[72px]'
+                  ? 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto lg:max-h-[88px] lg:overflow-hidden'
                   : 'opacity-100'
               } ${isLowEndTV ? 'bg-black/50' : 'bg-white/5 backdrop-blur'} ${controlsVisibilityClass}`}
             >
@@ -591,7 +603,9 @@ const TvPlayLayout = ({
                   </button>
                 )}
               </div>
-              <div className='h-[62vh] overflow-hidden'>{episodeSelector}</div>
+              <div className='flex gap-4 overflow-x-auto py-3 px-2'>
+                {episodeSelector}
+              </div>
             </aside>
           )}
         </section>
@@ -626,18 +640,37 @@ const TvPlayLayout = ({
             transform: translateX(45%);
           }
         }
+        :global([data-tv-section='header'] button),
+        :global([data-tv-section='header'] a),
+        :global(.tv-episode-rail button),
+        :global(.tv-episode-rail a),
+        :global(.tv-player-focus) {
+          transition: transform 120ms ease, box-shadow 120ms ease;
+        }
         :global([data-tv-section='header'] button:focus-visible),
         :global([data-tv-section='header'] a:focus-visible),
         :global(.tv-episode-rail button:focus-visible),
         :global(.tv-episode-rail a:focus-visible) {
           outline: none;
-          box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.9),
-            0 0 0 4px rgba(3, 7, 18, 0.85);
+          transform: scale(1.05);
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
+            0 8px 24px rgba(0, 0, 0, 0.6);
         }
         :global(.tv-player-focus:focus-visible) {
           outline: none;
-          box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.9),
-            0 0 0 4px rgba(3, 7, 18, 0.85);
+          transform: scale(1.05);
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
+            0 8px 24px rgba(0, 0, 0, 0.6);
+        }
+        :global(.tv-card) {
+          transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 180ms ease;
+          will-change: transform;
+        }
+        :global(.tv-card:focus-visible) {
+          outline: none;
+          transform: scale(1.08) translateY(-4px);
+          box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
         }
       `}</style>
     </div>
