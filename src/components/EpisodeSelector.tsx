@@ -903,13 +903,15 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           </div>
         )}
         <div className='flex gap-4 overflow-x-auto px-2 pb-2' data-tv-scroll='row'>
-          {episodeNumbers.map((episodeNumber) => {
+          {episodeNumbers.map((episodeNumber, index) => {
             const isActive = episodeNumber === value;
             return (
               <button
                 key={episodeNumber}
                 type='button'
                 data-focusable='true'
+                data-tv-focusable='true'
+                data-tv-index={index}
                 onClick={() => handleEpisodeClick(episodeNumber - 1)}
                 className={`tv-card ${
                   motionSafe ? '' : 'tv-card-lite'

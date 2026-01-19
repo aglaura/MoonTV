@@ -15,6 +15,7 @@ import {
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
+import { VirtualizedRow } from '@/components/VirtualizedRow';
 import { processImageUrl } from '@/lib/utils';
 
 const tvFont = Space_Grotesk({
@@ -34,11 +35,28 @@ const useSpatialNavigation = (
   rowFocusMap?: MutableRefObject<Map<string, HTMLElement>>
 ) => {
   useEffect(() => {
+    let cached: HTMLElement[] | null = null;
+    let cacheRaf = 0;
+    const scheduleCacheClear = () => {
+      if (cacheRaf) return;
+      if (typeof window === 'undefined') return;
+      cacheRaf = window.requestAnimationFrame(() => {
+        cached = null;
+        cacheRaf = 0;
+      });
+    };
+
     const getFocusable = (root: ParentNode = document): HTMLElement[] => {
-      return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
+      if (root === document && cached) return cached;
+      const list = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
         .filter((el) => el.getClientRects().length > 0);
+      if (root === document) {
+        cached = list;
+        scheduleCacheClear();
+      }
+      return list;
     };
 
     const findNext = (
@@ -125,15 +143,21 @@ const useSpatialNavigation = (
           if (targetRow) {
             const remembered =
               rowFocusMap?.current.get(targetRow.id || '') || null;
+            const rememberedValid =
+              remembered && document.contains(remembered) ? remembered : null;
             const fallback = getFocusable(targetRow)[0] || null;
-            const next = remembered ?? fallback;
+            const next = rememberedValid ?? fallback;
             if (next) {
               next.focus({ preventScroll: true });
               onFocusMove?.(next, dir);
               return;
             }
           }
+          onEdge?.(dir);
+          return;
         }
+        onEdge?.(dir);
+        return;
       }
 
       const next = findNext(active, dir);
@@ -147,7 +171,12 @@ const useSpatialNavigation = (
     };
 
     window.addEventListener('keydown', onKey, { passive: false });
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (cacheRaf) {
+        window.cancelAnimationFrame(cacheRaf);
+      }
+    };
   }, [onEdge, onFocusMove, onNavigate, rowFocusMap]);
 };
 
@@ -590,8 +619,13 @@ const TvPlayLayout = ({
               rowId='tv-row-recommendations'
               title={tt('More like this', '更多推荐', '更多推薦')}
             >
-              <div className='flex gap-4 overflow-x-auto px-2 pb-2' data-tv-scroll='row'>
-                {tmdbRecommendations.map((rec) => {
+              <VirtualizedRow
+                items={tmdbRecommendations}
+                itemWidth={260}
+                gap={16}
+                overscan={4}
+                className='px-2 pb-2'
+                renderItem={(rec, index) => {
                   const titleText = rec?.name || rec?.title || '';
                   const imagePath = rec?.backdrop_path || rec?.poster_path || '';
                   const imageBase = imagePath
@@ -604,9 +638,10 @@ const TvPlayLayout = ({
                     : '';
                   return (
                     <button
-                      key={rec?.id ?? titleText}
                       type='button'
                       data-focusable='true'
+                      data-tv-focusable='true'
+                      data-tv-index={index}
                       className={`tv-card ${
                         motionSafe ? '' : 'tv-card-lite'
                       } w-[260px] shrink-0 rounded-xl overflow-hidden bg-black/40 border border-white/10 text-left`}
@@ -629,8 +664,8 @@ const TvPlayLayout = ({
                       </div>
                     </button>
                   );
-                })}
-              </div>
+                }}
+              />
             </TvRow>
           )}
         </div>
