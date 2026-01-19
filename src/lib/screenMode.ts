@@ -89,22 +89,30 @@ export function detectDeviceInfo(): DeviceInfo {
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
   const isWindows = /windows/i.test(ua);
+  const isMac = /macintosh|mac os x/i.test(ua);
   const isChromebook = /CrOS/i.test(ua);
   const isLinuxDesktop =
     !/android|windows|iphone|ipad|ipod|macintosh|mac os x|cros/i.test(ua) &&
     /linux/i.test(ua);
   const isOtherPlatform =
-    !isAndroid && !isIOS && !isWindows && !/macintosh|mac os x/i.test(ua);
-  const isTV =
-    detectTV(ua, uaData) ||
-    // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
-    isLinuxDesktop ||
-    // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
-    isOtherPlatform ||
-    // Android + not mobile + non-Chromebook = likely TV/box.
-    (isAndroid && uaData?.mobile === false && !isChromebook) ||
-    // Fallback heuristic: large Android screens without touch are likely TVs.
-    (isAndroid && Math.max(w, h) >= 1280 && !hasTouch);
+    !isAndroid && !isIOS && !isWindows && !isMac;
+  let isTV = false;
+  if (isWindows || isIOS || isMac) {
+    isTV = false;
+  } else if (w >= 3600) {
+    isTV = true;
+  } else {
+    isTV =
+      detectTV(ua, uaData) ||
+      // Treat Linux desktop browsers as TV mode (kiosk/HTPC cases).
+      isLinuxDesktop ||
+      // Anything not Android/Windows/iOS/macOS → assume TV (kiosk/embedded).
+      isOtherPlatform ||
+      // Android + not mobile + non-Chromebook = likely TV/box.
+      (isAndroid && uaData?.mobile === false && !isChromebook) ||
+      // Fallback heuristic: large Android screens without touch are likely TVs.
+      (isAndroid && Math.max(w, h) >= 1280 && !hasTouch);
+  }
   const browser = detectBrowser(ua);
 
   const smallestWidth = Math.min(w, h);
