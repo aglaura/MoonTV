@@ -34,14 +34,17 @@ const useSpatialNavigation = (
   rowFocusMap?: MutableRefObject<Map<string, HTMLElement>>
 ) => {
   useEffect(() => {
-    const getFocusable = (root: ParentNode = document) => {
+    const getFocusable = (root: ParentNode = document): HTMLElement[] => {
       return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
         .filter((el) => el.getClientRects().length > 0);
     };
 
-    const findNext = (current: HTMLElement, direction: Direction) => {
+    const findNext = (
+      current: HTMLElement,
+      direction: Direction
+    ): HTMLElement | null => {
       const currentRect = current.getBoundingClientRect();
       const currentCenterX = currentRect.left + currentRect.width / 2;
       const currentCenterY = currentRect.top + currentRect.height / 2;
