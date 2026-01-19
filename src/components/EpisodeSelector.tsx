@@ -835,6 +835,13 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       descending ? currentEnd - i : currentStart + i
     );
   }, [currentEnd, currentStart, descending]);
+  const isLowEndTV = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const cores = navigator.hardwareConcurrency || 0;
+    const ua = navigator.userAgent || '';
+    return (cores > 0 && cores <= 4) || /Amlogic|MTK|Android TV/i.test(ua);
+  }, []);
+  const motionSafe = !isLowEndTV;
 
   if (isTvVariant) {
     return (
@@ -895,7 +902,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
             )}
           </div>
         )}
-        <div className='flex gap-4 overflow-x-auto px-2 pb-2'>
+        <div className='flex gap-4 overflow-x-auto px-2 pb-2' data-tv-scroll='row'>
           {episodeNumbers.map((episodeNumber) => {
             const isActive = episodeNumber === value;
             return (
@@ -904,7 +911,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                 type='button'
                 data-focusable='true'
                 onClick={() => handleEpisodeClick(episodeNumber - 1)}
-                className={`tv-card group relative flex-shrink-0 w-[220px] sm:w-[240px] lg:w-[260px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
+                className={`tv-card ${
+                  motionSafe ? '' : 'tv-card-lite'
+                } group relative flex-shrink-0 w-[220px] sm:w-[240px] lg:w-[260px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
                   isActive
                     ? 'border-emerald-300/70 ring-2 ring-emerald-300/50'
                     : 'border-white/10'

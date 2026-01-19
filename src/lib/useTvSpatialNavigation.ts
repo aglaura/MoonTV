@@ -61,6 +61,17 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
     if (!enabled) return;
 
     const onKey = (event: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active) return;
+      if (isEditable(active)) return;
+      if (isWithinManualNav(active)) return;
+
+      if (event.key === 'Enter') {
+        active.click();
+        event.preventDefault();
+        return;
+      }
+
       const map: Record<string, Direction> = {
         ArrowUp: 'up',
         ArrowDown: 'down',
@@ -69,11 +80,6 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       };
       const dir = map[event.key];
       if (!dir) return;
-
-      const active = document.activeElement as HTMLElement | null;
-      if (!active) return;
-      if (isEditable(active)) return;
-      if (isWithinManualNav(active)) return;
 
       const focusables = Array.from(
         document.querySelectorAll<HTMLElement>(focusableSelector)

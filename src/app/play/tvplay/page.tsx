@@ -9,8 +9,8 @@ import {
   useRef,
   useState,
   type FocusEvent,
+  type MutableRefObject,
   type ReactNode,
-  type RefObject,
 } from 'react';
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
@@ -28,17 +28,14 @@ const focusableSelector =
   '[data-focusable="true"], [data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
 
 const useSpatialNavigation = (
-  rootRef: RefObject<HTMLElement>,
   onNavigate?: () => void,
-  onFocusMove?: (el: HTMLElement) => void,
-  onEdge?: (direction: Direction) => void
+  onFocusMove?: (el: HTMLElement, direction: Direction) => void,
+  onEdge?: (direction: Direction) => void,
+  rowFocusMap?: MutableRefObject<Map<string, HTMLElement>>
 ) => {
   useEffect(() => {
-    const getFocusable = () => {
-      if (!rootRef.current) return [];
-      return Array.from(
-        rootRef.current.querySelectorAll<HTMLElement>(focusableSelector)
-      )
+    const getFocusable = (root: ParentNode = document) => {
+      return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
         .filter((el) => el.getClientRects().length > 0);
@@ -90,13 +87,8 @@ const useSpatialNavigation = (
         ArrowLeft: 'left',
         ArrowRight: 'right',
       };
-      const dir = dirMap[e.key];
-      if (!dir) return;
-
       const active = document.activeElement as HTMLElement | null;
-      if (!active || !rootRef.current || !rootRef.current.contains(active)) {
-        return;
-      }
+      if (!active) return;
 
       const tagName = active.tagName;
       if (
@@ -107,26 +99,66 @@ const useSpatialNavigation = (
       ) {
         return;
       }
+      if (e.key === 'Enter') {
+        active.click();
+        e.preventDefault();
+        return;
+      }
+      const dir = dirMap[e.key];
+      if (!dir) return;
 
       onNavigate?.();
       e.preventDefault();
+
+      if (dir === 'up' || dir === 'down') {
+        const activeRow = active.closest<HTMLElement>('[data-tv-row]');
+        if (activeRow) {
+          const rows = Array.from(
+            document.querySelectorAll<HTMLElement>('[data-tv-row]')
+          );
+          const currentIdx = rows.indexOf(activeRow);
+          const targetIdx = dir === 'down' ? currentIdx + 1 : currentIdx - 1;
+          const targetRow = rows[targetIdx];
+          if (targetRow) {
+            const remembered =
+              rowFocusMap?.current.get(targetRow.id || '') || null;
+            const fallback = getFocusable(targetRow)[0] || null;
+            const next = remembered ?? fallback;
+            if (next) {
+              next.focus({ preventScroll: true });
+              onFocusMove?.(next, dir);
+              return;
+            }
+          }
+        }
+      }
+
       const next = findNext(active, dir);
       if (next) {
         next.focus({ preventScroll: true });
-        onFocusMove?.(next);
-      } else {
-        onEdge?.(dir);
+        onFocusMove?.(next, dir);
+        return;
       }
+
+      onEdge?.(dir);
     };
 
     window.addEventListener('keydown', onKey, { passive: false });
     return () => window.removeEventListener('keydown', onKey);
-  }, [onEdge, onFocusMove, onNavigate, rootRef]);
+  }, [onEdge, onFocusMove, onNavigate, rowFocusMap]);
 };
 
-const TvRow = ({ title, children }: { title: string; children: ReactNode }) => {
+const TvRow = ({
+  rowId,
+  title,
+  children,
+}: {
+  rowId: string;
+  title: string;
+  children: ReactNode;
+}) => {
   return (
-    <section className='space-y-3'>
+    <section id={rowId} data-tv-row={rowId} className='space-y-3'>
       <h2 className='px-2 text-sm uppercase tracking-[0.3em] text-white/60'>
         {title}
       </h2>
@@ -182,8 +214,10 @@ const TvPlayLayout = ({
     synopsisText && synopsisText.trim().length > 0
       ? convertToTraditional(synopsisText) || synopsisText
       : tt('No synopsis available.', '暂无简介。', '暫無簡介。');
+  const motionSafe = !isLowEndTV;
   const rootRef = useRef<HTMLDivElement | null>(null);
   const playerFocusRef = useRef<HTMLButtonElement | null>(null);
+  const rowFocusMap = useRef<Map<string, HTMLElement>>(new Map());
   const [controlsVisible, setControlsVisible] = useState(true);
   const [cinemaMode, setCinemaMode] = useState(false);
   const controlsTimerRef = useRef<number | null>(null);
@@ -198,14 +232,28 @@ const TvPlayLayout = ({
     }, 2000);
   }, []);
 
-  const centerFocusInView = useCallback((el: HTMLElement | null) => {
+  const rememberRowFocus = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const row = el.closest<HTMLElement>('[data-tv-row]');
+    if (!row?.id) return;
+    rowFocusMap.current.set(row.id, el);
+  }, []);
+
+  const centerFocusInView = useCallback((el: HTMLElement | null, direction?: Direction) => {
     if (!el || !rootRef.current || !rootRef.current.contains(el)) return;
+    rememberRowFocus(el);
     try {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     } catch {
       el.scrollIntoView();
     }
-  }, []);
+    if (direction === 'right') {
+      const container = el.closest<HTMLElement>('[data-tv-scroll]');
+      if (container) {
+        container.scrollLeft += 80;
+      }
+    }
+  }, [rememberRowFocus]);
 
   const handleEdge = useCallback((direction: Direction) => {
     if (direction !== 'left') return;
@@ -217,7 +265,12 @@ const TvPlayLayout = ({
     first?.focus({ preventScroll: true });
   }, []);
 
-  useSpatialNavigation(rootRef, showControlsTemporarily, centerFocusInView, handleEdge);
+  useSpatialNavigation(
+    showControlsTemporarily,
+    centerFocusInView,
+    handleEdge,
+    rowFocusMap
+  );
 
   const handleRootFocus = useCallback(
     (event: FocusEvent<HTMLElement>) => {
@@ -292,7 +345,7 @@ const TvPlayLayout = ({
         data-tv-nav='manual'
         className='relative z-10 px-[4vw] py-[3vh] space-y-10 animate-[tvFade_0.6s_ease]'
       >
-        <section className='space-y-5'>
+        <section id='tv-row-hero' data-tv-row='tv-row-hero' className='space-y-5'>
           <div className={`transition-opacity duration-300 ${controlsVisibilityClass}`}>
             <header className='flex flex-wrap items-center justify-between gap-6'>
               <div className='flex items-center gap-4'>
@@ -526,12 +579,15 @@ const TvPlayLayout = ({
         </section>
 
         <div className='space-y-8'>
-          <TvRow title={tt('Episodes', '剧集', '劇集')}>
+          <TvRow rowId='tv-row-episodes' title={tt('Episodes', '剧集', '劇集')}>
             {episodeSelector}
           </TvRow>
           {tmdbRecommendations.length > 0 && (
-            <TvRow title={tt('More like this', '更多推荐', '更多推薦')}>
-              <div className='flex gap-4 overflow-x-auto px-2 pb-2'>
+            <TvRow
+              rowId='tv-row-recommendations'
+              title={tt('More like this', '更多推荐', '更多推薦')}
+            >
+              <div className='flex gap-4 overflow-x-auto px-2 pb-2' data-tv-scroll='row'>
                 {tmdbRecommendations.map((rec) => {
                   const titleText = rec?.name || rec?.title || '';
                   const imagePath = rec?.backdrop_path || rec?.poster_path || '';
@@ -548,7 +604,9 @@ const TvPlayLayout = ({
                       key={rec?.id ?? titleText}
                       type='button'
                       data-focusable='true'
-                      className='tv-card w-[260px] shrink-0 rounded-xl overflow-hidden bg-black/40 border border-white/10 text-left'
+                      className={`tv-card ${
+                        motionSafe ? '' : 'tv-card-lite'
+                      } w-[260px] shrink-0 rounded-xl overflow-hidden bg-black/40 border border-white/10 text-left`}
                     >
                       <div
                         className='aspect-video w-full bg-black/50 bg-cover bg-center'
@@ -627,6 +685,10 @@ const TvPlayLayout = ({
           transform: scale(1.08) translateY(-4px);
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7),
             0 0 0 3px rgba(255, 255, 255, 0.9);
+        }
+        :global(.tv-card-lite:focus-visible) {
+          transform: none;
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9);
         }
       `}</style>
     </div>
