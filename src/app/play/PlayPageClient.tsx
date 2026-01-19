@@ -2866,17 +2866,31 @@ export function PlayPageClient({
     if (!m3u8Content) return '';
 
     const lines = m3u8Content.split('\n');
-    const filteredLines = [];
+    const output: string[] = [];
+    let inAdBlock = false;
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i].trim();
 
-      if (!line.includes('#EXT-X-DISCONTINUITY')) {
-        filteredLines.push(line);
+      if (
+        line.startsWith('#EXT-X-CUE-OUT') ||
+        (line.startsWith('#EXT-X-DATERANGE') && line.includes('CLASS="ad"'))
+      ) {
+        inAdBlock = true;
+        continue;
       }
+
+      if (line.startsWith('#EXT-X-CUE-IN')) {
+        inAdBlock = false;
+        continue;
+      }
+
+      if (inAdBlock) continue;
+
+      output.push(lines[i]);
     }
 
-    return filteredLines.join('\n');
+    return output.join('\n');
   }
 
   class CustomHlsJsLoader extends Hls.DefaultConfig.loader {

@@ -774,7 +774,7 @@ const TvPlayLayout = ({
         :global(.tv-player-focus:focus),
         :global(.tv-player-focus:focus-visible) {
           outline: none;
-          transform: scale(1.05);
+          transform: scale(1.12);
           box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
             0 8px 24px rgba(0, 0, 0, 0.6);
         }
@@ -786,7 +786,7 @@ const TvPlayLayout = ({
         :global(.tv-card:focus),
         :global(.tv-card:focus-visible) {
           outline: none;
-          transform: scale(1.08) translateY(-4px);
+          transform: scale(1.16) translateY(-6px);
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7),
             0 0 0 3px rgba(255, 255, 255, 0.9);
         }
