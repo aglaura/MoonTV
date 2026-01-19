@@ -65,6 +65,7 @@ const TvPlayLayout = ({
   const headerRef = useRef<HTMLDivElement | null>(null);
   const playerSectionRef = useRef<HTMLDivElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
+  const episodeScrollRef = useRef<HTMLDivElement | null>(null);
   const playerFocusRef = useRef<HTMLButtonElement | null>(null);
   const sectionIndexRef = useRef({ header: 0, rail: 0 });
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -81,13 +82,28 @@ const TvPlayLayout = ({
     }, 2000);
   }, []);
 
+  const centerFocusInView = useCallback((el: HTMLElement | null) => {
+    if (!el) return;
+    const shouldCenter =
+      (episodeScrollRef.current &&
+        episodeScrollRef.current.contains(el)) ||
+      (playerSectionRef.current && playerSectionRef.current.contains(el));
+    if (!shouldCenter) return;
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    } catch {
+      el.scrollIntoView();
+    }
+  }, []);
+
   useEffect(() => {
     setCinemaMode(!controlsVisible);
   }, [controlsVisible]);
 
   const focusPlayer = useCallback(() => {
     playerFocusRef.current?.focus({ preventScroll: true });
-  }, []);
+    centerFocusInView(playerSectionRef.current ?? playerFocusRef.current);
+  }, [centerFocusInView]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -158,6 +174,9 @@ const TvPlayLayout = ({
       const stored = sectionIndexRef.current[section] ?? 0;
       const idx = Math.max(0, Math.min(list.length - 1, stored));
       list[idx]?.focus({ preventScroll: true });
+      if (section === 'rail') {
+        centerFocusInView(list[idx] ?? null);
+      }
       sectionIndexRef.current[section] = idx;
       return true;
     };
@@ -267,6 +286,7 @@ const TvPlayLayout = ({
           const next = findNextByDirection(list, activeEl, direction);
           if (next) {
             next.focus({ preventScroll: true });
+            centerFocusInView(next);
             return;
           }
         }
@@ -291,6 +311,7 @@ const TvPlayLayout = ({
         const next = findNextByDirection(list, activeEl, direction);
         if (next) {
           next.focus({ preventScroll: true });
+          centerFocusInView(next);
           updateSectionIndex('rail', list, next);
           return;
         }
@@ -304,7 +325,7 @@ const TvPlayLayout = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [focusPlayer, onTogglePlayback, showControlsTemporarily]);
+  }, [centerFocusInView, focusPlayer, onTogglePlayback, showControlsTemporarily]);
 
   const showAuxInfo = controlsVisible || Boolean(error);
   const controlsVisibilityClass = showAuxInfo
@@ -392,6 +413,9 @@ const TvPlayLayout = ({
             <div
               ref={playerSectionRef}
               data-tv-section='player'
+              onFocusCapture={(event) =>
+                centerFocusInView(event.target as HTMLElement)
+              }
               className={`relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden transition-all duration-500 ${
                 cinemaMode ? 'scale-[1.02] brightness-105' : ''
               }`}
@@ -603,7 +627,13 @@ const TvPlayLayout = ({
                   </button>
                 )}
               </div>
-              <div className='flex gap-4 overflow-x-auto py-3 px-2'>
+              <div
+                ref={episodeScrollRef}
+                onFocusCapture={(event) =>
+                  centerFocusInView(event.target as HTMLElement)
+                }
+                className='flex gap-4 overflow-x-auto py-3 px-2'
+              >
                 {episodeSelector}
               </div>
             </aside>
