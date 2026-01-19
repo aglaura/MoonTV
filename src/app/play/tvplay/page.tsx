@@ -1,7 +1,7 @@
 'use client';
 
 import { Space_Grotesk } from 'next/font/google';
-import { Suspense } from 'react';
+import { Suspense, useCallback, useEffect, useRef } from 'react';
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/page';
 import { BackButton } from '@/components/BackButton';
@@ -26,6 +26,7 @@ const TvPlayLayout = ({
   downloadButtonLabel,
   downloadButtonDisabled,
   onDownload,
+  onTogglePlayback,
   artRef,
   playerHeightClass,
   forceRotate,
@@ -55,6 +56,211 @@ const TvPlayLayout = ({
     synopsisText && synopsisText.trim().length > 0
       ? convertToTraditional(synopsisText) || synopsisText
       : tt('No synopsis available.', '暂无简介。', '暫無簡介。');
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const playerSectionRef = useRef<HTMLDivElement | null>(null);
+  const railRef = useRef<HTMLDivElement | null>(null);
+  const playerFocusRef = useRef<HTMLButtonElement | null>(null);
+  const sectionIndexRef = useRef({ header: 0, rail: 0 });
+
+  const focusPlayer = useCallback(() => {
+    playerFocusRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      focusPlayer();
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [focusPlayer]);
+
+  useEffect(() => {
+    const focusableSelector =
+      '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
+    const getFocusable = (root: HTMLElement | null) => {
+      if (!root) return [];
+      return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
+        .filter((el) => !el.hasAttribute('disabled'))
+        .filter((el) => el.getAttribute('aria-disabled') !== 'true')
+        .filter((el) => el.getClientRects().length > 0);
+    };
+    const getSection = (el: HTMLElement | null) => {
+      if (!el) return null;
+      if (headerRef.current && headerRef.current.contains(el)) return 'header';
+      if (railRef.current && railRef.current.contains(el)) return 'rail';
+      if (playerSectionRef.current && playerSectionRef.current.contains(el))
+        return 'player';
+      return null;
+    };
+    const updateSectionIndex = (
+      section: 'header' | 'rail',
+      list: HTMLElement[],
+      activeEl: HTMLElement
+    ) => {
+      const idx = list.indexOf(activeEl);
+      if (idx >= 0) {
+        sectionIndexRef.current[section] = idx;
+      }
+      return idx;
+    };
+    const focusSection = (section: 'header' | 'player' | 'rail') => {
+      if (section === 'player') {
+        focusPlayer();
+        return true;
+      }
+      const root = section === 'header' ? headerRef.current : railRef.current;
+      const list = getFocusable(root);
+      if (!list.length) return false;
+      const stored = sectionIndexRef.current[section] ?? 0;
+      const idx = Math.max(0, Math.min(list.length - 1, stored));
+      list[idx]?.focus({ preventScroll: true });
+      sectionIndexRef.current[section] = idx;
+      return true;
+    };
+    const findNextByDirection = (
+      list: HTMLElement[],
+      current: HTMLElement,
+      direction: 'left' | 'right' | 'up' | 'down'
+    ) => {
+      const currentRect = current.getBoundingClientRect();
+      const currentCenterX = currentRect.left + currentRect.width / 2;
+      const currentCenterY = currentRect.top + currentRect.height / 2;
+      let best: HTMLElement | null = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      list.forEach((el) => {
+        if (el === current) return;
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = centerX - currentCenterX;
+        const dy = centerY - currentCenterY;
+
+        if (direction === 'left' && dx >= -4) return;
+        if (direction === 'right' && dx <= 4) return;
+        if (direction === 'up' && dy >= -4) return;
+        if (direction === 'down' && dy <= 4) return;
+
+        const primary =
+          direction === 'left' || direction === 'right'
+            ? Math.abs(dx)
+            : Math.abs(dy);
+        const secondary =
+          direction === 'left' || direction === 'right'
+            ? Math.abs(dy)
+            : Math.abs(dx);
+        const score = primary * 1000 + secondary;
+        if (score < bestScore) {
+          best = el;
+          bestScore = score;
+        }
+      });
+
+      return best;
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (!activeEl) return;
+      const tagName = activeEl.tagName;
+      if (
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        activeEl.isContentEditable
+      ) {
+        return;
+      }
+
+      const section = getSection(activeEl);
+      if (!section) return;
+
+      const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
+        e.key
+      );
+      if (!isArrow && e.key !== 'Enter') return;
+      if (isArrow) e.preventDefault();
+
+      if (e.key === 'Enter') {
+        if (section === 'player' && activeEl === playerFocusRef.current) {
+          onTogglePlayback();
+          return;
+        }
+        activeEl.click();
+        return;
+      }
+
+      const direction =
+        e.key === 'ArrowLeft'
+          ? 'left'
+          : e.key === 'ArrowRight'
+          ? 'right'
+          : e.key === 'ArrowUp'
+          ? 'up'
+          : 'down';
+
+      if (section === 'header') {
+        const list = getFocusable(headerRef.current);
+        if (!list.length) return;
+        const idx = updateSectionIndex('header', list, activeEl);
+        if (e.key === 'ArrowDown') {
+          focusSection('player');
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          const delta = e.key === 'ArrowLeft' ? -1 : 1;
+          const nextIdx = Math.max(0, Math.min(list.length - 1, idx + delta));
+          list[nextIdx]?.focus({ preventScroll: true });
+          sectionIndexRef.current.header = nextIdx;
+        }
+        return;
+      }
+
+      if (section === 'player') {
+        const list = getFocusable(playerSectionRef.current);
+        if (list.length > 1) {
+          const next = findNextByDirection(list, activeEl, direction);
+          if (next) {
+            next.focus({ preventScroll: true });
+            return;
+          }
+        }
+        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+          focusSection('header');
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          focusSection('rail');
+          return;
+        }
+        return;
+      }
+
+      if (section === 'rail') {
+        const list = getFocusable(railRef.current);
+        if (!list.length) {
+          focusSection('player');
+          return;
+        }
+        updateSectionIndex('rail', list, activeEl);
+        const next = findNextByDirection(list, activeEl, direction);
+        if (next) {
+          next.focus({ preventScroll: true });
+          updateSectionIndex('rail', list, next);
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          focusSection('player');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [focusPlayer, onTogglePlayback]);
 
   return (
     <div className={`${tvFont.className} relative min-h-screen text-white`}>
@@ -63,7 +269,11 @@ const TvPlayLayout = ({
       <div className='absolute bottom-0 left-12 h-48 w-48 rounded-full bg-sky-400/15 blur-3xl animate-[tvFloat_11s_ease-in-out_infinite]' />
 
       <div className='relative z-10 px-[4vw] py-[3vh] space-y-5 animate-[tvFade_0.6s_ease]'>
-        <header className='flex flex-wrap items-center justify-between gap-6'>
+        <header
+          ref={headerRef}
+          data-tv-section='header'
+          className='flex flex-wrap items-center justify-between gap-6'
+        >
           <div className='flex items-center gap-4'>
             <div className='rounded-full bg-white/10 border border-white/20 p-1.5 shadow-lg'>
               <BackButton />
@@ -100,7 +310,8 @@ const TvPlayLayout = ({
               type='button'
               onClick={onDownload}
               disabled={downloadButtonDisabled}
-              className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition'
+              data-tv-focusable='true'
+              className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
             >
               {downloadButtonLabel}
             </button>
@@ -116,7 +327,11 @@ const TvPlayLayout = ({
           }`}
         >
           <div className='space-y-4'>
-            <div className='relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden'>
+            <div
+              ref={playerSectionRef}
+              data-tv-section='player'
+              className='relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden'
+            >
               <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
                 <div className='absolute top-3 left-3 z-[605] flex flex-wrap items-center gap-2 bg-black/65 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
                   <div className='text-sm font-semibold truncate max-w-[60%]'>
@@ -195,6 +410,15 @@ const TvPlayLayout = ({
                     forceRotate ? 'forced-rotate-player' : ''
                   }`}
                 />
+                <button
+                  ref={playerFocusRef}
+                  type='button'
+                  tabIndex={-1}
+                  aria-label={tt('Play or pause', '播放或暂停', '播放或暫停')}
+                  data-tv-focusable='true'
+                  onClick={onTogglePlayback}
+                  className='tv-player-focus absolute inset-0 z-[610] rounded-[28px] pointer-events-none'
+                />
 
                 {isVideoLoading && (
                   <div className='absolute inset-0 bg-black/85 backdrop-blur-sm rounded-[28px] flex items-center justify-center z-[500] transition-all duration-300'>
@@ -262,7 +486,9 @@ const TvPlayLayout = ({
 
           {!hideSidePanels && (
             <aside
-              className={`rounded-[28px] border border-white/15 bg-white/5 backdrop-blur p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
+              ref={railRef}
+              data-tv-section='rail'
+              className={`tv-episode-rail rounded-[28px] border border-white/15 bg-white/5 backdrop-blur p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
                 isEpisodeSelectorCollapsed
                   ? 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto lg:max-w-[72px]'
                   : 'opacity-100'
@@ -276,7 +502,8 @@ const TvPlayLayout = ({
                   <button
                     type='button'
                     onClick={onHideEpisodes}
-                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white'
+                    data-tv-focusable='true'
+                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
                   >
                     {tt('Hide', '收起', '收起')}
                   </button>
@@ -284,7 +511,8 @@ const TvPlayLayout = ({
                   <button
                     type='button'
                     onClick={onShowEpisodes}
-                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white'
+                    data-tv-focusable='true'
+                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
                   >
                     {tt('Show', '展开', '展開')}
                   </button>
@@ -324,6 +552,19 @@ const TvPlayLayout = ({
           50% {
             transform: translateX(45%);
           }
+        }
+        :global([data-tv-section='header'] button:focus-visible),
+        :global([data-tv-section='header'] a:focus-visible),
+        :global(.tv-episode-rail button:focus-visible),
+        :global(.tv-episode-rail a:focus-visible) {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.9),
+            0 0 0 4px rgba(3, 7, 18, 0.85);
+        }
+        :global(.tv-player-focus:focus-visible) {
+          outline: none;
+          box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.9),
+            0 0 0 4px rgba(3, 7, 18, 0.85);
         }
       `}</style>
     </div>

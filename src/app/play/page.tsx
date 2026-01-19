@@ -124,6 +124,7 @@ export type TvPlayLayoutProps = {
   downloadButtonLabel: string;
   downloadButtonDisabled: boolean;
   onDownload: () => void;
+  onTogglePlayback: () => void;
   artRef: RefObject<HTMLDivElement>;
   playerHeightClass: string;
   forceRotate: boolean;
@@ -153,6 +154,7 @@ export function PlayPageClient({
   TvLayout,
 }: PlayPageClientProps) {
   const { userLocale } = useUserLanguage();
+  const isTvVariant = variant === 'tv';
   const searchParams = useSearchParams();
   const configJsonBase = useMemo(() => {
     if (typeof window === 'undefined') return '';
@@ -2080,6 +2082,11 @@ export function PlayPageClient({
     tt,
     reportError,
   ]);
+  const handleTogglePlayback = useCallback(() => {
+    if (artPlayerRef.current) {
+      artPlayerRef.current.toggle();
+    }
+  }, []);
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
       ? `https://www.imdb.com/title/${imdbVideoId}/`
@@ -3294,6 +3301,12 @@ export function PlayPageClient({
       (e.target as HTMLElement).tagName === 'TEXTAREA'
     )
       return;
+    if (
+      isTvVariant &&
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
+    ) {
+      return;
+    }
 
     if (e.altKey && e.key === 'ArrowLeft') {
       if (detailRef.current && currentEpisodeIndexRef.current > 0) {
@@ -4080,7 +4093,6 @@ export function PlayPageClient({
     }
   }, [isFullscreen, actualPlaybackInfo, autoRotateToFit, unlockScreenOrientation]);
 
-  const isTvVariant = variant === 'tv';
   const layoutActivePath = isTvVariant ? '/play/tvplay' : '/play';
   const hideLayoutBars = isTvVariant ? true : hideNavInFullscreen;
 
@@ -4261,6 +4273,7 @@ export function PlayPageClient({
           downloadButtonLabel={downloadButtonLabel}
           downloadButtonDisabled={downloadButtonDisabled}
           onDownload={handleDownload}
+          onTogglePlayback={handleTogglePlayback}
           artRef={artRef}
           playerHeightClass={tvPlayerHeightClass}
           forceRotate={forceRotate}
