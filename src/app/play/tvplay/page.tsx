@@ -1,15 +1,136 @@
 'use client';
 
 import { Space_Grotesk } from 'next/font/google';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
+import { processImageUrl } from '@/lib/utils';
 
 const tvFont = Space_Grotesk({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
 });
+
+type Direction = 'up' | 'down' | 'left' | 'right';
+
+const focusableSelector =
+  '[data-focusable="true"], [data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
+
+const useSpatialNavigation = (
+  rootRef: RefObject<HTMLElement>,
+  onNavigate?: () => void,
+  onFocusMove?: (el: HTMLElement) => void
+) => {
+  useEffect(() => {
+    const getFocusable = () => {
+      if (!rootRef.current) return [];
+      return Array.from(
+        rootRef.current.querySelectorAll<HTMLElement>(focusableSelector)
+      )
+        .filter((el) => !el.hasAttribute('disabled'))
+        .filter((el) => el.getAttribute('aria-disabled') !== 'true')
+        .filter((el) => el.getClientRects().length > 0);
+    };
+
+    const findNext = (current: HTMLElement, direction: Direction) => {
+      const currentRect = current.getBoundingClientRect();
+      const currentCenterX = currentRect.left + currentRect.width / 2;
+      const currentCenterY = currentRect.top + currentRect.height / 2;
+      let best: HTMLElement | null = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      getFocusable().forEach((el) => {
+        if (el === current) return;
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = centerX - currentCenterX;
+        const dy = centerY - currentCenterY;
+
+        if (direction === 'left' && dx >= -4) return;
+        if (direction === 'right' && dx <= 4) return;
+        if (direction === 'up' && dy >= -4) return;
+        if (direction === 'down' && dy <= 4) return;
+
+        const primary =
+          direction === 'left' || direction === 'right'
+            ? Math.abs(dx)
+            : Math.abs(dy);
+        const secondary =
+          direction === 'left' || direction === 'right'
+            ? Math.abs(dy)
+            : Math.abs(dx);
+        const score = primary * 1000 + secondary;
+
+        if (score < bestScore) {
+          best = el;
+          bestScore = score;
+        }
+      });
+
+      return best;
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      const dirMap: Record<string, Direction> = {
+        ArrowUp: 'up',
+        ArrowDown: 'down',
+        ArrowLeft: 'left',
+        ArrowRight: 'right',
+      };
+      const dir = dirMap[e.key];
+      if (!dir) return;
+
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || !rootRef.current || !rootRef.current.contains(active)) {
+        return;
+      }
+
+      const tagName = active.tagName;
+      if (
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        active.isContentEditable
+      ) {
+        return;
+      }
+
+      onNavigate?.();
+      e.preventDefault();
+      const next = findNext(active, dir);
+      if (next) {
+        next.focus({ preventScroll: true });
+        onFocusMove?.(next);
+      }
+    };
+
+    window.addEventListener('keydown', onKey, { passive: false });
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onFocusMove, onNavigate, rootRef]);
+};
+
+const TvRow = ({ title, children }: { title: string; children: ReactNode }) => {
+  return (
+    <section className='space-y-3'>
+      <h2 className='px-2 text-sm uppercase tracking-[0.3em] text-white/60'>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+};
 
 const TvPlayLayout = ({
   title,
@@ -36,12 +157,8 @@ const TvPlayLayout = ({
   onTryNextSource,
   isVideoLoading,
   videoLoadingStage,
-  hideSidePanels,
-  isEpisodeSelectorCollapsed,
-  onShowEpisodes,
-  onHideEpisodes,
-  panelGestureRef,
   episodeSelector,
+  tmdbRecommendations,
   tt,
   convertToTraditional,
 }: TvPlayLayoutProps) => {
@@ -62,12 +179,8 @@ const TvPlayLayout = ({
     synopsisText && synopsisText.trim().length > 0
       ? convertToTraditional(synopsisText) || synopsisText
       : tt('No synopsis available.', '暂无简介。', '暫無簡介。');
-  const headerRef = useRef<HTMLDivElement | null>(null);
-  const playerSectionRef = useRef<HTMLDivElement | null>(null);
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const episodeScrollRef = useRef<HTMLDivElement | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const playerFocusRef = useRef<HTMLButtonElement | null>(null);
-  const sectionIndexRef = useRef({ header: 0, rail: 0 });
   const [controlsVisible, setControlsVisible] = useState(true);
   const [cinemaMode, setCinemaMode] = useState(false);
   const controlsTimerRef = useRef<number | null>(null);
@@ -83,12 +196,7 @@ const TvPlayLayout = ({
   }, []);
 
   const centerFocusInView = useCallback((el: HTMLElement | null) => {
-    if (!el) return;
-    const shouldCenter =
-      (episodeScrollRef.current &&
-        episodeScrollRef.current.contains(el)) ||
-      (playerSectionRef.current && playerSectionRef.current.contains(el));
-    if (!shouldCenter) return;
+    if (!el || !rootRef.current || !rootRef.current.contains(el)) return;
     try {
       el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     } catch {
@@ -96,13 +204,23 @@ const TvPlayLayout = ({
     }
   }, []);
 
+  useSpatialNavigation(rootRef, showControlsTemporarily, centerFocusInView);
+
+  const handleRootFocus = useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      showControlsTemporarily();
+      centerFocusInView(event.target as HTMLElement);
+    },
+    [centerFocusInView, showControlsTemporarily]
+  );
+
   useEffect(() => {
     setCinemaMode(!controlsVisible);
   }, [controlsVisible]);
 
   const focusPlayer = useCallback(() => {
     playerFocusRef.current?.focus({ preventScroll: true });
-    centerFocusInView(playerSectionRef.current ?? playerFocusRef.current);
+    centerFocusInView(playerFocusRef.current);
   }, [centerFocusInView]);
 
   useEffect(() => {
@@ -134,199 +252,6 @@ const TvPlayLayout = ({
     };
   }, [showControlsTemporarily]);
 
-  useEffect(() => {
-    const focusableSelector =
-      '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
-    const getFocusable = (root: HTMLElement | null): HTMLElement[] => {
-      if (!root) return [];
-      return Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
-        .filter((el) => !el.hasAttribute('disabled'))
-        .filter((el) => el.getAttribute('aria-disabled') !== 'true')
-        .filter((el) => el.getClientRects().length > 0);
-    };
-    const getSection = (el: HTMLElement | null) => {
-      if (!el) return null;
-      if (headerRef.current && headerRef.current.contains(el)) return 'header';
-      if (railRef.current && railRef.current.contains(el)) return 'rail';
-      if (playerSectionRef.current && playerSectionRef.current.contains(el))
-        return 'player';
-      return null;
-    };
-    const updateSectionIndex = (
-      section: 'header' | 'rail',
-      list: HTMLElement[],
-      activeEl: HTMLElement
-    ) => {
-      const idx = list.indexOf(activeEl);
-      if (idx >= 0) {
-        sectionIndexRef.current[section] = idx;
-      }
-      return idx;
-    };
-    const focusSection = (section: 'header' | 'player' | 'rail') => {
-      if (section === 'player') {
-        focusPlayer();
-        return true;
-      }
-      const root = section === 'header' ? headerRef.current : railRef.current;
-      const list = getFocusable(root);
-      if (!list.length) return false;
-      const stored = sectionIndexRef.current[section] ?? 0;
-      const idx = Math.max(0, Math.min(list.length - 1, stored));
-      list[idx]?.focus({ preventScroll: true });
-      if (section === 'rail') {
-        centerFocusInView(list[idx] ?? null);
-      }
-      sectionIndexRef.current[section] = idx;
-      return true;
-    };
-    const findNextByDirection = (
-      list: HTMLElement[],
-      current: HTMLElement,
-      direction: 'left' | 'right' | 'up' | 'down'
-    ): HTMLElement | null => {
-      const currentRect = current.getBoundingClientRect();
-      const currentCenterX = currentRect.left + currentRect.width / 2;
-      const currentCenterY = currentRect.top + currentRect.height / 2;
-      let best: HTMLElement | null = null;
-      let bestScore = Number.POSITIVE_INFINITY;
-
-      list.forEach((el) => {
-        if (el === current) return;
-        const rect = el.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        const dx = centerX - currentCenterX;
-        const dy = centerY - currentCenterY;
-
-        if (direction === 'left' && dx >= -4) return;
-        if (direction === 'right' && dx <= 4) return;
-        if (direction === 'up' && dy >= -4) return;
-        if (direction === 'down' && dy <= 4) return;
-
-        const primary =
-          direction === 'left' || direction === 'right'
-            ? Math.abs(dx)
-            : Math.abs(dy);
-        const secondary =
-          direction === 'left' || direction === 'right'
-            ? Math.abs(dy)
-            : Math.abs(dx);
-        const score = primary * 1000 + secondary;
-        if (score < bestScore) {
-          best = el;
-          bestScore = score;
-        }
-      });
-
-      return best;
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement as HTMLElement | null;
-      if (!activeEl) return;
-      const tagName = activeEl.tagName;
-      if (
-        tagName === 'INPUT' ||
-        tagName === 'TEXTAREA' ||
-        tagName === 'SELECT' ||
-        activeEl.isContentEditable
-      ) {
-        return;
-      }
-
-      const section = getSection(activeEl);
-      if (!section) return;
-
-      const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
-        e.key
-      );
-      if (!isArrow && e.key !== 'Enter') return;
-      showControlsTemporarily();
-      if (isArrow) e.preventDefault();
-
-      if (e.key === 'Enter') {
-        if (section === 'player' && activeEl === playerFocusRef.current) {
-          showControlsTemporarily();
-          onTogglePlayback();
-          return;
-        }
-        activeEl.click();
-        return;
-      }
-
-      const direction =
-        e.key === 'ArrowLeft'
-          ? 'left'
-          : e.key === 'ArrowRight'
-          ? 'right'
-          : e.key === 'ArrowUp'
-          ? 'up'
-          : 'down';
-
-      if (section === 'header') {
-        const list = getFocusable(headerRef.current);
-        if (!list.length) return;
-        const idx = updateSectionIndex('header', list, activeEl);
-        if (e.key === 'ArrowDown') {
-          focusSection('player');
-          return;
-        }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-          const delta = e.key === 'ArrowLeft' ? -1 : 1;
-          const nextIdx = Math.max(0, Math.min(list.length - 1, idx + delta));
-          list[nextIdx]?.focus({ preventScroll: true });
-          sectionIndexRef.current.header = nextIdx;
-        }
-        return;
-      }
-
-      if (section === 'player') {
-        const list = getFocusable(playerSectionRef.current);
-        if (list.length > 1) {
-          const next = findNextByDirection(list, activeEl, direction);
-          if (next) {
-            next.focus({ preventScroll: true });
-            centerFocusInView(next);
-            return;
-          }
-        }
-        if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-          focusSection('header');
-          return;
-        }
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-          focusSection('rail');
-          return;
-        }
-        return;
-      }
-
-      if (section === 'rail') {
-        const list = getFocusable(railRef.current);
-        if (!list.length) {
-          focusSection('player');
-          return;
-        }
-        updateSectionIndex('rail', list, activeEl);
-        const next = findNextByDirection(list, activeEl, direction);
-        if (next) {
-          next.focus({ preventScroll: true });
-          centerFocusInView(next);
-          updateSectionIndex('rail', list, next);
-          return;
-        }
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-          focusSection('player');
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown, { passive: false });
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [centerFocusInView, focusPlayer, onTogglePlayback, showControlsTemporarily]);
-
   const showAuxInfo = controlsVisible || Boolean(error);
   const controlsVisibilityClass = showAuxInfo
     ? 'opacity-100'
@@ -348,75 +273,64 @@ const TvPlayLayout = ({
         </>
       )}
 
-      <div className='relative z-10 px-[4vw] py-[3vh] space-y-5 animate-[tvFade_0.6s_ease]'>
-        <div
-          className={`transition-opacity duration-300 ${controlsVisibilityClass}`}
-          onFocusCapture={showControlsTemporarily}
-        >
-          <header
-            ref={headerRef}
-            data-tv-section='header'
-            className='flex flex-wrap items-center justify-between gap-6'
-          >
-            <div className='flex items-center gap-4'>
-              <div className='rounded-full bg-white/10 border border-white/20 p-1.5 shadow-lg'>
-                <BackButton />
-              </div>
-              <div className='space-y-1'>
-                <div className='text-[11px] uppercase tracking-[0.4em] text-white/50'>
-                  {tt('Now playing', '正在播放', '正在播放')}
+      <div
+        ref={rootRef}
+        onFocusCapture={handleRootFocus}
+        className='relative z-10 px-[4vw] py-[3vh] space-y-10 animate-[tvFade_0.6s_ease]'
+      >
+        <section className='space-y-5'>
+          <div className={`transition-opacity duration-300 ${controlsVisibilityClass}`}>
+            <header className='flex flex-wrap items-center justify-between gap-6'>
+              <div className='flex items-center gap-4'>
+                <div className='rounded-full bg-white/10 border border-white/20 p-1.5 shadow-lg'>
+                  <BackButton />
                 </div>
-                <div className='flex flex-wrap items-center gap-3'>
-                  <h1 className='text-2xl md:text-3xl font-semibold tracking-tight'>
-                    {title || tt('Untitled', '未命名', '未命名')}
-                  </h1>
-                  {episodeLabel && (
-                    <span className='text-[10px] uppercase tracking-[0.35em] px-3 py-1 rounded-full bg-white/10 border border-white/20'>
-                      {episodeLabel}
-                    </span>
+                <div className='space-y-1'>
+                  <div className='text-[11px] uppercase tracking-[0.4em] text-white/50'>
+                    {tt('Now playing', '正在播放', '正在播放')}
+                  </div>
+                  <div className='flex flex-wrap items-center gap-3'>
+                    <h1 className='text-2xl md:text-3xl font-semibold tracking-tight'>
+                      {title || tt('Untitled', '未命名', '未命名')}
+                    </h1>
+                    {episodeLabel && (
+                      <span className='text-[10px] uppercase tracking-[0.35em] px-3 py-1 rounded-full bg-white/10 border border-white/20'>
+                        {episodeLabel}
+                      </span>
+                    )}
+                  </div>
+                  {englishTitle && (
+                    <div className='text-sm text-white/60'>{englishTitle}</div>
                   )}
                 </div>
-                {englishTitle && (
-                  <div className='text-sm text-white/60'>{englishTitle}</div>
-                )}
               </div>
-            </div>
-            <div className='flex flex-wrap items-center gap-3'>
-              {displaySource && (
-                <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                  {tt('Source', '来源', '來源')}: {displaySource}
-                </span>
-              )}
-              {showAuxInfo && (
-                <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                  {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
-                </span>
-              )}
-              <button
-                type='button'
-                onClick={onDownload}
-                disabled={downloadButtonDisabled}
-                data-tv-focusable='true'
-                className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
-              >
-                {downloadButtonLabel}
-              </button>
-            </div>
-          </header>
-        </div>
+              <div className='flex flex-wrap items-center gap-3'>
+                {displaySource && (
+                  <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                    {tt('Source', '来源', '來源')}: {displaySource}
+                  </span>
+                )}
+                {showAuxInfo && (
+                  <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                    {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
+                  </span>
+                )}
+                <button
+                  type='button'
+                  onClick={onDownload}
+                  disabled={downloadButtonDisabled}
+                  data-focusable='true'
+                  className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
+                >
+                  {downloadButtonLabel}
+                </button>
+              </div>
+            </header>
+          </div>
 
-        <section
-          ref={panelGestureRef}
-          className='grid gap-5 grid-rows-[auto_1fr_auto]'
-        >
           <div className='space-y-4'>
             <div
-              ref={playerSectionRef}
-              data-tv-section='player'
-              onFocusCapture={(event) =>
-                centerFocusInView(event.target as HTMLElement)
-              }
-              className={`relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden transition-all duration-500 ${
+              className={`group relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden transition-transform duration-500 group-focus-within:scale-[1.02] group-focus-within:brightness-105 ${
                 cinemaMode ? 'scale-[1.02] brightness-105' : ''
               }`}
             >
@@ -464,6 +378,7 @@ const TvPlayLayout = ({
                           <div className='mt-2 flex items-center gap-2'>
                             <button
                               type='button'
+                              data-focusable='true'
                               onClick={() => {
                                 onClearError();
                                 onTryNextSource();
@@ -478,6 +393,7 @@ const TvPlayLayout = ({
                             </button>
                             <button
                               type='button'
+                              data-focusable='true'
                               onClick={() => window.location.reload()}
                               className='rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold'
                             >
@@ -488,6 +404,7 @@ const TvPlayLayout = ({
                       </div>
                       <button
                         type='button'
+                        data-focusable='true'
                         onClick={onClearError}
                         className='shrink-0 rounded-md bg-white/10 hover:bg-white/20 px-2 py-1 text-xs font-semibold'
                         aria-label={tt(
@@ -513,7 +430,7 @@ const TvPlayLayout = ({
                   type='button'
                   tabIndex={-1}
                   aria-label={tt('Play or pause', '播放或暂停', '播放或暫停')}
-                  data-tv-focusable='true'
+                  data-focusable='true'
                   onClick={() => {
                     showControlsTemporarily();
                     onTogglePlayback();
@@ -592,53 +509,56 @@ const TvPlayLayout = ({
               <p className='line-clamp-3'>{synopsisPreview}</p>
             </div>
           </div>
-
-          {!hideSidePanels && (
-            <aside
-              ref={railRef}
-              data-tv-section='rail'
-              className={`tv-episode-rail rounded-[28px] border border-white/15 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
-                isEpisodeSelectorCollapsed
-                  ? 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto lg:max-h-[88px] lg:overflow-hidden'
-                  : 'opacity-100'
-              } ${isLowEndTV ? 'bg-black/50' : 'bg-white/5 backdrop-blur'} ${controlsVisibilityClass}`}
-            >
-              <div className='flex items-center justify-between px-2 pt-1 pb-2'>
-                <div className='text-[11px] uppercase tracking-[0.35em] text-white/60'>
-                  {tt('Episodes', '剧集', '劇集')}
-                </div>
-                {!isEpisodeSelectorCollapsed ? (
-                  <button
-                    type='button'
-                    onClick={onHideEpisodes}
-                    data-tv-focusable='true'
-                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
-                  >
-                    {tt('Hide', '收起', '收起')}
-                  </button>
-                ) : (
-                  <button
-                    type='button'
-                    onClick={onShowEpisodes}
-                    data-tv-focusable='true'
-                    className='text-[10px] uppercase tracking-[0.3em] px-2 py-1 rounded-full bg-white/10 border border-white/15 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
-                  >
-                    {tt('Show', '展开', '展開')}
-                  </button>
-                )}
-              </div>
-              <div
-                ref={episodeScrollRef}
-                onFocusCapture={(event) =>
-                  centerFocusInView(event.target as HTMLElement)
-                }
-                className='flex gap-4 overflow-x-auto py-3 px-2'
-              >
-                {episodeSelector}
-              </div>
-            </aside>
-          )}
         </section>
+
+        <div className='space-y-8'>
+          <TvRow title={tt('Episodes', '剧集', '劇集')}>
+            {episodeSelector}
+          </TvRow>
+          {tmdbRecommendations.length > 0 && (
+            <TvRow title={tt('More like this', '更多推荐', '更多推薦')}>
+              <div className='flex gap-4 overflow-x-auto px-2 pb-2'>
+                {tmdbRecommendations.map((rec) => {
+                  const titleText = rec?.name || rec?.title || '';
+                  const imagePath = rec?.backdrop_path || rec?.poster_path || '';
+                  const imageBase = imagePath
+                    ? `https://image.tmdb.org/t/p/${
+                        rec?.backdrop_path ? 'w780' : 'w500'
+                      }${imagePath}`
+                    : '';
+                  const imageUrl = imageBase
+                    ? processImageUrl(imageBase, { preferCached: true })
+                    : '';
+                  return (
+                    <button
+                      key={rec?.id ?? titleText}
+                      type='button'
+                      data-focusable='true'
+                      className='tv-card w-[260px] shrink-0 rounded-xl overflow-hidden bg-black/40 border border-white/10 text-left'
+                    >
+                      <div
+                        className='aspect-video w-full bg-black/50 bg-cover bg-center'
+                        style={{
+                          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+                        }}
+                      />
+                      <div className='p-3'>
+                        <div className='text-sm font-semibold line-clamp-1'>
+                          {titleText || tt('Untitled', '未命名', '未命名')}
+                        </div>
+                        {rec?.overview && (
+                          <div className='text-xs text-white/60 line-clamp-2'>
+                            {rec.overview}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </TvRow>
+          )}
+        </div>
       </div>
 
       <style jsx>{`
@@ -670,22 +590,13 @@ const TvPlayLayout = ({
             transform: translateX(45%);
           }
         }
-        :global([data-tv-section='header'] button),
-        :global([data-tv-section='header'] a),
-        :global(.tv-episode-rail button),
-        :global(.tv-episode-rail a),
+        :global([data-focusable='true']),
+        :global([data-tv-focusable='true']),
         :global(.tv-player-focus) {
           transition: transform 120ms ease, box-shadow 120ms ease;
         }
-        :global([data-tv-section='header'] button:focus-visible),
-        :global([data-tv-section='header'] a:focus-visible),
-        :global(.tv-episode-rail button:focus-visible),
-        :global(.tv-episode-rail a:focus-visible) {
-          outline: none;
-          transform: scale(1.05);
-          box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
-            0 8px 24px rgba(0, 0, 0, 0.6);
-        }
+        :global([data-focusable='true']:focus-visible),
+        :global([data-tv-focusable='true']:focus-visible),
         :global(.tv-player-focus:focus-visible) {
           outline: none;
           transform: scale(1.05);
@@ -694,13 +605,14 @@ const TvPlayLayout = ({
         }
         :global(.tv-card) {
           transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
-            opacity 180ms ease;
+            opacity 180ms ease, box-shadow 180ms ease;
           will-change: transform;
         }
         :global(.tv-card:focus-visible) {
           outline: none;
           transform: scale(1.08) translateY(-4px);
-          box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7),
+            0 0 0 3px rgba(255, 255, 255, 0.9);
         }
       `}</style>
     </div>

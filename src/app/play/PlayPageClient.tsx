@@ -134,12 +134,8 @@ export type TvPlayLayoutProps = {
   onTryNextSource: () => void;
   isVideoLoading: boolean;
   videoLoadingStage: 'initing' | 'sourceChanging';
-  hideSidePanels: boolean;
-  isEpisodeSelectorCollapsed: boolean;
-  onShowEpisodes: () => void;
-  onHideEpisodes: () => void;
-  panelGestureRef: RefObject<HTMLDivElement>;
   episodeSelector: ReactNode;
+  tmdbRecommendations: any[];
   tt: (en: string, zhHans: string, zhHant: string) => string;
   convertToTraditional: (text?: string) => string | undefined;
 };
@@ -4602,12 +4598,8 @@ export function PlayPageClient({
           onTryNextSource={trySwitchToNextSource}
           isVideoLoading={isVideoLoading}
           videoLoadingStage={videoLoadingStage}
-          hideSidePanels={hideSidePanels}
-          isEpisodeSelectorCollapsed={isEpisodeSelectorCollapsed}
-          onShowEpisodes={() => setIsEpisodeSelectorCollapsed(false)}
-          onHideEpisodes={() => setIsEpisodeSelectorCollapsed(true)}
-          panelGestureRef={panelGestureRef}
           episodeSelector={episodeSelector}
+          tmdbRecommendations={tmdbRecommendations}
           tt={tt}
           convertToTraditional={convertToTraditional}
         />

@@ -836,26 +836,120 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
     );
   }, [currentEnd, currentStart, descending]);
 
+  if (isTvVariant) {
+    return (
+      <div className='space-y-3'>
+        {totalEpisodes > 1 && (
+          <div className='flex items-center gap-3 px-2'>
+            <div className='flex-1 overflow-x-auto pr-1' ref={categoryContainerRef}>
+              <div className='flex gap-2 min-w-max pb-1'>
+                {categories.map((label, idx) => {
+                  const isActive = idx === currentPage;
+                  return (
+                    <button
+                      key={label}
+                      type='button'
+                      data-focusable='true'
+                      ref={(el) => {
+                        buttonRefs.current[idx] = el;
+                      }}
+                      onClick={() => handleCategoryClick(idx)}
+                      aria-pressed={isActive}
+                      className={`px-3 py-1.5 rounded-full text-[11px] uppercase tracking-[0.28em] transition-colors whitespace-nowrap border ${
+                        isActive
+                          ? 'text-white border-white/50 bg-white/10'
+                          : 'text-white/60 border-white/10 hover:text-white'
+                      }`.trim()}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {episodeNumbers.length > 1 && (
+              <button
+                type='button'
+                data-focusable='true'
+                aria-label={descending ? 'Sort ascending' : 'Sort descending'}
+                title={descending ? 'Sort ascending' : 'Sort descending'}
+                className='shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors'
+                onClick={() => {
+                  setDescending((prev) => !prev);
+                }}
+              >
+                <svg
+                  className='w-4 h-4'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'
+                >
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth='2'
+                    d='M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4'
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+        <div className='flex gap-4 overflow-x-auto px-2 pb-2'>
+          {episodeNumbers.map((episodeNumber) => {
+            const isActive = episodeNumber === value;
+            return (
+              <button
+                key={episodeNumber}
+                type='button'
+                data-focusable='true'
+                onClick={() => handleEpisodeClick(episodeNumber - 1)}
+                className={`tv-card group relative flex-shrink-0 w-[220px] sm:w-[240px] lg:w-[260px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
+                  isActive
+                    ? 'border-emerald-300/70 ring-2 ring-emerald-300/50'
+                    : 'border-white/10'
+                }`}
+                aria-current={isActive ? 'true' : undefined}
+              >
+                <div
+                  className='aspect-[16/9] w-full bg-black/50 bg-cover bg-center'
+                  style={{ backgroundImage: `url(${seriesPoster})` }}
+                />
+                <div className='px-3 py-3'>
+                  <div className='text-[10px] uppercase tracking-[0.35em] text-white/50'>
+                    Episode
+                  </div>
+                  <div className='mt-1 text-base font-semibold text-white'>
+                    E{episodeNumber}
+                  </div>
+                  <div className='mt-1 text-xs text-white/60'>
+                    Runtime {runtimeText}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       id='source-panel'
-      className={`w-full min-w-0 md:ml-0 px-2 sm:px-3 py-0 rounded-xl flex flex-col ${
-        isTvVariant
-          ? 'bg-white/5 border border-white/10 overflow-visible'
-          : 'h-full bg-black/10 dark:bg-white/5 border border-white/0 dark:border-white/30 overflow-hidden'
-      }`}
+      className='w-full min-w-0 md:ml-0 px-2 sm:px-3 py-0 rounded-xl flex flex-col h-full bg-black/10 dark:bg-white/5 border border-white/0 dark:border-white/30 overflow-hidden'
     >
       {/* 主要的 Tab 切换 - 无缝融入设计 */}
       <div className='flex mb-1 -mx-2 sm:-mx-3 flex-shrink-0 relative z-[10]'>
         {totalEpisodes > 1 && (
           <div
             onClick={() => setActiveTab('episodes')}
-                  className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500
-                    ${
-                      activeTab === 'episodes'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-gray-700 hover:text-green-600 bg-black/5 dark:bg-white/5 dark:text-gray-300 dark:hover:text-green-400 hover:bg-black/3 dark:hover:bg-white/3'
-                    }
+            className={`flex-1 py-3 px-3 sm:px-4 text-center cursor-pointer transition-all duration-200 font-medium min-h-[48px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-green-500
+              ${
+                activeTab === 'episodes'
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-gray-700 hover:text-green-600 bg-black/5 dark:bg-white/5 dark:text-gray-300 dark:hover:text-green-400 hover:bg-black/3 dark:hover:bg-white/3'
+              }
             `.trim()}
           >
             選集
@@ -879,9 +973,9 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
       {activeTab === 'episodes' && (
         <>
           {/* 分类标签 */}
-            <div className='flex items-center gap-3 mb-3 border-b border-gray-300 dark:border-gray-700 -mx-2 sm:-mx-3 px-2 sm:px-3 flex-shrink-0'>
-              <div className='flex-1 overflow-x-auto pr-1' ref={categoryContainerRef}>
-                <div className='flex gap-2 min-w-max'>
+          <div className='flex items-center gap-3 mb-3 border-b border-gray-300 dark:border-gray-700 -mx-2 sm:-mx-3 px-2 sm:px-3 flex-shrink-0'>
+            <div className='flex-1 overflow-x-auto pr-1' ref={categoryContainerRef}>
+              <div className='flex gap-2 min-w-max'>
                 {categories.map((label, idx) => {
                   const isActive = idx === currentPage;
                   return (
@@ -933,61 +1027,25 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           </div>
 
           {/* 集数列表 */}
-          {isTvVariant ? (
-            <div className='flex gap-4 overflow-x-auto pb-4 pr-2'>
-              {episodeNumbers.map((episodeNumber) => {
-                const isActive = episodeNumber === value;
-                return (
-                  <button
-                    key={episodeNumber}
-                    onClick={() => handleEpisodeClick(episodeNumber - 1)}
-                    className={`tv-card group relative flex-shrink-0 w-[200px] sm:w-[220px] lg:w-[240px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
+          <div className='grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] auto-rows-[40px] gap-x-3 gap-y-3 overflow-y-auto h-full pb-4'>
+            {episodeNumbers.map((episodeNumber) => {
+              const isActive = episodeNumber === value;
+              return (
+                <button
+                  key={episodeNumber}
+                  onClick={() => handleEpisodeClick(episodeNumber - 1)}
+                  className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
+                    ${
                       isActive
-                        ? 'border-emerald-300/70 ring-2 ring-emerald-300/50'
-                        : 'border-white/10'
-                    }`}
-                    aria-current={isActive ? 'true' : undefined}
-                  >
-                    <div
-                      className='aspect-[16/9] w-full bg-black/50 bg-cover bg-center'
-                      style={{ backgroundImage: `url(${seriesPoster})` }}
-                    />
-                    <div className='px-3 py-3'>
-                      <div className='text-[10px] uppercase tracking-[0.35em] text-white/50'>
-                        Episode
-                      </div>
-                      <div className='mt-1 text-base font-semibold text-white'>
-                        E{episodeNumber}
-                      </div>
-                      <div className='mt-1 text-xs text-white/60'>
-                        Runtime {runtimeText}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className='grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] auto-rows-[40px] gap-x-3 gap-y-3 overflow-y-auto h-full pb-4'>
-              {episodeNumbers.map((episodeNumber) => {
-                const isActive = episodeNumber === value;
-                return (
-                  <button
-                    key={episodeNumber}
-                    onClick={() => handleEpisodeClick(episodeNumber - 1)}
-                    className={`h-10 flex items-center justify-center text-sm font-medium rounded-md transition-all duration-200 
-                      ${
-                        isActive
-                          ? 'bg-green-800 text-white shadow-lg shadow-green-800/25 dark:bg-green-700'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
-                      }`.trim()}
-                  >
-                    {episodeNumber}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                        ? 'bg-green-800 text-white shadow-lg shadow-green-800/25 dark:bg-green-700'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300 hover:scale-105 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20'
+                    }`.trim()}
+                >
+                  {episodeNumber}
+                </button>
+              );
+            })}
+          </div>
         </>
       )}
 
