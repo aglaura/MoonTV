@@ -3,7 +3,7 @@
 import { Space_Grotesk } from 'next/font/google';
 import { Suspense, useCallback, useEffect, useRef } from 'react';
 
-import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/page';
+import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
 
 const tvFont = Space_Grotesk({
