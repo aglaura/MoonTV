@@ -2093,7 +2093,7 @@ export function PlayPageClient({
     return omdbData?.released ? [omdbData.released] : [];
   }, [detail, normalizeDetailList, omdbData]);
   const showOmdbRuntime =
-    omdbData?.runtime && !mergedDurations.includes(omdbData.runtime);
+    !!omdbData?.runtime && !mergedDurations.includes(omdbData.runtime);
   const englishVideoTitle =
     imdbVideoTitle || omdbData?.title || undefined;
   const displayVideoTitle = useMemo(
