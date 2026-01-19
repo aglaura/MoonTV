@@ -1430,10 +1430,11 @@ function HomeClient() {
         ? 'ring-4 ring-emerald-400 shadow-[0_0_0_1px_rgba(16,185,129,0.7)] shadow-emerald-700/40 scale-[1.01] focus-within:ring-4 focus-within:ring-emerald-400/70'
         : 'opacity-60 hover:opacity-80 focus-within:opacity-100 focus-within:ring-4 focus-within:ring-emerald-400/70'
       : '';
+  const useCustomTvHomeNav = isTV && activeTab === 'home';
 
   // Global TV remote navigation (DPAD)
   useEffect(() => {
-    if (!isTV || activeTab !== 'home') return;
+    if (!isTV || activeTab !== 'home' || useCustomTvHomeNav) return;
 
     const normalizeKey = (event: KeyboardEvent) => {
       const raw = event.key;
@@ -1622,11 +1623,11 @@ function HomeClient() {
 
     window.addEventListener('keydown', handleKey, { capture: true });
     return () => window.removeEventListener('keydown', handleKey, { capture: true });
-  }, [isTV, activeTab, currentTvSection, tvSectionList]);
+  }, [isTV, activeTab, currentTvSection, tvSectionList, useCustomTvHomeNav]);
 
   // Auto-scroll to focused TV section
   useEffect(() => {
-    if (!isTV || activeTab !== 'home') return;
+    if (!isTV || activeTab !== 'home' || useCustomTvHomeNav) return;
     if (!currentTvSection) return;
 
     const el = document.querySelector<HTMLElement>(
@@ -1638,10 +1639,10 @@ function HomeClient() {
     const offset = rect.top + window.scrollY - 100;
 
     window.scrollTo({ top: offset, behavior: 'smooth' });
-  }, [currentTvSection, isTV, activeTab]);
+  }, [currentTvSection, isTV, activeTab, useCustomTvHomeNav]);
 
   useEffect(() => {
-    if (!isTV || activeTab !== 'home') return;
+    if (!isTV || activeTab !== 'home' || useCustomTvHomeNav) return;
     if (!currentTvSection) return;
 
     const sectionEl = document.querySelector<HTMLElement>(
@@ -1655,7 +1656,7 @@ function HomeClient() {
         '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]'
       );
     focusable?.focus({ preventScroll: true });
-  }, [currentTvSection, isTV, activeTab]);
+  }, [currentTvSection, isTV, activeTab, useCustomTvHomeNav]);
 
   return (
     <PageLayout
