@@ -63,12 +63,28 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
     let lastActivate = 0;
     let lastNavTime = 0;
     const ACTIVATE_COOLDOWN = 300;
-    const NAV_COOLDOWN = 80;
+    const NAV_COOLDOWN = 120;
     const isActivateKey = (event: KeyboardEvent) =>
       event.key === 'Enter' ||
       event.code === 'Enter' ||
+      event.key === ' ' ||
+      event.code === 'Space' ||
       event.keyCode === 13 ||
       event.keyCode === 23;
+    const triggerActivate = (target: HTMLElement) => {
+      const dispatch = () => {
+        target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        target.click();
+      };
+      setTimeout(dispatch, 0);
+    };
+
+    const preventNativeDpad = (event: KeyboardEvent) => {
+      if (event.keyCode === 23) {
+        event.preventDefault();
+      }
+    };
 
     const onKey = (event: KeyboardEvent) => {
       const active = document.activeElement as HTMLElement | null;
@@ -85,8 +101,8 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
         const now = Date.now();
         if (now - lastActivate < ACTIVATE_COOLDOWN) return;
         lastActivate = now;
-        active.click();
         event.preventDefault();
+        triggerActivate(active);
         return;
       }
 
@@ -128,7 +144,11 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       }
     };
 
+    window.addEventListener('keydown', preventNativeDpad, { passive: false });
     window.addEventListener('keydown', onKey, { passive: false });
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', preventNativeDpad);
+      window.removeEventListener('keydown', onKey);
+    };
   }, [enabled]);
 };
