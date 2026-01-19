@@ -1837,26 +1837,93 @@ function HomeClient() {
                     </div>
                   </section>
 
-                  <section className='rounded-2xl border border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-gray-900/70 shadow-sm max-w-6xl mx-auto w-full'>
-                    <div className='px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between'>
-                      <div className='space-y-1'>
-                        <div
-                          className={`flex items-center gap-2 uppercase tracking-[0.2em] text-green-700 dark:text-green-300 ${
-                            isTV ? 'text-sm' : 'text-xs'
-                          }`}
-                        >
-                          <span>{currentCategory.label}</span>
-                          <span className='w-1 h-1 rounded-full bg-green-700 dark:bg-green-500'></span>
-                          <span className='text-gray-600 dark:text-gray-300'>
-                            {tt('Spotlight', '精选轮播', '精選輪播')}
-                          </span>
+                  <section className='rounded-3xl border border-gray-200/60 dark:border-gray-800 bg-white/80 dark:bg-gray-900/70 shadow-sm max-w-6xl mx-auto w-full overflow-hidden'>
+                    <div className='relative'>
+                      <div className='absolute inset-0'>
+                        {currentHero?.poster && (
+                          <img
+                            src={currentHero?.poster || ''}
+                            alt={currentHero?.title || 'Spotlight'}
+                            className='h-full w-full object-cover scale-110 opacity-70'
+                            loading='lazy'
+                          />
+                        )}
+                        <div className='absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent'></div>
+                        <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent'></div>
+                      </div>
+                      <div className='relative z-10 grid gap-5 sm:gap-6 lg:grid-cols-[1.2fr_0.8fr] px-4 sm:px-6 py-5 sm:py-6'>
+                        <div className='flex flex-col gap-4'>
+                          <div
+                            className='flex items-center gap-2 uppercase tracking-[0.25em] text-emerald-300 text-xs'
+                          >
+                            <span>{currentCategory.label}</span>
+                            <span className='w-1 h-1 rounded-full bg-emerald-300'></span>
+                            <span className='text-emerald-100/80'>
+                              {tt('Spotlight', '精选轮播', '精選輪播')}
+                            </span>
+                          </div>
+                          <div className='space-y-2'>
+                            <h3 className='text-2xl sm:text-3xl lg:text-4xl font-semibold text-white'>
+                              {currentHero?.title || tt('Featured', '精选推荐', '精選推薦')}
+                            </h3>
+                            {currentHero?.title_en && (
+                              <p className='text-sm sm:text-base text-gray-200/80'>
+                                {currentHero.title_en}
+                              </p>
+                            )}
+                          </div>
+                          <div className='flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-200/90'>
+                            {currentHero?.rate && (
+                              <span className='px-2 py-1 rounded-full bg-white/10 border border-white/20'>
+                                {tt('Rating', '评分', '評分')} {currentHero.rate}
+                              </span>
+                            )}
+                            {currentHero?.year && (
+                              <span className='px-2 py-1 rounded-full bg-white/10 border border-white/20'>
+                                {currentHero.year}
+                              </span>
+                            )}
+                            {currentHero?.type && (
+                              <span className='px-2 py-1 rounded-full bg-white/10 border border-white/20'>
+                                {currentHero.type}
+                              </span>
+                            )}
+                          </div>
+                          <p className='text-sm text-gray-200/80'>
+                            {tt(
+                              'Hover the cards to preview; tap the poster to play.',
+                              '将鼠标停在海报上预览，点击海报播放。',
+                              '將滑鼠停在海報上預覽，點擊海報播放。'
+                            )}
+                          </p>
                         </div>
-                        <p className={`${isTV ? 'text-base' : 'text-sm'} text-gray-600 dark:text-gray-300`}>
-                          {tt('Swipe through highlights; tap to open.', '左右滑动浏览精选，点击打开播放。', '左右滑動瀏覽精選，點擊開啟播放。')}
-                        </p>
+                        <div className='flex items-center justify-start lg:justify-end'>
+                          {currentHero && (
+                            <div className='w-36 sm:w-44 md:w-48 lg:w-52 drop-shadow-[0_20px_35px_rgba(0,0,0,0.45)]'>
+                              <VideoCard
+                                from='douban'
+                                title={currentHero.title}
+                                title_en={currentHero.title_en}
+                                poster={currentHero.poster}
+                                posterAlt={currentHero.posterAlt}
+                                posterDouban={currentHero.posterDouban}
+                                posterTmdb={currentHero.posterTmdb}
+                                douban_id={currentHero.douban_id}
+                                imdb_id={currentHero.imdb_id}
+                                rate={currentHero.rate}
+                                year={currentHero.year}
+                                type={currentHero.type}
+                                query={currentHero.query || currentHero.title}
+                                source_name={currentHero.source_name}
+                                size='lg'
+                                compactMeta
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className='px-3 sm:px-4 pb-4'>
+                    <div className='px-4 sm:px-6 pb-5 sm:pb-6'>
                       <div
                         className='flex gap-3 overflow-x-auto [-ms-overflow-style:"none"] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
                         data-tv-group={isTV ? 'hero' : undefined}
@@ -1871,11 +1938,11 @@ function HomeClient() {
                             <div
                               key={`${item.title}-${idx}`}
                               onMouseEnter={() => setHeroIndex(idx)}
-                              className={`relative flex-shrink-0 w-32 sm:w-36 md:w-40 transition ${
+                              className={`relative flex-shrink-0 w-28 sm:w-32 md:w-36 transition ${
                                 active
-                                  ? 'ring-2 ring-green-300/70 border border-green-400/70 scale-[1.02]'
-                                  : 'border border-gray-200 dark:border-gray-700 hover:border-green-400'
-                              } rounded-2xl overflow-hidden`}
+                                  ? 'ring-2 ring-emerald-300/80 border border-emerald-400/70 scale-[1.03]'
+                                  : 'border border-white/10 hover:border-emerald-300/70'
+                              } rounded-2xl overflow-hidden bg-white/5`}
                               style={{ scrollSnapAlign: 'start' }}
                             >
                               <VideoCard
@@ -1893,8 +1960,8 @@ function HomeClient() {
                                 type={item.type}
                                 query={item.query || item.title}
                                 source_name={item.source_name}
-                                size={isTV ? 'lg' : undefined}
-                                compactMeta={isTV}
+                                size='sm'
+                                compactMeta
                               />
                             </div>
                           );
