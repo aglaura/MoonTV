@@ -220,12 +220,14 @@ const SidebarTV = ({
       peekedOnceRef.current = false;
     };
 
-    const handleFocusOut = (event: FocusEvent) => {
-      const nextTarget = event.relatedTarget as Node | null;
-      if (nextTarget && el.contains(nextTarget)) return;
-      setIsPeek(false);
-      setIsCollapsed(true);
-      peekedOnceRef.current = false;
+    const handleFocusOut = () => {
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && el.contains(active)) return;
+        setIsPeek(false);
+        setIsCollapsed(true);
+        peekedOnceRef.current = false;
+      });
     };
 
     el.addEventListener('focusin', handleFocusIn);

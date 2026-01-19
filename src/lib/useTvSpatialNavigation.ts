@@ -81,12 +81,14 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       const dir = map[event.key];
       if (!dir) return;
 
+      const inSidebar = Boolean(active.closest('[data-sidebar]'));
       const focusables = Array.from(
         document.querySelectorAll<HTMLElement>(focusableSelector)
       )
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
-        .filter((el) => el.getClientRects().length > 0);
+        .filter((el) => el.getClientRects().length > 0)
+        .filter((el) => inSidebar || !el.closest('[data-sidebar]'));
 
       if (!focusables.length) return;
 

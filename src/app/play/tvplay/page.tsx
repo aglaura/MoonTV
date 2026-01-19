@@ -51,7 +51,8 @@ const useSpatialNavigation = (
       const list = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
-        .filter((el) => el.getClientRects().length > 0);
+        .filter((el) => el.getClientRects().length > 0)
+        .filter((el) => !el.closest('[data-sidebar]'));
       if (root === document) {
         cached = list;
         scheduleCacheClear();
@@ -110,6 +111,7 @@ const useSpatialNavigation = (
       };
       const active = document.activeElement as HTMLElement | null;
       if (!active) return;
+      if (active.closest('[data-sidebar]')) return;
 
       const tagName = active.tagName;
       if (
