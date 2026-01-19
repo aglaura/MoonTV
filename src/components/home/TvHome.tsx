@@ -65,7 +65,8 @@ type TvHomeProps = {
 
 type Tile = CardItem & { badge?: string; subtitle?: string };
 
-type Row = { id: string; title: string; tiles: Tile[] };
+type RowKind = 'poster' | 'person';
+type Row = { id: string; title: string; tiles: Tile[]; kind?: RowKind };
 
 type FocusKey = string;
 
@@ -105,6 +106,12 @@ function buildPlayUrl(item: CardItem) {
       : '';
   const imdb = item.imdb_id ? `&imdbId=${encodeURIComponent(item.imdb_id)}` : '';
   return `/play?title=${encodeURIComponent(title)}${year}${type}${query}${douban}${imdb}`;
+}
+
+function buildPersonUrl(item: CardItem) {
+  const raw = item.id !== undefined && item.id !== null ? String(item.id) : '';
+  const normalized = raw.replace(/^tmdb:/, '');
+  return normalized ? `/person/${encodeURIComponent(normalized)}` : '/';
 }
 
 /* =========================
@@ -190,6 +197,7 @@ const TvHome = ({
         id: 'people',
         title: tt('Popular People', '热门人物', '熱門人物'),
         tiles: peopleItems,
+        kind: 'person',
       },
     ].filter((row) => row.tiles.length > 0);
   }, [
@@ -278,7 +286,11 @@ const TvHome = ({
   }, []);
 
   const handleSelectItem = useCallback(
-    (item: CardItem) => {
+    (item: CardItem, kind?: RowKind) => {
+      if (kind === 'person') {
+        router.push(buildPersonUrl(item));
+        return;
+      }
       router.push(buildPlayUrl(item));
     },
     [router]
@@ -549,6 +561,7 @@ const TvHome = ({
                 focus={focus}
                 register={register}
                 onSelect={handleSelectItem}
+                kind={row.kind}
               />
             ))}
           </div>
@@ -566,11 +579,13 @@ function PosterRow({
   focus,
   register,
   onSelect,
+  kind = 'poster',
 }: {
   row: Row;
   focus: FocusKey;
   register: (k: FocusKey) => (el: HTMLElement | null) => void;
-  onSelect: (item: CardItem) => void;
+  onSelect: (item: CardItem, kind?: RowKind) => void;
+  kind?: RowKind;
 }) {
   const CARD_W = 210;
   const GAP = 16;
@@ -599,6 +614,7 @@ function PosterRow({
               imdbId: tile.imdb_id,
               preferCached: true,
             });
+            const isPerson = kind === 'person';
             return (
               <button
                 key={tile.id ?? `${row.id}-${i}`}
@@ -606,32 +622,56 @@ function PosterRow({
                 tabIndex={-1}
                 data-tv-focusable='true'
                 className={clsx(
-                  'w-[210px] h-[315px] rounded-[24px] bg-white/10 relative shrink-0 overflow-hidden transition',
+                  isPerson
+                    ? 'w-[200px] h-[250px] rounded-[24px] bg-white/10 relative shrink-0 overflow-hidden transition'
+                    : 'w-[210px] h-[315px] rounded-[24px] bg-white/10 relative shrink-0 overflow-hidden transition',
                   focus === k && 'ring-2 ring-white scale-105'
                 )}
-                onClick={() => onSelect(tile)}
+                onClick={() => onSelect(tile, kind)}
               >
-                {posterUrl ? (
-                  <img
-                    src={posterUrl}
-                    alt={tile.title}
-                    className='absolute inset-0 h-full w-full object-cover'
-                    loading='lazy'
-                  />
-                ) : (
-                  <div className='absolute inset-0 bg-white/10' />
-                )}
-                <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent'></div>
-                <div className='absolute bottom-0 p-4 text-left'>
-                  <div className='text-lg font-semibold'>{tile.title}</div>
-                  {tile.year && (
-                    <div className='text-sm opacity-70'>{tile.year}</div>
-                  )}
-                </div>
-                {tile.rate && (
-                  <div className='absolute top-3 right-3 px-2 py-1 rounded-full bg-white/20 text-xs'>
-                    {tile.rate}
+                {isPerson ? (
+                  <div className='flex h-full flex-col items-center justify-center gap-4 px-4'>
+                    <div className='w-36 h-36 rounded-full overflow-hidden bg-white/15 ring-1 ring-white/20'>
+                      {posterUrl ? (
+                        <img
+                          src={posterUrl}
+                          alt={tile.title}
+                          className='h-full w-full object-cover'
+                          loading='lazy'
+                        />
+                      ) : (
+                        <div className='h-full w-full bg-white/10' />
+                      )}
+                    </div>
+                    <div className='text-center'>
+                      <div className='text-base font-semibold'>{tile.title}</div>
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {posterUrl ? (
+                      <img
+                        src={posterUrl}
+                        alt={tile.title}
+                        className='absolute inset-0 h-full w-full object-cover'
+                        loading='lazy'
+                      />
+                    ) : (
+                      <div className='absolute inset-0 bg-white/10' />
+                    )}
+                    <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent'></div>
+                    <div className='absolute bottom-0 p-4 text-left'>
+                      <div className='text-lg font-semibold'>{tile.title}</div>
+                      {tile.year && (
+                        <div className='text-sm opacity-70'>{tile.year}</div>
+                      )}
+                    </div>
+                    {tile.rate && (
+                      <div className='absolute top-3 right-3 px-2 py-1 rounded-full bg-white/20 text-xs'>
+                        {tile.rate}
+                      </div>
+                    )}
+                  </>
                 )}
               </button>
             );

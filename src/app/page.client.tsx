@@ -27,6 +27,7 @@ import {
 import type { OsFamily, ScreenMode, ScreenModeOverride } from '@/lib/screenMode';
 import { DoubanItem } from '@/lib/types';
 import { isKidSafeContent, useKidsMode } from '@/lib/kidsMode.client';
+import { processImageUrl } from '@/lib/utils';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
 import ContinueWatching from '@/components/ContinueWatching';
@@ -213,6 +214,65 @@ function ContentRail({
     ? 'snap-start min-w-[47%]'
     : 'min-w-[140px] sm:min-w-[180px]';
 
+  const buildPersonHref = (item: CardItem) => {
+    const raw = item.id ?? '';
+    const value = String(raw).trim();
+    if (!value) return '#';
+    const normalized = value.replace(/^tmdb:/, '');
+    return `/person/${encodeURIComponent(normalized)}`;
+  };
+
+  const renderPersonCard = (
+    item: CardItem,
+    variant: 'tv' | 'tablet' | 'mobile'
+  ) => {
+    const posterUrl = processImageUrl(item.poster || '', { preferCached: true });
+    const name =
+      item.title || tt('Unknown', '未知影人', '未知影人');
+    const avatarSize =
+      variant === 'tv'
+        ? 'w-28 h-28'
+        : variant === 'tablet'
+        ? 'w-20 h-20'
+        : 'w-16 h-16';
+    const nameSize = variant === 'tv' ? 'text-base' : 'text-sm';
+    const badgeSize = variant === 'tv' ? 'text-xs' : 'text-[10px]';
+
+    return (
+      <Link
+        href={buildPersonHref(item)}
+        className="group flex h-full flex-col items-center justify-center gap-3 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-gray-900/70 p-4 transition hover:-translate-y-0.5 hover:shadow-lg"
+      >
+        <div
+          className={`${avatarSize} rounded-full overflow-hidden bg-gray-200/70 dark:bg-gray-800 ring-1 ring-emerald-400/30 flex items-center justify-center`}
+        >
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={name}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="text-lg font-semibold text-gray-500">
+              {name.slice(0, 1).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div
+          className={`${nameSize} font-semibold text-gray-900 dark:text-gray-100 text-center line-clamp-2`}
+        >
+          {name}
+        </div>
+        <span
+          className={`${badgeSize} uppercase tracking-wide text-emerald-600 dark:text-emerald-300`}
+        >
+          {tt('Actor', '演员', '演員')}
+        </span>
+      </Link>
+    );
+  };
+
   // TV MODE: vertical rail, no local key handling (global TV nav moves between sections)
   if (isTV) {
     return (
@@ -258,24 +318,28 @@ function ContentRail({
               key={idx}
               className="transition-all duration-200 opacity-95 snap-start rounded-2xl min-w-[240px] max-w-[320px]"
             >
-              <VideoCard
-                from="douban"
-                title={item.title}
-                title_en={item.title_en}
-                poster={item.poster}
-                posterAlt={item.posterAlt}
-                posterDouban={item.posterDouban}
-                posterTmdb={item.posterTmdb}
-                douban_id={item.douban_id}
-                imdb_id={item.imdb_id}
-                rate={item.rate}
-                year={item.year}
-                type={item.type}
-                query={item.query}
-                source_name={item.source_name}
-                size="lg"
-                compactMeta
-              />
+              {item.type === 'person' ? (
+                renderPersonCard(item, 'tv')
+              ) : (
+                <VideoCard
+                  from="douban"
+                  title={item.title}
+                  title_en={item.title_en}
+                  poster={item.poster}
+                  posterAlt={item.posterAlt}
+                  posterDouban={item.posterDouban}
+                  posterTmdb={item.posterTmdb}
+                  douban_id={item.douban_id}
+                  imdb_id={item.imdb_id}
+                  rate={item.rate}
+                  year={item.year}
+                  type={item.type}
+                  query={item.query}
+                  source_name={item.source_name}
+                  size="lg"
+                  compactMeta
+                />
+              )}
             </div>
           ))}
         </div>
@@ -336,22 +400,26 @@ function ContentRail({
               key={idx}
               className="min-w-[180px] transform transition hover:scale-105"
             >
-              <VideoCard
-                from="douban"
-                title={item.title}
-                title_en={item.title_en}
-                poster={item.poster}
-                posterAlt={item.posterAlt}
-                posterDouban={item.posterDouban}
-                posterTmdb={item.posterTmdb}
-                douban_id={item.douban_id}
-                imdb_id={item.imdb_id}
-                rate={item.rate}
-                year={item.year}
-                type={item.type}
-                query={item.query}
-                source_name={item.source_name}
-              />
+              {item.type === 'person' ? (
+                renderPersonCard(item, 'tablet')
+              ) : (
+                <VideoCard
+                  from="douban"
+                  title={item.title}
+                  title_en={item.title_en}
+                  poster={item.poster}
+                  posterAlt={item.posterAlt}
+                  posterDouban={item.posterDouban}
+                  posterTmdb={item.posterTmdb}
+                  douban_id={item.douban_id}
+                  imdb_id={item.imdb_id}
+                  rate={item.rate}
+                  year={item.year}
+                  type={item.type}
+                  query={item.query}
+                  source_name={item.source_name}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -391,22 +459,26 @@ function ContentRail({
             key={idx}
             className={`${mobileCardClass} active:scale-[0.97] transition-transform`}
           >
-            <VideoCard
-              from="douban"
-              title={item.title}
-              title_en={item.title_en}
-              poster={item.poster}
-              posterAlt={item.posterAlt}
-              posterDouban={item.posterDouban}
-              posterTmdb={item.posterTmdb}
-              douban_id={item.douban_id}
-              imdb_id={item.imdb_id}
-              rate={item.rate}
-              year={item.year}
-              type={item.type}
-              query={item.query}
-              source_name={item.source_name}
-            />
+            {item.type === 'person' ? (
+              renderPersonCard(item, 'mobile')
+            ) : (
+              <VideoCard
+                from="douban"
+                title={item.title}
+                title_en={item.title_en}
+                poster={item.poster}
+                posterAlt={item.posterAlt}
+                posterDouban={item.posterDouban}
+                posterTmdb={item.posterTmdb}
+                douban_id={item.douban_id}
+                imdb_id={item.imdb_id}
+                rate={item.rate}
+                year={item.year}
+                type={item.type}
+                query={item.query}
+                source_name={item.source_name}
+              />
+            )}
           </div>
         ))}
       </div>
