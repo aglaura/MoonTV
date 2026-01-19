@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeviceInfo } from '@/lib/screenMode';
+import { useTvSpatialNavigation } from '@/lib/useTvSpatialNavigation';
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
 import MobileBottomNav from './MobileBottomNav';
@@ -28,6 +29,7 @@ const PageLayout = ({
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+  useTvSpatialNavigation(isTV);
 
   return (
     <div className='w-full min-h-screen'>

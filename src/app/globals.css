@@ -327,3 +327,14 @@ div[data-media-provider] video {
     --art-progress-height: 10px;
   }
 }
+
+[data-tv-focusable="true"] {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+[data-tv-focusable="true"]:focus-visible {
+  outline: none;
+  transform: scale(1.08);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
+    0 12px 28px rgba(0, 0, 0, 0.7);
+}

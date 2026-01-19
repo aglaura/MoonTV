@@ -55,11 +55,6 @@ type NavItem = {
   href: string;
 };
 
-function isTvMode() {
-  if (typeof document === 'undefined') return false;
-  return document.documentElement.classList.contains('tv-mode');
-}
-
 const SidebarTV = ({
   onToggle,
   activePath = '/',
@@ -225,79 +220,20 @@ const SidebarTV = ({
       peekedOnceRef.current = false;
     };
 
-    el.addEventListener('focusin', handleFocusIn);
-    return () => el.removeEventListener('focusin', handleFocusIn);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!isTvMode()) return;
-
-      const sidebar = sidebarRef.current;
-      if (!sidebar) return;
-
-      const activeEl = document.activeElement as HTMLElement | null;
-      const inSidebar = !!(activeEl && sidebar.contains(activeEl));
-      if (!inSidebar) return;
-
-      const focusables = Array.from(
-        sidebar.querySelectorAll<HTMLElement>('[data-tv-focusable="true"]')
-      ).filter((x) => !x.hasAttribute('disabled'));
-
-      const idx = activeEl ? focusables.indexOf(activeEl) : -1;
-
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        e.preventDefault();
-      }
-
-      if (e.key === 'ArrowDown') {
-        const next = focusables[Math.min(idx + 1, focusables.length - 1)];
-        next?.focus({ preventScroll: true });
-        return;
-      }
-
-      if (e.key === 'ArrowUp') {
-        const prev = focusables[Math.max(idx - 1, 0)];
-        prev?.focus({ preventScroll: true });
-        return;
-      }
-
-      if (e.key === 'ArrowRight') {
-        const userPrefCollapsed =
-          typeof window !== 'undefined' &&
-          typeof window.__sidebarCollapsedTv === 'boolean'
-            ? window.__sidebarCollapsedTv
-            : true;
-
-        if (userPrefCollapsed) {
-          setIsPeek(false);
-          setIsCollapsed(true);
-        } else {
-          setIsPeek(true);
-          setIsCollapsed(false);
-        }
-
-        peekedOnceRef.current = false;
-        (document.activeElement as HTMLElement | null)?.blur();
-        return;
-      }
-
-      if (e.key === 'Enter') {
-        activeEl?.click();
-        e.preventDefault();
-        return;
-      }
-
-      if (e.key === 'Backspace' || e.key === 'Escape') {
-        setIsPeek(false);
-        setIsCollapsed(true);
-        peekedOnceRef.current = false;
-        (document.activeElement as HTMLElement | null)?.blur();
-      }
+    const handleFocusOut = (event: FocusEvent) => {
+      const nextTarget = event.relatedTarget as Node | null;
+      if (nextTarget && el.contains(nextTarget)) return;
+      setIsPeek(false);
+      setIsCollapsed(true);
+      peekedOnceRef.current = false;
     };
 
-    window.addEventListener('keydown', onKeyDown, { passive: false });
-    return () => window.removeEventListener('keydown', onKeyDown as EventListener);
+    el.addEventListener('focusin', handleFocusIn);
+    el.addEventListener('focusout', handleFocusOut);
+    return () => {
+      el.removeEventListener('focusin', handleFocusIn);
+      el.removeEventListener('focusout', handleFocusOut);
+    };
   }, []);
 
   const widthClass = useMemo(() => {

@@ -498,6 +498,7 @@ const TvHome = ({
 
   return (
     <div
+      data-tv-nav='manual'
       className='bg-black text-white min-h-screen'
       style={{ padding: '3vh 3vw' }}
     >

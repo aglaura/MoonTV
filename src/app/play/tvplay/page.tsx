@@ -30,7 +30,8 @@ const focusableSelector =
 const useSpatialNavigation = (
   rootRef: RefObject<HTMLElement>,
   onNavigate?: () => void,
-  onFocusMove?: (el: HTMLElement) => void
+  onFocusMove?: (el: HTMLElement) => void,
+  onEdge?: (direction: Direction) => void
 ) => {
   useEffect(() => {
     const getFocusable = () => {
@@ -113,12 +114,14 @@ const useSpatialNavigation = (
       if (next) {
         next.focus({ preventScroll: true });
         onFocusMove?.(next);
+      } else {
+        onEdge?.(dir);
       }
     };
 
     window.addEventListener('keydown', onKey, { passive: false });
     return () => window.removeEventListener('keydown', onKey);
-  }, [onFocusMove, onNavigate, rootRef]);
+  }, [onEdge, onFocusMove, onNavigate, rootRef]);
 };
 
 const TvRow = ({ title, children }: { title: string; children: ReactNode }) => {
@@ -204,7 +207,17 @@ const TvPlayLayout = ({
     }
   }, []);
 
-  useSpatialNavigation(rootRef, showControlsTemporarily, centerFocusInView);
+  const handleEdge = useCallback((direction: Direction) => {
+    if (direction !== 'left') return;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+    }
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+    const first = sidebar?.querySelector<HTMLElement>('[data-tv-focusable="true"]');
+    first?.focus({ preventScroll: true });
+  }, []);
+
+  useSpatialNavigation(rootRef, showControlsTemporarily, centerFocusInView, handleEdge);
 
   const handleRootFocus = useCallback(
     (event: FocusEvent<HTMLElement>) => {
@@ -276,6 +289,7 @@ const TvPlayLayout = ({
       <div
         ref={rootRef}
         onFocusCapture={handleRootFocus}
+        data-tv-nav='manual'
         className='relative z-10 px-[4vw] py-[3vh] space-y-10 animate-[tvFade_0.6s_ease]'
       >
         <section className='space-y-5'>
