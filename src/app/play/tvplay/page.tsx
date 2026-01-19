@@ -1,7 +1,7 @@
 'use client';
 
 import { Space_Grotesk } from 'next/font/google';
-import { Suspense, useCallback, useEffect, useRef } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
@@ -47,6 +47,12 @@ const TvPlayLayout = ({
 }: TvPlayLayoutProps) => {
   const displaySource =
     convertToTraditional(sourceName || '') || sourceName || currentSource || '';
+  const isLowEndTV = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const cores = navigator.hardwareConcurrency || 0;
+    const ua = navigator.userAgent || '';
+    return cores > 0 && cores <= 4 || /Amlogic|MTK|Android TV/i.test(ua);
+  }, []);
   const qualityLabel =
     actualPlaybackInfo?.quality ||
     (currentPlayingInfo?.quality
@@ -61,6 +67,18 @@ const TvPlayLayout = ({
   const railRef = useRef<HTMLDivElement | null>(null);
   const playerFocusRef = useRef<HTMLButtonElement | null>(null);
   const sectionIndexRef = useRef({ header: 0, rail: 0 });
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const controlsTimerRef = useRef<number | null>(null);
+
+  const showControlsTemporarily = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimerRef.current) {
+      window.clearTimeout(controlsTimerRef.current);
+    }
+    controlsTimerRef.current = window.setTimeout(() => {
+      setControlsVisible(false);
+    }, 3000);
+  }, []);
 
   const focusPlayer = useCallback(() => {
     playerFocusRef.current?.focus({ preventScroll: true });
@@ -75,6 +93,25 @@ const TvPlayLayout = ({
       window.clearTimeout(timer);
     };
   }, [focusPlayer]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    showControlsTemporarily();
+    const handleActivity = () => {
+      showControlsTemporarily();
+    };
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('pointerdown', handleActivity);
+    window.addEventListener('touchstart', handleActivity);
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('pointerdown', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+      if (controlsTimerRef.current) {
+        window.clearTimeout(controlsTimerRef.current);
+      }
+    };
+  }, [showControlsTemporarily]);
 
   useEffect(() => {
     const focusableSelector =
@@ -180,10 +217,12 @@ const TvPlayLayout = ({
         e.key
       );
       if (!isArrow && e.key !== 'Enter') return;
+      showControlsTemporarily();
       if (isArrow) e.preventDefault();
 
       if (e.key === 'Enter') {
         if (section === 'player' && activeEl === playerFocusRef.current) {
+          showControlsTemporarily();
           onTogglePlayback();
           return;
         }
@@ -260,63 +299,82 @@ const TvPlayLayout = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [focusPlayer, onTogglePlayback]);
+  }, [focusPlayer, onTogglePlayback, showControlsTemporarily]);
+
+  const controlsVisibilityClass = controlsVisible
+    ? 'opacity-100'
+    : 'opacity-0 pointer-events-none lg:opacity-0 lg:pointer-events-none';
 
   return (
     <div className={`${tvFont.className} relative min-h-screen text-white`}>
-      <div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_55%),radial-gradient(circle_at_80%_0%,rgba(56,189,248,0.16),transparent_50%),radial-gradient(circle_at_20%_85%,rgba(99,102,241,0.14),transparent_55%),linear-gradient(120deg,#0b1020,#020617)]' />
-      <div className='absolute -top-16 -right-10 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl animate-[tvFloat_9s_ease-in-out_infinite]' />
-      <div className='absolute bottom-0 left-12 h-48 w-48 rounded-full bg-sky-400/15 blur-3xl animate-[tvFloat_11s_ease-in-out_infinite]' />
+      <div
+        className={`absolute inset-0 ${
+          isLowEndTV
+            ? 'bg-[#0b1020]'
+            : 'bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.22),transparent_55%),radial-gradient(circle_at_80%_0%,rgba(56,189,248,0.16),transparent_50%),radial-gradient(circle_at_20%_85%,rgba(99,102,241,0.14),transparent_55%),linear-gradient(120deg,#0b1020,#020617)]'
+        }`}
+      />
+      {!isLowEndTV && (
+        <>
+          <div className='absolute -top-16 -right-10 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl animate-[tvFloat_9s_ease-in-out_infinite]' />
+          <div className='absolute bottom-0 left-12 h-48 w-48 rounded-full bg-sky-400/15 blur-3xl animate-[tvFloat_11s_ease-in-out_infinite]' />
+        </>
+      )}
 
       <div className='relative z-10 px-[4vw] py-[3vh] space-y-5 animate-[tvFade_0.6s_ease]'>
-        <header
-          ref={headerRef}
-          data-tv-section='header'
-          className='flex flex-wrap items-center justify-between gap-6'
+        <div
+          className={`transition-opacity duration-300 ${controlsVisibilityClass}`}
+          onFocusCapture={showControlsTemporarily}
         >
-          <div className='flex items-center gap-4'>
-            <div className='rounded-full bg-white/10 border border-white/20 p-1.5 shadow-lg'>
-              <BackButton />
-            </div>
-            <div className='space-y-1'>
-              <div className='text-[11px] uppercase tracking-[0.4em] text-white/50'>
-                {tt('Now playing', '正在播放', '正在播放')}
+          <header
+            ref={headerRef}
+            data-tv-section='header'
+            className='flex flex-wrap items-center justify-between gap-6'
+          >
+            <div className='flex items-center gap-4'>
+              <div className='rounded-full bg-white/10 border border-white/20 p-1.5 shadow-lg'>
+                <BackButton />
               </div>
-              <div className='flex flex-wrap items-center gap-3'>
-                <h1 className='text-2xl md:text-3xl font-semibold tracking-tight'>
-                  {title || tt('Untitled', '未命名', '未命名')}
-                </h1>
-                {episodeLabel && (
-                  <span className='text-[10px] uppercase tracking-[0.35em] px-3 py-1 rounded-full bg-white/10 border border-white/20'>
-                    {episodeLabel}
-                  </span>
+              <div className='space-y-1'>
+                <div className='text-[11px] uppercase tracking-[0.4em] text-white/50'>
+                  {tt('Now playing', '正在播放', '正在播放')}
+                </div>
+                <div className='flex flex-wrap items-center gap-3'>
+                  <h1 className='text-2xl md:text-3xl font-semibold tracking-tight'>
+                    {title || tt('Untitled', '未命名', '未命名')}
+                  </h1>
+                  {episodeLabel && (
+                    <span className='text-[10px] uppercase tracking-[0.35em] px-3 py-1 rounded-full bg-white/10 border border-white/20'>
+                      {episodeLabel}
+                    </span>
+                  )}
+                </div>
+                {englishTitle && (
+                  <div className='text-sm text-white/60'>{englishTitle}</div>
                 )}
               </div>
-              {englishTitle && (
-                <div className='text-sm text-white/60'>{englishTitle}</div>
-              )}
             </div>
-          </div>
-          <div className='flex flex-wrap items-center gap-3'>
-            {displaySource && (
+            <div className='flex flex-wrap items-center gap-3'>
+              {displaySource && (
+                <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
+                  {tt('Source', '来源', '來源')}: {displaySource}
+                </span>
+              )}
               <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-                {tt('Source', '来源', '來源')}: {displaySource}
+                {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
               </span>
-            )}
-            <span className='text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15'>
-              {tt('Quality', '清晰度', '清晰度')}: {qualityLabel}
-            </span>
-            <button
-              type='button'
-              onClick={onDownload}
-              disabled={downloadButtonDisabled}
-              data-tv-focusable='true'
-              className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
-            >
-              {downloadButtonLabel}
-            </button>
-          </div>
-        </header>
+              <button
+                type='button'
+                onClick={onDownload}
+                disabled={downloadButtonDisabled}
+                data-tv-focusable='true'
+                className='px-4 py-2 rounded-full bg-emerald-400 text-black text-sm font-semibold shadow-lg shadow-emerald-500/30 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/90 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60'
+              >
+                {downloadButtonLabel}
+              </button>
+            </div>
+          </header>
+        </div>
 
         <section
           ref={panelGestureRef}
@@ -333,7 +391,11 @@ const TvPlayLayout = ({
               className='relative rounded-[28px] border border-white/15 bg-black/40 shadow-[0_20px_60px_rgba(15,23,42,0.6)] overflow-hidden'
             >
               <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
-                <div className='absolute top-3 left-3 z-[605] flex flex-wrap items-center gap-2 bg-black/65 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
+                <div
+                  className={`absolute top-3 left-3 z-[605] flex flex-wrap items-center gap-2 text-white rounded-lg px-3 py-2 max-w-[92%] transition-opacity duration-300 ${
+                    isLowEndTV ? 'bg-black/70' : 'bg-black/65 backdrop-blur-sm'
+                  } ${controlsVisibilityClass}`}
+                >
                   <div className='text-sm font-semibold truncate max-w-[60%]'>
                     {title}
                     {episodeLabel ? ` · ${episodeLabel}` : ''}
@@ -343,7 +405,11 @@ const TvPlayLayout = ({
                   </div>
                 </div>
                 {error && (
-                  <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
+                  <div
+                    className={`absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl text-white px-4 py-3 shadow-lg pointer-events-auto ${
+                      isLowEndTV ? 'bg-black/80' : 'bg-black/75 backdrop-blur'
+                    }`}
+                  >
                     <div className='flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
                         <div className='text-[11px] uppercase tracking-wider text-white/80'>
@@ -416,7 +482,10 @@ const TvPlayLayout = ({
                   tabIndex={-1}
                   aria-label={tt('Play or pause', '播放或暂停', '播放或暫停')}
                   data-tv-focusable='true'
-                  onClick={onTogglePlayback}
+                  onClick={() => {
+                    showControlsTemporarily();
+                    onTogglePlayback();
+                  }}
                   className='tv-player-focus absolute inset-0 z-[610] rounded-[28px] pointer-events-none'
                 />
 
@@ -446,7 +515,9 @@ const TvPlayLayout = ({
               </div>
             </div>
 
-            <div className='flex flex-wrap items-center gap-2 text-xs text-white/70'>
+            <div
+              className={`flex flex-wrap items-center gap-2 text-xs text-white/70 transition-opacity duration-300 ${controlsVisibilityClass}`}
+            >
               {clientInfo && (
                 <span className='px-3 py-1 rounded-full bg-white/10 border border-white/15'>
                   {clientInfo}
@@ -476,7 +547,9 @@ const TvPlayLayout = ({
               ))}
             </div>
 
-            <div className='rounded-2xl bg-white/5 border border-white/10 p-4 text-sm text-white/70 leading-relaxed'>
+            <div
+              className={`rounded-2xl bg-white/5 border border-white/10 p-4 text-sm text-white/70 leading-relaxed transition-opacity duration-300 ${controlsVisibilityClass}`}
+            >
               <div className='text-[11px] uppercase tracking-[0.3em] text-white/50 mb-2'>
                 {tt('Synopsis', '简介', '簡介')}
               </div>
@@ -488,11 +561,11 @@ const TvPlayLayout = ({
             <aside
               ref={railRef}
               data-tv-section='rail'
-              className={`tv-episode-rail rounded-[28px] border border-white/15 bg-white/5 backdrop-blur p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
+              className={`tv-episode-rail rounded-[28px] border border-white/15 p-3 shadow-[0_20px_45px_rgba(15,23,42,0.45)] transition-all ${
                 isEpisodeSelectorCollapsed
                   ? 'opacity-0 pointer-events-none lg:opacity-100 lg:pointer-events-auto lg:max-w-[72px]'
                   : 'opacity-100'
-              }`}
+              } ${isLowEndTV ? 'bg-black/50' : 'bg-white/5 backdrop-blur'} ${controlsVisibilityClass}`}
             >
               <div className='flex items-center justify-between px-2 pt-1 pb-2'>
                 <div className='text-[11px] uppercase tracking-[0.35em] text-white/60'>

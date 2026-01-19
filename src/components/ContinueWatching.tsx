@@ -133,6 +133,19 @@ export default function ContinueWatching({
             ))
           : // 显示真实数据
             playRecords.map((record) => {
+              const plusIndex = record.key.indexOf('+');
+              const source = plusIndex > -1 ? record.key.slice(0, plusIndex) : '';
+              const id = plusIndex > -1 ? record.key.slice(plusIndex + 1) : '';
+              const progress =
+                record.total_time > 0
+                  ? Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        Math.round((record.play_time / record.total_time) * 100)
+                      )
+                    )
+                  : 0;
               return (
                 <div
                   key={record.key}
@@ -142,14 +155,17 @@ export default function ContinueWatching({
                 >
                   <VideoCard
                     // Render like a normal aggregated card; let /play find the best source
+                    id={id}
+                    source={source}
                     title={record.title}
                     poster={record.cover}
                     year={record.year}
                     episodes={record.total_episodes}
+                    source_name={record.source_name}
                     currentEpisode={record.index}
                     query={record.search_title || record.title}
-                    from='search'
-                    isAggregate={true}
+                    progress={progress}
+                    from='playrecord'
                     type={record.total_episodes > 1 ? 'tv' : ''}
                     size={isTV ? 'lg' : undefined}
                   />

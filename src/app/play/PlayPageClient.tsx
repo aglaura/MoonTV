@@ -1481,6 +1481,7 @@ export function PlayPageClient({
 
   const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
+  const autoNextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const artPlayerRef = useRef<any>(null);
   const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(
@@ -1504,6 +1505,12 @@ export function PlayPageClient({
     forceRotateStateRef.current = forceRotate;
   }, [forceRotate]);
   const [inlineFullscreen, setInlineFullscreen] = useState(false);
+  const cancelAutoNext = useCallback(() => {
+    if (autoNextTimeoutRef.current) {
+      clearTimeout(autoNextTimeoutRef.current);
+      autoNextTimeoutRef.current = null;
+    }
+  }, []);
   const currentPlayingInfo = useMemo<CurrentPlayingInfo | null>(() => {
     const bySourceKey =
       precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
@@ -2126,6 +2133,12 @@ export function PlayPageClient({
       });
     }
   }, []);
+
+  useEffect(() => {
+    return () => {
+      cancelAutoNext();
+    };
+  }, [cancelAutoNext]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -3952,12 +3965,18 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('video:ended', () => {
         const d = detailRef.current;
+        if (!d?.episodes) return;
         const idx = currentEpisodeIndexRef.current;
-        if (d && d.episodes && idx < d.episodes.length - 1) {
-          setTimeout(() => {
-            setCurrentEpisodeIndex(idx + 1);
-          }, 1000);
-        }
+        if (idx >= d.episodes.length - 1) return;
+        cancelAutoNext();
+        autoNextTimeoutRef.current = setTimeout(() => {
+          const detail = detailRef.current;
+          const currentIdx = currentEpisodeIndexRef.current;
+          if (detail?.episodes && currentIdx < detail.episodes.length - 1) {
+            setCurrentEpisodeIndex(currentIdx + 1);
+          }
+          autoNextTimeoutRef.current = null;
+        }, 1200);
       });
 
       artPlayerRef.current.on('video:timeupdate', () => {
@@ -3973,6 +3992,7 @@ export function PlayPageClient({
       });
 
       artPlayerRef.current.on('pause', () => {
+        cancelAutoNext();
         saveCurrentPlayProgress();
       });
 
