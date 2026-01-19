@@ -2096,7 +2096,7 @@ export function PlayPageClient({
   const imdbLink =
     imdbVideoId && /^tt\d{5,}$/i.test(imdbVideoId)
       ? `https://www.imdb.com/title/${imdbVideoId}/`
-      : null;
+      : undefined;
   const tmdbLink =
     tmdbId && tmdbId.startsWith('tmdb:')
       ? `https://www.themoviedb.org/tv/${tmdbId.replace('tmdb:', '')}`
