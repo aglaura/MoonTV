@@ -235,11 +235,12 @@ const TvHome = ({
 
   useEffect(() => {
     if (!heroList.length) return;
+    if (focus.startsWith('hero:')) return;
     const timer = setInterval(() => {
       setHeroIndex((prev) => (prev + 1) % heroList.length);
     }, 7000);
     return () => clearInterval(timer);
-  }, [heroList.length]);
+  }, [heroList.length, focus]);
 
   const activeHero = heroList.length
     ? heroList[Math.abs(heroIndex) % heroList.length]
@@ -248,13 +249,15 @@ const TvHome = ({
   useEffect(() => {
     const el = focusRefs.current.get(focus);
     el?.focus({ preventScroll: true });
-    el?.scrollIntoView({
-      block: 'nearest',
-      inline: 'nearest',
-      behavior: 'smooth',
-    });
 
     const f = parseFocus(focus);
+    if (f.area !== 'row') {
+      el?.scrollIntoView({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: 'smooth',
+      });
+    }
     if (f.area === 'row') rowMemory.current[f.rowId] = f.index;
     if (f.area !== 'rail') lastContentFocus.current = focus;
   }, [focus, parseFocus]);
@@ -331,8 +334,15 @@ const TvHome = ({
         const max = row.tiles.length - 1;
 
         if (dir === 'left') {
-          if (f.index === 0) openRail();
-          else setFocus(`row:${row.id}:${f.index - 1}`);
+          if (f.index === 0) {
+            rowMemory.current[row.id] = Math.max(
+              rowMemory.current[row.id] ?? 0,
+              0
+            );
+            openRail();
+          } else {
+            setFocus(`row:${row.id}:${f.index - 1}`);
+          }
         }
 
         if (dir === 'right') {
