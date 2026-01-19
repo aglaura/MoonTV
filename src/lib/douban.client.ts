@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console,no-case-declarations */
 
 import { DoubanItem, DoubanResult, DoubanSubjectDetail } from './types';
+import { getWmdbDetail } from './wmdb.client';
 
 interface DoubanCategoriesParams {
   kind: 'tv' | 'movie';
@@ -429,22 +430,62 @@ export async function getDoubanSubjectDetail(
     return doubanSubjectCache.get(normalizedId) ?? null;
   }
 
+  const mergeWithWmdb = async (
+    base: DoubanSubjectDetail | null
+  ): Promise<DoubanSubjectDetail | null> => {
+    const wmdbDetail = await getWmdbDetail(normalizedId);
+    if (!wmdbDetail) return base;
+    if (!base) return wmdbDetail;
+
+    const merged: DoubanSubjectDetail = {
+      ...base,
+      original_title: base.original_title || wmdbDetail.original_title,
+      year: base.year || wmdbDetail.year,
+      imdbId: base.imdbId || wmdbDetail.imdbId,
+      imdbTitle: base.imdbTitle || wmdbDetail.imdbTitle,
+      actors: base.actors?.length ? base.actors : wmdbDetail.actors,
+      directors: base.directors?.length ? base.directors : wmdbDetail.directors,
+      genres: base.genres?.length ? base.genres : wmdbDetail.genres,
+      countries: base.countries?.length ? base.countries : wmdbDetail.countries,
+      languages: base.languages?.length ? base.languages : wmdbDetail.languages,
+      episodes: base.episodes ?? wmdbDetail.episodes,
+      durations: base.durations?.length ? base.durations : wmdbDetail.durations,
+      releaseDates: base.releaseDates?.length
+        ? base.releaseDates
+        : wmdbDetail.releaseDates,
+    };
+
+    return merged;
+  };
+
   try {
     const response = await fetch(
       `/api/douban/subject?id=${encodeURIComponent(normalizedId)}`
     );
     if (!response.ok) {
-      doubanSubjectCache.set(normalizedId, null);
-      return null;
+      const fallback = await mergeWithWmdb(null);
+      doubanSubjectCache.set(normalizedId, fallback ?? null);
+      return fallback ?? null;
     }
 
     const detail = (await response.json()) as DoubanSubjectDetail;
-    doubanSubjectCache.set(normalizedId, detail);
-    return detail;
+    const needsWmdb =
+      !detail.imdbId ||
+      !detail.imdbTitle ||
+      !detail.original_title ||
+      !detail.genres?.length ||
+      !detail.countries?.length ||
+      !detail.languages?.length ||
+      !detail.actors?.length ||
+      !detail.directors?.length;
+    const merged = needsWmdb ? await mergeWithWmdb(detail) : detail;
+    doubanSubjectCache.set(normalizedId, merged);
+    return merged;
   } catch (error) {
     console.warn('获取豆瓣条目信息失败', error);
-    doubanSubjectCache.set(normalizedId, null);
-    return null;
+    const fallback = await mergeWithWmdb(null);
+    doubanSubjectCache.set(normalizedId, fallback ?? null);
+    return fallback ?? null;
   }
 }
 
