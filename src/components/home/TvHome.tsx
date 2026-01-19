@@ -24,6 +24,8 @@ type CardItem = {
   posterAlt?: string[];
   posterDouban?: string;
   posterTmdb?: string;
+  profile?: string;
+  profile_path?: string;
   douban_id?: number;
   imdb_id?: string;
   rate?: string;
@@ -87,13 +89,28 @@ function clsx(...xs: Array<string | false | null | undefined>) {
 }
 
 function resolvePoster(item: CardItem) {
-  return (
+  const raw =
     item.poster ||
+    item.profile ||
     item.posterAlt?.[0] ||
     item.posterDouban ||
     item.posterTmdb ||
-    ''
-  );
+    item.profile_path ||
+    '';
+  if (!raw) return '';
+  if (raw.startsWith('//')) return `https:${raw}`;
+  if (raw.startsWith('http') || raw.startsWith('/api/')) return raw;
+  if (raw.startsWith('image.tmdb.org')) return `https://${raw}`;
+  const source = (item.source_name || '').toLowerCase();
+  const id = String(item.id || '');
+  if (raw.startsWith('/') && (source === 'tmdb' || id.startsWith('tmdb:'))) {
+    const base =
+      item.type === 'person'
+        ? 'https://image.tmdb.org/t/p/w300'
+        : 'https://image.tmdb.org/t/p/w500';
+    return `${base}${raw}`;
+  }
+  return raw;
 }
 
 function buildPlayUrl(item: CardItem, basePath = '/play') {
@@ -713,16 +730,20 @@ function PosterRow({
               >
                 {isPerson ? (
                   <div className='flex h-full flex-col items-center justify-center gap-4 px-4'>
-                    <div className='w-36 h-36 rounded-full overflow-hidden bg-white/15 ring-1 ring-white/20'>
-                      {posterUrl ? (
+                    <div className='relative w-36 h-36 rounded-full overflow-hidden bg-white/15 ring-1 ring-white/20 flex items-center justify-center'>
+                      <span className='absolute inset-0 flex items-center justify-center text-xl font-semibold text-white/70'>
+                        {(tile.title || '?').slice(0, 1).toUpperCase()}
+                      </span>
+                      {posterUrl && (
                         <img
                           src={posterUrl}
                           alt={tile.title}
-                          className='h-full w-full object-cover'
+                          className='relative z-10 h-full w-full object-cover'
                           loading='lazy'
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none';
+                          }}
                         />
-                      ) : (
-                        <div className='h-full w-full bg-white/10' />
                       )}
                     </div>
                     <div className='text-center'>
