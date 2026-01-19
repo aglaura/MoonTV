@@ -32,6 +32,24 @@ const isIOSDevice = () => {
   );
 };
 
+const getOsFamily = () => {
+  if (typeof navigator === 'undefined') return 'unknown';
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes('windows')) return 'windows';
+  if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) {
+    return 'ios';
+  }
+  if (ua.includes('macintosh') || ua.includes('mac os x')) return 'macos';
+  return 'other';
+};
+
+const getScreenModeFromSize = (width: number, height: number): ScreenMode => {
+  const smallestWidth = Math.min(width, height);
+  if (smallestWidth < 600) return 'mobile';
+  if (smallestWidth < 1200) return 'tablet';
+  return 'desktop';
+};
+
 import {
   deleteFavorite,
   generateStorageKey,
@@ -46,6 +64,7 @@ import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { getOMDBData, type OMDBEnrichment } from '@/lib/omdb.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
+import type { ScreenMode } from '@/lib/screenMode';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import {
   DOWNLOAD_RECORDS_EVENT,
@@ -97,6 +116,34 @@ function PlayPageClient() {
     },
     [uiLocale]
   );
+
+  const [screenModeOverride, setScreenModeOverride] = useState<
+    ScreenMode | undefined
+  >(undefined);
+
+  useEffect(() => {
+    const updateOverride = () => {
+      if (typeof window === 'undefined') {
+        setScreenModeOverride(undefined);
+        return;
+      }
+      const os = getOsFamily();
+      if (os === 'windows' || os === 'ios' || os === 'macos') {
+        setScreenModeOverride(
+          getScreenModeFromSize(window.innerWidth, window.innerHeight)
+        );
+        return;
+      }
+      if (window.innerWidth >= 3600) {
+        setScreenModeOverride('tv');
+        return;
+      }
+      setScreenModeOverride(undefined);
+    };
+    updateOverride();
+    window.addEventListener('resize', updateOverride);
+    return () => window.removeEventListener('resize', updateOverride);
+  }, []);
 
   const delayInitialPlaybackRef = useRef<boolean>(
     !(searchParams.get('source') && searchParams.get('id'))
@@ -4012,7 +4059,7 @@ function PlayPageClient() {
 
   if (loading) {
     return (
-      <PageLayout activePath='/play'>
+      <PageLayout activePath='/play' screenModeOverride={screenModeOverride}>
         <div className='flex items-center justify-center min-h-screen bg-transparent'>
           <div className='text-center max-w-md mx-auto px-6'>
             {/* 动画影院图标 */}
@@ -4141,7 +4188,11 @@ function PlayPageClient() {
   }
 
   return (
-      <PageLayout activePath='/play' hideTopBar={hideNavInFullscreen}>
+      <PageLayout
+        activePath='/play'
+        hideTopBar={hideNavInFullscreen}
+        screenModeOverride={screenModeOverride}
+      >
       <div className='flex flex-col gap-2 py-2 px-2.5 sm:px-3.5 md:pt-10 lg:pt-2 lg:px-5 xl:px-7'>
         {/* 第一行：影片標題 */}
         <div className='py-1'>

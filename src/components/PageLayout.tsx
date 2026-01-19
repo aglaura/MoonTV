@@ -1,6 +1,7 @@
 'use client';
 
 import { useDeviceInfo } from '@/lib/screenMode';
+import type { ScreenMode } from '@/lib/screenMode';
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
 import MobileBottomNav from './MobileBottomNav';
@@ -16,6 +17,7 @@ interface PageLayoutProps {
   activePath?: string;
   hideTopBar?: boolean;
   topBarModeLabel?: string;
+  screenModeOverride?: ScreenMode;
 }
 
 const PageLayout = ({
@@ -23,8 +25,10 @@ const PageLayout = ({
   activePath = '/',
   hideTopBar = false,
   topBarModeLabel,
+  screenModeOverride,
 }: PageLayoutProps) => {
-  const { screenMode } = useDeviceInfo();
+  const { screenMode: detectedScreenMode } = useDeviceInfo();
+  const screenMode = screenModeOverride ?? detectedScreenMode;
   const isTV = screenMode === 'tv';
 
   return (
