@@ -11,6 +11,7 @@ import React, {
 } from 'react';
 
 import type { ScreenMode } from '@/lib/screenMode';
+import { useTvRemote, type TvKey } from '@/lib/tvInput';
 import { processImageUrl } from '@/lib/utils';
 
 /* =========================
@@ -437,40 +438,31 @@ const TvHome = ({
     [closeRail, focus, parseFocus, railItems, requestSidebarPeek, rows]
   );
 
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => {
+  const handleTvKey = useCallback(
+    (key: TvKey) => {
       const activeEl = document.activeElement as HTMLElement | null;
       const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
       if (sidebar && activeEl && sidebar.contains(activeEl)) {
-        if (e.key === 'ArrowRight') {
-          e.preventDefault();
-          closeRail();
-        }
+        if (key === 'right') closeRail();
         return;
       }
-      if (
-        ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
-      ) {
-        e.preventDefault();
-      }
-      if (e.key === 'ArrowUp') move('up');
-      if (e.key === 'ArrowDown') move('down');
-      if (e.key === 'ArrowLeft') move('left');
-      if (e.key === 'ArrowRight') move('right');
-      if (e.key === 'Enter') {
+
+      if (key === 'up') move('up');
+      if (key === 'down') move('down');
+      if (key === 'left') move('left');
+      if (key === 'right') move('right');
+      if (key === 'select') {
         const el = focusRefs.current.get(focus);
-        if (el) {
-          el.click();
-          e.preventDefault();
-        }
+        el?.click();
       }
-      if (e.key === 'Backspace' || e.key === 'Escape') {
+      if (key === 'back') {
         if (railOpen) closeRail();
       }
-    };
-    window.addEventListener('keydown', h, { passive: false });
-    return () => window.removeEventListener('keydown', h);
-  }, [closeRail, focus, move, railOpen]);
+    },
+    [closeRail, focus, move, railOpen]
+  );
+
+  useTvRemote(handleTvKey, true);
 
   if (loading) {
     return (

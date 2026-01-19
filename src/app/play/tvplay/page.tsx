@@ -16,6 +16,12 @@ import {
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
 import { VirtualizedRow } from '@/components/VirtualizedRow';
+import {
+  activateFocused,
+  isEditable,
+  useTvRemote,
+  type TvKey,
+} from '@/lib/tvInput';
 import { processImageUrl } from '@/lib/utils';
 
 const tvFont = Space_Grotesk({
@@ -34,45 +40,39 @@ const useSpatialNavigation = (
   onEdge?: (direction: Direction) => void,
   rowFocusMap?: MutableRefObject<Map<string, HTMLElement>>
 ) => {
-  useEffect(() => {
-    let cached: HTMLElement[] | null = null;
-    let cacheRaf = 0;
-    let lastActivate = 0;
-    let lastNavTime = 0;
-    const ACTIVATE_COOLDOWN = 300;
-    const NAV_COOLDOWN = 80;
-    const isActivateKey = (event: KeyboardEvent) =>
-      event.key === 'Enter' ||
-      event.code === 'Enter' ||
-      event.keyCode === 13 ||
-      event.keyCode === 23;
-    const scheduleCacheClear = () => {
-      if (cacheRaf) return;
-      if (typeof window === 'undefined') return;
-      cacheRaf = window.requestAnimationFrame(() => {
-        cached = null;
-        cacheRaf = 0;
-      });
-    };
+  const cacheRef = useRef<HTMLElement[] | null>(null);
+  const cacheRafRef = useRef(0);
+  const lastActivateRef = useRef(0);
+  const ACTIVATE_COOLDOWN = 300;
 
-    const getFocusable = (root: ParentNode = document): HTMLElement[] => {
-      if (root === document && cached) return cached;
+  const scheduleCacheClear = useCallback(() => {
+    if (cacheRafRef.current) return;
+    if (typeof window === 'undefined') return;
+    cacheRafRef.current = window.requestAnimationFrame(() => {
+      cacheRef.current = null;
+      cacheRafRef.current = 0;
+    });
+  }, []);
+
+  const getFocusable = useCallback(
+    (root: ParentNode = document): HTMLElement[] => {
+      if (root === document && cacheRef.current) return cacheRef.current;
       const list = Array.from(root.querySelectorAll<HTMLElement>(focusableSelector))
         .filter((el) => !el.hasAttribute('disabled'))
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
         .filter((el) => el.getClientRects().length > 0)
         .filter((el) => !el.closest('[data-sidebar]'));
       if (root === document) {
-        cached = list;
+        cacheRef.current = list;
         scheduleCacheClear();
       }
       return list;
-    };
+    },
+    [scheduleCacheClear]
+  );
 
-    const findNext = (
-      current: HTMLElement,
-      direction: Direction
-    ): HTMLElement | null => {
+  const findNext = useCallback(
+    (current: HTMLElement, direction: Direction): HTMLElement | null => {
       const currentRect = current.getBoundingClientRect();
       const currentCenterX = currentRect.left + currentRect.width / 2;
       const currentCenterY = currentRect.top + currentRect.height / 2;
@@ -109,55 +109,33 @@ const useSpatialNavigation = (
       });
 
       return best;
-    };
+    },
+    [getFocusable]
+  );
 
-    const onKey = (e: KeyboardEvent) => {
-      const dirMap: Record<string, Direction> = {
-        ArrowUp: 'up',
-        ArrowDown: 'down',
-        ArrowLeft: 'left',
-        ArrowRight: 'right',
-      };
+  const handleTvKey = useCallback(
+    (key: TvKey) => {
       const active = document.activeElement as HTMLElement | null;
       if (!active) return;
       if (active.closest('[data-sidebar]')) return;
+      if (isEditable(active)) return;
 
-      const tagName = active.tagName;
-      if (
-        tagName === 'INPUT' ||
-        tagName === 'TEXTAREA' ||
-        tagName === 'SELECT' ||
-        active.isContentEditable
-      ) {
-        return;
-      }
-      if (e.key === 'Escape' || e.key === 'Backspace') {
+      if (key === 'back') {
         window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
-        e.preventDefault();
         return;
       }
-      if (isActivateKey(e)) {
-        const now = Date.now();
-        if (now - lastActivate < ACTIVATE_COOLDOWN) return;
-        lastActivate = now;
-        active.click();
-        e.preventDefault();
-        return;
-      }
-      const dir = dirMap[e.key];
-      if (!dir) return;
 
-      const now = Date.now();
-      if (now - lastNavTime < NAV_COOLDOWN) {
-        onNavigate?.();
-        e.preventDefault();
+      if (key === 'select') {
+        const now = Date.now();
+        if (now - lastActivateRef.current < ACTIVATE_COOLDOWN) return;
+        lastActivateRef.current = now;
+        activateFocused(active);
         return;
       }
-      lastNavTime = now;
 
       onNavigate?.();
-      e.preventDefault();
 
+      const dir = key as Direction;
       if (dir === 'up' || dir === 'down') {
         const activeRow = active.closest<HTMLElement>('[data-tv-row]');
         if (activeRow) {
@@ -195,16 +173,19 @@ const useSpatialNavigation = (
       }
 
       onEdge?.(dir);
-    };
+    },
+    [activateFocused, findNext, getFocusable, onEdge, onFocusMove, onNavigate, rowFocusMap]
+  );
 
-    window.addEventListener('keydown', onKey, { passive: false });
+  useTvRemote(handleTvKey, true);
+
+  useEffect(() => {
     return () => {
-      window.removeEventListener('keydown', onKey);
-      if (cacheRaf) {
-        window.cancelAnimationFrame(cacheRaf);
+      if (cacheRafRef.current && typeof window !== 'undefined') {
+        window.cancelAnimationFrame(cacheRafRef.current);
       }
     };
-  }, [onEdge, onFocusMove, onNavigate, rowFocusMap]);
+  }, []);
 };
 
 const TvRow = ({
