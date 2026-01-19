@@ -5,7 +5,16 @@
 import Artplayer from 'artplayer';
 import Hls from 'hls.js';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 const isIOSDevice = () => {
   if (typeof navigator === 'undefined') return false;
@@ -65,7 +74,6 @@ import {
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 import PlayDetails from '@/components/play/PlayDetails';
-import TvPlayLayout from '@/components/play/TvPlayLayout';
 
 declare global {
   interface HTMLVideoElement {
@@ -79,7 +87,71 @@ declare global {
 
 export type PlayPageVariant = 'default' | 'tv';
 
-export function PlayPageClient({ variant = 'default' }: { variant?: PlayPageVariant }) {
+export type PlayerErrorType =
+  | 'playback'
+  | 'source'
+  | 'search'
+  | 'network'
+  | 'params'
+  | 'unknown';
+
+export type CurrentPlayingInfo = {
+  quality: string;
+  loadSpeed: string;
+  pingTime: number;
+  hasError?: boolean;
+};
+
+export type ActualPlaybackInfo = {
+  width: number;
+  height: number;
+  quality: string;
+  level?: number;
+} | null;
+
+export type TvPlayLayoutProps = {
+  title: string;
+  englishTitle?: string;
+  episodeLabel?: string;
+  introTags: string[];
+  synopsisText?: string;
+  clientInfo?: string;
+  sourceName?: string;
+  currentSource?: string;
+  currentPlayingInfo: CurrentPlayingInfo | null;
+  actualPlaybackInfo: ActualPlaybackInfo;
+  localizeInfoLabel: (label: string) => string;
+  downloadButtonLabel: string;
+  downloadButtonDisabled: boolean;
+  onDownload: () => void;
+  artRef: RefObject<HTMLDivElement>;
+  playerHeightClass: string;
+  forceRotate: boolean;
+  error: string | null;
+  errorType: PlayerErrorType;
+  onClearError: () => void;
+  onTryNextSource: () => void;
+  isVideoLoading: boolean;
+  videoLoadingStage: 'initing' | 'sourceChanging';
+  hideSidePanels: boolean;
+  isEpisodeSelectorCollapsed: boolean;
+  onShowEpisodes: () => void;
+  onHideEpisodes: () => void;
+  panelGestureRef: RefObject<HTMLDivElement>;
+  episodeSelector: ReactNode;
+  tt: (en: string, zhHans: string, zhHant: string) => string;
+  convertToTraditional: (text?: string) => string | undefined;
+};
+
+export type PlayPageClientProps = {
+  variant?: PlayPageVariant;
+  TvLayout?: (props: TvPlayLayoutProps) => JSX.Element;
+};
+
+export function PlayPageClient({
+  variant = 'default',
+  TvLayout,
+}: PlayPageClientProps) {
   const { userLocale } = useUserLanguage();
   const searchParams = useSearchParams();
   const configJsonBase = useMemo(() => {
@@ -202,13 +274,6 @@ export function PlayPageClient({ variant = 'default' }: { variant?: PlayPageVari
     )
   );
   const [error, setError] = useState<string | null>(null);
-  type PlayerErrorType =
-    | 'playback'
-    | 'source'
-    | 'search'
-    | 'network'
-    | 'params'
-    | 'unknown';
   const [errorType, setErrorType] = useState<PlayerErrorType>('unknown');
   const reportError = useCallback(
     (message: string, type: PlayerErrorType = 'unknown') => {
@@ -1438,18 +1503,14 @@ export function PlayPageClient({ variant = 'default' }: { variant?: PlayPageVari
     forceRotateStateRef.current = forceRotate;
   }, [forceRotate]);
   const [inlineFullscreen, setInlineFullscreen] = useState(false);
-  const currentPlayingInfo = useMemo(() => {
+  const currentPlayingInfo = useMemo<CurrentPlayingInfo | null>(() => {
     const bySourceKey =
       precomputedVideoInfo.get(`${currentSource}-${currentId}`) ||
       precomputedVideoInfo.get(getValuationKey(currentSource));
     return bySourceKey || null;
   }, [currentSource, currentId, precomputedVideoInfo, getValuationKey]);
-  const [actualPlaybackInfo, setActualPlaybackInfo] = useState<{
-    width: number;
-    height: number;
-    quality: string;
-    level?: number;
-  } | null>(null);
+  const [actualPlaybackInfo, setActualPlaybackInfo] =
+    useState<ActualPlaybackInfo>(null);
   const hideSidePanels = useMemo(
     () => forceRotate || (isFullscreen && isIOSDevice()),
     [isFullscreen, forceRotate]
@@ -4174,9 +4235,18 @@ export function PlayPageClient({ variant = 'default' }: { variant?: PlayPageVari
   if (isTvVariant) {
     const episodeLabel =
       totalEpisodes > 1 ? `E${currentEpisodeIndex + 1}` : '';
+    if (!TvLayout) {
+      return (
+        <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
+          <div className='flex items-center justify-center min-h-screen text-white'>
+            {tt('TV layout missing.', '缺少电视布局。', '缺少電視佈局。')}
+          </div>
+        </PageLayout>
+      );
+    }
     return (
       <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
-        <TvPlayLayout
+        <TvLayout
           title={displayTitleText}
           englishTitle={englishVideoTitle}
           episodeLabel={episodeLabel}
