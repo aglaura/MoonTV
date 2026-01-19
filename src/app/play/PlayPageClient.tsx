@@ -2346,7 +2346,7 @@ export function PlayPageClient({
   const tmdbLink =
     tmdbId && tmdbId.startsWith('tmdb:')
       ? `https://www.themoviedb.org/tv/${tmdbId.replace('tmdb:', '')}`
-      : null;
+      : undefined;
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const artRef = useRef<HTMLDivElement | null>(null);
   const autoErrorRecoveryRef = useRef(false);
