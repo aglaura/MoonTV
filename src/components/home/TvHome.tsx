@@ -11,33 +11,16 @@ import React, {
   type ImgHTMLAttributes,
 } from 'react';
 
-import RetryImage from '@/components/RetryImage';
-import { useTvInput } from '@/components/TvInputProvider';
+import type { CardItem, CategoryData } from '@/lib/home.types';
 import type { ScreenMode } from '@/lib/screenMode';
 import { useTvRemote, type TvKey } from '@/lib/tvInput';
 import { processImageUrl } from '@/lib/utils';
 
+import RetryImage from '@/components/RetryImage';
+import { useTvInput } from '@/components/TvInputProvider';
 /* =========================
    Types
 ========================= */
-type CardItem = {
-  title: string;
-  title_en?: string;
-  poster?: string;
-  posterAlt?: string[];
-  posterDouban?: string;
-  posterTmdb?: string;
-  profile?: string;
-  profile_path?: string;
-  douban_id?: number;
-  imdb_id?: string;
-  rate?: string;
-  year?: string;
-  type?: string;
-  query?: string;
-  source_name?: string;
-  id?: string | number;
-};
 
 type ContentRailProps = {
   title: string;
@@ -46,8 +29,6 @@ type ContentRailProps = {
   screenMode: ScreenMode;
   tt: (en: string, zhHans: string, zhHant: string) => string;
 };
-
-type CategoryData = Record<string, { items: CardItem[] }>;
 
 type TvHomeProps = {
   tt: (en: string, zhHans: string, zhHant: string) => string;

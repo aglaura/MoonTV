@@ -43,9 +43,9 @@ export default function InfoSourceConfig() {
         </div>
         <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
           {tt(
-            'Metadata-only sources (no streams). Managed by the app and not part of api_site.',
-            '仅提供元数据（无播放源）。由应用内置管理，不在 api_site 列表中。',
-            '僅提供中繼資料（無播放來源）。由應用內建管理，不在 api_site 清單中。'
+            'Metadata-only sources (no streams). Used for home rails, video cards, and cast/actor info. Managed by the app and not part of api_site.',
+            '仅提供元数据（无播放源），用于首页推荐、视频卡片与演员信息。由应用内置管理，不在 api_site 列表中。',
+            '僅提供中繼資料（無播放來源），用於首頁推薦、影片卡片與演員資訊。由應用內建管理，不在 api_site 清單中。'
           )}
         </p>
         <div className='mt-3 grid gap-2 sm:grid-cols-2'>
