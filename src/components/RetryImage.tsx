@@ -7,9 +7,13 @@ type RetryImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
   src: string;
   retrySrcs?: string[];
   retryDelayMs?: number;
+  maxRetryWindowMs?: number;
+  maxRetries?: number;
 };
 
 const DEFAULT_RETRY_DELAY = 1200;
+const DEFAULT_RETRY_WINDOW = 8000;
+const DEFAULT_MAX_RETRIES = 3;
 
 const shouldBust = (url: string) =>
   url.startsWith('http') || url.startsWith('/') || url.startsWith('//');
@@ -45,8 +49,11 @@ const RetryImage = ({
   src,
   retrySrcs,
   retryDelayMs = DEFAULT_RETRY_DELAY,
+  maxRetryWindowMs = DEFAULT_RETRY_WINDOW,
+  maxRetries = DEFAULT_MAX_RETRIES,
   onError,
   onLoad,
+  decoding = 'async',
   ...rest
 }: RetryImageProps) => {
   const candidates = useMemo(() => buildCandidates(src, retrySrcs), [src, retrySrcs]);
@@ -54,10 +61,18 @@ const RetryImage = ({
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attemptRef = useRef(0);
   const delayedRetryUsedRef = useRef(false);
+  const baseSrcRef = useRef(src);
+  const loadedRef = useRef(false);
+  const startTimeRef = useRef(Date.now());
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
+    baseSrcRef.current = src;
+    startTimeRef.current = Date.now();
+    loadedRef.current = false;
     attemptRef.current = 0;
     delayedRetryUsedRef.current = false;
+    retryCountRef.current = 0;
     if (retryTimerRef.current) {
       clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
@@ -74,33 +89,64 @@ const RetryImage = ({
   const scheduleRetry = useCallback((base: string) => {
     if (!retryDelayMs) return;
     if (retryTimerRef.current) return;
+    if (baseSrcRef.current !== base) return;
+    if (
+      maxRetryWindowMs > 0 &&
+      Date.now() - startTimeRef.current > maxRetryWindowMs
+    ) {
+      return;
+    }
     delayedRetryUsedRef.current = true;
-    attemptRef.current = candidates.length;
+    attemptRef.current = Math.max(candidates.length - 1, 0);
     retryTimerRef.current = setTimeout(() => {
       retryTimerRef.current = null;
+      if (baseSrcRef.current !== base) return;
+      if (
+        maxRetryWindowMs > 0 &&
+        Date.now() - startTimeRef.current > maxRetryWindowMs
+      ) {
+        return;
+      }
       setCurrentSrc(addBust(base));
     }, retryDelayMs);
-  }, [candidates.length, retryDelayMs]);
+    return true;
+  }, [candidates.length, maxRetryWindowMs, retryDelayMs]);
 
   const handleError = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+      if (loadedRef.current) return;
+      if (
+        maxRetryWindowMs > 0 &&
+        Date.now() - startTimeRef.current > maxRetryWindowMs
+      ) {
+        onError?.(event);
+        return;
+      }
+      if (maxRetries <= 0 || retryCountRef.current >= maxRetries) {
+        onError?.(event);
+        return;
+      }
       const nextIndex = attemptRef.current + 1;
       if (nextIndex < candidates.length) {
+        retryCountRef.current += 1;
         attemptRef.current = nextIndex;
         setCurrentSrc(candidates[nextIndex]);
         return;
       }
       if (candidates[0] && !delayedRetryUsedRef.current) {
-        scheduleRetry(candidates[0]);
-        return;
+        if (scheduleRetry(candidates[0])) {
+          retryCountRef.current += 1;
+          return;
+        }
       }
       onError?.(event);
     },
-    [candidates, onError, scheduleRetry]
+    [candidates, maxRetries, maxRetryWindowMs, onError, scheduleRetry]
   );
 
   const handleLoad = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+      loadedRef.current = true;
       if (retryTimerRef.current) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
@@ -116,6 +162,7 @@ const RetryImage = ({
     <img
       {...rest}
       src={currentSrc}
+      decoding={decoding}
       onError={handleError}
       onLoad={handleLoad}
     />

@@ -91,6 +91,59 @@ function clsx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(' ');
 }
 
+type RailImageProps = {
+  src: string;
+  alt: string;
+  className?: string;
+  skeletonClassName?: string;
+  onError?: (event: React.SyntheticEvent<HTMLImageElement, Event>) => void;
+  onLoad?: (event: React.SyntheticEvent<HTMLImageElement, Event>) => void;
+};
+
+function RailImage({
+  src,
+  alt,
+  className,
+  skeletonClassName,
+  onError,
+  onLoad,
+}: RailImageProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (!src) return null;
+
+  const handleLoad = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    setLoaded(true);
+    onLoad?.(event);
+  };
+
+  const handleError = (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    setFailed(true);
+    onError?.(event);
+  };
+
+  return (
+    <>
+      {!loaded && !failed && (
+        <div
+          className={
+            skeletonClassName || 'absolute inset-0 bg-white/10 animate-pulse'
+          }
+        />
+      )}
+      <RetryImage
+        src={src}
+        alt={alt}
+        className={className}
+        loading='lazy'
+        onLoad={handleLoad}
+        onError={handleError}
+      />
+    </>
+  );
+}
+
 function resolvePoster(item: CardItem) {
   const raw =
     item.poster ||
@@ -695,14 +748,15 @@ const TvHome = ({
               data-tv-section='hero'
             >
               {activeHero?.poster && (
-                <RetryImage
+                <RailImage
                   src={processImageUrl(activeHero.poster, {
                     doubanId: activeHero.douban_id,
                     imdbId: activeHero.imdb_id,
                     preferCached: true,
                   })}
-                  alt={activeHero.title}
+                  alt={activeHero.title || ''}
                   className='absolute inset-0 h-full w-full object-cover opacity-50 scale-110'
+                  skeletonClassName='absolute inset-0 bg-white/5 animate-pulse'
                   loading='lazy'
                   onError={(event) => {
                     event.currentTarget.style.display = 'none';
@@ -875,10 +929,11 @@ function PosterRow({
                         {(tile.title || '?').slice(0, 1).toUpperCase()}
                       </span>
                       {posterUrl && (
-                        <RetryImage
+                        <RailImage
                           src={posterUrl}
                           alt={tile.title}
-                          className='relative z-10 h-full w-full object-cover'
+                          className='absolute inset-0 h-full w-full object-cover'
+                          skeletonClassName='absolute inset-0 bg-white/15 animate-pulse'
                           loading='lazy'
                           onError={(event) => {
                             event.currentTarget.style.display = 'none';
@@ -894,10 +949,11 @@ function PosterRow({
                   <>
                     <div className='absolute inset-0 bg-white/10' />
                     {posterUrl && (
-                      <RetryImage
+                      <RailImage
                         src={posterUrl}
                         alt={tile.title}
                         className='absolute inset-0 h-full w-full object-cover'
+                        skeletonClassName='absolute inset-0 bg-white/10 animate-pulse'
                         loading='lazy'
                         onError={(event) => {
                           event.currentTarget.style.display = 'none';
