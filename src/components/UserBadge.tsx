@@ -53,11 +53,23 @@ type SimpleUser = {
   group?: string | null;
 };
 
-export default function UserBadge() {
+type UserBadgeProps = {
+  variant?: 'default' | 'tv';
+  showLabel?: boolean;
+  className?: string;
+};
+
+export default function UserBadge({
+  variant = 'default',
+  showLabel = true,
+  className,
+}: UserBadgeProps) {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const { userLocale } = useUserLanguage();
   const locale = userLocale || 'en';
+  const isTvVariant = variant === 'tv';
+  const displayLabel = showLabel;
   const {
     isKidsMode,
     ready: kidsReady,
@@ -240,16 +252,26 @@ export default function UserBadge() {
         ref={buttonRef}
         title={`${t('loggedInAs', locale)} ${username}`}
         data-tv-focusable="true"
-        className={`max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur flex items-center gap-2 cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-1 relative z-[1200000] ${
-          isKidsMode
-            ? 'border-amber-300 dark:border-amber-400/70 ring-amber-200/60'
-            : 'border-gray-200/70 dark:border-gray-700/60'
-        }`.trim()}
+        className={`${
+          isTvVariant
+            ? `w-full rounded-2xl px-3 py-2 bg-white/5 border border-white/10 text-sm font-semibold text-white/90 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60 ${
+                isKidsMode ? 'border-amber-400/50' : 'border-white/10'
+              }`
+            : `max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur ${
+                isKidsMode
+                  ? 'border-amber-300 dark:border-amber-400/70 ring-amber-200/60'
+                  : 'border-gray-200/70 dark:border-gray-700/60'
+              }`
+        } ${className || ''} flex items-center gap-2 cursor-pointer select-none relative z-[1200000]`.trim()}
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-haspopup='menu'
       >
-        <span className='block w-6 h-6 rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
+        <span
+          className={`block ${
+            isTvVariant ? 'w-9 h-9 text-sm' : 'w-6 h-6 text-[10px]'
+          } rounded-full bg-gradient-to-br from-green-500/25 to-green-400/10 overflow-hidden flex items-center justify-center font-bold text-green-200 border border-green-500/20`}
+        >
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatar} alt={username} className='w-full h-full object-cover' />
@@ -257,9 +279,30 @@ export default function UserBadge() {
             username.charAt(0).toUpperCase()
           )}
         </span>
-        <span className='truncate hidden sm:inline'>{username}</span>
-        {isKidsMode && (
-          <span className='text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100'>
+        {displayLabel && (
+          <span className={`truncate ${isTvVariant ? 'flex-1' : 'hidden sm:inline'}`}>
+            {isTvVariant ? (
+              <span className='flex flex-col leading-tight'>
+                <span className='text-sm font-semibold text-white/90'>
+                  {username}
+                </span>
+                <span className='text-[10px] uppercase tracking-[0.2em] text-white/50'>
+                  {switchUserLabel(locale)}
+                </span>
+              </span>
+            ) : (
+              username
+            )}
+          </span>
+        )}
+        {isKidsMode && displayLabel && (
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full ${
+              isTvVariant
+                ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100'
+            }`}
+          >
             {tt('Kids', '少儿', '少兒', locale)}
           </span>
         )}

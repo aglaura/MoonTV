@@ -243,9 +243,10 @@ const SidebarTV = ({
   const showLabels = !isPeek && !isCollapsed;
   const decodedActive = useMemo(() => decodeURIComponent(active), [active]);
   const navItemClass =
-    'group flex items-center gap-3 justify-start rounded-xl px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-150 min-h-[44px] hover:bg-white/40 dark:hover:bg-white/10 data-[active=true]:bg-white/70 dark:data-[active=true]:bg-white/15 data-[active=true]:text-gray-900 dark:data-[active=true]:text-white';
-  const navIconClass = 'h-4 w-4 text-gray-500 dark:text-gray-400';
-  const utilityRowClass = 'flex items-center justify-center rounded-xl px-2 py-2';
+    'group flex items-center gap-3 justify-start rounded-xl px-3 py-2 text-sm font-semibold text-white/70 transition-colors duration-150 min-h-[44px] hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white';
+  const navIconClass = 'h-4 w-4 text-white/60';
+  const utilityRowClass =
+    'flex items-center justify-center rounded-xl px-2 py-2 bg-white/5 hover:bg-white/10 transition-colors';
 
   return (
     <SidebarContext.Provider value={{ isCollapsed: isCollapsed && !isPeek, isPeek }}>
@@ -254,7 +255,7 @@ const SidebarTV = ({
           data-sidebar
           data-tv-group="sidebar"
           data-tv-direction="vertical"
-          className={`fixed top-0 left-0 h-screen bg-white/40 backdrop-blur-xl transition-all duration-300 border-r border-gray-200/50 z-10 shadow-lg dark:bg-gray-900/70 dark:border-gray-700/50 ${widthClass}`}
+          className={`fixed top-0 left-0 h-screen bg-black/80 backdrop-blur-md transition-all duration-300 border-r border-white/10 z-10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] ${widthClass}`}
           ref={sidebarRef}
           style={{
             backdropFilter: 'blur(20px)',
@@ -293,12 +294,23 @@ const SidebarTV = ({
                 onClick={handleToggle}
                 tabIndex={-1}
                 aria-hidden="true"
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors duration-200 z-10 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50 ${
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors duration-200 z-10 ${
                   isCollapsed && !isPeek ? 'left-1/2 -translate-x-1/2' : 'right-2'
                 }`}
               >
                 <Menu className="h-4 w-4" />
               </button>
+            </div>
+
+              <div className="px-2 pb-3">
+              <div
+                className={`flex items-center rounded-2xl px-2 py-1.5 bg-white/5 border border-white/10 ${
+                  showLabels ? 'justify-between' : 'justify-center'
+                }`}
+              >
+                <UserBadge variant="tv" showLabel={showLabels} className={showLabels ? 'flex-1' : ''} />
+                {showLabels && <LogoutButton variant="tv" />}
+              </div>
             </div>
 
             <nav className="px-2 mt-4 space-y-1">
@@ -416,7 +428,7 @@ const SidebarTV = ({
                       tabIndex={-1}
                       data-tv-focusable="true"
                       onClick={onModeClick}
-                      className={`flex items-center gap-2 rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/20 transition ${
+                      className={`flex items-center gap-2 rounded-full bg-white/10 text-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 hover:bg-white/15 transition ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -426,7 +438,7 @@ const SidebarTV = ({
                     </button>
                   ) : (
                     <div
-                      className={`flex items-center gap-2 rounded-full bg-white/60 dark:bg-white/10 text-gray-700 dark:text-gray-200 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/40 dark:border-white/10 ${
+                      className={`flex items-center gap-2 rounded-full bg-white/10 text-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -435,10 +447,6 @@ const SidebarTV = ({
                       {showLabels && <span>{modeLabel}</span>}
                     </div>
                   ))}
-
-                <div className={utilityRowClass}>
-                  <UserBadge />
-                </div>
 
                 <div className={utilityRowClass}>
                   <SettingsButton />
@@ -452,9 +460,6 @@ const SidebarTV = ({
                   <ThemeToggle />
                 </div>
 
-                <div className={utilityRowClass}>
-                  <LogoutButton />
-                </div>
               </div>
             </div>
           </div>

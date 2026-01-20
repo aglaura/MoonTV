@@ -18,7 +18,15 @@ const t = (locale: string) => {
   }
 };
 
-export const LogoutButton: React.FC = () => {
+type LogoutButtonProps = {
+  variant?: 'default' | 'tv';
+  className?: string;
+};
+
+export const LogoutButton: React.FC<LogoutButtonProps> = ({
+  variant = 'default',
+  className,
+}) => {
   const [loading, setLoading] = useState(false);
   const { userLocale } = useUserLanguage();
   const locale = userLocale || 'en';
@@ -45,7 +53,11 @@ export const LogoutButton: React.FC = () => {
     <button
       onClick={handleLogout}
       data-tv-focusable="true"
-      className='w-10 h-10 p-2 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-200/50 dark:text-gray-300 dark:hover:bg-gray-700/50 transition-colors'
+      className={`${
+        variant === 'tv'
+          ? 'w-9 h-9 p-2 rounded-full text-white/70 hover:bg-white/10'
+          : 'w-10 h-10 p-2 rounded-full text-gray-600 hover:bg-gray-200/50 dark:text-gray-300 dark:hover:bg-gray-700/50'
+      } flex items-center justify-center transition-colors ${className || ''}`.trim()}
       aria-label={t(locale)}
       title={t(locale)}
     >
