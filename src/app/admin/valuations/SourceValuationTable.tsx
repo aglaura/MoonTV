@@ -21,6 +21,12 @@ interface SourceValuationRow {
   score?: number;
 }
 
+interface ValuationWeights {
+  quality: number;
+  speed: number;
+  ping: number;
+}
+
 const getQualityScoreFromLabel = (
   quality?: string,
   fallbackRank?: number
@@ -195,14 +201,11 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
             pingScore = 100;
           }
 
-          // Provider valuation weights: prioritize quality, de-emphasize speed.
-          const QUALITY_WEIGHT = 0.6;
-          const SPEED_WEIGHT = 0.15;
-          const PING_WEIGHT = 0.25;
+          // Use configurable weights
           const score =
-            qualityScore * QUALITY_WEIGHT +
-            speedScore * SPEED_WEIGHT +
-            pingScore * PING_WEIGHT;
+            qualityScore * WEIGHTS.quality +
+            speedScore * WEIGHTS.speed +
+            pingScore * WEIGHTS.ping;
 
           return {
             ...item,
@@ -222,7 +225,7 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [WEIGHTS]);
 
   const handleTestValuations = useCallback(async () => {
     try {
@@ -325,6 +328,13 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
       );
     return [...valuations, ...missing];
   }, [showAllProviders, sourceConfig, valuations]);
+
+  // Configurable weights - can be loaded from config later
+  const WEIGHTS: ValuationWeights = {
+    quality: 0.6,
+    speed: 0.15,
+    ping: 0.25,
+  };
 
   const providerCount = sourceConfig?.length || 0;
 

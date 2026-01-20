@@ -2329,6 +2329,54 @@ function AdminPageClient() {
     try {
       if (showLoading) {
         setLoading(true);
+'use client';
+
+import { tt } from '../shared/i18n';
+
+export default function InfoSourceConfig() {
+  const infoSources = [
+    {
+/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
+
+'use client';
+
+// Force dynamic rendering to avoid next-intl static prerender issues
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { Settings, Database, Users, Info, Video, BarChart3 } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+import { AdminConfig, AdminConfigResult } from '@/lib/admin.types';
+
+import PageLayout from '@/components/PageLayout';
+import CollapsibleTab from './shared/CollapsibleTab';
+import UserConfig from './users/UserConfig';
+import VideoSourceConfig from './video-source/VideoSourceConfig';
+import SourceValuationTable from './valuations/SourceValuationTable';
+import SiteConfigComponent from './site/SiteConfig';
+import RedisStatus from './redis/RedisStatus';
+import { tt } from './shared/i18n';
+import { showError as showErrorAlert, showSuccess as showSuccessAlert } from './shared/alerts';
+
+function AdminPageClient() {
+  const [config, setConfig] = useState<AdminConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<'owner' | 'admin' | null>(null);
+  const [expandedTabs, setExpandedTabs] = useState<{ [key: string]: boolean }>({
+    userConfig: false,
+    videoSource: false,
+    sourceValuations: false,
+    infoSources: false,
+    siteConfig: false,
+    redis: false,
+  });
+
+  const fetchConfig = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
       }
 
       const response = await fetch(`/api/admin/config`);
@@ -2352,7 +2400,7 @@ function AdminPageClient() {
         err instanceof Error
           ? err.message
           : tt('Failed to load config', '获取配置失败', '獲取配置失敗');
-      showError(msg);
+      showErrorAlert(msg);
       setError(msg);
     } finally {
       if (showLoading) {
@@ -2398,7 +2446,7 @@ function AdminPageClient() {
           )
         );
       }
-      showSuccess(
+      showSuccessAlert(
         tt(
           'Reset successful. Please refresh the page.',
           '重置成功，请刷新页面。',
@@ -2406,7 +2454,7 @@ function AdminPageClient() {
         )
       );
     } catch (err) {
-      showError(
+      showErrorAlert(
         err instanceof Error
           ? err.message
           : tt('Reset failed', '重置失败', '重置失敗')
@@ -2614,56 +2662,6 @@ const InfoSourceConfig = () => {
     </div>
   );
 };
-
-// Memoized locale resolution to prevent repeated localStorage/navigator calls
-type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
-
-function resolveUiLocale(): UiLocale {
-  try {
-    const saved =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem('userLocale')
-        : null;
-    if (saved === 'en' || saved === 'zh-Hans' || saved === 'zh-Hant') {
-      return saved;
-    }
-  } catch {
-    // ignore
-  }
-
-  const nav =
-    typeof navigator !== 'undefined' ? (navigator.language || '') : '';
-  const lower = nav.toLowerCase();
-  if (lower.startsWith('zh-cn') || lower.startsWith('zh-hans')) return 'zh-Hans';
-  if (
-    lower.startsWith('zh-tw') ||
-    lower.startsWith('zh-hant') ||
-    lower.startsWith('zh-hk')
-  ) {
-    return 'zh-Hant';
-  }
-  return 'en';
-}
-
-const uiLocale = resolveUiLocale();
-
-export function tt(en: string, zhHans: string, zhHant: string): string {
-  if (uiLocale === 'zh-Hans') return zhHans;
-  if (uiLocale === 'zh-Hant') return zhHant;
-  return en;
-}
-
-export const showError = (message: string) =>
-  Swal.fire({ icon: 'error', title: tt('Error', '错误', '錯誤'), text: message });
-
-export const showSuccess = (message: string) =>
-  Swal.fire({
-    icon: 'success',
-    title: tt('Success', '成功', '成功'),
-    text: message,
-    timer: 2000,
-    showConfirmButton: false,
-  });
 
 export default function AdminPage() {
   return (

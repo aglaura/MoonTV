@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
+/* eslint-disable no-console */
 
 'use client';
 
@@ -27,7 +27,9 @@ import { tt, showError, callApi } from '../shared/adminFetch';
 import { DataSource } from '@/lib/admin.types';
 
 interface VideoSourceConfigProps {
-  config: any;
+  config: {
+    SourceConfig: DataSource[];
+  } | null;
   refreshConfig: () => Promise<void>;
 }
 
@@ -35,14 +37,13 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
   const [sources, setSources] = useState<DataSource[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
-  const [newSource, setNewSource] = useState<DataSource>({
+  const [newSource, setNewSource] = useState<Omit<DataSource, 'from'> & { from?: 'config' | 'custom' }>({
     name: '',
     key: '',
     api: '',
     m3u8: '',
     detail: '',
     disabled: false,
-    from: 'config',
   });
 
   const sensors = useSensors(
@@ -110,7 +111,7 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
       });
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: { active: { id: string }, over: { id: string } | null }) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = sources.findIndex((s) => s.key === active.id);
