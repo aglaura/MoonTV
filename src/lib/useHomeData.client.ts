@@ -227,7 +227,7 @@ export const useHomeData = ({
 
   const tmdbTvCards = useMemo(
     () =>
-      (tmdbTv || []).map((item) => ({
+      (tmdbTv || []).map((item): CardItem => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
@@ -251,7 +251,7 @@ export const useHomeData = ({
 
   const tmdbKrCards = useMemo(
     () =>
-      (tmdbKr || []).map((item) => ({
+      (tmdbKr || []).map((item): CardItem => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
@@ -275,7 +275,7 @@ export const useHomeData = ({
 
   const tmdbJpCards = useMemo(
     () =>
-      (tmdbJp || []).map((item) => ({
+      (tmdbJp || []).map((item): CardItem => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
@@ -415,7 +415,7 @@ export const useHomeData = ({
 
   const tmdbOnAirCards = useMemo(
     () =>
-      (tmdbOnAir || []).map((item) => ({
+      (tmdbOnAir || []).map((item): CardItem => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
