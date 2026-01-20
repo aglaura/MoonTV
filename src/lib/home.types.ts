@@ -14,9 +14,16 @@ export type TmdbListItem = {
   providers?: string[];
   voteAverage?: number;
   cast?: string[];
+  castMembers?: TmdbCastMember[];
   directors?: string[];
   imdbId?: string;
   doubanId?: string;
+};
+
+export type TmdbCastMember = {
+  tmdbId?: string;
+  name?: string;
+  profile?: string;
 };
 
 export type TmdbPerson = {

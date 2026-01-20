@@ -11,6 +11,7 @@ import type {
   CategoryData,
   CategoryKey,
   PrefetchedHome,
+  TmdbCastMember,
   TmdbListItem,
   TmdbPerson,
   UiLocale,
@@ -45,6 +46,8 @@ const isKidSafeCard = (item: CardItem) =>
     desc: item.rate || item.type || '',
     type: item.type,
   });
+
+const MAX_PEOPLE = 60;
 
 export const useHomeData = ({
   uiLocale,
@@ -185,7 +188,7 @@ export const useHomeData = ({
     };
 
     fetchRecommendData();
-  }, [GetBangumiCalendarData]);
+  }, []);
 
   const animeList = useMemo(() => {
     if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
@@ -316,6 +319,40 @@ export const useHomeData = ({
       })),
     [tmdbPeople]
   );
+
+  const castPeopleCards = useMemo(() => {
+    const people = new Map<string, CardItem>();
+    const addMember = (member: TmdbCastMember, sourceName = 'TMDB') => {
+      const name = (member.name || '').trim();
+      const id = (member.tmdbId || '').trim();
+      const key = id || name.toLowerCase();
+      if (!name || !key || people.has(key)) return;
+      people.set(key, {
+        title: name,
+        poster: member.profile || '',
+        rate: '',
+        year: '',
+        type: 'person',
+        query: name,
+        source_name: sourceName,
+        id: id || undefined,
+      });
+    };
+    const addFromList = (items: TmdbListItem[]) => {
+      (items || []).forEach((item) => {
+        (item.castMembers || []).forEach((member) => {
+          addMember(member);
+        });
+      });
+    };
+    addFromList(tmdbMovies);
+    addFromList(tmdbTv);
+    addFromList(tmdbKr);
+    addFromList(tmdbJp);
+    addFromList(tmdbNowPlaying);
+    addFromList(tmdbOnAir);
+    return Array.from(people.values());
+  }, [tmdbMovies, tmdbTv, tmdbKr, tmdbJp, tmdbNowPlaying, tmdbOnAir]);
 
   const mapDoubanCards = useCallback(
     (items: DoubanItem[], type?: string): CardItem[] =>
@@ -476,7 +513,18 @@ export const useHomeData = ({
 
   const effectiveTmdbMovies = prefetchedHome?.tmdbMovies ?? tmdbMovieCards;
   const effectiveTmdbTv = prefetchedHome?.tmdbTv ?? tmdbTvCards;
-  const effectiveTmdbPeople = prefetchedHome?.tmdbPeople ?? tmdbPeopleCards;
+  const effectiveTmdbPeople = useMemo(() => {
+    const basePeople = prefetchedHome?.tmdbPeople ?? tmdbPeopleCards;
+    const seen = new Set<string>();
+    const merged: CardItem[] = [];
+    [...basePeople, ...castPeopleCards].forEach((person) => {
+      const key = String(person.id || person.title || '').trim();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      merged.push(person);
+    });
+    return merged.slice(0, MAX_PEOPLE);
+  }, [prefetchedHome, tmdbPeopleCards, castPeopleCards]);
   const effectiveTmdbNowPlaying =
     prefetchedHome?.tmdbNowPlaying ?? tmdbNowPlayingCards;
   const effectiveTmdbOnAir = prefetchedHome?.tmdbOnAir ?? tmdbOnAirCards;

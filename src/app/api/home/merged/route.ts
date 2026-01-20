@@ -6,6 +6,8 @@ import { DoubanItem } from '@/lib/types';
 export const runtime = 'nodejs';
 export const revalidate = 600;
 
+const MAX_PEOPLE = 60;
+
 type TmdbItem = {
   tmdbId: string;
   title: string;
@@ -17,6 +19,13 @@ type TmdbItem = {
   originCountry?: string[];
   imdbId?: string;
   doubanId?: string;
+  castMembers?: TmdbCastMember[];
+};
+
+type TmdbCastMember = {
+  tmdbId?: string;
+  name?: string;
+  profile?: string;
 };
 
 type TmdbPerson = {
@@ -237,6 +246,39 @@ function mapTmdbPeople(items: TmdbPerson[]): CardItem[] {
   }));
 }
 
+function mapCastPeople(items: TmdbItem[]): CardItem[] {
+  const people: CardItem[] = [];
+  items.forEach((item) => {
+    (item.castMembers || []).forEach((member) => {
+      const name = (member.name || '').trim();
+      if (!name) return;
+      people.push({
+        title: name,
+        poster: member.profile || '',
+        rate: '',
+        year: '',
+        type: 'person',
+        query: name,
+        source_name: 'TMDB',
+        id: member.tmdbId,
+      });
+    });
+  });
+  return people;
+}
+
+function mergePeopleCards(...lists: CardItem[][]): CardItem[] {
+  const seen = new Set<string>();
+  const merged: CardItem[] = [];
+  lists.flat().forEach((person) => {
+    const key = String(person.id || person.title || '').trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    merged.push(person);
+  });
+  return merged;
+}
+
 function splitTvByRegion(items: DoubanItem[]) {
   const kr: DoubanItem[] = [];
   const jp: DoubanItem[] = [];
@@ -389,7 +431,18 @@ export async function GET(request: Request) {
     const tmdbJpCards = mapTmdbCards(tmdbHome.jpTv || []);
     const tmdbNowPlaying = mapTmdbCards(tmdbHome.nowPlaying || []);
     const tmdbOnAir = mapTmdbCards(tmdbHome.onAir || []);
-    const tmdbPeople = mapTmdbPeople(tmdbHome.people || []);
+    const castPeople = mapCastPeople([
+      ...(tmdbHome.movies || []),
+      ...(tmdbHome.tv || []),
+      ...(tmdbHome.krTv || []),
+      ...(tmdbHome.jpTv || []),
+      ...(tmdbHome.nowPlaying || []),
+      ...(tmdbHome.onAir || []),
+    ]);
+    const tmdbPeople = mergePeopleCards(
+      mapTmdbPeople(tmdbHome.people || []),
+      castPeople
+    ).slice(0, MAX_PEOPLE);
 
     const tmdbTvKr = mergeCards(
       tmdbTvCards.filter((item) => {

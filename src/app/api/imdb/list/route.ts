@@ -65,9 +65,16 @@ type TmdbItem = {
   genres?: string[];
   providers?: string[];
   cast?: string[];
+  castMembers?: TmdbCastMember[];
   directors?: string[];
   imdbId?: string;
   doubanId?: string;
+};
+
+type TmdbCastMember = {
+  tmdbId?: string;
+  name?: string;
+  profile?: string;
 };
 
 async function fetchDoubanChineseTitle(title: string): Promise<string | undefined> {
@@ -280,11 +287,16 @@ async function enrichTmdbItem(
         ?.filter(Boolean) ?? [];
 
     // Cast & crew
-    const cast =
+    const castMembers =
       (data?.credits?.cast as any[])
-        ?.slice(0, 3)
-        ?.map((c) => c?.name)
-        ?.filter(Boolean) ?? [];
+        ?.slice(0, 6)
+        ?.map((c) => ({
+          tmdbId: c?.id ? `tmdb:${c.id}` : undefined,
+          name: c?.name || '',
+          profile: c?.profile_path ? `${TMDB_PROFILE}${c.profile_path}` : '',
+        }))
+        ?.filter((c) => c.name || c.tmdbId) ?? [];
+    const cast = castMembers.map((c) => c.name).filter(Boolean).slice(0, 3);
     const directors =
       (data?.credits?.crew as any[])
         ?.filter((c) => c?.job === 'Director')
@@ -306,6 +318,7 @@ async function enrichTmdbItem(
       genres,
       providers,
       cast,
+      castMembers,
       directors,
       voteAverage: data?.vote_average ?? item.voteAverage,
       imdbId: imdbId || item.imdbId,
