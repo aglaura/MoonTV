@@ -159,9 +159,9 @@ async function fetchOmdbContribution(
             return {
               source,
               value,
-            } as OmdbContribution['ratings'][number];
+            } as NonNullable<OmdbContribution['ratings']>[number];
           })
-          .filter((rating): rating is OmdbContribution['ratings'][number] => !!rating);
+          .filter((rating): rating is NonNullable<OmdbContribution['ratings']>[number] => !!rating);
 
         fresh = {
           imdbRating: normalizeOmdbValue(data.imdbRating),
