@@ -1,9 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import Swal from 'sweetalert2';
 import { tt } from './i18n';
 import { showError } from './alerts';
 
-export const callApi = async (endpoint: string, body: Record<string, any>) => {
+export const callApi = async (
+  endpoint: string,
+  body: Record<string, unknown>
+) => {
   try {
     const resp = await fetch(endpoint, {
       method: 'POST',

@@ -1,10 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { tt, showError, showSuccess, callApi } from '../shared/adminFetch';
+import Swal from 'sweetalert2';
 import { AdminConfig } from '@/lib/admin.types';
+
+import { tt } from '../shared/i18n';
+import { showError, showSuccess } from '../shared/alerts';
+import { callApi } from '../shared/adminFetch';
 
 interface SiteConfigProps {
   config: AdminConfig | null;
@@ -30,9 +32,16 @@ const SiteConfigComponent = ({ config }: SiteConfigProps) => {
   const [testingConfigJson, setTestingConfigJson] = useState(false);
   const [testSummary, setTestSummary] = useState<string | null>(null);
 
-  const isD1Storage =
-    typeof window !== 'undefined' &&
-    (window as any).RUNTIME_CONFIG?.STORAGE_TYPE === 'd1';
+  interface RuntimeConfig {
+    STORAGE_TYPE?: 'd1' | 'kv';
+  }
+
+  const runtimeConfig =
+    typeof window !== 'undefined'
+      ? (window as { RUNTIME_CONFIG?: RuntimeConfig }).RUNTIME_CONFIG
+      : undefined;
+
+  const isD1Storage = runtimeConfig?.STORAGE_TYPE === 'd1';
 
   useEffect(() => {
     if (config?.SiteConfig) {

@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import { tt } from '../shared/adminFetch';
+import { tt } from '../shared/i18n';
 import { DataSource } from '@/lib/admin.types';
 import { toggleSource, deleteSource, updateSourceOrder } from './sourceActions';
 

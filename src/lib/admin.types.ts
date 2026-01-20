@@ -1,3 +1,29 @@
+export type UserRole = 'user' | 'admin' | 'owner';
+
+export interface User {
+  username: string;
+  role: UserRole;
+  avatar?: string;
+  banned?: boolean;
+  group?: string;
+}
+
+export interface DataSource {
+  key: string;
+  name: string;
+  api?: string;
+  m3u8?: string;
+  detail?: string;
+  from: 'config' | 'custom';
+  disabled?: boolean;
+}
+
+export interface ValuationWeights {
+  quality: number;
+  speed: number;
+  ping: number;
+}
+
 export interface AdminConfig {
   SiteConfig: {
     SiteName: string;
@@ -8,23 +34,10 @@ export interface AdminConfig {
   };
   UserConfig: {
     AllowRegister: boolean;
-    Users: {
-      username: string;
-      role: 'user' | 'admin' | 'owner';
-      avatar?: string;
-      banned?: boolean;
-      group?: string;
-    }[];
+    Users: User[];
   };
-  SourceConfig: {
-    key: string;
-    name: string;
-    api?: string;
-    m3u8?: string;
-    detail?: string;
-    from: 'config' | 'custom';
-    disabled?: boolean;
-  }[];
+  SourceConfig: DataSource[];
+  ValuationWeights?: ValuationWeights;
 }
 
 export interface AdminConfigResult {

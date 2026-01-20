@@ -1,17 +1,23 @@
-import { tt } from '../shared/adminFetch';
+import type { Dispatch, SetStateAction } from 'react';
+
+import type { User } from '@/lib/admin.types';
+
+import { tt } from '../shared/i18n';
+
+export interface EditingUser {
+  username: string;
+  newUsername: string;
+  avatar: string;
+  group: 'family' | 'guest';
+  makeAdmin: boolean;
+  banned: boolean;
+  newPassword: string;
+}
 
 interface EditUserModalProps {
-  editingUser: {
-    username: string;
-    newUsername: string;
-    avatar: string;
-    group: 'family' | 'guest';
-    makeAdmin: boolean;
-    banned: boolean;
-    newPassword: string;
-  } | null;
-  setEditingUser: React.Dispatch<React.SetStateAction<any>>;
-  editingEntry: any;
+  editingUser: EditingUser | null;
+  setEditingUser: Dispatch<SetStateAction<EditingUser | null>>;
+  editingEntry: User | null;
   role: 'owner' | 'admin' | null;
   handleSaveEditUser: () => Promise<void>;
 }
@@ -56,7 +62,7 @@ const EditUserModal = ({
               type='text'
               value={editingUser.newUsername}
               onChange={(e) =>
-                setEditingUser((prev: any) =>
+                setEditingUser((prev) =>
                   prev ? { ...prev, newUsername: e.target.value } : prev
                 )
               }
@@ -78,7 +84,7 @@ const EditUserModal = ({
               type='url'
               value={editingUser.avatar}
               onChange={(e) =>
-                setEditingUser((prev: any) =>
+                setEditingUser((prev) =>
                   prev ? { ...prev, avatar: e.target.value } : prev
                 )
               }
@@ -95,7 +101,7 @@ const EditUserModal = ({
               <select
                 value={editingUser.group}
                 onChange={(e) =>
-                  setEditingUser((prev: any) =>
+                  setEditingUser((prev) =>
                     prev
                       ? {
                           ...prev,
@@ -122,7 +128,7 @@ const EditUserModal = ({
                 type='checkbox'
                 checked={editingUser.makeAdmin}
                 onChange={(e) =>
-                  setEditingUser((prev: any) =>
+                  setEditingUser((prev) =>
                     prev ? { ...prev, makeAdmin: e.target.checked } : prev
                   )
                 }
@@ -140,7 +146,7 @@ const EditUserModal = ({
                 type='checkbox'
                 checked={editingUser.banned}
                 onChange={(e) =>
-                  setEditingUser((prev: any) =>
+                  setEditingUser((prev) =>
                     prev ? { ...prev, banned: e.target.checked } : prev
                   )
                 }
@@ -158,7 +164,7 @@ const EditUserModal = ({
               type='password'
               value={editingUser.newPassword}
               onChange={(e) =>
-                setEditingUser((prev: any) =>
+                setEditingUser((prev) =>
                   prev ? { ...prev, newPassword: e.target.value } : prev
                 )
               }

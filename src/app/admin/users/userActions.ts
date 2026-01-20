@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { tt, showError, callApi } from '../shared/adminFetch';
+import { tt } from '../shared/i18n';
+import { callApi } from '../shared/adminFetch';
 import Swal from 'sweetalert2';
 
 export const handleUserAction = async (

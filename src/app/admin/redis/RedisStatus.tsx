@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { tt } from '../shared/adminFetch';
+import { tt } from '../shared/i18n';
 
 const RedisStatus = () => {
   const [redisInfo, setRedisInfo] = useState<{

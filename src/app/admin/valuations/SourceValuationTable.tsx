@@ -1,11 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { tt } from '../shared/adminFetch';
+import Swal from 'sweetalert2';
+import { AdminConfig, ValuationWeights } from '@/lib/admin.types';
 import { parseSpeedToKBps } from '@/lib/utils';
-import { DataSource } from '@/lib/admin.types';
+import { tt } from '../shared/i18n';
+import { showError } from '../shared/alerts';
 
 interface SourceValuationRow {
   key: string;
@@ -21,11 +21,11 @@ interface SourceValuationRow {
   score?: number;
 }
 
-interface ValuationWeights {
-  quality: number;
-  speed: number;
-  ping: number;
-}
+const DEFAULT_WEIGHTS: ValuationWeights = {
+  quality: 0.6,
+  speed: 0.15,
+  ping: 0.25,
+};
 
 const getQualityScoreFromLabel = (
   quality?: string,
@@ -89,11 +89,18 @@ const toDisplayScore = (score: number | undefined): string => {
   return score.toFixed(1);
 };
 
-const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] }) => {
+const SourceValuationTable = ({
+  config,
+}: {
+  config?: AdminConfig | null;
+}) => {
   const [valuations, setValuations] = useState<SourceValuationRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAllProviders, setShowAllProviders] = useState(false);
+
+  const sourceConfig = config?.SourceConfig;
+  const weights = config?.ValuationWeights ?? DEFAULT_WEIGHTS;
 
   const sourceNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -201,11 +208,10 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
             pingScore = 100;
           }
 
-          // Use configurable weights
           const score =
-            qualityScore * WEIGHTS.quality +
-            speedScore * WEIGHTS.speed +
-            pingScore * WEIGHTS.ping;
+            qualityScore * weights.quality +
+            speedScore * weights.speed +
+            pingScore * weights.ping;
 
           return {
             ...item,
@@ -221,11 +227,12 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
           ? err.message
           : tt('Failed to load', '载入失败', '載入失敗');
       console.error('Failed to load provider valuations:', err);
+      showError(message);
       setError(message);
     } finally {
       setIsLoading(false);
     }
-  }, [WEIGHTS]);
+  }, [weights]);
 
   const handleTestValuations = useCallback(async () => {
     try {
@@ -328,13 +335,6 @@ const SourceValuationTable = ({ sourceConfig }: { sourceConfig?: DataSource[] })
       );
     return [...valuations, ...missing];
   }, [showAllProviders, sourceConfig, valuations]);
-
-  // Configurable weights - can be loaded from config later
-  const WEIGHTS: ValuationWeights = {
-    quality: 0.6,
-    speed: 0.15,
-    ping: 0.25,
-  };
 
   const providerCount = sourceConfig?.length || 0;
 

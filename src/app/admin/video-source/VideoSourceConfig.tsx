@@ -23,8 +23,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
-import { tt, showError, callApi } from '../shared/adminFetch';
 import { DataSource } from '@/lib/admin.types';
+import { tt } from '../shared/i18n';
+import { callApi } from '../shared/adminFetch';
 
 interface VideoSourceConfigProps {
   config: {

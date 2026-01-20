@@ -1,16 +1,18 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { AdminConfig, User } from '@/lib/admin.types';
-import { tt, showError, showSuccess, callApi } from '../shared/adminFetch';
-import EditUserModal from './EditUserModal';
+import { tt } from '../shared/i18n';
+import { showError } from '../shared/alerts';
+import { callApi } from '../shared/adminFetch';
+import EditUserModal, { EditingUser } from './EditUserModal';
 
-// Define types to avoid using 'any'
-type UserWithGroup = User & { group?: 'family' | 'guest' };
+type UserGroup = 'family' | 'guest';
+
+const resolveUserGroup = (user: User): UserGroup =>
+  user.group === 'guest' ? 'guest' : 'family';
 
 interface UserConfigProps {
   config: AdminConfig | null;
@@ -35,27 +37,20 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     username: '',
     password: '',
   });
-  const [editingUser, setEditingUser] = useState<{
-    username: string;
-    newUsername: string;
-    avatar: string;
-    group: 'family' | 'guest';
-    makeAdmin: boolean;
-    banned: boolean;
-    newPassword: string;
-  } | null>(null);
+  const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
 
   const currentUsername = getAuthInfoFromBrowserCookie()?.username || null;
 
   // Properly typed runtime config
   interface RuntimeConfig {
-    STORAGE_TYPE?: 'd1' | 'kv' | string;
+    STORAGE_TYPE?: 'd1' | 'kv';
   }
-  
-  const runtimeConfig = typeof window !== 'undefined' 
-    ? (window as { RUNTIME_CONFIG?: RuntimeConfig }).RUNTIME_CONFIG 
-    : undefined;
-    
+
+  const runtimeConfig =
+    typeof window !== 'undefined'
+      ? (window as { RUNTIME_CONFIG?: RuntimeConfig }).RUNTIME_CONFIG
+      : undefined;
+
   const isD1Storage = runtimeConfig?.STORAGE_TYPE === 'd1';
     
   const editingEntry = useMemo(
@@ -74,6 +69,17 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         enableRegistration: config.UserConfig.AllowRegister,
       });
     }
+  }, [config]);
+
+  const groupOptions = useMemo(() => {
+    const groups = new Set<string>(['family', 'guest']);
+    (config?.UserConfig?.Users || []).forEach((user) => {
+      const trimmedGroup = user.group?.trim();
+      if (trimmedGroup) {
+        groups.add(trimmedGroup);
+      }
+    });
+    return Array.from(groups);
   }, [config]);
 
   const toggleAllowRegister = async (value: boolean) => {
@@ -184,60 +190,119 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
       return;
     }
 
-    // Prepare the batch update request
-    const updateData = {
-      username: editingUser.username,
-      changes: {
-        newUsername: editingUser.newUsername !== editingEntry.username ? editingUser.newUsername : undefined,
-        avatar: editingUser.avatar !== (editingEntry.avatar || '') ? editingUser.avatar : undefined,
-        group: editingUser.group !== ((editingEntry as UserWithGroup).group === 'guest' ? 'guest' : 'family') 
-               ? editingUser.group 
-               : undefined,
-        makeAdmin: (editingUser.makeAdmin !== (editingEntry.role === 'admin')),
-        banned: (editingUser.banned !== !!editingEntry.banned),
-        newPassword: editingUser.newPassword.trim().length > 0 ? editingUser.newPassword.trim() : undefined
-      }
-    };
+    const tasks: Array<() => Promise<void>> = [];
+    const trimmedNewUsername = editingUser.newUsername.trim();
+    const normalizedAvatar = editingUser.avatar.trim();
+    const currentGroup = resolveUserGroup(editingEntry);
+    let targetName = editingUser.username;
 
-    // Filter out undefined values
-    const filteredChanges: Record<string, any> = {};
-    Object.entries(updateData.changes).forEach(([key, value]) => {
-      if (value !== undefined) {
-        filteredChanges[key] = value;
-      }
-    });
+    const actionOptions = { skipRefresh: true, throwOnError: true };
 
-    if (Object.keys(filteredChanges).length === 0) {
+    if (trimmedNewUsername && trimmedNewUsername !== editingUser.username) {
+      tasks.push(async () => {
+        await handleUserAction(
+          'rename',
+          targetName,
+          undefined,
+          undefined,
+          undefined,
+          trimmedNewUsername,
+          actionOptions
+        );
+        targetName = trimmedNewUsername;
+      });
+    }
+
+    if (normalizedAvatar !== (editingEntry.avatar || '')) {
+      tasks.push(() =>
+        handleUserAction(
+          'setAvatar',
+          targetName,
+          undefined,
+          normalizedAvatar,
+          undefined,
+          undefined,
+          actionOptions
+        )
+      );
+    }
+
+    if (editingUser.newPassword.trim().length > 0) {
+      tasks.push(() =>
+        handleUserAction(
+          'changePassword',
+          targetName,
+          editingUser.newPassword.trim(),
+          undefined,
+          undefined,
+          undefined,
+          actionOptions
+        )
+      );
+    }
+
+    if (editingUser.group !== currentGroup) {
+      tasks.push(() =>
+        handleUserAction(
+          'setGroup',
+          targetName,
+          undefined,
+          undefined,
+          editingUser.group,
+          undefined,
+          actionOptions
+        )
+      );
+    }
+
+    const isAdminNow = editingEntry.role === 'admin';
+    if (editingUser.makeAdmin !== isAdminNow) {
+      tasks.push(() =>
+        handleUserAction(
+          editingUser.makeAdmin ? 'setAdmin' : 'cancelAdmin',
+          targetName,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          actionOptions
+        )
+      );
+    }
+
+    const isBannedNow = !!editingEntry.banned;
+    if (editingUser.banned !== isBannedNow) {
+      tasks.push(() =>
+        handleUserAction(
+          editingUser.banned ? 'ban' : 'unban',
+          targetName,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          actionOptions
+        )
+      );
+    }
+
+    if (tasks.length === 0) {
       setEditingUser(null);
       return;
     }
 
     try {
-      // Use a single API endpoint for batch updates
-      const response = await fetch('/api/admin/user/batchUpdate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: updateData.username,
-          changes: filteredChanges
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Update failed');
+      for (const task of tasks) {
+        await task();
       }
-
       await refreshConfig();
       setEditingUser(null);
-      
-      // Show success message if all changes were applied
-      showSuccess(tt('User updated successfully', '用户更新成功', '用戶更新成功'));
     } catch (err) {
       showError(
-        err instanceof Error
-          ? err.message
-          : tt('Operation failed', '操作失败', '操作失敗')
+        tt(
+          'Some changes may have been applied.',
+          '部分修改可能已生效。',
+          '部分修改可能已生效。'
+        )
       );
     }
   };
@@ -258,7 +323,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
     targetPassword?: string,
     avatar?: string,
     group?: string,
-    newUsername?: string
+    newUsername?: string,
+    options?: { skipRefresh?: boolean; throwOnError?: boolean }
   ) => {
     try {
       await callApi('/api/admin/user', {
@@ -270,9 +336,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
         action,
       });
 
-      await refreshConfig();
+      if (!options?.skipRefresh) {
+        await refreshConfig();
+      }
     } catch (err) {
-      // Error is handled by callApi
+      if (options?.throwOnError) {
+        throw err;
+      }
     }
   };
 
@@ -540,24 +610,6 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                       user.username !== currentUsername &&
                       (role === 'owner' ||
                         (role === 'admin' && user.role === 'user'));
-                    
-                    // Move groupOptions computation to useMemo
-                    const groupOptions = useMemo(() => {
-                      return Array.from(
-                        new Set(
-                          (config?.UserConfig?.Users || [])
-                            .map((u) => {
-                              const userWithGroup = u as UserWithGroup;
-                              return typeof userWithGroup.group === 'string' &&
-                                userWithGroup.group?.trim()
-                                ? userWithGroup.group.trim()
-                                : ''
-                            })
-                            .concat(['family', 'guest'])
-                            .filter((g) => g && g.length > 0)
-                        )
-                      );
-                    }, [config]);
 
                     return (
                       <tr
@@ -601,7 +653,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                         <td className='px-6 py-4 whitespace-nowrap'>
                           <select
                             className='px-3 py-1.5 text-xs rounded-md border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 focus:outline-none focus:ring-2 focus:ring-green-500'
-                            value={(user as UserWithGroup).group || 'family'}
+                            value={user.group || 'family'}
                             onChange={(e) =>
                               handleUserAction(
                                 'setGroup',
@@ -640,10 +692,7 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                                   username: user.username,
                                   newUsername: user.username,
                                   avatar: user.avatar || '',
-                                  group:
-                                    (user as UserWithGroup).group === 'guest'
-                                      ? 'guest'
-                                      : 'family',
+                                  group: resolveUserGroup(user),
                                   makeAdmin: user.role === 'admin',
                                   banned: !!user.banned,
                                   newPassword: '',
