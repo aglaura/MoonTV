@@ -28,6 +28,7 @@ export function setScreenModeOverride(value: ScreenModeOverride | null): void {
   } else {
     window.localStorage.removeItem(SCREEN_MODE_OVERRIDE_KEY);
   }
+  window.dispatchEvent(new Event('moontv:screenmode'));
 }
 
 function detectBrowser(ua: string): DeviceInfo['browser'] {
@@ -175,9 +176,19 @@ export function useDeviceInfo(): DeviceInfo {
     const handler = () => {
       setInfo(detectDeviceInfo());
     };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== SCREEN_MODE_OVERRIDE_KEY) return;
+      handler();
+    };
     window.addEventListener('resize', handler);
+    window.addEventListener('moontv:screenmode', handler as EventListener);
+    window.addEventListener('storage', handleStorage);
     handler();
-    return () => window.removeEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('resize', handler);
+      window.removeEventListener('moontv:screenmode', handler as EventListener);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   return info;
