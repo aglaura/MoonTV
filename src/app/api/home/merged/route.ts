@@ -7,6 +7,8 @@ export const runtime = 'nodejs';
 export const revalidate = 600;
 
 const MAX_PEOPLE = 60;
+const OMDB_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+const OMDB_HERO_LIMIT = 10;
 
 type TmdbItem = {
   tmdbId: string;
@@ -34,6 +36,17 @@ type TmdbPerson = {
   poster: string;
 };
 
+type OmdbContribution = {
+  imdbRating?: string;
+  ratings?: Array<{
+    source: 'Internet Movie Database' | 'Rotten Tomatoes' | 'Metacritic';
+    value: string;
+  }>;
+  runtime?: string;
+  awards?: string;
+  plot?: string;
+};
+
 type CardItem = {
   title: string;
   title_en?: string;
@@ -41,6 +54,9 @@ type CardItem = {
   posterAlt?: string[];
   posterDouban?: string;
   posterTmdb?: string;
+  sources?: {
+    omdb?: OmdbContribution;
+  };
   doubanUrl?: string;
   tmdbUrl?: string;
   originalLanguage?: string;
@@ -57,6 +73,163 @@ type CardItem = {
 
 function buildCacheBase(): string | null {
   return normalizeConfigJsonBase(process.env.CONFIGJSON);
+}
+
+const omdbMemoryCache = new Map<string, { cachedAt: number; data: OmdbContribution | null }>();
+
+function normalizeOmdbValue(value?: string): string | undefined {
+  if (!value || value === 'N/A') return undefined;
+  return value;
+}
+
+function buildOmdbCacheUrl(cacheBase: string | null, imdbId: string): string | null {
+  if (!cacheBase) return null;
+  return `${cacheBase}/posters/video_info/omdb/${encodeURIComponent(imdbId)}.json`;
+}
+
+async function readOmdbCache(
+  cacheBase: string | null,
+  imdbId: string
+): Promise<{ entry: { cachedAt: number; data: OmdbContribution | null } | null; stale: boolean }> {
+  const now = Date.now();
+  const mem = omdbMemoryCache.get(imdbId);
+  if (mem) {
+    const stale = now - mem.cachedAt > OMDB_CACHE_TTL_MS;
+    if (!stale) return { entry: mem, stale: false };
+  }
+
+  const cacheUrl = buildOmdbCacheUrl(cacheBase, imdbId);
+  if (!cacheUrl) return { entry: mem ?? null, stale: true };
+  const cached = (await tryFetchCache(cacheUrl)) as
+    | { cachedAt?: number; data?: OmdbContribution | null }
+    | null;
+  if (cached && typeof cached.cachedAt === 'number') {
+    const entry = { cachedAt: cached.cachedAt, data: cached.data ?? null };
+    omdbMemoryCache.set(imdbId, entry);
+    return { entry, stale: now - cached.cachedAt > OMDB_CACHE_TTL_MS };
+  }
+
+  return { entry: mem ?? null, stale: true };
+}
+
+async function fetchOmdbContribution(
+  cacheBase: string | null,
+  imdbId: string
+): Promise<OmdbContribution | null> {
+  if (!imdbId || !/^(tt\d{5,}|imdbt\d+)$/i.test(imdbId)) return null;
+
+  const { entry, stale } = await readOmdbCache(cacheBase, imdbId);
+  if (entry && !stale) return entry.data;
+
+  const apiKey =
+    process.env.OMDB_API_KEY || process.env.NEXT_PUBLIC_OMDB_API_KEY || '';
+  if (!apiKey) {
+    return entry?.data ?? null;
+  }
+
+  let fresh: OmdbContribution | null = null;
+  try {
+    const url = new URL('https://www.omdbapi.com/');
+    url.searchParams.set('i', imdbId);
+    url.searchParams.set('apikey', apiKey);
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (response.ok) {
+      const data = (await response.json()) as {
+        Response?: string;
+        Error?: string;
+        Ratings?: Array<{ Source?: string; Value?: string }>;
+        imdbRating?: string;
+        Runtime?: string;
+        Awards?: string;
+        Plot?: string;
+      };
+      if (data.Response !== 'False') {
+        const ratings = (data.Ratings || [])
+          .map((rating) => {
+            const source = rating.Source || '';
+            const value = rating.Value || '';
+            if (
+              source !== 'Internet Movie Database' &&
+              source !== 'Rotten Tomatoes' &&
+              source !== 'Metacritic'
+            ) {
+              return null;
+            }
+            return {
+              source,
+              value,
+            } as OmdbContribution['ratings'][number];
+          })
+          .filter((rating): rating is OmdbContribution['ratings'][number] => !!rating);
+
+        fresh = {
+          imdbRating: normalizeOmdbValue(data.imdbRating),
+          ratings: ratings.length ? ratings : undefined,
+          runtime: normalizeOmdbValue(data.Runtime),
+          awards: normalizeOmdbValue(data.Awards),
+          plot: normalizeOmdbValue(data.Plot),
+        };
+      }
+    }
+  } catch {
+    fresh = null;
+  }
+
+  const entryToStore = {
+    cachedAt: Date.now(),
+    data: fresh,
+  };
+  omdbMemoryCache.set(imdbId, entryToStore);
+  const cacheUrl = buildOmdbCacheUrl(cacheBase, imdbId);
+  if (cacheUrl) {
+    await tryUploadCache(cacheUrl, entryToStore);
+  }
+
+  return fresh ?? entry?.data ?? null;
+}
+
+async function enrichOmdbForItems(
+  items: CardItem[],
+  cacheBase: string | null,
+  limit: number
+): Promise<CardItem[]> {
+  if (!items.length || limit <= 0) return items;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+
+  for (const item of items) {
+    const imdbId = item.imdb_id?.trim();
+    if (!imdbId) continue;
+    const normalized = imdbId.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    ids.push(imdbId);
+    if (ids.length >= limit) break;
+  }
+
+  if (ids.length === 0) return items;
+
+  const results = await Promise.all(
+    ids.map((id) => fetchOmdbContribution(cacheBase, id))
+  );
+  const omdbById = new Map<string, OmdbContribution | null>();
+  ids.forEach((id, index) => {
+    omdbById.set(id.toLowerCase(), results[index] ?? null);
+  });
+
+  return items.map((item) => {
+    const imdbId = item.imdb_id?.trim();
+    if (!imdbId) return item;
+    const omdb = omdbById.get(imdbId.toLowerCase());
+    if (!omdb) return item;
+    return {
+      ...item,
+      sources: {
+        ...(item.sources ?? {}),
+        omdb,
+      },
+    };
+  });
 }
 
 async function tryFetchCache(url: string) {
@@ -459,7 +632,7 @@ export async function GET(request: Request) {
       tmdbJpCards
     );
 
-    const mergedMovies = mergeCards(doubanMovies, tmdbMovieCards);
+    let mergedMovies = mergeCards(doubanMovies, tmdbMovieCards);
     const mergedTvCn = mergeCards(doubanTvCn, tmdbTvCards);
     const mergedTvKr = mergeCards(doubanTvKr, tmdbTvKr);
     const mergedTvJp = mergeCards(doubanTvJp, tmdbTvJp);
@@ -471,6 +644,12 @@ export async function GET(request: Request) {
     const latestTv = mergeCards(
       mapDoubanCards(doubanHome.latestTv || [], 'tv'),
       tmdbOnAir
+    );
+
+    mergedMovies = await enrichOmdbForItems(
+      mergedMovies,
+      cacheBase,
+      OMDB_HERO_LIMIT
     );
 
     const payload = {

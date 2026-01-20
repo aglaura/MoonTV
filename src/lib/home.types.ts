@@ -32,6 +32,17 @@ export type TmdbPerson = {
   poster: string;
 };
 
+export type OmdbContribution = {
+  imdbRating?: string;
+  ratings?: Array<{
+    source: 'Internet Movie Database' | 'Rotten Tomatoes' | 'Metacritic';
+    value: string;
+  }>;
+  runtime?: string;
+  awards?: string;
+  plot?: string;
+};
+
 export type CardItem = {
   title: string;
   title_en?: string;
@@ -39,6 +50,9 @@ export type CardItem = {
   posterAlt?: string[];
   posterDouban?: string;
   posterTmdb?: string;
+  sources?: {
+    omdb?: OmdbContribution;
+  };
   profile?: string;
   profile_path?: string;
   doubanUrl?: string;
