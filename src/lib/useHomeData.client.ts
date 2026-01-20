@@ -203,7 +203,7 @@ export const useHomeData = ({
 
   const tmdbMovieCards = useMemo(
     () =>
-      (tmdbMovies || []).map((item) => ({
+      (tmdbMovies || []).map((item): CardItem => ({
         title: item.title,
         title_en: item.originalTitle,
         poster: item.poster,
