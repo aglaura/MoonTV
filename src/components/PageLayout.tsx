@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useDeviceInfo } from '@/lib/screenMode';
+import { useTvFullscreen } from '@/lib/tvFullscreen';
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
 import MobileBottomNav from './MobileBottomNav';
@@ -30,6 +31,8 @@ const PageLayout = ({
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+
+  useTvFullscreen(isTV);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;

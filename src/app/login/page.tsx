@@ -10,6 +10,7 @@ import LanguageSelector from '@/components/LanguageSelector';
 import { useSite } from '@/components/SiteProvider';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useDeviceInfo } from '@/lib/screenMode';
+import { useTvFullscreen } from '@/lib/tvFullscreen';
 
 type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
 
@@ -53,6 +54,8 @@ function LoginPageClient() {
   const { siteName } = useSite();
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+
+  useTvFullscreen(isTV);
 
   const [group, setGroup] = useState<string>('family');
   const [password, setPassword] = useState('');
