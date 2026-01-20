@@ -7,6 +7,7 @@ import PageLayout from '@/components/PageLayout';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { getOMDBData, type OMDBEnrichment } from '@/lib/omdb.client';
+import RetryImage from '@/components/RetryImage';
 import { processImageUrl } from '@/lib/utils';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import type { DoubanSubjectDetail } from '@/lib/types';
@@ -125,25 +126,33 @@ export default function TvDetailPage() {
         <div className='mx-auto max-w-6xl space-y-8'>
           <section className='relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 lg:p-10'>
             {posterUrl && (
-              <img
+              <RetryImage
                 src={posterUrl}
                 alt={displayTitle}
                 className='absolute inset-0 h-full w-full object-cover opacity-20'
                 loading='lazy'
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none';
+                }}
               />
             )}
             <div className='absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30' />
             <div className='relative z-10 grid gap-8 lg:grid-cols-[260px_1fr]'>
               <div className='flex items-center justify-center'>
-                <div className='w-52 h-72 rounded-2xl overflow-hidden bg-white/10 shadow-lg ring-1 ring-white/20'>
-                  {posterUrl ? (
-                    <img
+                <div className='relative w-52 h-72 rounded-2xl overflow-hidden bg-white/10 shadow-lg ring-1 ring-white/20'>
+                  <div className='absolute inset-0 bg-white/10' />
+                  {posterUrl && (
+                    <RetryImage
                       src={posterUrl}
                       alt={displayTitle}
-                      className='h-full w-full object-cover'
+                      className='absolute inset-0 h-full w-full object-cover'
                       loading='lazy'
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                      }}
                     />
-                  ) : (
+                  )}
+                  {!posterUrl && (
                     <div className='h-full w-full flex items-center justify-center text-white/60'>
                       {tt('No poster', '暂无海报', '暫無海報')}
                     </div>

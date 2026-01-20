@@ -10,6 +10,7 @@ import React, {
   useState,
 } from 'react';
 
+import RetryImage from '@/components/RetryImage';
 import { useTvInput } from '@/components/TvInputProvider';
 import type { ScreenMode } from '@/lib/screenMode';
 import { useTvRemote, type TvKey } from '@/lib/tvInput';
@@ -694,7 +695,7 @@ const TvHome = ({
               data-tv-section='hero'
             >
               {activeHero?.poster && (
-                <img
+                <RetryImage
                   src={processImageUrl(activeHero.poster, {
                     doubanId: activeHero.douban_id,
                     imdbId: activeHero.imdb_id,
@@ -703,6 +704,9 @@ const TvHome = ({
                   alt={activeHero.title}
                   className='absolute inset-0 h-full w-full object-cover opacity-50 scale-110'
                   loading='lazy'
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                  }}
                 />
               )}
               <div className='absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent'></div>
@@ -871,7 +875,7 @@ function PosterRow({
                         {(tile.title || '?').slice(0, 1).toUpperCase()}
                       </span>
                       {posterUrl && (
-                        <img
+                        <RetryImage
                           src={posterUrl}
                           alt={tile.title}
                           className='relative z-10 h-full w-full object-cover'
@@ -888,15 +892,17 @@ function PosterRow({
                   </div>
                 ) : (
                   <>
-                    {posterUrl ? (
-                      <img
+                    <div className='absolute inset-0 bg-white/10' />
+                    {posterUrl && (
+                      <RetryImage
                         src={posterUrl}
                         alt={tile.title}
                         className='absolute inset-0 h-full w-full object-cover'
                         loading='lazy'
+                        onError={(event) => {
+                          event.currentTarget.style.display = 'none';
+                        }}
                       />
-                    ) : (
-                      <div className='absolute inset-0 bg-white/10' />
                     )}
                     <div className='absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent'></div>
                     <div className='absolute bottom-0 p-4 text-left'>
