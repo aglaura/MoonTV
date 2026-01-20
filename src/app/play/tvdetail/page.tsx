@@ -7,6 +7,10 @@ import PageLayout from '@/components/PageLayout';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { convertToTraditional } from '@/lib/locale';
 import { getOMDBData, type OMDBEnrichment } from '@/lib/omdb.client';
+import {
+  getTvmazeContribution,
+  type TvmazeContribution,
+} from '@/lib/tvmaze.client';
 import RetryImage from '@/components/RetryImage';
 import { processImageUrl } from '@/lib/utils';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -39,6 +43,8 @@ export default function TvDetailPage() {
   const rateParam = searchParams.get('rate') || '';
   const posterParam = searchParams.get('poster') || '';
   const imdbId = searchParams.get('imdbId') || '';
+  const tmdbId =
+    searchParams.get('tmdbId') || searchParams.get('tmdb_id') || '';
   const doubanId = searchParams.get('douban_id') || '';
 
   const displayTitle = useMemo(
@@ -48,6 +54,7 @@ export default function TvDetailPage() {
 
   const [detail, setDetail] = useState<DoubanSubjectDetail | null>(null);
   const [omdb, setOmdb] = useState<OMDBEnrichment | null>(null);
+  const [tvmaze, setTvmaze] = useState<TvmazeContribution | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -73,6 +80,14 @@ export default function TvDetailPage() {
           })
         );
       }
+      if (imdbId || tmdbId) {
+        tasks.push(
+          getTvmazeContribution({ imdbId, tmdbId }).then((data) => {
+            if (!isActive) return;
+            setTvmaze(data);
+          })
+        );
+      }
 
       if (tasks.length === 0) {
         setLoading(false);
@@ -90,7 +105,30 @@ export default function TvDetailPage() {
     return () => {
       isActive = false;
     };
-  }, [doubanId, imdbId]);
+  }, [doubanId, imdbId, tmdbId]);
+
+  const tvmazeStatusLabel = useMemo(() => {
+    if (!tvmaze?.status) return '';
+    const statusMap: Record<string, string> = {
+      Running: tt('Running', '连载中', '連載中'),
+      Ended: tt('Ended', '已完结', '已完結'),
+      'To Be Determined': tt('TBD', '待定', '待定'),
+      'In Development': tt('In development', '开发中', '開發中'),
+    };
+    return statusMap[tvmaze.status] || tvmaze.status;
+  }, [tvmaze?.status, tt]);
+
+  const tvmazeNextEpisodeLabel = useMemo(() => {
+    const next = tvmaze?.nextEpisode;
+    if (!next?.airdate) return '';
+    const se = [
+      next.season ? `S${next.season}` : '',
+      next.number ? `E${next.number}` : '',
+    ]
+      .filter(Boolean)
+      .join('');
+    return [se, next.airdate].filter(Boolean).join(' · ');
+  }, [tvmaze?.nextEpisode]);
 
   const posterUrl = useMemo(() => {
     const raw = posterParam || omdb?.poster || '';
@@ -184,9 +222,20 @@ export default function TvDetailPage() {
                       IMDb {omdb.imdbRating}
                     </span>
                   )}
-                  {detail?.episodes && (
+                  {(tvmaze?.totalEpisodes || detail?.episodes) && (
                     <span className='rounded-full bg-white/15 px-3 py-1'>
-                      {tt('Episodes', '集数', '集數')}: {detail.episodes}
+                      {tt('Episodes', '集数', '集數')}:{' '}
+                      {tvmaze?.totalEpisodes || detail?.episodes}
+                    </span>
+                  )}
+                  {tvmazeStatusLabel && (
+                    <span className='rounded-full bg-white/15 px-3 py-1'>
+                      {tt('Status', '状态', '狀態')}: {tvmazeStatusLabel}
+                    </span>
+                  )}
+                  {tvmazeNextEpisodeLabel && (
+                    <span className='rounded-full bg-white/15 px-3 py-1'>
+                      {tt('Next', '下一集', '下一集')}: {tvmazeNextEpisodeLabel}
                     </span>
                   )}
                 </div>

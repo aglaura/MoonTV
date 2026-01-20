@@ -3,6 +3,7 @@
 import { Heart } from 'lucide-react';
 
 import type { OMDBEnrichment } from '@/lib/omdb.client';
+import type { TvmazeContribution } from '@/lib/tvmaze.client';
 import { processImageUrl } from '@/lib/utils';
 
 type Translate = (en: string, zhHans: string, zhHant: string) => string;
@@ -35,6 +36,7 @@ type PlayDetailsProps = {
   detail?: DetailData | null;
   videoYear?: string;
   omdbData: OMDBEnrichment | null;
+  tvmazeData: TvmazeContribution | null;
   metadataLists: MetadataLists;
   metadataSynopsis?: string;
   mergedReleaseDates: string[];
@@ -62,6 +64,7 @@ const PlayDetails = ({
   detail,
   videoYear,
   omdbData,
+  tvmazeData,
   metadataLists,
   metadataSynopsis,
   mergedReleaseDates,
@@ -78,6 +81,39 @@ const PlayDetails = ({
   convertToTraditional,
   videoCover,
 }: PlayDetailsProps) => {
+  const tvmazeSeasons = tvmazeData?.seasons ?? [];
+  const tvmazeEpisodeCount = tvmazeData?.totalEpisodes;
+  const tvmazeStatusLabel = tvmazeData?.status
+    ? {
+        Running: tt('Running', '连载中', '連載中'),
+        Ended: tt('Ended', '已完结', '已完結'),
+        'To Be Determined': tt('TBD', '待定', '待定'),
+        'In Development': tt('In development', '开发中', '開發中'),
+      }[tvmazeData.status] || tvmazeData.status
+    : undefined;
+  const tvmazeScheduleLabel = tvmazeData?.schedule
+    ? [tvmazeData.schedule.days?.join(', '), tvmazeData.schedule.time]
+        .filter(Boolean)
+        .join(' ')
+    : '';
+  const tvmazeNextEpisodeLabel = tvmazeData?.nextEpisode
+    ? [
+        [
+          tvmazeData.nextEpisode.season
+            ? `S${tvmazeData.nextEpisode.season}`
+            : '',
+          tvmazeData.nextEpisode.number
+            ? `E${tvmazeData.nextEpisode.number}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(''),
+        tvmazeData.nextEpisode.airdate,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+
   return (
     <div className='grid grid-cols-1 md:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-2.5 md:gap-3'>
       {/* 文字区 */}
@@ -315,14 +351,17 @@ const PlayDetails = ({
                   )}
                 {(() => {
                   const episodes = detail?.episodes;
-                  const episodeCount = Array.isArray(episodes)
+                  const fallbackCount = Array.isArray(episodes)
                     ? episodes.length
                     : episodes;
+                  const episodeCount = tvmazeEpisodeCount || fallbackCount;
                   if (!episodeCount || episodeCount <= 0) return null;
                   return (
                     <div className='flex justify-between gap-3'>
                       <span className='text-gray-500 dark:text-gray-400'>
-                        {tt('Episodes', '集数', '集數')}
+                        {tvmazeEpisodeCount
+                          ? tt('Episodes (TVmaze)', '集数 (TVmaze)', '集數 (TVmaze)')
+                          : tt('Episodes', '集数', '集數')}
                       </span>
                       <span className='font-medium text-right'>
                         {episodeCount}
@@ -330,6 +369,36 @@ const PlayDetails = ({
                     </div>
                   );
                 })()}
+                {tvmazeStatusLabel && (
+                  <div className='flex justify-between gap-3'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      {tt('Status', '状态', '狀態')}
+                    </span>
+                    <span className='font-medium text-right'>
+                      {tvmazeStatusLabel}
+                    </span>
+                  </div>
+                )}
+                {tvmazeScheduleLabel && (
+                  <div className='flex justify-between gap-3'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      {tt('Schedule', '播出时间', '播出時間')}
+                    </span>
+                    <span className='font-medium text-right'>
+                      {tvmazeScheduleLabel}
+                    </span>
+                  </div>
+                )}
+                {tvmazeNextEpisodeLabel && (
+                  <div className='flex justify-between gap-3'>
+                    <span className='text-gray-500 dark:text-gray-400'>
+                      {tt('Next episode', '下一集', '下一集')}
+                    </span>
+                    <span className='font-medium text-right'>
+                      {tvmazeNextEpisodeLabel}
+                    </span>
+                  </div>
+                )}
                 {mergedDurations.length > 0 && (
                   <div className='flex justify-between gap-3'>
                     <span className='text-gray-500 dark:text-gray-400'>
@@ -462,29 +531,54 @@ const PlayDetails = ({
                     </div>
                   </div>
                 )}
-                {tmdbSeasons.length > 0 && (
+                {tvmazeSeasons.length > 0 ? (
                   <div className='flex justify-between gap-3 items-start'>
                     <span className='text-gray-500 dark:text-gray-400'>
-                      {tt('Seasons (TMDB)', 'TMDB 季度', 'TMDB 季度')}
+                      {tt('Seasons (TVmaze)', 'TVmaze 季度', 'TVmaze 季度')}
                     </span>
                     <span className='font-medium text-right text-sm space-y-1'>
-                      {tmdbSeasons.slice(0, 3).map((s: any) => (
-                        <div key={s.id ?? s.name}>
-                          {`${s.name || `S${s.season_number || ''}`}`}{' '}
-                          {s.episode_count ? `(${s.episode_count} ep)` : ''}
+                      {tvmazeSeasons.slice(0, 3).map((s) => (
+                        <div key={`tvmaze-${s.season}`}>
+                          {`S${s.season}`}{' '}
+                          {s.episodeCount ? `(${s.episodeCount} ep)` : ''}
                         </div>
                       ))}
-                      {tmdbSeasons.length > 3 && (
+                      {tvmazeSeasons.length > 3 && (
                         <div className='text-xs text-gray-500'>
                           {tt(
-                            `+${tmdbSeasons.length - 3} more`,
-                            `+${tmdbSeasons.length - 3} 季`,
-                            `+${tmdbSeasons.length - 3} 季`
+                            `+${tvmazeSeasons.length - 3} more`,
+                            `+${tvmazeSeasons.length - 3} 季`,
+                            `+${tvmazeSeasons.length - 3} 季`
                           )}
                         </div>
                       )}
                     </span>
                   </div>
+                ) : (
+                  tmdbSeasons.length > 0 && (
+                    <div className='flex justify-between gap-3 items-start'>
+                      <span className='text-gray-500 dark:text-gray-400'>
+                        {tt('Seasons (TMDB)', 'TMDB 季度', 'TMDB 季度')}
+                      </span>
+                      <span className='font-medium text-right text-sm space-y-1'>
+                        {tmdbSeasons.slice(0, 3).map((s: any) => (
+                          <div key={s.id ?? s.name}>
+                            {`${s.name || `S${s.season_number || ''}`}`}{' '}
+                            {s.episode_count ? `(${s.episode_count} ep)` : ''}
+                          </div>
+                        ))}
+                        {tmdbSeasons.length > 3 && (
+                          <div className='text-xs text-gray-500'>
+                            {tt(
+                              `+${tmdbSeasons.length - 3} more`,
+                              `+${tmdbSeasons.length - 3} 季`,
+                              `+${tmdbSeasons.length - 3} 季`
+                            )}
+                          </div>
+                        )}
+                      </span>
+                    </div>
+                  )
                 )}
                 {tmdbRecommendations.length > 0 && (
                   <div className='flex justify-between gap-3 items-start'>

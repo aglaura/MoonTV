@@ -51,6 +51,10 @@ import {
 } from '@/lib/db.client';
 import { getDoubanSubjectDetail } from '@/lib/douban.client';
 import { getOMDBData, type OMDBEnrichment } from '@/lib/omdb.client';
+import {
+  getTvmazeContribution,
+  type TvmazeContribution,
+} from '@/lib/tvmaze.client';
 import { convertToTraditional } from '@/lib/locale';
 import { SearchResult } from '@/lib/types';
 import { useUserLanguage } from '@/lib/userLanguage.client';
@@ -1531,6 +1535,7 @@ export function PlayPageClient({
   const [tmdbSeasons, setTmdbSeasons] = useState<any[]>([]);
   const [tmdbRecommendations, setTmdbRecommendations] = useState<any[]>([]);
   const [omdbData, setOmdbData] = useState<OMDBEnrichment | null>(null);
+  const [tvmazeData, setTvmazeData] = useState<TvmazeContribution | null>(null);
   const [clientInfo, setClientInfo] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [forceRotate, setForceRotate] = useState(false);
@@ -2073,13 +2078,19 @@ export function PlayPageClient({
     splitOmdbList,
   ]);
   const mergedDurations = useMemo(() => {
+    const tvmazeRuntime =
+      tvmazeData?.runtime ?? tvmazeData?.averageRuntime ?? null;
+    const tvmazeLabel = tvmazeRuntime ? `${tvmazeRuntime} min` : '';
+    if (tvmazeLabel) {
+      return [tvmazeLabel];
+    }
     const detailAny = detail as any;
     const detailDurations = normalizeDetailList(detailAny?.durations);
     if (detailDurations.length > 0) {
       return detailDurations;
     }
     return omdbData?.runtime ? [omdbData.runtime] : [];
-  }, [detail, normalizeDetailList, omdbData]);
+  }, [detail, normalizeDetailList, omdbData, tvmazeData]);
   const mergedReleaseDates = useMemo(() => {
     const detailAny = detail as any;
     const detailReleaseDates = normalizeDetailList(detailAny?.releaseDates);
@@ -2491,6 +2502,33 @@ export function PlayPageClient({
       cancelled = true;
     };
   }, [imdbVideoId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchTvmaze = async () => {
+      if (!imdbVideoId && !tmdbId) {
+        setTvmazeData(null);
+        return;
+      }
+      try {
+        const data = await getTvmazeContribution({
+          imdbId: imdbVideoId,
+          tmdbId,
+        });
+        if (cancelled) return;
+        setTvmazeData(data);
+      } catch (error) {
+        console.warn('TVmaze enrichment error:', error);
+        if (!cancelled) {
+          setTvmazeData(null);
+        }
+      }
+    };
+    void fetchTvmaze();
+    return () => {
+      cancelled = true;
+    };
+  }, [imdbVideoId, tmdbId]);
 
   // -----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------
@@ -4890,6 +4928,7 @@ export function PlayPageClient({
           detail={detail}
           videoYear={videoYear}
           omdbData={omdbData}
+          tvmazeData={tvmazeData}
           metadataLists={metadataLists}
           metadataSynopsis={metadataSynopsis}
           mergedReleaseDates={mergedReleaseDates}
