@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useRef,
   useState,
+  type ImgHTMLAttributes,
 } from 'react';
 
 import RetryImage from '@/components/RetryImage';
@@ -96,6 +97,8 @@ type RailImageProps = {
   alt: string;
   className?: string;
   skeletonClassName?: string;
+  loading?: ImgHTMLAttributes<HTMLImageElement>['loading'];
+  decoding?: ImgHTMLAttributes<HTMLImageElement>['decoding'];
   onError?: (event: React.SyntheticEvent<HTMLImageElement, Event>) => void;
   onLoad?: (event: React.SyntheticEvent<HTMLImageElement, Event>) => void;
 };
@@ -105,6 +108,8 @@ function RailImage({
   alt,
   className,
   skeletonClassName,
+  loading,
+  decoding,
   onError,
   onLoad,
 }: RailImageProps) {
@@ -136,7 +141,8 @@ function RailImage({
         src={src}
         alt={alt}
         className={className}
-        loading='lazy'
+        loading={loading}
+        decoding={decoding}
         onLoad={handleLoad}
         onError={handleError}
       />
