@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
-
 'use client';
 
-import { useState, useEffect } from 'react';
 import {
   closestCenter,
   DndContext,
+  DragEndEvent,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -30,7 +28,7 @@ import { toggleSource, deleteSource, updateSourceOrder } from './sourceActions';
 interface SourceSortableTableProps {
   sources: DataSource[];
   refreshConfig: () => Promise<void>;
-  setSources: (sources: DataSource[]) => void;
+  setSources: React.Dispatch<React.SetStateAction<DataSource[]>>;
   setOrderChanged: (changed: boolean) => void;
 }
 
@@ -73,11 +71,13 @@ const SourceSortableTable = ({
       });
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = sources.findIndex((s) => s.key === active.id);
-    const newIndex = sources.findIndex((s) => s.key === over.id);
+    const activeKey = String(active.id);
+    const overKey = String(over.id);
+    const oldIndex = sources.findIndex((s) => s.key === activeKey);
+    const newIndex = sources.findIndex((s) => s.key === overKey);
     setSources((prev) => arrayMove(prev, oldIndex, newIndex));
     setOrderChanged(true);
   };
