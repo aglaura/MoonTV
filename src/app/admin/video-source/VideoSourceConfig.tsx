@@ -1,11 +1,10 @@
-/* eslint-disable no-console */
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   closestCenter,
   DndContext,
+  DragEndEvent,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -25,7 +24,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { DataSource } from '@/lib/admin.types';
 import { tt } from '../shared/i18n';
-import { callApi } from '../shared/adminFetch';
+import { showError } from '../shared/alerts';
 
 interface VideoSourceConfigProps {
   config: {
@@ -38,6 +37,9 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
   const [sources, setSources] = useState<DataSource[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [orderChanged, setOrderChanged] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
+  const lastCommittedOrder = useRef<DataSource[]>([]);
   const [newSource, setNewSource] = useState<Omit<DataSource, 'from'> & { from?: 'config' | 'custom' }>({
     name: '',
     key: '',
@@ -64,22 +66,87 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
   useEffect(() => {
     if (config?.SourceConfig) {
       setSources(config.SourceConfig);
+      lastCommittedOrder.current = [...config.SourceConfig];
       setOrderChanged(false);
     }
   }, [config]);
 
-  const handleToggleEnable = (key: string) => {
+  const callSourceApi = async (
+    body: Record<string, unknown>,
+    options?: { skipRefresh?: boolean; suppressError?: boolean }
+  ) => {
+    try {
+      const resp = await fetch('/api/admin/source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(
+          data.error ||
+            tt(
+              `Operation failed: ${resp.status}`,
+              `操作失败: ${resp.status}`,
+              `操作失敗: ${resp.status}`
+            )
+        );
+      }
+
+      if (!options?.skipRefresh) {
+        await refreshConfig();
+      }
+    } catch (err) {
+      if (!options?.suppressError) {
+        showError(
+          err instanceof Error
+            ? err.message
+            : tt('Operation failed', '操作失败', '操作失敗')
+        );
+      }
+      throw err;
+    }
+  };
+
+  const handleToggleEnable = async (key: string) => {
+    if (pendingKeys.has(key)) return;
     const target = sources.find((s) => s.key === key);
     if (!target) return;
-    const action = target.disabled ? 'enable' : 'disable';
-    callApi('/api/admin/source', { action, key }).catch(() => {
-      console.error('Operation failed', action, key);
+    const wasDisabled = !!target.disabled;
+
+    setSources((prev) =>
+      prev.map((s) =>
+        s.key === key ? { ...s, disabled: !wasDisabled } : s
+      )
+    );
+    setPendingKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
     });
+
+    try {
+      const action = wasDisabled ? 'enable' : 'disable';
+      await callSourceApi({ action, key }, { skipRefresh: true });
+    } catch (err) {
+      setSources((prev) =>
+        prev.map((s) =>
+          s.key === key ? { ...s, disabled: wasDisabled } : s
+        )
+      );
+    } finally {
+      setPendingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   };
 
   const handleDelete = (key: string) => {
-    callApi('/api/admin/source', { action: 'delete', key }).catch(() => {
-      console.error('Operation failed', 'delete', key);
+    callSourceApi({ action: 'delete', key }).catch(() => {
+      // handled by callSourceApi
     });
   };
 
@@ -87,7 +154,7 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
     const apiValue = newSource.api?.trim();
     const m3u8Value = newSource.m3u8?.trim();
     if (!newSource.name || !newSource.key || (!apiValue && !m3u8Value)) return;
-    callApi('/api/admin/source', {
+    callSourceApi({
       action: 'add',
       key: newSource.key,
       name: newSource.name,
@@ -108,28 +175,42 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
         setShowAddForm(false);
       })
       .catch(() => {
-        console.error('Operation failed', 'add', newSource);
+        // handled by callSourceApi
       });
   };
 
-  const handleDragEnd = (event: { active: { id: string }, over: { id: string } | null }) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = sources.findIndex((s) => s.key === active.id);
-    const newIndex = sources.findIndex((s) => s.key === over.id);
+    const activeKey = String(active.id);
+    const overKey = String(over.id);
+    const oldIndex = sources.findIndex((s) => s.key === activeKey);
+    const newIndex = sources.findIndex((s) => s.key === overKey);
     setSources((prev) => arrayMove(prev, oldIndex, newIndex));
     setOrderChanged(true);
   };
 
-  const handleSaveOrder = () => {
+  const handleSaveOrder = async () => {
+    if (savingOrder) return;
+    setSavingOrder(true);
+    const optimisticOrder = sources;
     const order = sources.map((s) => s.key);
-    callApi('/api/admin/source', { action: 'sort', order })
-      .then(() => {
-        setOrderChanged(false);
-      })
-      .catch(() => {
-        console.error('Operation failed', 'sort', order);
+    try {
+      await callSourceApi(
+        { action: 'sort', order },
+        { skipRefresh: true, suppressError: true }
+      );
+      lastCommittedOrder.current = optimisticOrder;
+      setOrderChanged(false);
+      refreshConfig().catch(() => {
+        // ignore background refresh errors
       });
+    } catch (err) {
+      setSources(lastCommittedOrder.current);
+      showError(tt('Save order failed', '保存排序失败', '儲存排序失敗'));
+    } finally {
+      setSavingOrder(false);
+    }
   };
 
   const DraggableRow = ({ source }: { source: DataSource }) => {
@@ -195,11 +276,12 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
         <td className='px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2'>
           <button
             onClick={() => handleToggleEnable(source.key)}
+            disabled={pendingKeys.has(source.key)}
             className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
               !source.disabled
                 ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
                 : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60'
-            } transition-colors`}
+            } ${pendingKeys.has(source.key) ? 'opacity-50 cursor-not-allowed' : ''} transition-colors`}
           >
             {!source.disabled
               ? tt('Disable', '禁用', '禁用')
@@ -384,9 +466,12 @@ const VideoSourceConfig = ({ config, refreshConfig }: VideoSourceConfigProps) =>
         <div className='flex justify-end'>
           <button
             onClick={handleSaveOrder}
-            className='px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors'
+            disabled={savingOrder}
+            className={`px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ${savingOrder ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {tt('Save order', '保存排序', '儲存排序')}
+            {savingOrder
+              ? tt('Saving…', '保存中…', '儲存中…')
+              : tt('Save order', '保存排序', '儲存排序')}
           </button>
         </div>
       )}
