@@ -1,4 +1,5 @@
 export type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+export type TvRegion = 'cn' | 'kr' | 'jp' | 'en';
 
 export type TmdbListItem = {
   tmdbId: string;
@@ -63,7 +64,8 @@ export type CardItem = {
   year?: string;
   douban_id?: number;
   imdb_id?: string;
-  type?: string;
+  tmdb_id?: string;
+  type?: 'tv' | 'movie' | 'person' | 'show';
   query?: string;
   source_name?: string;
   id?: string | number;
@@ -99,12 +101,11 @@ export type CategoryKey =
 
 export type TvSectionId =
   | 'continue'
-  | 'category'
-  | 'hero'
-  | 'spotlight'
-  | 'rail-movie'
-  | 'rail-tv'
-  | 'rail-variety';
+  | 'airing'
+  | 'regional'
+  | 'animation'
+  | 'variety'
+  | 'movies';
 
 export type CategoryConfig = {
   label: string;

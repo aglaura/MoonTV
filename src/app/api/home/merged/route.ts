@@ -65,6 +65,7 @@ type CardItem = {
   year?: string;
   douban_id?: number;
   imdb_id?: string;
+  tmdb_id?: string;
   type?: string;
   query?: string;
   source_name?: string;
@@ -400,6 +401,7 @@ function mapTmdbCards(items: TmdbItem[]): CardItem[] {
       query: item.title,
       imdb_id: item.imdbId,
       douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+      tmdb_id: item.tmdbId,
       source_name: 'TMDB',
       id: item.tmdbId,
     };

@@ -9,35 +9,30 @@ import {
 import type {
   CardItem,
   CategoryData,
-  CategoryKey,
   PrefetchedHome,
-  TmdbCastMember,
   TmdbListItem,
-  TmdbPerson,
   UiLocale,
+  TvRegion,
 } from './home.types';
 import { isKidSafeContent } from './kidsMode.client';
 import { convertToTraditional } from './locale';
 import { DoubanItem } from './types';
+import { getTvmazeContribution } from './tvmaze.client';
 
 export type UseHomeDataParams = {
   uiLocale: UiLocale;
   isKidsMode: boolean;
-  category: CategoryKey;
 };
 
 export type UseHomeDataResult = {
   loading: boolean;
   error: boolean;
   categoryData: CategoryData;
-  heroItems: CardItem[];
-  effectiveTmdbMovies: CardItem[];
-  effectiveLatestMovies: CardItem[];
-  effectiveTmdbTv: CardItem[];
-  effectiveLatestTv: CardItem[];
-  effectiveTmdbPeople: CardItem[];
-  applyKidsFilter: (items: CardItem[]) => CardItem[];
-  applyPosterOverrides: (items: CardItem[]) => CardItem[];
+  airingRail: { title: string; items: CardItem[] };
+  regionalTv: Record<TvRegion, CardItem[]>;
+  animationItems: CardItem[];
+  varietyItems: CardItem[];
+  movieItems: CardItem[];
 };
 
 const isKidSafeCard = (item: CardItem) =>
@@ -47,17 +42,12 @@ const isKidSafeCard = (item: CardItem) =>
     type: item.type,
   });
 
-const MAX_PEOPLE = 60;
-
 export const useHomeData = ({
   uiLocale,
   isKidsMode,
-  category,
 }: UseHomeDataParams): UseHomeDataResult => {
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
-  const [latestMoviesDouban, setLatestMoviesDouban] = useState<DoubanItem[]>([]);
-  const [latestTvDouban, setLatestTvDouban] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
   const [bangumiCalendarData, setBangumiCalendarData] = useState<
     BangumiCalendarData[]
@@ -66,14 +56,25 @@ export const useHomeData = ({
   const [tmdbTv, setTmdbTv] = useState<TmdbListItem[]>([]);
   const [tmdbKr, setTmdbKr] = useState<TmdbListItem[]>([]);
   const [tmdbJp, setTmdbJp] = useState<TmdbListItem[]>([]);
-  const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
-  const [tmdbNowPlaying, setTmdbNowPlaying] = useState<TmdbListItem[]>([]);
   const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
   const [prefetchedHome, setPrefetchedHome] = useState<PrefetchedHome | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [airingRail, setAiringRail] = useState<{
+    title: string;
+    items: CardItem[];
+  }>({ title: '', items: [] });
+
+  const tt = useCallback(
+    (en: string, zhHans: string, zhHant: string) => {
+      if (uiLocale === 'zh-Hans') return zhHans;
+      if (uiLocale === 'zh-Hant') return zhHant;
+      return en;
+    },
+    [uiLocale]
+  );
 
   const applyKidsFilter = useCallback(
     (items: CardItem[]) =>
@@ -114,8 +115,6 @@ export const useHomeData = ({
               movies?: DoubanItem[];
               tv?: DoubanItem[];
               variety?: DoubanItem[];
-              latestMovies?: DoubanItem[];
-              latestTv?: DoubanItem[];
             }>;
           });
 
@@ -128,8 +127,6 @@ export const useHomeData = ({
               tv?: TmdbListItem[];
               krTv?: TmdbListItem[];
               jpTv?: TmdbListItem[];
-              people?: TmdbPerson[];
-              nowPlaying?: TmdbListItem[];
               onAir?: TmdbListItem[];
             };
           });
@@ -145,14 +142,6 @@ export const useHomeData = ({
               Array.isArray(doubanHome?.movies) ? doubanHome.movies : []
             );
             setHotTvShows(Array.isArray(doubanHome?.tv) ? doubanHome.tv : []);
-            setLatestMoviesDouban(
-              Array.isArray(doubanHome?.latestMovies)
-                ? doubanHome.latestMovies
-                : []
-            );
-            setLatestTvDouban(
-              Array.isArray(doubanHome?.latestTv) ? doubanHome.latestTv : []
-            );
             setHotVarietyShows(
               Array.isArray(doubanHome?.variety) ? doubanHome.variety : []
             );
@@ -164,10 +153,6 @@ export const useHomeData = ({
             setTmdbTv(Array.isArray(data.tv) ? data.tv : []);
             setTmdbKr(Array.isArray(data.krTv) ? data.krTv : []);
             setTmdbJp(Array.isArray(data.jpTv) ? data.jpTv : []);
-            setTmdbPeople(Array.isArray(data.people) ? data.people : []);
-            setTmdbNowPlaying(
-              Array.isArray(data.nowPlaying) ? data.nowPlaying : []
-            );
             setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
           }
 
@@ -195,8 +180,9 @@ export const useHomeData = ({
     const items: CardItem[] = [];
     bangumiCalendarData.forEach((day) => {
       day.items.forEach((anime) => {
+        const title = anime.name_cn || anime.name;
         items.push({
-          title: anime.name_cn || anime.name,
+          title,
           poster:
             anime.images?.large ||
             anime.images?.common ||
@@ -207,6 +193,8 @@ export const useHomeData = ({
           year: anime.air_date?.split('-')?.[0] || '',
           douban_id: anime.id,
           type: 'tv',
+          query: title,
+          source_name: 'Bangumi',
         });
       });
     });
@@ -230,6 +218,7 @@ export const useHomeData = ({
         query: item.title,
         imdb_id: item.imdbId,
         douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        tmdb_id: item.tmdbId,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
@@ -253,6 +242,7 @@ export const useHomeData = ({
         query: item.title,
         imdb_id: item.imdbId,
         douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        tmdb_id: item.tmdbId,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
@@ -276,6 +266,7 @@ export const useHomeData = ({
         query: item.title,
         imdb_id: item.imdbId,
         douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        tmdb_id: item.tmdbId,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
@@ -299,60 +290,12 @@ export const useHomeData = ({
         query: item.title,
         imdb_id: item.imdbId,
         douban_id: item.doubanId ? Number(item.doubanId) : undefined,
+        tmdb_id: item.tmdbId,
         source_name: 'TMDB',
         id: item.tmdbId,
       })),
     [tmdbJp]
   );
-
-  const tmdbPeopleCards = useMemo(
-    () =>
-      (tmdbPeople || []).map((item) => ({
-        title: item.title,
-        poster: item.poster,
-        rate: '',
-        year: '',
-        type: 'person',
-        query: item.title,
-        source_name: 'TMDB',
-        id: item.tmdbId,
-      })),
-    [tmdbPeople]
-  );
-
-  const castPeopleCards = useMemo(() => {
-    const people = new Map<string, CardItem>();
-    const addMember = (member: TmdbCastMember, sourceName = 'TMDB') => {
-      const name = (member.name || '').trim();
-      const id = (member.tmdbId || '').trim();
-      const key = id || name.toLowerCase();
-      if (!name || !key || people.has(key)) return;
-      people.set(key, {
-        title: name,
-        poster: member.profile || '',
-        rate: '',
-        year: '',
-        type: 'person',
-        query: name,
-        source_name: sourceName,
-        id: id || undefined,
-      });
-    };
-    const addFromList = (items: TmdbListItem[]) => {
-      (items || []).forEach((item) => {
-        (item.castMembers || []).forEach((member) => {
-          addMember(member);
-        });
-      });
-    };
-    addFromList(tmdbMovies);
-    addFromList(tmdbTv);
-    addFromList(tmdbKr);
-    addFromList(tmdbJp);
-    addFromList(tmdbNowPlaying);
-    addFromList(tmdbOnAir);
-    return Array.from(people.values());
-  }, [tmdbMovies, tmdbTv, tmdbKr, tmdbJp, tmdbNowPlaying, tmdbOnAir]);
 
   const mapDoubanCards = useCallback(
     (items: DoubanItem[], type?: string): CardItem[] =>
@@ -445,6 +388,9 @@ export const useHomeData = ({
           posterDouban: mergedDouban,
           posterTmdb: mergedTmdb,
           posterAlt: Array.from(mergedAlt) as string[],
+          douban_id: existing.douban_id || item.douban_id,
+          imdb_id: existing.imdb_id || item.imdb_id,
+          tmdb_id: existing.tmdb_id || item.tmdb_id,
           rate: existing.rate || item.rate,
           year: existing.year || item.year,
           query: existing.query || item.query,
@@ -467,28 +413,6 @@ export const useHomeData = ({
     [getCardKey]
   );
 
-  const tmdbNowPlayingCards = useMemo(
-    () =>
-      (tmdbNowPlaying || []).map((item) => ({
-        title: item.title,
-        title_en: item.originalTitle,
-        poster: item.poster,
-        posterAlt: [item.poster].filter(Boolean),
-        posterTmdb: item.poster,
-        tmdbUrl: `https://www.themoviedb.org/movie/${item.tmdbId?.replace('tmdb:', '') ?? ''}`,
-        originalLanguage: item.originalLanguage,
-        originCountry: item.originCountry,
-        rate: '',
-        year: item.year,
-        type: 'movie',
-        query: item.title,
-        imdb_id: item.imdbId,
-        source_name: 'TMDB',
-        id: item.tmdbId,
-      })),
-    [tmdbNowPlaying]
-  );
-
   const tmdbOnAirCards = useMemo(
     () =>
       (tmdbOnAir || []).map((item) => ({
@@ -506,34 +430,13 @@ export const useHomeData = ({
         query: item.title,
         imdb_id: item.imdbId,
         source_name: 'TMDB',
+        tmdb_id: item.tmdbId,
         id: item.tmdbId,
       })),
     [tmdbOnAir]
   );
 
-  const effectiveTmdbMovies = prefetchedHome?.tmdbMovies ?? tmdbMovieCards;
-  const effectiveTmdbTv = prefetchedHome?.tmdbTv ?? tmdbTvCards;
-  const effectiveTmdbPeople = useMemo(() => {
-    const basePeople = prefetchedHome?.tmdbPeople ?? tmdbPeopleCards;
-    const seen = new Set<string>();
-    const merged: CardItem[] = [];
-    [...basePeople, ...castPeopleCards].forEach((person) => {
-      const key = String(person.id || person.title || '').trim();
-      if (!key || seen.has(key)) return;
-      seen.add(key);
-      merged.push(person);
-    });
-    return merged.slice(0, MAX_PEOPLE);
-  }, [prefetchedHome, tmdbPeopleCards, castPeopleCards]);
-  const effectiveTmdbNowPlaying =
-    prefetchedHome?.tmdbNowPlaying ?? tmdbNowPlayingCards;
   const effectiveTmdbOnAir = prefetchedHome?.tmdbOnAir ?? tmdbOnAirCards;
-  const effectiveLatestMovies =
-    prefetchedHome?.latestMovies ??
-    mergeCards(mapDoubanCards(latestMoviesDouban, 'movie'), effectiveTmdbNowPlaying);
-  const effectiveLatestTv =
-    prefetchedHome?.latestTv ??
-    mergeCards(mapDoubanCards(latestTvDouban, 'tv'), effectiveTmdbOnAir);
 
   const [hotTvShowsCn, hotTvShowsKr, hotTvShowsJp, hotTvShowsUsEu] = useMemo(() => {
     const krList: DoubanItem[] = [];
@@ -769,11 +672,6 @@ export const useHomeData = ({
     isJpTmdb,
   ]);
 
-  const heroItems = useMemo(
-    () => (categoryData[category]?.items || []).slice(0, 10),
-    [categoryData, category]
-  );
-
   const applyPosterOverrides = useCallback(
     (items: CardItem[]) => {
       if (posterMap.size === 0) return items;
@@ -789,17 +687,184 @@ export const useHomeData = ({
     [posterMap, getCardKey]
   );
 
+  const regionalTv = useMemo<Record<TvRegion, CardItem[]>>(
+    () => ({
+      cn: categoryData['tv-cn']?.items || [],
+      kr: categoryData['tv-kr']?.items || [],
+      jp: categoryData['tv-jp']?.items || [],
+      en: categoryData['tv-us']?.items || [],
+    }),
+    [categoryData]
+  );
+
+  const animationItems = useMemo(
+    () => categoryData.anime?.items || [],
+    [categoryData]
+  );
+
+  const varietyItems = useMemo(() => {
+    const items = categoryData.variety?.items || [];
+    if (items.length === 0) return items;
+    return items.filter((item) => {
+      const title = (item.title || '').toLowerCase();
+      if (/[가-힣]/.test(title)) return true;
+      if (/韩|韓/.test(title)) return true;
+      if (/[\u4e00-\u9fff]/.test(title)) return true;
+      return false;
+    });
+  }, [categoryData]);
+
+  const movieItems = useMemo(
+    () => categoryData.movie?.items || [],
+    [categoryData]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const mapBangumiItems = (items: BangumiCalendarData['items']) =>
+      items.map((anime) => {
+        const title = anime.name_cn || anime.name;
+        return {
+          title,
+          poster:
+            anime.images?.large ||
+            anime.images?.common ||
+            anime.images?.medium ||
+            anime.images?.small ||
+            anime.images?.grid,
+          rate: anime.rating?.score ? anime.rating.score.toFixed(1) : '',
+          year: anime.air_date?.split('-')?.[0] || '',
+          douban_id: anime.id,
+          type: 'tv' as const,
+          query: title,
+          source_name: 'Bangumi',
+        } satisfies CardItem;
+      });
+
+    const run = async () => {
+      const now = new Date();
+      const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const addDays = (d: Date, days: number) =>
+        new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+      const windowStart = startOfDay(addDays(now, -3));
+      const windowEnd = startOfDay(addDays(now, 7));
+      const todayStart = startOfDay(now);
+      const todayEnd = addDays(todayStart, 1);
+
+      const parseDate = (value?: string) => {
+        if (!value) return null;
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed;
+      };
+
+      const isInWindow = (value?: string) => {
+        const date = parseDate(value);
+        if (!date) return false;
+        return date >= windowStart && date <= windowEnd;
+      };
+
+      const isToday = (value?: string) => {
+        const date = parseDate(value);
+        if (!date) return false;
+        return date >= todayStart && date < todayEnd;
+      };
+
+      const weekdayNames = [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+      ];
+      const todayName = weekdayNames[now.getDay()] || '';
+      const todayBangumi =
+        bangumiCalendarData.find(
+          (entry) => entry.weekday?.en?.toLowerCase() === todayName
+        )?.items || [];
+      const bangumiTodayCards = mapBangumiItems(todayBangumi);
+      const bangumiWeekCards = bangumiCalendarData.flatMap((entry) =>
+        mapBangumiItems(entry.items || [])
+      );
+      const bangumiUpdates =
+        bangumiTodayCards.length > 0 ? bangumiTodayCards : bangumiWeekCards;
+
+      const baseOnAir = applyPosterOverrides(
+        applyKidsFilter(effectiveTmdbOnAir)
+      );
+      const candidates = baseOnAir.slice(0, 12);
+
+      const resolveTmdbId = (item: CardItem) => {
+        if (item.tmdb_id) return item.tmdb_id;
+        const raw = typeof item.id === 'string' ? item.id : '';
+        if (raw.startsWith('tmdb:')) return raw.replace('tmdb:', '');
+        return raw || undefined;
+      };
+
+      const contributions = await Promise.all(
+        candidates.map((item) =>
+          getTvmazeContribution({
+            imdbId: item.imdb_id,
+            tmdbId: resolveTmdbId(item),
+          })
+        )
+      );
+
+      const tvAiring = candidates.filter((item, index) =>
+        isInWindow(contributions[index]?.nextEpisode?.airdate)
+      );
+      const hasTvToday = candidates.some((item, index) =>
+        isToday(contributions[index]?.nextEpisode?.airdate)
+      );
+      const hasAnimeToday = bangumiTodayCards.length > 0;
+      const baseUpdates = tvAiring.length > 0 ? tvAiring : candidates;
+
+      const seen = new Set<string>();
+      const combined: CardItem[] = [];
+      [...baseUpdates, ...bangumiUpdates].forEach((item) => {
+        const key = getCardKey(item);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        combined.push(item);
+      });
+
+      const title = (hasTvToday || hasAnimeToday)
+        ? tt('Airing Today', '今日更新', '今日更新')
+        : tt('This Week\'s Updates', '本周更新', '本週更新');
+
+      if (!cancelled) {
+        setAiringRail({
+          title,
+          items: combined.slice(0, 18),
+        });
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyKidsFilter,
+    applyPosterOverrides,
+    bangumiCalendarData,
+    effectiveTmdbOnAir,
+    getCardKey,
+    tt,
+  ]);
+
   return {
     loading,
     error,
     categoryData,
-    heroItems,
-    effectiveTmdbMovies,
-    effectiveLatestMovies,
-    effectiveTmdbTv,
-    effectiveLatestTv,
-    effectiveTmdbPeople,
-    applyKidsFilter,
-    applyPosterOverrides,
+    airingRail,
+    regionalTv,
+    animationItems,
+    varietyItems,
+    movieItems,
   };
 };

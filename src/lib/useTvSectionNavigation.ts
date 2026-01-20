@@ -7,6 +7,12 @@ type UseTvSectionNavigationParams = {
   sections: string[];
   currentSection: string | null;
   setSectionIndex: React.Dispatch<React.SetStateAction<number>>;
+  onHorizontalEdge?: (params: {
+    direction: 'left' | 'right';
+    activeElement: HTMLElement | null;
+    sectionId: string | null;
+    focusSection: (sectionId: string | null) => boolean;
+  }) => boolean;
 };
 
 export const useTvSectionNavigation = ({
@@ -14,6 +20,7 @@ export const useTvSectionNavigation = ({
   sections,
   currentSection,
   setSectionIndex,
+  onHorizontalEdge,
 }: UseTvSectionNavigationParams) => {
   useEffect(() => {
     if (!enabled) return;
@@ -151,6 +158,9 @@ export const useTvSectionNavigation = ({
         focusFirstInSection(currentSection || sections[0] || null);
       }
       const group = activeEl?.closest<HTMLElement>('[data-tv-group]');
+      const activeSection =
+        activeEl?.closest<HTMLElement>('[data-tv-section]')?.dataset
+          ?.tvSection || null;
 
       if (group && activeEl) {
         const moved = moveInGroup(group, activeEl, key);
@@ -160,12 +170,32 @@ export const useTvSectionNavigation = ({
       }
 
       if (key === 'ArrowRight') {
+        if (
+          onHorizontalEdge?.({
+            direction: 'right',
+            activeElement: activeEl,
+            sectionId: activeSection,
+            focusSection: focusFirstInSection,
+          })
+        ) {
+          return;
+        }
         const moved = moveInSectionLinear('next');
         if (moved) {
           return;
         }
       }
       if (key === 'ArrowLeft') {
+        if (
+          onHorizontalEdge?.({
+            direction: 'left',
+            activeElement: activeEl,
+            sectionId: activeSection,
+            focusSection: focusFirstInSection,
+          })
+        ) {
+          return;
+        }
         const moved = moveInSectionLinear('prev');
         if (moved) {
           return;
