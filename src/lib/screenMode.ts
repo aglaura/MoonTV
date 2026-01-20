@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export type ScreenMode = 'mobile' | 'tablet' | 'desktop' | 'tv' | 'pc';
+export type ScreenMode = 'mobile' | 'tablet' | 'tv';
 export type OsFamily = 'windows' | 'ios' | 'macos' | 'android' | 'linux' | 'other';
 export type ScreenModeOverride = 'tv' | 'tablet';
 
@@ -89,7 +89,7 @@ function detectTV(ua: string, uaData?: UAData): boolean {
 export function detectDeviceInfo(): DeviceInfo {
   if (typeof window === 'undefined') {
     return {
-      screenMode: 'desktop',
+      screenMode: 'tablet',
       isTV: false,
       isIOS: false,
       isAndroid: false,
@@ -136,12 +136,12 @@ export function detectDeviceInfo(): DeviceInfo {
     requestedOverride === 'tv' && !allowTv ? null : requestedOverride;
   let isTV = false;
   if (!isMobileLayout) {
-    if (override === 'tv') {
+    if (w >= 3000) {
+      isTV = true;
+    } else if (override === 'tv') {
       isTV = true;
     } else if (override === 'tablet') {
       isTV = false;
-    } else if (allowTv && w >= 3600) {
-      isTV = true;
     } else {
       isTV =
         detectTV(ua, uaData) ||
@@ -159,12 +159,11 @@ export function detectDeviceInfo(): DeviceInfo {
 
   let screenMode: ScreenMode;
   if (isMobileLayout) screenMode = 'mobile';
+  else if (w >= 3000) screenMode = 'tv';
   else if (override === 'tv') screenMode = 'tv';
   else if (override === 'tablet') screenMode = 'tablet';
   else if (isTV) screenMode = 'tv';
-  else if (isWindows) screenMode = 'pc';
-  else if (smallestWidth < 1200) screenMode = 'tablet';
-  else screenMode = 'desktop';
+  else screenMode = 'tablet';
 
   return { screenMode, isTV, isIOS, isAndroid, browser, osFamily };
 }

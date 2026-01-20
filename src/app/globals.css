@@ -346,3 +346,9 @@ html.tv-mode [data-tv-focusable="true"]:focus-visible {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9),
     0 12px 28px rgba(0, 0, 0, 0.7);
 }
+
+html.tv-cursor-hidden,
+html.tv-cursor-hidden body,
+html.tv-cursor-hidden * {
+  cursor: none !important;
+}

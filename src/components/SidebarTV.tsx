@@ -124,14 +124,6 @@ const SidebarTV = ({
     }
   }, [isCollapsed]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.add('tv-mode', 'tv-cursor-hidden');
-    return () => {
-      root.classList.remove('tv-mode', 'tv-cursor-hidden');
-    };
-  }, []);
-
   const [active, setActive] = useState(activePath);
 
   useEffect(() => {

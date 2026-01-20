@@ -169,7 +169,7 @@ function isKidSafeCard(item: CardItem) {
 /**
  * ContentRail with 3 modes:
  * - TV: vertical list (no own key listener; global TV nav handles sections)
- * - Desktop/Tablet: horizontal with arrows
+ * - Tablet: horizontal with arrows
  * - Mobile: swipe/snap horizontal
  */
 function ContentRail({
@@ -182,7 +182,7 @@ function ContentRail({
   title: string;
   href?: string;
   items: CardItem[];
-  screenMode: 'tv' | 'desktop' | 'mobile' | 'tablet' | 'pc';
+  screenMode: 'tv' | 'mobile' | 'tablet';
   tt: (en: string, zhHans: string, zhHant: string) => string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -535,7 +535,7 @@ function HomeClient() {
   const [error, setError] = useState(false);
   const [category, setCategory] = useState<CategoryKey>('movie');
   const [screenMode, setScreenMode] = useState<ScreenMode>(() =>
-    typeof window === 'undefined' ? 'desktop' : detectDeviceInfo().screenMode
+    typeof window === 'undefined' ? 'tablet' : detectDeviceInfo().screenMode
   );
   const [osFamily, setOsFamily] = useState<OsFamily>(() =>
     typeof window === 'undefined' ? 'other' : detectDeviceInfo().osFamily
@@ -585,12 +585,6 @@ function HomeClient() {
     }
     if (screenMode === 'tablet') {
       return `${tt('Tablet mode', '平板模式', '平板模式')}${osSuffix}${resSuffix}`;
-    }
-    if (screenMode === 'pc') {
-      return `${tt('PC mode', '桌面模式', '桌面模式')}${osSuffix}${resSuffix}`;
-    }
-    if (screenMode === 'desktop') {
-      return `${tt('Desktop mode', '桌面模式', '桌面模式')}${osSuffix}${resSuffix}`;
     }
     return undefined;
   }, [osLabel, resolutionTag, screenMode, tt]);

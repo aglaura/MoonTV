@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useDeviceInfo } from '@/lib/screenMode';
 import { BackButton } from './BackButton';
 import LanguageSelector from './LanguageSelector';
@@ -29,6 +30,19 @@ const PageLayout = ({
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (isTV) {
+      root.classList.add('tv-mode', 'tv-cursor-hidden');
+    } else {
+      root.classList.remove('tv-mode', 'tv-cursor-hidden');
+    }
+    return () => {
+      root.classList.remove('tv-mode', 'tv-cursor-hidden');
+    };
+  }, [isTV]);
 
   return (
     <TvInputProvider enabled={isTV}>
