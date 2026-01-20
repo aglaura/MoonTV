@@ -162,6 +162,11 @@ export interface DoubanSubjectDetail {
   year?: string;
   imdbId?: string;
   imdbTitle?: string;
+  doubanRating?: string;
+  doubanVotes?: number;
+  imdbRating?: string;
+  imdbVotes?: number;
+  rottenRating?: string;
   actors?: string[];
   directors?: string[];
   genres?: string[];

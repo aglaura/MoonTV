@@ -2290,37 +2290,26 @@ const SiteConfigComponent = ({ config }: { config: AdminConfig | null }) => {
               )}
         </div>
         <div className='flex items-center gap-2'>
-          <button
-            onClick={handleTestConfigJson}
-            disabled={testingConfigJson}
-            className={`px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 ${
-              testingConfigJson
-                ? 'bg-gray-200 dark:bg-gray-800 text-gray-500'
-                : 'bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-100'
-            } transition-colors`}
-          >
-            {testingConfigJson
-              ? tt('Testing…', '测试中…', '測試中…')
-              : tt('Test CONFIGJSON', '测试 CONFIGJSON', '測試 CONFIGJSON')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || isD1Storage}
-            className={`px-4 py-2 ${
-              saving || isD1Storage
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700'
-            } text-white rounded-lg transition-colors`}
-          >
-            {saving
-              ? tt('Saving…', '保存中…', '保存中…')
-              : tt('Save', '保存', '保存')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+/* eslint-disable @typescript-eslint/no-explicit-any, no-console */
+
+'use client';
+
+// Force dynamic rendering to avoid next-intl static prerender issues
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { Settings, Database, Users, Info, Video, BarChart3 } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+import { AdminConfig, AdminConfigResult } from '@/lib/admin.types';
+
+import PageLayout from '@/components/PageLayout';
+import CollapsibleTab from './shared/CollapsibleTab';
+import UserConfig from './users/UserConfig';
+import VideoSourceConfig from './video-source/VideoSourceConfig';
+import SourceValuationTable from './valuations/SourceValuationTable';
+import SiteConfigComponent from './site/SiteConfig';
+import RedisStatus from './redis/RedisStatus';
 
 function AdminPageClient() {
   const [config, setConfig] = useState<AdminConfig | null>(null);
@@ -2335,19 +2324,8 @@ function AdminPageClient() {
     siteConfig: false,
     redis: false,
   });
-  const [redisInfo, setRedisInfo] = useState<{
-    used?: number;
-    usedHuman?: string;
-    max?: number | null;
-    maxHuman?: string;
-    available?: number | null;
-    availableHuman?: string;
-    policy?: string | null;
-    error?: string;
-  } | null>(null);
-  const [redisLoading, setRedisLoading] = useState(false);
 
-  const fetchConfig = useCallback(async (showLoading = false) => {
+  const fetchConfig = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) {
         setLoading(true);
@@ -2381,43 +2359,6 @@ function AdminPageClient() {
         setLoading(false);
       }
     }
-  }, []);
-
-  useEffect(() => {
-    const loadRedisInfo = async () => {
-      setRedisLoading(true);
-      try {
-        const resp = await fetch('/api/admin/redis-info');
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok) {
-          setRedisInfo({
-            error:
-              data?.error ||
-              tt(
-                'Unable to fetch Redis status. Check REDIS_URL and Redis service.',
-                '无法获取 Redis 状态，请确认环境变量 REDIS_URL 或 Redis 服务。',
-                '無法取得 Redis 狀態，請確認環境變數 REDIS_URL 或 Redis 服務。'
-              ),
-          });
-          return;
-        }
-        setRedisInfo(data);
-      } catch (err) {
-        setRedisInfo({
-          error:
-            err instanceof Error
-              ? err.message
-              : tt(
-                  'Failed to fetch Redis status',
-                  '获取 Redis 状态时发生错误',
-                  '取得 Redis 狀態時發生錯誤'
-                ),
-        });
-      } finally {
-        setRedisLoading(false);
-      }
-    };
-    loadRedisInfo();
   }, []);
 
   useEffect(() => {
@@ -2529,9 +2470,9 @@ function AdminPageClient() {
             }
             isExpanded={expandedTabs.siteConfig}
             onToggle={() => toggleTab('siteConfig')}
-            >
-              <SiteConfigComponent config={config} />
-            </CollapsibleTab>
+          >
+            <SiteConfigComponent config={config} />
+          </CollapsibleTab>
 
           {/* Redis 狀態 */}
           <CollapsibleTab
@@ -2545,65 +2486,7 @@ function AdminPageClient() {
             isExpanded={expandedTabs.redis}
             onToggle={() => toggleTab('redis')}
           >
-            {redisLoading && (
-              <div className='text-sm text-gray-600 dark:text-gray-300'>
-                {tt('Loading…', '加载中…', '讀取中…')}
-              </div>
-            )}
-            {!redisLoading && redisInfo?.error && (
-              <div className='text-sm text-red-600 dark:text-red-400'>
-                {redisInfo.error}
-              </div>
-            )}
-            {!redisLoading && redisInfo && !redisInfo.error && (
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-800 dark:text-gray-200'>
-                <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
-                  <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    {tt('Used', '已使用', '已使用')}
-                  </div>
-                  <div className='font-semibold'>
-                    {redisInfo.usedHuman || '—'}
-                    {redisInfo.used
-                      ? ` (${redisInfo.used.toLocaleString()} bytes)`
-                      : ''}
-                  </div>
-                </div>
-                <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
-                  <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    {tt('Max', '上限', '上限')}
-                  </div>
-                  <div className='font-semibold'>
-                    {redisInfo.maxHuman || '—'}
-                    {redisInfo.max
-                      ? ` (${redisInfo.max.toLocaleString()} bytes)`
-                      : redisInfo.max === null
-                        ? tt(' (Unlimited)', ' (无上限)', ' (無上限)')
-                        : ''}
-                  </div>
-                </div>
-                <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
-                  <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    {tt('Available', '剩余可用', '剩餘可用')}
-                  </div>
-                  <div className='font-semibold'>
-                    {redisInfo.availableHuman || '—'}
-                    {redisInfo.available
-                      ? ` (${redisInfo.available.toLocaleString()} bytes)`
-                      : redisInfo.available === null
-                        ? ''
-                        : ''}
-                  </div>
-                </div>
-                <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-800/70'>
-                  <div className='text-gray-500 dark:text-gray-400 text-xs mb-1'>
-                    {tt('Eviction policy', '淘汰策略', '淘汰策略')}
-                  </div>
-                  <div className='font-semibold'>
-                    {redisInfo.policy || '—'}
-                  </div>
-                </div>
-              </div>
-            )}
+            <RedisStatus />
           </CollapsibleTab>
 
           <div className='space-y-4'>
@@ -2665,6 +2548,122 @@ function AdminPageClient() {
     </PageLayout>
   );
 }
+
+const InfoSourceConfig = () => {
+  const infoSources = [
+    {
+      key: 'douban',
+      name: 'Douban',
+      description: tt('Ratings + metadata', '评分与影片信息', '評分與影片資訊'),
+    },
+    {
+      key: 'tmdb',
+      name: 'TMDB',
+      description: tt('Posters + metadata', '海报与元数据', '海報與中繼資料'),
+    },
+    {
+      key: 'imdb',
+      name: 'IMDb',
+      description: tt('English title + ratings', '英文标题与评分', '英文標題與評分'),
+    },
+    {
+      key: 'wmdb',
+      name: 'WMDB',
+      description: tt(
+        'Aggregated metadata (Douban/IMDb/RT)',
+        '聚合信息（豆瓣/IMDb/烂番茄）',
+        '聚合資訊（豆瓣/IMDb/爛番茄）'
+      ),
+    },
+  ];
+
+  return (
+    <div className='space-y-4'>
+      <div className='rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/70 p-4'>
+        <div className='flex items-center justify-between'>
+          <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+            {tt('Info sources', '信息来源', '資訊來源')}
+          </h4>
+          <span className='text-[10px] uppercase tracking-wide px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'>
+            {tt('Built-in', '内置', '內建')}
+          </span>
+        </div>
+        <p className='mt-2 text-xs text-gray-500 dark:text-gray-400'>
+          {tt(
+            'Metadata-only sources (no streams). Managed by the app and not part of api_site.',
+            '仅提供元数据（无播放源）。由应用内置管理，不在 api_site 列表中。',
+            '僅提供中繼資料（無播放來源）。由應用內建管理，不在 api_site 清單中。'
+          )}
+        </p>
+        <div className='mt-3 grid gap-2 sm:grid-cols-2'>
+          {infoSources.map((source) => (
+            <div
+              key={source.key}
+              className='rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200/70 dark:border-gray-700/60 px-3 py-2'
+            >
+              <div className='text-sm font-semibold text-gray-800 dark:text-gray-100'>
+                {source.name}
+              </div>
+              <div className='text-xs text-gray-500 dark:text-gray-400'>
+                {source.description}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Memoized locale resolution to prevent repeated localStorage/navigator calls
+type UiLocale = 'en' | 'zh-Hans' | 'zh-Hant';
+
+function resolveUiLocale(): UiLocale {
+  try {
+    const saved =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem('userLocale')
+        : null;
+    if (saved === 'en' || saved === 'zh-Hans' || saved === 'zh-Hant') {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+
+  const nav =
+    typeof navigator !== 'undefined' ? (navigator.language || '') : '';
+  const lower = nav.toLowerCase();
+  if (lower.startsWith('zh-cn') || lower.startsWith('zh-hans')) return 'zh-Hans';
+  if (
+    lower.startsWith('zh-tw') ||
+    lower.startsWith('zh-hant') ||
+    lower.startsWith('zh-hk')
+  ) {
+    return 'zh-Hant';
+  }
+  return 'en';
+}
+
+const uiLocale = resolveUiLocale();
+
+export function tt(en: string, zhHans: string, zhHant: string): string {
+  if (uiLocale === 'zh-Hans') return zhHans;
+  if (uiLocale === 'zh-Hant') return zhHant;
+  return en;
+}
+
+export const showError = (message: string) =>
+  Swal.fire({ icon: 'error', title: tt('Error', '错误', '錯誤'), text: message });
+
+export const showSuccess = (message: string) =>
+  Swal.fire({
+    icon: 'success',
+    title: tt('Success', '成功', '成功'),
+    text: message,
+    timer: 2000,
+    showConfirmButton: false,
+  });
 
 export default function AdminPage() {
   return (
