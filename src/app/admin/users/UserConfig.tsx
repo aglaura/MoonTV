@@ -53,15 +53,16 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
 
   const isD1Storage = runtimeConfig?.STORAGE_TYPE === 'd1';
     
-  const editingEntry = useMemo(
-    () =>
-      editingUser
-        ? config?.UserConfig.Users.find(
-            (u) => u.username === editingUser.username
-          )
-        : null,
-    [config, editingUser]
-  );
+  const editingEntry = useMemo(() => {
+    if (!editingUser) {
+      return null;
+    }
+    return (
+      config?.UserConfig.Users.find(
+        (u) => u.username === editingUser.username
+      ) ?? null
+    );
+  }, [config, editingUser]);
 
   useEffect(() => {
     if (config?.UserConfig) {
