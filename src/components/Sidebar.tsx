@@ -124,6 +124,12 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   }, [isCollapsed]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__sidebarCollapsed = isCollapsed;
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
+
+  useEffect(() => {
     if (disableAutoCollapse) return;
     const el = sidebarRef.current;
     if (!el) return;

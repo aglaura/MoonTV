@@ -122,6 +122,12 @@ const SidebarTV = ({
     }
   }, [isCollapsed]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__sidebarCollapsedTv = isCollapsed;
+    localStorage.setItem('sidebarCollapsedTv', JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
+
   const [active, setActive] = useState(activePath);
 
   useEffect(() => {

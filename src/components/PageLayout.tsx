@@ -31,6 +31,7 @@ const PageLayout = ({
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+  const showSidebar = !hideTopBar;
 
   useTvFullscreen(isTV);
 
@@ -56,9 +57,13 @@ const PageLayout = ({
         )}
 
         {/* 主要布局容器 */}
-        <div className='flex md:grid md:grid-cols-[auto_1fr] w-full min-h-screen md:min-h-auto'>
+        <div
+          className={`flex w-full min-h-screen md:min-h-auto ${
+            showSidebar ? 'md:grid md:grid-cols-[auto_1fr]' : 'md:block'
+          }`}
+        >
           {/* 侧边栏 - 桌面端显示，移动端隐藏 */}
-          {!hideTopBar && (
+          {showSidebar && (
             <div className='hidden md:block'>
               {isTV ? (
                 <SidebarTV
@@ -73,7 +78,11 @@ const PageLayout = ({
           )}
 
           {/* 主内容区域 */}
-          <div className='relative min-w-0 flex-1 transition-all duration-300 md:pl-16'>
+          <div
+            className={`relative min-w-0 flex-1 transition-all duration-300 ${
+              showSidebar ? 'md:pl-16' : ''
+            }`}
+          >
             {/* 桌面端左上角返回按钮 */}
             {['/play'].includes(activePath) && !hideTopBar && (
               <div className='absolute top-3 left-3 z-20 hidden md:flex items-center gap-3'>
