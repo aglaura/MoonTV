@@ -55,7 +55,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
       data-tv-focusable="true"
       className={`${
         variant === 'tv'
-          ? 'w-9 h-9 p-2 rounded-full text-white/70 hover:bg-white/10'
+          ? 'w-9 h-9 p-2 rounded-full text-white/55 hover:text-white hover:bg-white/10'
           : 'w-10 h-10 p-2 rounded-full text-gray-600 hover:bg-gray-200/50 dark:text-gray-300 dark:hover:bg-gray-700/50'
       } flex items-center justify-center transition-colors ${className || ''}`.trim()}
       aria-label={t(locale)}

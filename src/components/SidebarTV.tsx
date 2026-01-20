@@ -243,10 +243,10 @@ const SidebarTV = ({
   const showLabels = !isPeek && !isCollapsed;
   const decodedActive = useMemo(() => decodeURIComponent(active), [active]);
   const navItemClass =
-    'group flex items-center gap-3 justify-start rounded-xl px-3 py-2 text-sm font-semibold text-white/70 transition-colors duration-150 min-h-[44px] hover:bg-white/10 data-[active=true]:bg-white/15 data-[active=true]:text-white';
-  const navIconClass = 'h-4 w-4 text-white/60';
+    'group flex items-center gap-3 justify-start rounded-lg px-2.5 py-1.5 text-sm font-semibold text-white/70 transition-colors duration-150 min-h-[40px] hover:bg-white/10 border-l-2 border-transparent data-[active=true]:border-red-500/80 data-[active=true]:text-white data-[active=true]:bg-white/5';
+  const navIconClass = 'h-4 w-4 text-white/55';
   const utilityRowClass =
-    'flex items-center justify-center rounded-xl px-2 py-2 bg-white/5 hover:bg-white/10 transition-colors';
+    'flex items-center justify-center rounded-lg px-2 py-1.5 bg-white/5 hover:bg-white/10 transition-colors';
 
   return (
     <SidebarContext.Provider value={{ isCollapsed: isCollapsed && !isPeek, isPeek }}>
@@ -255,7 +255,7 @@ const SidebarTV = ({
           data-sidebar
           data-tv-group="sidebar"
           data-tv-direction="vertical"
-          className={`fixed top-0 left-0 h-screen bg-black/80 backdrop-blur-md transition-all duration-300 border-r border-white/10 z-10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] ${widthClass}`}
+          className={`fixed top-0 left-0 h-screen bg-[#090909] backdrop-blur-md transition-all duration-300 border-r border-white/10 z-10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] ${widthClass}`}
           ref={sidebarRef}
           style={{
             backdropFilter: 'blur(20px)',
@@ -263,7 +263,7 @@ const SidebarTV = ({
           }}
         >
           <div className="flex h-full flex-col">
-            <div className="relative h-16">
+            <div className="relative h-12">
               <div
                 className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
                   isCollapsed && !isPeek ? 'opacity-0' : 'opacity-100'
@@ -274,27 +274,21 @@ const SidebarTV = ({
                   tabIndex={-1}
                   data-tv-focusable="true"
                   onFocus={() => handleFocusNavigate('/?tab=home')}
-                  className="flex items-center justify-center h-16 select-none transition-opacity duration-200 gap-2"
+                  className="flex items-center justify-center h-12 select-none transition-opacity duration-200 gap-2"
                 >
-                  <div className="w-10 h-10 rounded-lg overflow-hidden shadow-sm border border-white/60 dark:border-white/10 bg-white dark:bg-black flex items-center justify-center p-1.5">
+                  <div className="w-8 h-8 rounded-md overflow-hidden border border-white/20 bg-white/10 flex items-center justify-center p-1">
                     <picture>
                       <source srcSet="/logo-dark.png" media="(prefers-color-scheme: dark)" />
                       <img src="/logo.png" alt={siteName} className="w-full h-full object-contain" />
                     </picture>
                   </div>
-
-                  {!isPeek && (
-                    <span className="text-2xl font-bold text-green-600 tracking-tight">
-                      {siteName}
-                    </span>
-                  )}
                 </Link>
               </div>
               <button
                 onClick={handleToggle}
                 tabIndex={-1}
                 aria-hidden="true"
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors duration-200 z-10 ${
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-7 h-7 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors duration-200 z-10 ${
                   isCollapsed && !isPeek ? 'left-1/2 -translate-x-1/2' : 'right-2'
                 }`}
               >
@@ -302,18 +296,22 @@ const SidebarTV = ({
               </button>
             </div>
 
-              <div className="px-2 pb-3">
+            <div className="px-2 pb-2">
               <div
-                className={`flex items-center rounded-2xl px-2 py-1.5 bg-white/5 border border-white/10 ${
+                className={`flex items-center rounded-xl px-2 py-1.5 bg-white/5 border border-white/10 ${
                   showLabels ? 'justify-between' : 'justify-center'
                 }`}
               >
-                <UserBadge variant="tv" showLabel={showLabels} className={showLabels ? 'flex-1' : ''} />
+                <UserBadge
+                  variant="tv"
+                  showLabel={showLabels}
+                  className={showLabels ? 'flex-1' : ''}
+                />
                 {showLabels && <LogoutButton variant="tv" />}
               </div>
             </div>
 
-            <nav className="px-2 mt-4 space-y-1">
+            <nav className="px-2 mt-2 space-y-0.5">
               <Link
                 href="/?tab=home"
                 tabIndex={-1}
@@ -359,8 +357,8 @@ const SidebarTV = ({
               </Link>
             </nav>
 
-            <div className="flex-1 overflow-y-auto px-2 pt-4">
-              <div className="space-y-1">
+            <div className="flex-1 overflow-y-auto px-2 pt-2">
+              <div className="space-y-0.5">
                 {menuItems.map((item, index) => {
                   const decodedItemHref = decodeURIComponent(item.href);
                   const activeType = decodedActive.match(/type=([^&]+)/)?.[1];
@@ -419,8 +417,8 @@ const SidebarTV = ({
               </div>
             </div>
 
-            <div className="px-2 pb-4 space-y-3 mt-auto">
-              <div className="space-y-2 pt-3 border-t border-gray-200/60 dark:border-gray-700/60">
+            <div className="px-2 pb-3 space-y-2 mt-auto">
+              <div className="space-y-2 pt-2 border-t border-white/10">
                 {modeLabel &&
                   (onModeClick ? (
                     <button
@@ -428,7 +426,7 @@ const SidebarTV = ({
                       tabIndex={-1}
                       data-tv-focusable="true"
                       onClick={onModeClick}
-                      className={`flex items-center gap-2 rounded-full bg-white/10 text-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 hover:bg-white/15 transition ${
+                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] border border-white/10 hover:bg-white/10 transition ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -438,7 +436,7 @@ const SidebarTV = ({
                     </button>
                   ) : (
                     <div
-                      className={`flex items-center gap-2 rounded-full bg-white/10 text-white/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 ${
+                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] border border-white/10 ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -452,7 +450,16 @@ const SidebarTV = ({
                   <SettingsButton />
                 </div>
 
-                <div className={utilityRowClass}>
+                <div
+                  className={`flex items-center rounded-lg px-2 py-1.5 bg-white/5 border border-white/10 ${
+                    showLabels ? 'justify-between' : 'justify-center'
+                  }`}
+                >
+                  {showLabels && (
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
+                      {t('Language', '语言', '語言')}
+                    </span>
+                  )}
                   <LanguageSelector variant="compact" />
                 </div>
 

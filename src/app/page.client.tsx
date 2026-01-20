@@ -1740,7 +1740,11 @@ function HomeClient() {
           </div>
         )}
         {!isTV && (
-          <div className="mb-6 sm:mb-8 flex justify-center gap-2">
+          <div
+            className={`mb-6 sm:mb-8 flex gap-2 ${
+              screenMode === 'tablet' ? 'justify-start' : 'justify-center'
+            }`}
+          >
             <button
               onClick={() => setActiveTab('home')}
               className={`px-4 py-2 rounded-full text-sm font-semibold border ${
