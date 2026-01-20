@@ -443,9 +443,8 @@ const TvHome = ({
   }, [focus, parseFocus, rows]);
 
   const requestSidebarPeek = useCallback(() => {
-    tvInput?.requestSidebarPeek();
-    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
-    if (!sidebar) {
+    const focused = tvInput?.requestSidebarFocus() ?? false;
+    if (!focused) {
       setRailOpen(true);
       setFocus(`rail:${activeRail}`);
     }

@@ -328,10 +328,7 @@ const TvPlayLayout = ({
 
   const handleEdge = useCallback((direction: Direction) => {
     if (direction !== 'left') return;
-    tvInput?.requestSidebarPeek();
-    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
-    const first = sidebar?.querySelector<HTMLElement>('[data-tv-focusable="true"]');
-    first?.focus({ preventScroll: true });
+    tvInput?.requestSidebarFocus();
   }, [tvInput]);
 
   useSpatialNavigation(

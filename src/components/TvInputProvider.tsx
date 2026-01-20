@@ -24,6 +24,7 @@ type TvSidebarController = {
 type TvInputContextValue = {
   registerSidebar: (controller: TvSidebarController | null) => void;
   requestSidebarPeek: () => void;
+  requestSidebarFocus: () => boolean;
 };
 
 const TvInputContext = createContext<TvInputContextValue | null>(null);
@@ -43,6 +44,21 @@ const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
     if (!enabled) return;
     sidebarRef.current?.peek();
   }, [enabled]);
+
+  const focusSidebarFirst = useCallback(() => {
+    if (typeof document === 'undefined') return false;
+    const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
+    if (!sidebar) return false;
+    const first = sidebar.querySelector<HTMLElement>('[data-tv-focusable="true"]');
+    if (!first) return false;
+    first.focus({ preventScroll: true });
+    return true;
+  }, []);
+
+  const requestSidebarFocus = useCallback(() => {
+    requestSidebarPeek();
+    return focusSidebarFirst();
+  }, [focusSidebarFirst, requestSidebarPeek]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -76,7 +92,7 @@ const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
       }
 
       if (key === 'back') {
-        requestSidebarPeek();
+        requestSidebarFocus();
         return;
       }
 
@@ -93,19 +109,19 @@ const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
         registry: focusRegistry,
         onEdge: (direction) => {
           if (direction === 'left') {
-            requestSidebarPeek();
+            requestSidebarFocus();
           }
         },
       });
     },
-    [lastActivateRef, requestSidebarPeek]
+    [lastActivateRef, requestSidebarFocus]
   );
 
   useTvRemote(handleKey, enabled);
 
   const contextValue = useMemo(
-    () => ({ registerSidebar, requestSidebarPeek }),
-    [registerSidebar, requestSidebarPeek]
+    () => ({ registerSidebar, requestSidebarPeek, requestSidebarFocus }),
+    [registerSidebar, requestSidebarFocus, requestSidebarPeek]
   );
 
   return (
