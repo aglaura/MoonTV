@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 
 import {
   activateFocused,
@@ -17,9 +17,32 @@ interface TvInputProviderProps {
   children: React.ReactNode;
 }
 
+type TvSidebarController = {
+  peek: () => void;
+};
+
+type TvInputContextValue = {
+  registerSidebar: (controller: TvSidebarController | null) => void;
+  requestSidebarPeek: () => void;
+};
+
+const TvInputContext = createContext<TvInputContextValue | null>(null);
+
+export const useTvInput = () => useContext(TvInputContext);
+
 const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
   const lastActivateRef = useRef(0);
   const lastContentFocusRef = useRef<HTMLElement | null>(null);
+  const sidebarRef = useRef<TvSidebarController | null>(null);
+
+  const registerSidebar = useCallback((controller: TvSidebarController | null) => {
+    sidebarRef.current = controller;
+  }, []);
+
+  const requestSidebarPeek = useCallback(() => {
+    if (!enabled) return;
+    sidebarRef.current?.peek();
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -53,7 +76,7 @@ const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
       }
 
       if (key === 'back') {
-        window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+        requestSidebarPeek();
         return;
       }
 
@@ -70,17 +93,24 @@ const TvInputProvider = ({ enabled, children }: TvInputProviderProps) => {
         registry: focusRegistry,
         onEdge: (direction) => {
           if (direction === 'left') {
-            window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+            requestSidebarPeek();
           }
         },
       });
     },
-    [lastActivateRef]
+    [lastActivateRef, requestSidebarPeek]
   );
 
   useTvRemote(handleKey, enabled);
 
-  return <>{children}</>;
+  const contextValue = useMemo(
+    () => ({ registerSidebar, requestSidebarPeek }),
+    [registerSidebar, requestSidebarPeek]
+  );
+
+  return (
+    <TvInputContext.Provider value={contextValue}>{children}</TvInputContext.Provider>
+  );
 };
 
 export default TvInputProvider;

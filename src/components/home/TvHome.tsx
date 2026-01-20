@@ -10,6 +10,7 @@ import React, {
   useState,
 } from 'react';
 
+import { useTvInput } from '@/components/TvInputProvider';
 import type { ScreenMode } from '@/lib/screenMode';
 import { useTvRemote, type TvKey } from '@/lib/tvInput';
 import { processImageUrl } from '@/lib/utils';
@@ -367,6 +368,7 @@ const TvHome = ({
   const [focus, setFocus] = useState<FocusKey>('hero:play');
   const [activeRail, setActiveRail] = useState('home');
   const [railOpen, setRailOpen] = useState(false);
+  const tvInput = useTvInput();
 
   const lastContentFocus = useRef<FocusKey>('hero:play');
   const rowMemory = useRef<Record<string, number>>({});
@@ -441,15 +443,13 @@ const TvHome = ({
   }, [focus, parseFocus, rows]);
 
   const requestSidebarPeek = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
-    }
+    tvInput?.requestSidebarPeek();
     const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
     if (!sidebar) {
       setRailOpen(true);
       setFocus(`rail:${activeRail}`);
     }
-  }, [activeRail]);
+  }, [activeRail, tvInput]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

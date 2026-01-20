@@ -21,6 +21,7 @@ import { SettingsButton } from './SettingsButton';
 import { ThemeToggle } from './ThemeToggle';
 import UserBadge from './UserBadge';
 import { useSite } from './SiteProvider';
+import { useTvInput } from './TvInputProvider';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -76,6 +77,7 @@ const SidebarTV = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { siteName } = useSite();
+  const tvInput = useTvInput();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (
@@ -176,35 +178,36 @@ const SidebarTV = ({
     [t]
   );
 
-  useEffect(() => {
-    const onPeek = () => {
-      const collapsed = collapsedRef.current;
-      const peek = peekRef.current;
+  const handlePeek = useCallback(() => {
+    const collapsed = collapsedRef.current;
+    const peek = peekRef.current;
 
-      if (collapsed && !peek) {
-        setIsPeek(true);
-        peekedOnceRef.current = true;
-        return;
-      }
+    if (collapsed && !peek) {
+      setIsPeek(true);
+      peekedOnceRef.current = true;
+      return;
+    }
 
-      if (peek && peekedOnceRef.current) {
-        setIsPeek(false);
-        setIsCollapsed(false);
-        peekedOnceRef.current = false;
+    if (peek && peekedOnceRef.current) {
+      setIsPeek(false);
+      setIsCollapsed(false);
+      peekedOnceRef.current = false;
 
-        requestAnimationFrame(() => {
-          const el = sidebarRef.current;
-          const first = el?.querySelector<HTMLElement>(
-            '[data-tv-focusable="true"]'
-          );
-          first?.focus({ preventScroll: true });
-        });
-      }
-    };
-
-    window.addEventListener('tv:sidebar-peek', onPeek as EventListener);
-    return () => window.removeEventListener('tv:sidebar-peek', onPeek as EventListener);
+      requestAnimationFrame(() => {
+        const el = sidebarRef.current;
+        const first = el?.querySelector<HTMLElement>(
+          '[data-tv-focusable="true"]'
+        );
+        first?.focus({ preventScroll: true });
+      });
+    }
   }, []);
+
+  useEffect(() => {
+    if (!tvInput) return;
+    tvInput.registerSidebar({ peek: handlePeek });
+    return () => tvInput.registerSidebar(null);
+  }, [handlePeek, tvInput]);
 
   useEffect(() => {
     const el = sidebarRef.current;

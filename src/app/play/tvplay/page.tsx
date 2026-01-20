@@ -15,6 +15,7 @@ import {
 
 import { PlayPageClient, type TvPlayLayoutProps } from '@/app/play/PlayPageClient';
 import { BackButton } from '@/components/BackButton';
+import { useTvInput } from '@/components/TvInputProvider';
 import { VirtualizedRow } from '@/components/VirtualizedRow';
 import {
   activateFocused,
@@ -121,7 +122,7 @@ const useSpatialNavigation = (
       if (isEditable(active)) return;
 
       if (key === 'back') {
-        window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+        onEdge?.('left');
         return;
       }
 
@@ -237,6 +238,7 @@ const TvPlayLayout = ({
   tt,
   convertToTraditional,
 }: TvPlayLayoutProps) => {
+  const tvInput = useTvInput();
   const displaySource =
     convertToTraditional(sourceName || '') || sourceName || currentSource || '';
   const isLowEndTV = useMemo(() => {
@@ -326,13 +328,11 @@ const TvPlayLayout = ({
 
   const handleEdge = useCallback((direction: Direction) => {
     if (direction !== 'left') return;
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
-    }
+    tvInput?.requestSidebarPeek();
     const sidebar = document.querySelector<HTMLElement>('[data-sidebar]');
     const first = sidebar?.querySelector<HTMLElement>('[data-tv-focusable="true"]');
     first?.focus({ preventScroll: true });
-  }, []);
+  }, [tvInput]);
 
   useSpatialNavigation(
     showControlsTemporarily,

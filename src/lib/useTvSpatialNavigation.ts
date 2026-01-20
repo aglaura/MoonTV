@@ -56,7 +56,10 @@ const findNext = (
   return best;
 };
 
-export const useTvSpatialNavigation = (enabled: boolean) => {
+export const useTvSpatialNavigation = (
+  enabled: boolean,
+  onBack?: () => void
+) => {
   useEffect(() => {
     if (!enabled) return;
 
@@ -93,7 +96,7 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       if (isWithinManualNav(active)) return;
 
       if (event.key === 'Escape' || event.key === 'Backspace') {
-        window.dispatchEvent(new CustomEvent('tv:sidebar-peek'));
+        onBack?.();
         event.preventDefault();
         return;
       }
@@ -150,5 +153,5 @@ export const useTvSpatialNavigation = (enabled: boolean) => {
       window.removeEventListener('keydown', preventNativeDpad);
       window.removeEventListener('keydown', onKey);
     };
-  }, [enabled]);
+  }, [enabled, onBack]);
 };
