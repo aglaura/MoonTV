@@ -298,7 +298,7 @@ export const useHomeData = ({
   );
 
   const mapDoubanCards = useCallback(
-    (items: DoubanItem[], type?: string): CardItem[] =>
+    (items: DoubanItem[], type?: CardItem['type']): CardItem[] =>
       (items || []).map((item) => {
         const localizedTitle =
           uiLocale === 'zh-Hant'
