@@ -265,8 +265,10 @@ export default function UserBadge({
         data-tv-focusable="true"
         className={`${
           isTvVariant
-            ? `w-full rounded-xl px-3 py-2 bg-white/5 border border-white/10 text-sm font-semibold text-white/90 hover:bg-white/10 focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60 ${
-                isKidsMode ? 'border-amber-400/50' : 'border-white/10'
+            ? `w-full rounded-lg px-2 py-2 text-sm font-semibold transition-colors focus:outline-none ${
+                isKidsMode
+                  ? 'bg-amber-500/15 text-amber-100 hover:bg-amber-500/25'
+                  : 'bg-white/5 text-white/90 hover:bg-white/10'
               }`
             : `max-w-[14rem] truncate pl-2 pr-1 py-1 rounded-full bg-white/80 dark:bg-gray-800/70 border text-xs font-semibold text-gray-700 dark:text-gray-200 shadow-sm backdrop-blur ${
                 isKidsMode
@@ -281,7 +283,9 @@ export default function UserBadge({
         <span
           className={`block ${
             isTvVariant ? 'w-9 h-9 text-sm' : 'w-6 h-6 text-[10px]'
-          } rounded-full bg-white/10 overflow-hidden flex items-center justify-center font-bold text-white/70 border border-white/20`}
+          } rounded-full bg-white/10 overflow-hidden flex items-center justify-center font-bold text-white/70 ${
+            isTvVariant ? '' : 'border border-white/20'
+          }`}
         >
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -310,7 +314,7 @@ export default function UserBadge({
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full ${
               isTvVariant
-                ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                ? 'bg-amber-500/20 text-amber-100'
                 : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-100'
             }`}
           >

@@ -14,6 +14,7 @@ import {
   useState,
 } from 'react';
 
+import { useDeviceInfo } from '@/lib/screenMode';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import { useSite } from './SiteProvider';
 
@@ -86,6 +87,8 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { screenMode } = useDeviceInfo();
+  const disableAutoCollapse = screenMode === 'tablet';
   // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     if (
@@ -121,6 +124,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   }, [isCollapsed]);
 
   useEffect(() => {
+    if (disableAutoCollapse) return;
     const el = sidebarRef.current;
     if (!el) return;
 
@@ -152,7 +156,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
         clearTimeout(blurTimeoutRef.current);
       }
     };
-  }, []);
+  }, [disableAutoCollapse]);
 
   const [active, setActive] = useState(activePath);
 

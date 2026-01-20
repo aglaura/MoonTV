@@ -13,11 +13,9 @@ import {
 } from 'react';
 
 import { Clapperboard, Download, Film, Home, Menu, Search, Sparkles, Tv } from 'lucide-react';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { useUserLanguage } from '@/lib/userLanguage.client';
-import LanguageSelector from './LanguageSelector';
 import { LogoutButton } from './LogoutButton';
 import { SettingsButton } from './SettingsButton';
 import { ThemeToggle } from './ThemeToggle';
@@ -144,10 +142,6 @@ const SidebarTV = ({
     onToggle?.(newState);
   }, [isCollapsed, onToggle]);
 
-  const handleSearchClick = useCallback(() => {
-    router.push('/search');
-  }, [router]);
-
   const handleFocusNavigate = useCallback(
     (href: string) => {
       if (!href || href === '#') return;
@@ -243,10 +237,10 @@ const SidebarTV = ({
   const showLabels = !isPeek && !isCollapsed;
   const decodedActive = useMemo(() => decodeURIComponent(active), [active]);
   const navItemClass =
-    'group flex items-center gap-3 justify-start rounded-lg px-2.5 py-1.5 text-sm font-semibold text-white/70 transition-colors duration-150 min-h-[40px] hover:bg-white/10 border-l-2 border-transparent data-[active=true]:border-red-500/80 data-[active=true]:text-white data-[active=true]:bg-white/5';
+    'group flex items-center gap-2 justify-start rounded-lg px-1.5 py-1.5 text-sm font-semibold text-white/70 transition-colors duration-150 min-h-[40px] hover:bg-white/10 data-[active=true]:text-white data-[active=true]:bg-white/10';
   const navIconClass = 'h-4 w-4 text-white/55';
   const utilityRowClass =
-    'flex items-center justify-center rounded-lg px-2 py-1.5 bg-white/5 hover:bg-white/10 transition-colors';
+    'flex items-center justify-center rounded-lg px-1.5 py-1.5 bg-white/5 hover:bg-white/10 transition-colors';
 
   return (
     <SidebarContext.Provider value={{ isCollapsed: isCollapsed && !isPeek, isPeek }}>
@@ -255,7 +249,7 @@ const SidebarTV = ({
           data-sidebar
           data-tv-group="sidebar"
           data-tv-direction="vertical"
-          className={`fixed top-0 left-0 h-screen bg-[#090909] backdrop-blur-md transition-all duration-300 border-r border-white/10 z-10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] ${widthClass}`}
+          className={`fixed top-0 left-0 h-screen bg-[#090909] backdrop-blur-md transition-all duration-300 z-10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] ${widthClass}`}
           ref={sidebarRef}
           style={{
             backdropFilter: 'blur(20px)',
@@ -269,20 +263,21 @@ const SidebarTV = ({
                   isCollapsed && !isPeek ? 'opacity-0' : 'opacity-100'
                 }`}
               >
-                <Link
-                  href="/?tab=home"
+                <button
+                  type="button"
                   tabIndex={-1}
                   data-tv-focusable="true"
+                  onClick={() => handleFocusNavigate('/?tab=home')}
                   onFocus={() => handleFocusNavigate('/?tab=home')}
                   className="flex items-center justify-center h-12 select-none transition-opacity duration-200 gap-2"
                 >
-                  <div className="w-8 h-8 rounded-md overflow-hidden border border-white/20 bg-white/10 flex items-center justify-center p-1">
+                  <div className="w-8 h-8 rounded-md overflow-hidden bg-white/10 flex items-center justify-center p-1">
                     <picture>
                       <source srcSet="/logo-dark.png" media="(prefers-color-scheme: dark)" />
                       <img src="/logo.png" alt={siteName} className="w-full h-full object-contain" />
                     </picture>
                   </div>
-                </Link>
+                </button>
               </div>
               <button
                 onClick={handleToggle}
@@ -296,9 +291,9 @@ const SidebarTV = ({
               </button>
             </div>
 
-            <div className="px-2 pb-2">
+            <div className="px-1 pb-2">
               <div
-                className={`flex items-center rounded-xl px-2 py-1.5 bg-white/5 border border-white/10 ${
+                className={`flex items-center rounded-lg px-1.5 py-1.5 bg-white/5 ${
                   showLabels ? 'justify-between' : 'justify-center'
                 }`}
               >
@@ -311,12 +306,12 @@ const SidebarTV = ({
               </div>
             </div>
 
-            <nav className="px-2 mt-2 space-y-0.5">
-              <Link
-                href="/?tab=home"
+            <nav className="px-1 mt-2 space-y-0.5">
+              <button
+                type="button"
                 tabIndex={-1}
                 data-tv-focusable="true"
-                onClick={() => setActive('/?tab=home')}
+                onClick={() => handleFocusNavigate('/?tab=home')}
                 onFocus={() => handleFocusNavigate('/?tab=home')}
                 data-active={decodedActive === '/?tab=home'}
                 data-tv-index={0}
@@ -330,17 +325,13 @@ const SidebarTV = ({
                     {t('Home', '首页', '首頁')}
                   </span>
                 )}
-              </Link>
+              </button>
 
-              <Link
-                href="/search"
+              <button
+                type="button"
                 tabIndex={-1}
                 data-tv-focusable="true"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleSearchClick();
-                  setActive('/search');
-                }}
+                onClick={() => handleFocusNavigate('/search')}
                 onFocus={() => handleFocusNavigate('/search')}
                 data-active={decodedActive === '/search'}
                 data-tv-index={1}
@@ -354,10 +345,10 @@ const SidebarTV = ({
                     {t('Search', '搜索', '搜尋')}
                   </span>
                 )}
-              </Link>
+              </button>
             </nav>
 
-            <div className="flex-1 overflow-y-auto px-2 pt-2">
+            <div className="flex-1 overflow-y-auto px-1 pt-2">
               <div className="space-y-0.5">
                 {menuItems.map((item, index) => {
                   const decodedItemHref = decodeURIComponent(item.href);
@@ -369,13 +360,13 @@ const SidebarTV = ({
                   const Icon = item.icon;
 
                   return (
-                    <Link
+                    <button
+                      type="button"
                       key={item.href}
-                      href={item.href}
                       tabIndex={-1}
                       data-tv-focusable="true"
                       data-tv-index={index + 2}
-                      onClick={() => setActive(item.href)}
+                      onClick={() => handleFocusNavigate(item.href)}
                       onFocus={() => handleFocusNavigate(item.href)}
                       data-active={isActive}
                       className={navItemClass}
@@ -389,7 +380,7 @@ const SidebarTV = ({
                           {item.label}
                         </span>
                       )}
-                    </Link>
+                    </button>
                   );
                 })}
 
@@ -398,10 +389,7 @@ const SidebarTV = ({
                   tabIndex={-1}
                   data-tv-focusable="true"
                   data-tv-index={menuItems.length + 2}
-                  onClick={() => {
-                    setActive('/downloads');
-                    router.push('/downloads');
-                  }}
+                  onClick={() => handleFocusNavigate('/downloads')}
                   onFocus={() => handleFocusNavigate('/downloads')}
                   className={`${navItemClass} w-full`}
                 >
@@ -417,8 +405,8 @@ const SidebarTV = ({
               </div>
             </div>
 
-            <div className="px-2 pb-3 space-y-2 mt-auto">
-              <div className="space-y-2 pt-2 border-t border-white/10">
+            <div className="px-1 pb-3 space-y-2 mt-auto">
+              <div className="space-y-2 pt-2">
                 {modeLabel &&
                   (onModeClick ? (
                     <button
@@ -426,7 +414,7 @@ const SidebarTV = ({
                       tabIndex={-1}
                       data-tv-focusable="true"
                       onClick={onModeClick}
-                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] border border-white/10 hover:bg-white/10 transition ${
+                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] hover:bg-white/10 transition ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -436,7 +424,7 @@ const SidebarTV = ({
                     </button>
                   ) : (
                     <div
-                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] border border-white/10 ${
+                      className={`flex items-center gap-2 rounded-lg bg-white/5 text-white/70 px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] ${
                         showLabels ? 'w-full justify-start' : 'justify-center'
                       }`}
                       aria-label={t('TV mode', '电视模式', '電視模式')}
@@ -448,19 +436,6 @@ const SidebarTV = ({
 
                 <div className={utilityRowClass}>
                   <SettingsButton />
-                </div>
-
-                <div
-                  className={`flex items-center rounded-lg px-2 py-1.5 bg-white/5 border border-white/10 ${
-                    showLabels ? 'justify-between' : 'justify-center'
-                  }`}
-                >
-                  {showLabels && (
-                    <span className="text-[10px] uppercase tracking-[0.3em] text-white/40">
-                      {t('Language', '语言', '語言')}
-                    </span>
-                  )}
-                  <LanguageSelector variant="compact" />
                 </div>
 
                 <div className={utilityRowClass}>

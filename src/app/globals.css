@@ -352,3 +352,9 @@ html.tv-cursor-hidden body,
 html.tv-cursor-hidden * {
   cursor: none !important;
 }
+
+html.tv-mode,
+html.tv-mode body,
+html.tv-mode * {
+  cursor: none !important;
+}

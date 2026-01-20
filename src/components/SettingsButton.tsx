@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { useDeviceInfo } from '@/lib/screenMode';
 import {
   buildDownloadStorageKey,
   DOWNLOAD_RECORDS_EVENT,
@@ -15,6 +16,7 @@ import {
   writeDownloadRecords,
   type DownloadRecord,
 } from '@/lib/downloadRecords.client';
+import LanguageSelector from './LanguageSelector';
 
 const LOCALE_TEXTS: Record<string, Record<string, string>> = {
   en: {
@@ -50,6 +52,8 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadDownloading: 'Downloading',
     downloadFailed: 'Failed',
     downloaded: 'Downloaded',
+    languageTitle: 'Language',
+    languageDesc: 'Set the display language',
   },
   'zh-Hans': {
     settingsTitle: '设置',
@@ -84,6 +88,8 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadDownloading: '下载中',
     downloadFailed: '失败',
     downloaded: '已完成',
+    languageTitle: '语言',
+    languageDesc: '切换显示语言',
   },
   'zh-Hant': {
     settingsTitle: '設定',
@@ -118,11 +124,15 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     downloadDownloading: '下載中',
     downloadFailed: '失敗',
     downloaded: '已完成',
+    languageTitle: '語言',
+    languageDesc: '切換顯示語言',
   },
 };
 
 export const SettingsButton: React.FC = () => {
   const router = useRouter();
+  const { screenMode } = useDeviceInfo();
+  const isTv = screenMode === 'tv';
   const [isOpen, setIsOpen] = useState(false);
   const [defaultAggregateSearch, setDefaultAggregateSearch] = useState(true);
   const [doubanProxyUrl, setDoubanProxyUrl] = useState('');
@@ -399,6 +409,20 @@ export const SettingsButton: React.FC = () => {
 
         {/* 设置项 */}
         <div className='space-y-6'>
+          {isTv && (
+            <div className='flex items-center justify-between'>
+              <div>
+                <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  {t('languageTitle')}
+                </h4>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                  {t('languageDesc')}
+                </p>
+              </div>
+              <LanguageSelector variant='compact' />
+            </div>
+          )}
+
           {/* 默认聚合搜索结果 */}
           <div className='flex items-center justify-between'>
             <div>
