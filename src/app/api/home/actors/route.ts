@@ -127,7 +127,7 @@ async function resolveByTitle(
     : '/search/multi';
   const url = `${TMDB_BASE}${endpoint}?${params.toString()}`;
   const data = await fetchJson<TmdbSearchResponse>(url);
-  const results = Array.isArray(data?.results) ? data.results : [];
+  const results = Array.isArray(data?.results) ? data?.results ?? [] : [];
 
   let candidate: TmdbSearchItem | undefined;
   if (mediaType) {
