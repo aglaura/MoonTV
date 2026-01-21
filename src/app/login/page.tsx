@@ -707,6 +707,7 @@ function LoginPageClient() {
         {stage === 'group' && (
           <div
             className='grid grid-cols-2 gap-6 mb-6'
+            data-tv-group='group-select'
             role='radiogroup'
             aria-label={tt('Choose group', '选择组别', '選擇組別')}
           >
@@ -843,6 +844,7 @@ function LoginPageClient() {
             </p>
             <div
               className='flex flex-col gap-3'
+              data-tv-group='user-select'
               role='radiogroup'
               aria-label={tt(
                 'Available users',

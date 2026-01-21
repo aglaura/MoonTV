@@ -387,6 +387,39 @@ div[data-media-provider] video {
   filter: none !important;
 }
 
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-focusable="true"]:not(.tv-card) {
+  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  transform-origin: center center;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-focusable="true"]:not(.tv-card):focus,
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-focusable="true"]:not(.tv-card):focus-visible {
+  outline: none;
+  transform: scale(1.18) translateY(-6px);
+  z-index: 20;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8),
+    0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-focusable="true"]:not(.tv-card):hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:has([data-tv-focusable="true"]:focus)
+  > [data-tv-focusable="true"]:not(.tv-card):not(:focus),
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:has([data-tv-focusable="true"]:focus-visible)
+  > [data-tv-focusable="true"]:not(.tv-card):not(:focus-visible) {
+  opacity: 0.45;
+  transform: scale(0.94);
+}
+
 :is(html.tv-mode, [data-screen-mode="tv"]) .video-card-hover:hover {
   transform: none !important;
 }
