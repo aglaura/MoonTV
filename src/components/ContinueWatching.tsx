@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { PlayRecord } from '@/lib/db.client';
 import {
@@ -19,6 +19,8 @@ interface ContinueWatchingProps {
   className?: string;
   isTV?: boolean;
 }
+
+type ContinueWatchingMode = 'tv' | 'tablet' | 'mobile';
 
 export default function ContinueWatching({
   className,
@@ -90,6 +92,20 @@ export default function ContinueWatching({
     return null;
   }
 
+  const mode = useMemo<ContinueWatchingMode>(() => {
+    if (isTV) return 'tv';
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      return 'tablet';
+    }
+    return 'mobile';
+  }, [isTV]);
+
+  const maxItems = mode === 'tv' ? 12 : mode === 'tablet' ? 10 : 8;
+  const visibleRecords = playRecords.slice(0, maxItems);
+  const progressHeight =
+    mode === 'tv' ? 'h-2' : mode === 'tablet' ? 'h-1.5' : 'h-1';
+  const cardSize = mode === 'tv' ? 'lg' : mode === 'tablet' ? 'md' : 'sm';
+
   const titleClass = isTV
     ? 'text-white'
     : 'text-gray-800 dark:text-gray-200';
@@ -105,6 +121,26 @@ export default function ContinueWatching({
   const skeletonLineClass = isTV
     ? 'bg-white/10'
     : 'bg-gray-200 dark:bg-gray-800';
+  const resumeBadgeClass = isTV
+    ? 'bg-white/90 text-black'
+    : 'bg-black/70 text-white';
+  const progressTrackClass = mode === 'tv' ? 'bg-white/25' : undefined;
+  const progressFillClass = mode === 'tv' ? 'bg-white' : undefined;
+
+  const handleClear = async () => {
+    if (mode !== 'mobile') {
+      const ok = window.confirm(
+        tt(
+          'Clear all watch progress?',
+          '确认清空观看记录？',
+          '確認清空觀看紀錄？'
+        )
+      );
+      if (!ok) return;
+    }
+    await clearAllPlayRecords();
+    setPlayRecords([]);
+  };
 
   return (
     <section className={`mb-8 ${className || ''}`}>
@@ -117,16 +153,17 @@ export default function ContinueWatching({
         {!loading && playRecords.length > 0 && (
           <button
             className={`${actionClass} ${isTV ? 'text-base' : 'text-sm'}`}
-            onClick={async () => {
-              await clearAllPlayRecords();
-              setPlayRecords([]);
-            }}
+            onClick={handleClear}
           >
             {tt('Clear', '清空', '清空')}
           </button>
         )}
       </div>
-      <ScrollableRow dataTvGroup='continue' dataTvDirection='horizontal'>
+      <ScrollableRow
+        {...(isTV
+          ? { dataTvGroup: 'continue', dataTvDirection: 'horizontal' }
+          : {})}
+      >
         {loading
           ? // 加载状态显示灰色占位数据
             Array.from({ length: 6 }).map((_, index) => (
@@ -152,7 +189,7 @@ export default function ContinueWatching({
               </div>
             ))
           : // 显示真实数据
-            playRecords.map((record) => {
+            visibleRecords.map((record) => {
               const plusIndex = record.key.indexOf('+');
               const source = plusIndex > -1 ? record.key.slice(0, plusIndex) : '';
               const id = plusIndex > -1 ? record.key.slice(plusIndex + 1) : '';
@@ -169,10 +206,17 @@ export default function ContinueWatching({
               return (
                 <div
                   key={record.key}
-                  className={`min-w-[96px] w-24 sm:min-w-[180px] sm:w-44 ${
+                  className={`relative min-w-[96px] w-24 sm:min-w-[180px] sm:w-44 ${
                     isTV ? 'lg:min-w-[220px] lg:w-52' : ''
                   }`}
                 >
+                  {progress > 0 && (
+                    <div
+                      className={`absolute top-2 left-2 z-10 px-2 py-0.5 text-xs rounded-full pointer-events-none ${resumeBadgeClass}`}
+                    >
+                      {tt('Resume', '续播', '續播')}
+                    </div>
+                  )}
                   <VideoCard
                     // Render like a normal aggregated card; let /play find the best source
                     id={id}
@@ -187,7 +231,10 @@ export default function ContinueWatching({
                     progress={progress}
                     from='playrecord'
                     type={record.total_episodes > 1 ? 'tv' : ''}
-                    size={isTV ? 'lg' : undefined}
+                    size={cardSize}
+                    progressHeightClassName={progressHeight}
+                    progressTrackClassName={progressTrackClass}
+                    progressFillClassName={progressFillClass}
                   />
                 </div>
               );

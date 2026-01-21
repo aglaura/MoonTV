@@ -98,6 +98,9 @@ export interface VideoCardProps {
   source_name?: string;
   source_names?: string[];
   progress?: number;
+  progressHeightClassName?: string;
+  progressTrackClassName?: string;
+  progressFillClassName?: string;
   year?: string;
   from: 'playrecord' | 'favorite' | 'search' | 'douban';
   currentEpisode?: number;
@@ -136,6 +139,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       source_name,
       source_names,
       progress = 0,
+      progressHeightClassName,
+      progressTrackClassName,
+      progressFillClassName,
       year,
       from,
       currentEpisode,
@@ -1893,7 +1899,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           {/* 进度条 */}
           {showProgress && (
             <div
-              className='mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden'
+              className={`mt-1 w-full rounded-full overflow-hidden ${
+                progressHeightClassName || 'h-1'
+              } ${progressTrackClassName || 'bg-gray-200'}`}
               style={
                 {
                   WebkitUserSelect: 'none',
@@ -1907,7 +1915,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               }}
             >
               <div
-                className='h-full bg-green-500 transition-all duration-500 ease-out'
+                className={`h-full transition-all duration-500 ease-out ${
+                  progressFillClassName || 'bg-green-500'
+                }`}
                 style={
                   {
                     width: `${progress}%`,
