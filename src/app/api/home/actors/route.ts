@@ -153,7 +153,7 @@ async function fetchCredits(
     tmdbId
   )}/credits?api_key=${encodeURIComponent(apiKey)}&language=en-US`;
   const data = await fetchJson<{ cast?: Array<{ id?: number; name?: string; profile_path?: string }> }>(url);
-  const cast = Array.isArray(data?.cast) ? data.cast : [];
+  const cast = Array.isArray(data?.cast) ? data?.cast ?? [] : [];
   return cast.slice(0, 3).map((member) => ({
     tmdbId: member?.id ? String(member.id) : '',
     name: member?.name || '',
