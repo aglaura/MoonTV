@@ -364,6 +364,71 @@ html.tv-mode [data-tv-card="true"]:focus-visible {
   z-index: 10;
 }
 
+html.tv-mode [data-tv-card="true"][data-tv-selected="true"] {
+  opacity: 1;
+}
+
+html.tv-mode [data-tv-selected="true"] {
+  background-color: var(--tv-neutral-bg);
+  border-color: var(--tv-neutral-border);
+  color: var(--tv-neutral-text);
+  font-weight: 600;
+}
+
+html.tv-mode {
+  --tv-neutral-bg: rgba(255, 255, 255, 0.08);
+  --tv-neutral-bg-strong: rgba(255, 255, 255, 0.12);
+  --tv-neutral-text: rgba(255, 255, 255, 0.9);
+  --tv-neutral-border: rgba(255, 255, 255, 0.2);
+  --tv-neutral-ring: rgba(255, 255, 255, 0.25);
+  --tv-neutral-gradient-from: rgba(255, 255, 255, 0.16);
+  --tv-neutral-gradient-to: rgba(255, 255, 255, 0.08);
+}
+
+html.tv-mode [class*='bg-emerald-'],
+html.tv-mode [class*='bg-green-'] {
+  background-color: var(--tv-neutral-bg) !important;
+}
+
+html.tv-mode [class*='text-emerald-'],
+html.tv-mode [class*='text-green-'] {
+  color: var(--tv-neutral-text) !important;
+}
+
+html.tv-mode [class*='border-emerald-'],
+html.tv-mode [class*='border-green-'] {
+  border-color: var(--tv-neutral-border) !important;
+}
+
+html.tv-mode [class*='ring-emerald-'],
+html.tv-mode [class*='ring-green-'] {
+  --tw-ring-color: var(--tv-neutral-ring) !important;
+}
+
+html.tv-mode [class*='ring-offset-emerald-'],
+html.tv-mode [class*='ring-offset-green-'] {
+  --tw-ring-offset-color: transparent !important;
+}
+
+html.tv-mode [class*='from-emerald-'],
+html.tv-mode [class*='from-green-'] {
+  --tw-gradient-from: var(--tv-neutral-gradient-from) !important;
+  --tw-gradient-stops: var(--tw-gradient-from),
+    var(--tw-gradient-to, var(--tv-neutral-gradient-to)) !important;
+}
+
+html.tv-mode [class*='via-emerald-'],
+html.tv-mode [class*='via-green-'] {
+  --tw-gradient-via: var(--tv-neutral-gradient-from) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via),
+    var(--tw-gradient-to, var(--tv-neutral-gradient-to)) !important;
+}
+
+html.tv-mode [class*='to-emerald-'],
+html.tv-mode [class*='to-green-'] {
+  --tw-gradient-to: var(--tv-neutral-gradient-to) !important;
+}
+
 html.tv-cursor-hidden,
 html.tv-cursor-hidden body,
 html.tv-cursor-hidden * {

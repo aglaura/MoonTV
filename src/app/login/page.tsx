@@ -80,6 +80,14 @@ function LoginPageClient() {
   const [groupFocusIndex, setGroupFocusIndex] = useState(0);
   const [userFocusIndex, setUserFocusIndex] = useState(0);
 
+  const tvTheme = {
+    circleActive: 'bg-white text-black',
+    circleIdle: 'bg-white/10 text-white',
+    textActive: 'text-white',
+    textIdle: 'text-white/70 hover:text-white',
+    border: 'border-white/30',
+  };
+
   const colorThemes = [
     {
       circleActive: 'bg-emerald-500 text-white',
@@ -126,6 +134,7 @@ function LoginPageClient() {
   ];
 
   const themeForKey = (key: string) => {
+    if (isTV) return tvTheme;
     const idx =
       Math.abs(
         Array.from(key || '')
@@ -667,13 +676,32 @@ function LoginPageClient() {
   ]);
 
   return (
-    <div className='relative min-h-screen flex items-center justify-center px-4 overflow-hidden'>
-      <div className='absolute top-4 right-4 flex items-center gap-2'>
+    <div
+      className={`relative min-h-screen flex items-center justify-center px-4 overflow-hidden ${
+        isTV ? 'bg-black text-white' : ''
+      }`}
+    >
+      {isTV && (
+        <div className='absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),transparent_55%)]' />
+      )}
+      <div className='absolute top-4 right-4 flex items-center gap-2 z-10'>
         <LanguageSelector variant='compact' />
         <ThemeToggle />
       </div>
-      <div className='relative z-10 w-full max-w-md px-6 sm:px-8 py-10 space-y-6'>
-        <h1 className='text-green-600 tracking-tight text-center text-3xl font-extrabold mb-8 bg-clip-text drop-shadow-sm'>
+      <div
+        className={`relative z-10 w-full px-6 sm:px-8 py-10 ${
+          isTV
+            ? 'max-w-3xl space-y-8 rounded-[32px] border border-white/10 bg-black/70 shadow-2xl backdrop-blur-md'
+            : 'max-w-md space-y-6'
+        }`}
+      >
+        <h1
+          className={`tracking-tight text-center mb-8 ${
+            isTV
+              ? 'text-4xl font-semibold text-white'
+              : 'text-3xl font-extrabold text-green-600'
+          }`}
+        >
           {siteName}
         </h1>
         {stage === 'group' && (
@@ -697,6 +725,7 @@ function LoginPageClient() {
                   type='button'
                   role='radio'
                   aria-checked={active}
+                  data-tv-focusable={isTV ? 'true' : undefined}
                   tabIndex={stage === 'group' ? (idx === groupFocusIndex ? 0 : -1) : -1}
                   ref={(el) => {
                     if (el) groupButtonRefs.current[idx] = el;
@@ -709,7 +738,7 @@ function LoginPageClient() {
                   }}
                   className={`flex flex-col items-center gap-3 text-sm font-semibold transition focus:outline-none ${
                     active ? theme.textActive : theme.textIdle
-                  }`}
+                  } ${isTV ? 'rounded-3xl px-4 py-4 hover:bg-white/5' : ''}`}
                 >
                   <span
                     className={`w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold shadow-inner transition-transform border ${theme.border} ${
@@ -748,7 +777,12 @@ function LoginPageClient() {
                 autoComplete='current-password'
                 disabled={requiresSelection}
                 ref={passwordRef}
-                className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur disabled:opacity-70'
+                data-tv-focusable={isTV ? 'true' : undefined}
+                className={`block w-full rounded-lg border-0 py-3 px-4 shadow-sm ring-1 focus:outline-none sm:text-base backdrop-blur disabled:opacity-70 ${
+                  isTV
+                    ? 'bg-white/10 text-white placeholder:text-white/50 ring-white/20 focus:ring-white/60'
+                    : 'bg-white/60 dark:bg-zinc-800/60 text-gray-900 dark:text-gray-100 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-green-500'
+                }`}
                 placeholder={
                   group === 'guest'
                     ? tt(
@@ -783,7 +817,12 @@ function LoginPageClient() {
                 type='submit'
                 disabled={!password || loading}
                 ref={loginButtonRef}
-                className='inline-flex w-full justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50'
+                data-tv-focusable={isTV ? 'true' : undefined}
+                className={`inline-flex w-full justify-center rounded-lg py-3 text-base font-semibold shadow-lg transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  isTV
+                    ? 'bg-red-600 text-white hover:bg-red-500'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
               >
                 {loading
                   ? tt('Logging in…', '登录中…', '登入中...')
@@ -836,6 +875,7 @@ function LoginPageClient() {
                     disabled={loading}
                     role='radio'
                     aria-checked={pendingUser ? pendingUser === user : false}
+                    data-tv-focusable={isTV ? 'true' : undefined}
                     tabIndex={
                       requiresSelection
                         ? idx === userFocusIndex
@@ -843,7 +883,11 @@ function LoginPageClient() {
                           : -1
                         : -1
                     }
-                    className='relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent bg-gray-100 text-gray-700 px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
+                    className={`relative flex items-center justify-between gap-4 rounded-3xl border-2 border-transparent px-5 py-4 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed ${
+                      isTV
+                        ? 'bg-white/5 text-white/80 hover:border-white/40 hover:bg-white/10'
+                        : 'bg-gray-100 text-gray-700 hover:border-green-400 hover:bg-green-50 dark:bg-zinc-800 dark:text-gray-200 dark:hover:bg-zinc-700'
+                    }`}
                   >
                     <div className='flex items-center gap-4'>
                       <span
@@ -869,7 +913,11 @@ function LoginPageClient() {
                     <span
                       className={`ml-auto flex h-6 w-6 items-center justify-center rounded-full border-2 ${
                         pendingUser === user
-                          ? 'border-green-500 bg-green-500 text-white'
+                          ? isTV
+                            ? 'border-white bg-white text-black'
+                            : 'border-green-500 bg-green-500 text-white'
+                          : isTV
+                          ? 'border-white/40 text-transparent'
                           : 'border-gray-400 text-transparent'
                       }`}
                     >

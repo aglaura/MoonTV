@@ -309,6 +309,7 @@ const HomeRegionSection = ({
                 type="button"
                 disabled={isTVMode}
                 onClick={() => setRegionalTab(option.key)}
+                data-tv-selected={isTVMode && active ? 'true' : undefined}
                 className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full border transition ${
                   active ? regionTabActiveClass : regionTabBaseClass
                 } ${isTVMode ? 'disabled:opacity-100 disabled:cursor-default' : ''}`}
@@ -426,7 +427,7 @@ export default function HomeClient() {
     ? 'border-white/15 bg-white/5 text-white/70'
     : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400';
   const regionTabActiveClass = isTVMode
-    ? 'bg-white text-black border-white'
+    ? 'border-white/30 text-white'
     : 'bg-emerald-500 text-white border-emerald-500';
 
   const airingTitle =

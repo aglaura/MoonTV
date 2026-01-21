@@ -857,6 +857,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                       key={label}
                       type='button'
                       data-focusable='true'
+                      data-tv-selected={isActive ? 'true' : undefined}
                       ref={(el) => {
                         buttonRefs.current[idx] = el;
                       }}
@@ -911,14 +912,14 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
                 type='button'
                 data-focusable='true'
                 data-tv-focusable='true'
+                data-tv-card='true'
+                data-tv-selected={isActive ? 'true' : undefined}
                 data-tv-index={index}
                 onClick={() => handleEpisodeClick(episodeNumber - 1)}
                 className={`tv-card ${
                   motionSafe ? '' : 'tv-card-lite'
                 } group relative flex-shrink-0 w-[220px] sm:w-[240px] lg:w-[260px] rounded-2xl overflow-hidden border bg-black/40 text-left focus-visible:outline-none ${
-                  isActive
-                    ? 'border-emerald-300/70 ring-2 ring-emerald-300/50'
-                    : 'border-white/10'
+                  isActive ? 'border-white/30' : 'border-white/10'
                 }`}
                 aria-current={isActive ? 'true' : undefined}
               >
@@ -1081,6 +1082,7 @@ const EpisodeSelector: React.FC<EpisodeSelectorProps> = ({
           buildPosterPlaceholder={buildPosterPlaceholder}
           doubanEnglishMap={doubanEnglishMap}
           videoTitle={videoTitle}
+          variant={variant}
           onSearchMismatch={(title) => {
             router.push(`/search?q=${encodeURIComponent(title)}`);
           }}

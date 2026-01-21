@@ -363,13 +363,26 @@ export default function UserBadge({
                               void handleSelectUser(member.username);
                             }
                           }}
+                          data-tv-selected={
+                            isTvVariant && active ? 'true' : undefined
+                          }
                           className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs ${
                             active
-                              ? 'bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100'
-                              : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
+                              ? isTvVariant
+                                ? 'bg-white/10 text-white/90'
+                                : 'bg-green-100 dark:bg-green-900/40 text-green-900 dark:text-green-100'
+                              : isTvVariant
+                                ? 'hover:bg-white/10 text-white/80'
+                                : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
                           }`}
                         >
-                          <span className='w-6 h-6 rounded-full bg-gradient-to-br from-green-500/20 to-green-400/10 overflow-hidden flex items-center justify-center text-[10px] font-bold text-green-700 dark:text-green-300 border border-green-500/20'>
+                          <span
+                            className={`w-6 h-6 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-bold ${
+                              isTvVariant
+                                ? 'bg-white/10 text-white/70 border border-white/20'
+                                : 'bg-gradient-to-br from-green-500/20 to-green-400/10 text-green-700 dark:text-green-300 border border-green-500/20'
+                            }`}
+                          >
                             {member.avatar ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -383,7 +396,13 @@ export default function UserBadge({
                           </span>
                           <span className='truncate'>{member.username}</span>
                           {active && (
-                            <span className='ml-auto text-[10px] text-green-600 dark:text-green-300'>
+                            <span
+                              className={`ml-auto text-[10px] ${
+                                isTvVariant
+                                  ? 'text-white/60'
+                                  : 'text-green-600 dark:text-green-300'
+                              }`}
+                            >
                               {tt('Current', '当前', '當前', locale)}
                             </span>
                           )}
@@ -406,7 +425,9 @@ export default function UserBadge({
                       className={`w-full flex items-center justify-between rounded-lg px-2 py-2 text-xs transition ${
                         isKidsMode
                           ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-100 border border-amber-200 dark:border-amber-700'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600 hover:border-green-400'
+                          : `bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600 ${
+                              isTvVariant ? 'hover:border-white/30' : 'hover:border-green-400'
+                            }`
                       } ${!kidsReady ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       <span className='flex items-center gap-2'>

@@ -58,6 +58,7 @@ type ProviderSourceSearchProps = {
   doubanEnglishMap: Record<number, string>;
   videoTitle?: string;
   onSearchMismatch: (title: string) => void;
+  variant?: 'default' | 'tv';
 };
 
 const ProviderSourceSearch = ({
@@ -80,7 +81,10 @@ const ProviderSourceSearch = ({
   doubanEnglishMap,
   videoTitle,
   onSearchMismatch,
+  variant = 'default',
 }: ProviderSourceSearchProps) => {
+  const isTvVariant = variant === 'tv';
+
   return (
     <div className='flex flex-col h-full mt-4'>
       {availableSeasons.length > 1 && (
@@ -90,10 +94,17 @@ const ProviderSourceSearch = ({
               <button
                 key={season}
                 onClick={() => onSeasonChange(season)}
+                data-tv-selected={
+                  isTvVariant && selectedSeason === season ? 'true' : undefined
+                }
                 className={`px-3 py-[10px] min-h-[44px] rounded-md text-xs font-medium border transition-colors ${
                   selectedSeason === season
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
+                    ? isTvVariant
+                      ? 'bg-white/10 text-white/90 border-white/30 font-semibold'
+                      : 'bg-green-600 text-white border-green-600'
+                    : isTvVariant
+                      ? 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white'
+                      : 'bg-white/50 dark:bg-white/10 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-green-400 hover:text-green-600'
                 }`}
               >
                 {`S${season}`}
@@ -264,7 +275,13 @@ const ProviderSourceSearch = ({
                       });
                     }}
                   >
-                    <div className='flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-1.5 py-1 bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'>
+                    <div
+                      className={`flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-1.5 py-1 ${
+                        isTvVariant
+                          ? 'bg-white/5'
+                          : 'bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'
+                      }`}
+                    >
                       <div className='min-w-0 sm:flex-1'>
                         <div className='flex items-center gap-1.5 min-w-0'>
                           <div
@@ -274,7 +291,13 @@ const ProviderSourceSearch = ({
                             {providerName}
                           </div>
                           {groupHasCurrent && (
-                            <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
+                            <div
+                              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                isTvVariant
+                                  ? 'bg-white/10 text-white/80'
+                                  : 'bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'
+                              }`}
+                            >
                               Playing
                             </div>
                           )}
@@ -295,7 +318,11 @@ const ProviderSourceSearch = ({
                               return next;
                             });
                           }}
-                          className='text-[10px] px-1 py-0.5 rounded-full bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25 transition min-h-[24px]'
+                          className={`text-[10px] px-1 py-0.5 rounded-full transition min-h-[24px] ${
+                            isTvVariant
+                              ? 'bg-white/10 text-white/80 hover:bg-white/15'
+                              : 'bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25'
+                          }`}
                         >
                           {group.sources.length} sources
                         </button>
@@ -311,7 +338,13 @@ const ProviderSourceSearch = ({
                           </div>
                         )}
                         {loadSpeedText && (
-                          <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'>
+                          <div
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                              isTvVariant
+                                ? 'bg-white/10 text-white/80'
+                                : 'bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'
+                            }`}
+                          >
                             {loadSpeedText}
                           </div>
                         )}
@@ -343,11 +376,18 @@ const ProviderSourceSearch = ({
                           <div
                             key={`${source.source}-${source.id}`}
                             onClick={() => !isCurrentSource && onSourceSelect(source)}
+                            data-tv-selected={
+                              isTvVariant && isCurrentSource ? 'true' : undefined
+                            }
                             className={`relative rounded-lg border pr-1 pl-0 py-0.5 transition-all select-none duration-200 shadow-sm hover:shadow-md overflow-hidden
                               ${
                                 isCurrentSource
-                                  ? 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
-                                  : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
+                                  ? isTvVariant
+                                    ? 'bg-white/10 border-white/20'
+                                    : 'bg-green-500/10 dark:bg-green-500/15 border-green-500/30'
+                                  : isTvVariant
+                                    ? 'bg-black/20 border-white/10 hover:bg-white/10 cursor-pointer'
+                                    : 'bg-white dark:bg-gray-900/80 border-gray-200/60 dark:border-white/10 hover:bg-emerald-50/80 dark:hover:bg-white/10 cursor-pointer'
                               }`.trim()}
                           >
                             <div className='flex items-start gap-1'>
@@ -424,7 +464,11 @@ const ProviderSourceSearch = ({
                     onSearchMismatch(videoTitle);
                   }
                 }}
-                className='w-full text-center text-xs text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors py-2'
+                className={`w-full text-center text-xs transition-colors py-2 ${
+                  isTvVariant
+                    ? 'text-white/60 hover:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400'
+                }`}
               >
                 影片匹配有誤？點擊去搜尋
               </button>
