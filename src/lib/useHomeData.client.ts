@@ -131,6 +131,7 @@ export const useHomeData = ({
               krTv?: TmdbListItem[];
               jpTv?: TmdbListItem[];
               onAir?: TmdbListItem[];
+              people?: TmdbPerson[];
             };
           });
 
