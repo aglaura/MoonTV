@@ -41,6 +41,13 @@ export default function ContinueWatching({
     (PlayRecord & { key: string })[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const mode = useMemo<ContinueWatchingMode>(() => {
+    if (isTV) return 'tv';
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+      return 'tablet';
+    }
+    return 'mobile';
+  }, [isTV]);
 
   // 处理播放记录数据更新的函数
   const updatePlayRecords = (allRecords: Record<string, PlayRecord>) => {
@@ -91,14 +98,6 @@ export default function ContinueWatching({
   if (!loading && playRecords.length === 0) {
     return null;
   }
-
-  const mode = useMemo<ContinueWatchingMode>(() => {
-    if (isTV) return 'tv';
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      return 'tablet';
-    }
-    return 'mobile';
-  }, [isTV]);
 
   const maxItems = mode === 'tv' ? 12 : mode === 'tablet' ? 10 : 8;
   const visibleRecords = playRecords.slice(0, maxItems);

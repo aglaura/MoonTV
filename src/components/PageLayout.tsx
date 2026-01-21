@@ -31,7 +31,7 @@ const PageLayout = ({
 }: PageLayoutProps) => {
   const { screenMode } = useDeviceInfo();
   const isTV = screenMode === 'tv';
-  const showSidebar = !hideTopBar;
+  const showSidebar = !hideTopBar && isTV;
 
   useTvFullscreen(isTV);
 
