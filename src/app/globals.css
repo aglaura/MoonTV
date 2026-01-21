@@ -340,6 +340,9 @@ div[data-media-provider] video {
     0 12px 28px rgba(0, 0, 0, 0.7);
 }
 
+/* =========================================================
+   NETFLIX-GRADE TV FOCUS
+   ========================================================= */
 :is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-section] {
   overflow: visible !important;
 }
@@ -359,65 +362,49 @@ div[data-media-provider] video {
   overflow-y: visible;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable] {
   transform-origin: center bottom;
-  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1),
-    box-shadow 140ms cubic-bezier(0.2, 0, 0, 1),
-    opacity 120ms linear;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 180ms ease;
   will-change: transform;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:focus,
-:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:focus-visible {
-  transform: scale(1.15);
-  z-index: 30;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.6);
-  opacity: 1;
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable]:focus,
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable]:focus-visible {
   outline: none;
+  transform: scale(1.22) translateY(-8px);
+  z-index: 30;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.85),
+    0 0 0 2px rgba(255, 255, 255, 0.95);
   filter: none;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:not(:focus):not(:focus-visible) {
-  opacity: 0.65;
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:has([data-tv-focusable]:focus)
+  > * {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 180ms ease;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:hover {
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:has([data-tv-focusable]:focus)
+  > *:not(:focus):not(:focus-visible):not(:has([data-tv-focusable]:focus)) {
+  transform: scale(0.92);
+  opacity: 0.45;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:has([data-tv-focusable]:focus-visible)
+  > *:not(:focus):not(:focus-visible):not(:has([data-tv-focusable]:focus-visible)) {
+  transform: scale(0.92);
+  opacity: 0.45;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable]:hover {
   transform: none !important;
   box-shadow: none !important;
   filter: none !important;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-focusable="true"]:not(.tv-card) {
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
-  transform-origin: center center;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-focusable="true"]:not(.tv-card):focus,
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-focusable="true"]:not(.tv-card):focus-visible {
-  outline: none;
-  transform: scale(1.18) translateY(-6px);
-  z-index: 20;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8),
-    0 0 0 2px rgba(255, 255, 255, 0.9);
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-focusable="true"]:not(.tv-card):hover {
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-group]:has([data-tv-focusable="true"]:focus)
-  > [data-tv-focusable="true"]:not(.tv-card):not(:focus),
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-group]:has([data-tv-focusable="true"]:focus-visible)
-  > [data-tv-focusable="true"]:not(.tv-card):not(:focus-visible) {
-  opacity: 0.45;
-  transform: scale(0.94);
 }
 
 :is(html.tv-mode, [data-screen-mode="tv"]) .video-card-hover:hover {
@@ -433,6 +420,13 @@ div[data-media-provider] video {
   border-color: var(--tv-neutral-border);
   color: var(--tv-neutral-text);
   font-weight: 600;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-selected="true"]:focus,
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-selected="true"]:focus-visible {
+  background-color: transparent;
 }
 
 :is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-selected="true"]:focus,

@@ -11,6 +11,7 @@ import type {
   CategoryData,
   PrefetchedHome,
   TmdbListItem,
+  TmdbPerson,
   UiLocale,
   TvRegion,
 } from './home.types';
@@ -33,6 +34,7 @@ export type UseHomeDataResult = {
   animationItems: CardItem[];
   varietyItems: CardItem[];
   movieItems: CardItem[];
+  actorItems: CardItem[];
 };
 
 const isKidSafeCard = (item: CardItem) =>
@@ -57,6 +59,7 @@ export const useHomeData = ({
   const [tmdbKr, setTmdbKr] = useState<TmdbListItem[]>([]);
   const [tmdbJp, setTmdbJp] = useState<TmdbListItem[]>([]);
   const [tmdbOnAir, setTmdbOnAir] = useState<TmdbListItem[]>([]);
+  const [tmdbPeople, setTmdbPeople] = useState<TmdbPerson[]>([]);
   const [prefetchedHome, setPrefetchedHome] = useState<PrefetchedHome | null>(
     null
   );
@@ -154,6 +157,7 @@ export const useHomeData = ({
             setTmdbKr(Array.isArray(data.krTv) ? data.krTv : []);
             setTmdbJp(Array.isArray(data.jpTv) ? data.jpTv : []);
             setTmdbOnAir(Array.isArray(data.onAir) ? data.onAir : []);
+            setTmdbPeople(Array.isArray(data.people) ? data.people : []);
           }
 
           if (doubanRes.status === 'rejected' && tmdbRes.status === 'rejected') {
@@ -719,6 +723,23 @@ export const useHomeData = ({
     [categoryData]
   );
 
+  const actorItems = useMemo<CardItem[]>(() => {
+    if (prefetchedHome?.tmdbPeople?.length) {
+      return prefetchedHome.tmdbPeople;
+    }
+    if (!tmdbPeople.length) return [];
+    return tmdbPeople.map((person) => ({
+      title: person.title,
+      poster: person.poster,
+      rate: '',
+      year: '',
+      type: 'person',
+      query: person.title,
+      source_name: 'TMDB',
+      id: person.tmdbId,
+    }));
+  }, [prefetchedHome, tmdbPeople]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -866,5 +887,6 @@ export const useHomeData = ({
     animationItems,
     varietyItems,
     movieItems,
+    actorItems,
   };
 };

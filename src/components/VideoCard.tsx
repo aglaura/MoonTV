@@ -1353,7 +1353,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             }
           }}
           {...longPressProps}
-          tabIndex={-1}
+          tabIndex={0}
           role='button'
           aria-label={traditionalTitle || actualTitle}
           data-tv-focusable='true'

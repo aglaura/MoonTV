@@ -42,7 +42,7 @@ type RegionOption = {
 };
 
 type RegionalSectionId = `regional-${TvRegion}`;
-type HomeSectionId = TvSectionId | RegionalSectionId;
+type HomeSectionId = TvSectionId | RegionalSectionId | 'actors';
 
 function resolveUiLocale(): UiLocale {
   try {
@@ -383,6 +383,7 @@ export default function HomeClient() {
     animationItems,
     varietyItems,
     movieItems,
+    actorItems,
   } = useHomeData({ uiLocale, isKidsMode });
   const { showAnnouncement, handleCloseAnnouncement, formattedAnnouncement } =
     useHomeAnnouncement(announcement, uiLocale);
@@ -420,6 +421,7 @@ export default function HomeClient() {
       'animation',
       'variety',
       'movies',
+      'actors',
     ];
     if (isKidsMode) {
       return sections.filter((id) => id !== 'movies');
@@ -616,6 +618,18 @@ export default function HomeClient() {
                     )}
                   </>
                 )}
+
+                <section
+                  data-tv-section="actors"
+                  className={tvSectionClass('actors')}
+                >
+                  <ContentRail
+                    title={tt('Actors', '演员', '演員')}
+                    items={actorItems}
+                    screenMode={screenMode}
+                    tt={tt}
+                  />
+                </section>
               </div>
             </div>
           )}
