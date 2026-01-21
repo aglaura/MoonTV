@@ -340,13 +340,13 @@ div[data-media-provider] video {
     0 12px 28px rgba(0, 0, 0, 0.7);
 }
 
-html.tv-mode [data-tv-focusable="true"] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"] {
   transition: transform 220ms ease-out, box-shadow 220ms ease-out,
     opacity 150ms linear;
 }
 
-html.tv-mode [data-tv-focusable="true"]:focus,
-html.tv-mode [data-tv-focusable="true"]:focus-visible {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"]:focus,
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"]:focus-visible {
   outline: 1px solid rgba(255, 255, 255, 0.25);
   outline-offset: -2px;
   transform: scale(1.06);
@@ -354,28 +354,67 @@ html.tv-mode [data-tv-focusable="true"]:focus-visible {
   filter: none;
 }
 
-html.tv-mode [data-tv-card="true"] {
-  opacity: 0.75;
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-section] {
+  overflow: visible;
 }
 
-html.tv-mode [data-tv-card="true"]:focus,
-html.tv-mode [data-tv-card="true"]:focus-visible {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-group] {
+  overflow-y: visible;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group][data-tv-direction="horizontal"] {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:focus-within
+  [data-tv-card="true"] {
+  opacity: 0.65;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"] {
+  opacity: 1;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:focus,
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:focus-visible {
+  outline: none;
+  transform: scale(1.15);
+  box-shadow: 0 14px 46px rgba(0, 0, 0, 0.6);
   opacity: 1;
   z-index: 10;
 }
 
-html.tv-mode [data-tv-card="true"][data-tv-selected="true"] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:hover:not(:focus):not(:focus-visible) {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) .video-card-hover:hover {
+  transform: none !important;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"])
+  [data-tv-group]:not(:focus-within)
+  [data-tv-card="true"][data-tv-selected="true"] {
   opacity: 1;
 }
 
-html.tv-mode [data-tv-selected="true"] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-selected="true"] {
   background-color: var(--tv-neutral-bg);
   border-color: var(--tv-neutral-border);
   color: var(--tv-neutral-text);
   font-weight: 600;
 }
 
-html.tv-mode {
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-selected="true"]:focus,
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-selected="true"]:focus-visible {
+  background-color: transparent;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) {
   --tv-neutral-bg: rgba(255, 255, 255, 0.08);
   --tv-neutral-bg-strong: rgba(255, 255, 255, 0.12);
   --tv-neutral-text: rgba(255, 255, 255, 0.9);
@@ -385,47 +424,47 @@ html.tv-mode {
   --tv-neutral-gradient-to: rgba(255, 255, 255, 0.08);
 }
 
-html.tv-mode [class*='bg-emerald-'],
-html.tv-mode [class*='bg-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='bg-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='bg-green-'] {
   background-color: var(--tv-neutral-bg) !important;
 }
 
-html.tv-mode [class*='text-emerald-'],
-html.tv-mode [class*='text-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='text-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='text-green-'] {
   color: var(--tv-neutral-text) !important;
 }
 
-html.tv-mode [class*='border-emerald-'],
-html.tv-mode [class*='border-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='border-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='border-green-'] {
   border-color: var(--tv-neutral-border) !important;
 }
 
-html.tv-mode [class*='ring-emerald-'],
-html.tv-mode [class*='ring-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='ring-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='ring-green-'] {
   --tw-ring-color: var(--tv-neutral-ring) !important;
 }
 
-html.tv-mode [class*='ring-offset-emerald-'],
-html.tv-mode [class*='ring-offset-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='ring-offset-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='ring-offset-green-'] {
   --tw-ring-offset-color: transparent !important;
 }
 
-html.tv-mode [class*='from-emerald-'],
-html.tv-mode [class*='from-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='from-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='from-green-'] {
   --tw-gradient-from: var(--tv-neutral-gradient-from) !important;
   --tw-gradient-stops: var(--tw-gradient-from),
     var(--tw-gradient-to, var(--tv-neutral-gradient-to)) !important;
 }
 
-html.tv-mode [class*='via-emerald-'],
-html.tv-mode [class*='via-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='via-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='via-green-'] {
   --tw-gradient-via: var(--tv-neutral-gradient-from) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via),
     var(--tw-gradient-to, var(--tv-neutral-gradient-to)) !important;
 }
 
-html.tv-mode [class*='to-emerald-'],
-html.tv-mode [class*='to-green-'] {
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='to-emerald-'],
+:is(html.tv-mode, [data-screen-mode="tv"]) [class*='to-green-'] {
   --tw-gradient-to: var(--tv-neutral-gradient-to) !important;
 }
 
