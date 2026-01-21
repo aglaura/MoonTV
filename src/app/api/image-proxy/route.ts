@@ -16,9 +16,8 @@ function extFromContentType(ct?: string | null): string {
   return '.jpg';
 }
 
-async function hashString(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', data);
+async function hashBuffer(input: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', input);
   const bytes = Array.from(new Uint8Array(digest));
   return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -36,6 +35,27 @@ async function findCachedPoster(
     : null;
   if (!baseName) return null;
 
+  const exts = ['.jpg', '.webp', '.png', '.gif'];
+  for (const ext of exts) {
+    const candidate = `${posterBase}/posters/${baseName}${ext}`;
+    try {
+      const head = await fetch(candidate, {
+        method: 'HEAD',
+        cache: 'no-store',
+      });
+      if (head.ok) return candidate;
+    } catch {
+      // ignore single failure
+    }
+  }
+  return null;
+}
+
+async function findCachedPosterByBaseName(
+  posterBase: string | null,
+  baseName: string | null
+): Promise<string | null> {
+  if (!posterBase || !baseName) return null;
   const exts = ['.jpg', '.webp', '.png', '.gif'];
   for (const ext of exts) {
     const candidate = `${posterBase}/posters/${baseName}${ext}`;
@@ -159,12 +179,19 @@ export async function GET(request: Request) {
       try {
         const buffer = await imageResponse.arrayBuffer();
         const ext = extFromContentType(contentType);
-        const filename = doubanId
-          ? `douban-${doubanId}${ext}`
+        const baseName = doubanId
+          ? `douban-${doubanId}`
           : imdbId
-          ? `imdb-${imdbId}${ext}`
-          : `hash-${await hashString(imageUrl)}${ext}`;
+          ? `imdb-${imdbId}`
+          : `hash-${await hashBuffer(buffer)}`;
+        const filename = `${baseName}${ext}`;
         const targetUrl = `${posterBase}/posters/${encodeURIComponent(filename)}`;
+
+        // If already cached under any supported extension, redirect to it.
+        const cachedAnyExt = await findCachedPosterByBaseName(posterBase, baseName);
+        if (cachedAnyExt) {
+          return NextResponse.redirect(cachedAnyExt, { status: 302 });
+        }
 
         // If already cached, redirect to it.
         try {

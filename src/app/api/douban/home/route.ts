@@ -75,18 +75,33 @@ function buildPosterBase(): string | null {
   return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
+function extFromContentType(ct?: string | null): string {
+  if (!ct) return '.jpg';
+  if (ct.includes('png')) return '.png';
+  if (ct.includes('webp')) return '.webp';
+  if (ct.includes('gif')) return '.gif';
+  return '.jpg';
+}
+
+async function hasCachedPoster(base: string, baseName: string): Promise<boolean> {
+  const exts = ['.jpg', '.webp', '.png', '.gif'];
+  for (const ext of exts) {
+    const candidate = `${base}/posters/${encodeURIComponent(`${baseName}${ext}`)}`;
+    try {
+      const head = await fetch(candidate, { method: 'HEAD' });
+      if (head.ok) return true;
+    } catch {
+      // ignore single failure
+    }
+  }
+  return false;
+}
+
 async function cachePoster(url: string, doubanId: string) {
   const base = buildPosterBase();
   if (!base || !url || !doubanId) return;
-  const target = `${base}/posters/${encodeURIComponent(`douban-${doubanId}.jpg`)}`;
-  const filename = `douban-${doubanId}.jpg`;
-
-  try {
-    const head = await fetch(target, { method: 'HEAD' });
-    if (head.ok) return;
-  } catch {
-    // ignore
-  }
+  const baseName = `douban-${doubanId}`;
+  if (await hasCachedPoster(base, baseName)) return;
 
   try {
     const resp = await fetch(url, {
@@ -98,6 +113,17 @@ async function cachePoster(url: string, doubanId: string) {
     if (!resp.ok) return;
     const contentType = resp.headers.get('content-type') || 'application/octet-stream';
     const buffer = await resp.arrayBuffer();
+    const ext = extFromContentType(contentType);
+    const filename = `${baseName}${ext}`;
+    const target = `${base}/posters/${encodeURIComponent(filename)}`;
+
+    // If another worker cached it while we fetched, skip upload.
+    try {
+      const head = await fetch(target, { method: 'HEAD' });
+      if (head.ok) return;
+    } catch {
+      // ignore
+    }
     const tryUpload = async () => {
       try {
         const direct = await fetch(target, {
