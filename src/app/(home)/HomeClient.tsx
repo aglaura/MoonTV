@@ -9,6 +9,7 @@ import type { CardItem, TvRegion, TvSectionId, UiLocale } from '@/lib/home.types
 import { useKidsMode } from '@/lib/kidsMode.client';
 import type { ScreenMode } from '@/lib/screenMode';
 import { useHomeAnnouncement } from '@/lib/useHomeAnnouncement.client';
+import { useHomeActorRail } from '@/lib/useHomeActorRail.client';
 import { useHomeData } from '@/lib/useHomeData.client';
 import { useHomeFavorites, type FavoriteItem } from '@/lib/useHomeFavorites.client';
 import { useHomeMode } from '@/lib/useHomeMode.client';
@@ -383,12 +384,18 @@ export default function HomeClient() {
     animationItems,
     varietyItems,
     movieItems,
-    actorItems,
+    actorItems: actorItemsFallback,
   } = useHomeData({ uiLocale, isKidsMode });
   const { showAnnouncement, handleCloseAnnouncement, formattedAnnouncement } =
     useHomeAnnouncement(announcement, uiLocale);
   const { setRegionalTab, regionOptions, activeRegion } =
     useHomeRegions({ tt, uiLocale });
+  const actorRailItems = useHomeActorRail({
+    airingItems: airingRail.items,
+    regionalItems: regionalTv[activeRegion.key] || [],
+    activeRegion: activeRegion.key,
+    fallbackItems: actorItemsFallback,
+  });
   const regionOptionByKey = useMemo(() => {
     const map = new Map<TvRegion, RegionOption>();
     regionOptions.forEach((option) => {
@@ -625,7 +632,7 @@ export default function HomeClient() {
                 >
                   <ContentRail
                     title={tt('Actors', '演员', '演員')}
-                    items={actorItems}
+                    items={actorRailItems}
                     screenMode={screenMode}
                     tt={tt}
                   />
