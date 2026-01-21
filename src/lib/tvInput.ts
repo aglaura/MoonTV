@@ -9,10 +9,15 @@ const KEY_MAP: Record<number, TvKey | undefined> = {
   22: 'right',
   23: 'select',
   4: 'back',
+  37: 'left',
+  38: 'up',
+  39: 'right',
+  40: 'down',
 };
 
 const REPEAT_DELAY = 120;
-const focusableSelector = '[data-tv-focusable="true"]';
+const focusableSelector =
+  '[data-tv-focusable="true"], button, [role="button"], a, [tabindex="0"]';
 
 export const isEditable = (el: HTMLElement) => {
   const tagName = el.tagName;
@@ -96,13 +101,26 @@ export const useTvRemote = (
       const now = performance.now();
       if (now - lastTimeRef.current < REPEAT_DELAY) return;
 
+      const active = document.activeElement as HTMLElement | null;
+      if (active && isEditable(active)) return;
+
       const key =
+        (event.key === 'ArrowUp' || event.key === 'Up' ? 'up' : undefined) ??
+        (event.key === 'ArrowDown' || event.key === 'Down' ? 'down' : undefined) ??
+        (event.key === 'ArrowLeft' || event.key === 'Left' ? 'left' : undefined) ??
+        (event.key === 'ArrowRight' || event.key === 'Right' ? 'right' : undefined) ??
+        (event.code === 'ArrowUp' ? 'up' : undefined) ??
+        (event.code === 'ArrowDown' ? 'down' : undefined) ??
+        (event.code === 'ArrowLeft' ? 'left' : undefined) ??
+        (event.code === 'ArrowRight' ? 'right' : undefined) ??
         KEY_MAP[event.keyCode] ??
-        (event.key === 'Enter' || event.code === 'Enter'
+        (event.key === 'Enter' || event.code === 'Enter' || event.code === 'NumpadEnter'
           ? 'select'
-          : event.key === ' ' || event.code === 'Space'
+          : event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space'
           ? 'select'
-          : event.key === 'Escape' || event.key === 'Backspace'
+          : event.key === 'Escape' ||
+            event.key === 'Backspace' ||
+            event.key === 'BrowserBack'
           ? 'back'
           : undefined);
 
