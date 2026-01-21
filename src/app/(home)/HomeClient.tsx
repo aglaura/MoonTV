@@ -441,8 +441,8 @@ export default function HomeClient() {
   const tvSectionClass = (id: TvSectionId) =>
     isTVMode && activeTab === 'home'
       ? currentTvSection === id
-        ? 'ring-4 ring-emerald-400 shadow-[0_0_0_1px_rgba(16,185,129,0.7)] shadow-emerald-700/40 scale-[1.01] focus-within:ring-4 focus-within:ring-emerald-400/70'
-        : 'opacity-60 hover:opacity-80 focus-within:opacity-100 focus-within:ring-4 focus-within:ring-emerald-400/70'
+        ? 'opacity-100 transition-opacity duration-150 ease-linear'
+        : 'opacity-40 transition-opacity duration-150 ease-linear'
       : '';
 
   useTvSectionNavigation({

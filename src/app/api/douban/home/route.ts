@@ -6,7 +6,7 @@ import { DoubanItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-static';
-export const revalidate = 600; // 10 minutes
+export const revalidate = 86400; // 24 hours
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 

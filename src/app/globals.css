@@ -340,29 +340,28 @@ div[data-media-provider] video {
     0 12px 28px rgba(0, 0, 0, 0.7);
 }
 
-html.tv-mode [data-tv-focusable="true"],
-html.tv-mode button,
-html.tv-mode a,
-html.tv-mode [role="button"],
-html.tv-mode [tabindex="0"] {
-  transition: transform 140ms ease, box-shadow 140ms ease, outline-color 140ms ease;
+html.tv-mode [data-tv-focusable="true"] {
+  transition: transform 220ms ease-out, box-shadow 220ms ease-out,
+    opacity 150ms linear;
 }
 
 html.tv-mode [data-tv-focusable="true"]:focus,
-html.tv-mode [data-tv-focusable="true"]:focus-visible,
-html.tv-mode button:focus,
-html.tv-mode button:focus-visible,
-html.tv-mode a:focus,
-html.tv-mode a:focus-visible,
-html.tv-mode [role="button"]:focus,
-html.tv-mode [role="button"]:focus-visible,
-html.tv-mode [tabindex="0"]:focus,
-html.tv-mode [tabindex="0"]:focus-visible {
-  outline: 3px solid rgba(255, 255, 255, 0.95);
-  outline-offset: 4px;
-  transform: scale(1.1);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5),
-    0 20px 40px rgba(0, 0, 0, 0.75);
+html.tv-mode [data-tv-focusable="true"]:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.25);
+  outline-offset: -2px;
+  transform: scale(1.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  filter: none;
+}
+
+html.tv-mode [data-tv-card="true"] {
+  opacity: 0.75;
+}
+
+html.tv-mode [data-tv-card="true"]:focus,
+html.tv-mode [data-tv-card="true"]:focus-visible {
+  opacity: 1;
+  z-index: 10;
 }
 
 html.tv-cursor-hidden,

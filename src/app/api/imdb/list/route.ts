@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const revalidate = 1800; // cache for 30 minutes (best-effort; dynamic fetch)
+export const revalidate = 86400; // cache for 24 hours (best-effort; dynamic fetch)
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';

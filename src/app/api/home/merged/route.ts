@@ -4,7 +4,7 @@ import { normalizeConfigJsonBase } from '@/lib/configjson';
 import { DoubanItem } from '@/lib/types';
 
 export const runtime = 'nodejs';
-export const revalidate = 600;
+export const revalidate = 86400;
 
 const MAX_PEOPLE = 60;
 const OMDB_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14;

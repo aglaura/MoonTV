@@ -1357,6 +1357,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
           role='button'
           aria-label={traditionalTitle || actualTitle}
           data-tv-focusable='true'
+          data-tv-card='true'
           style={
             {
               // 禁用所有默认的长按和选择效果
