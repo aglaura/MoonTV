@@ -196,7 +196,7 @@ async function fetchPopularActors(apiKey: string, region: TvRegion): Promise<Car
     apiKey
   )}&language=en-US&page=1`;
   const data = await fetchJson<{ results?: TmdbPerson[] }>(url);
-  const results = Array.isArray(data?.results) ? data.results : [];
+  const results = Array.isArray(data?.results) ? data?.results ?? [] : [];
   const filtered = results.filter((person) => {
     if (person.known_for_department && person.known_for_department !== 'Acting') {
       return false;
