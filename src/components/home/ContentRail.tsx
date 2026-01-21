@@ -174,9 +174,19 @@ const TvContentRail = ({ title, href, items, tt }: RailProps) => {
   );
 };
 
-const DesktopContentRail = ({ title, href, items, tt }: RailProps) => {
+const DesktopContentRail = ({
+  title,
+  href,
+  items,
+  tt,
+  screenMode,
+}: RailProps & { screenMode?: ScreenMode }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const noData = items.length === 0;
+  const isTablet = screenMode === 'tablet';
+  const titleClass = isTablet ? 'text-2xl' : 'text-xl';
+  const cardClass = isTablet ? 'min-w-[200px]' : 'min-w-[180px]';
+  const cardSize = isTablet ? 'lg' : undefined;
 
   const scrollHorizontal = (offset: number) => {
     if (!scrollRef.current) return;
@@ -186,7 +196,7 @@ const DesktopContentRail = ({ title, href, items, tt }: RailProps) => {
   return (
     <div className="relative rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-4 overflow-hidden group">
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className={`${titleClass} font-semibold text-gray-900 dark:text-gray-100`}>
           {title}
         </h3>
         {href && (
@@ -226,7 +236,10 @@ const DesktopContentRail = ({ title, href, items, tt }: RailProps) => {
           </div>
         )}
         {items.map((item, idx) => (
-          <div key={idx} className="min-w-[180px] transform transition hover:scale-105">
+          <div
+            key={idx}
+            className={`${cardClass} transform transition hover:scale-105`}
+          >
             {item.type === 'person' ? (
               renderPersonCard(item, 'tablet', tt)
             ) : (
@@ -245,6 +258,7 @@ const DesktopContentRail = ({ title, href, items, tt }: RailProps) => {
                 type={item.type}
                 query={item.query}
                 source_name={item.source_name}
+                size={cardSize}
               />
             )}
           </div>
@@ -329,5 +343,13 @@ export default function ContentRail({
   if (screenMode === 'mobile') {
     return <MobileContentRail title={title} href={href} items={items} tt={tt} />;
   }
-  return <DesktopContentRail title={title} href={href} items={items} tt={tt} />;
+  return (
+    <DesktopContentRail
+      title={title}
+      href={href}
+      items={items}
+      tt={tt}
+      screenMode={screenMode}
+    />
+  );
 }

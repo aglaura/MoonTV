@@ -5,22 +5,13 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 
-// 客户端收藏 API
-import {
-  clearAllFavorites,
-  getAllFavorites,
-  getAllPlayRecords,
-  subscribeToDataUpdates,
-} from '@/lib/db.client';
 import type { TvRegion, TvSectionId, UiLocale } from '@/lib/home.types';
 import { useKidsMode } from '@/lib/kidsMode.client';
-import { convertToTraditional } from '@/lib/locale';
-import {
-  detectDeviceInfo,
-  setScreenModeOverride,
-} from '@/lib/screenMode';
-import type { OsFamily, ScreenMode, ScreenModeOverride } from '@/lib/screenMode';
 import { useHomeData } from '@/lib/useHomeData.client';
+import { useHomeAnnouncement } from '@/lib/useHomeAnnouncement.client';
+import { useHomeFavorites } from '@/lib/useHomeFavorites.client';
+import { useHomeMode } from '@/lib/useHomeMode.client';
+import { useHomeRegions } from '@/lib/useHomeRegions.client';
 import { useTvSectionNavigation } from '@/lib/useTvSectionNavigation';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
@@ -93,74 +84,14 @@ function HomeClient() {
       setActiveTab('home');
     }
   }, [tabParam]);
-  const [screenMode, setScreenMode] = useState<ScreenMode>(() =>
-    typeof window === 'undefined' ? 'tablet' : detectDeviceInfo().screenMode
-  );
-  const [osFamily, setOsFamily] = useState<OsFamily>(() =>
-    typeof window === 'undefined' ? 'other' : detectDeviceInfo().osFamily
-  );
-  const [resolutionTag, setResolutionTag] = useState(() =>
-    typeof window === 'undefined' ? '' : (() => {
-      const w = Math.max(Math.round(window.innerWidth), 1);
-      const h = Math.max(Math.round(window.innerHeight), 1);
-      const dpr = Math.max(window.devicePixelRatio || 1, 1);
-      const physicalW = Math.round(w * dpr);
-      const physicalH = Math.round(h * dpr);
-      const density = dpr > 1 ? ` @${Number(dpr.toFixed(2))}x` : '';
-      return `${physicalW}x${physicalH}${density}`;
-    })()
-  );
-  const computeResolutionTag = useCallback(() => {
-    if (typeof window === 'undefined') return '';
-    const w = Math.max(Math.round(window.innerWidth), 1);
-    const h = Math.max(Math.round(window.innerHeight), 1);
-    const dpr = Math.max(window.devicePixelRatio || 1, 1);
-    const physicalW = Math.round(w * dpr);
-    const physicalH = Math.round(h * dpr);
-    const density = dpr > 1 ? ` @${Number(dpr.toFixed(2))}x` : '';
-    return `${physicalW}x${physicalH}${density}`;
-  }, []);
-  const osLabel = useMemo(() => {
-    switch (osFamily) {
-      case 'windows':
-        return 'Windows';
-      case 'ios':
-        return 'iOS';
-      case 'macos':
-        return 'macOS';
-      case 'android':
-        return 'Android';
-      case 'linux':
-        return 'Linux';
-      default:
-        return 'Other';
-    }
-  }, [osFamily]);
-  const topBarModeLabel = useMemo(() => {
-    const resSuffix = resolutionTag ? ` · ${resolutionTag}` : '';
-    const osSuffix = osLabel ? ` · ${osLabel}` : '';
-    if (screenMode === 'tv') {
-      return `${tt('TV mode', '电视模式', '電視模式')}${osSuffix}${resSuffix}`;
-    }
-    if (screenMode === 'tablet') {
-      return `${tt('Tablet mode', '平板模式', '平板模式')}${osSuffix}${resSuffix}`;
-    }
-    return undefined;
-  }, [osLabel, resolutionTag, screenMode, tt]);
-  const canToggleMode = useMemo(
-    () => osFamily !== 'windows' && osFamily !== 'ios' && osFamily !== 'macos',
-    [osFamily]
-  );
-  const handleToggleMode = useCallback(() => {
-    if (screenMode === 'mobile') return;
-    if (!canToggleMode) return;
-    const nextMode: ScreenModeOverride = screenMode === 'tv' ? 'tablet' : 'tv';
-    setScreenModeOverride(nextMode);
-    const nextInfo = detectDeviceInfo();
-    setScreenMode(nextInfo.screenMode);
-    setOsFamily(nextInfo.osFamily);
-    setResolutionTag(computeResolutionTag());
-  }, [canToggleMode, computeResolutionTag, screenMode]);
+  const {
+    screenMode,
+    isTV,
+    isMobile,
+    topBarModeLabel,
+    canToggleMode,
+    handleToggleMode,
+  } = useHomeMode({ tt });
   const { announcement } = useSite();
   const { isKidsMode } = useKidsMode();
   const {
@@ -171,21 +102,10 @@ function HomeClient() {
     varietyItems,
     movieItems,
   } = useHomeData({ uiLocale, isKidsMode });
-  const [showAnnouncement, setShowAnnouncement] = useState(false);
-  const [regionalTab, setRegionalTab] = useState<TvRegion>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = window.localStorage.getItem('homeRegionTab');
-      if (saved === 'cn' || saved === 'kr' || saved === 'jp' || saved === 'en') {
-        return saved;
-      }
-    }
-    return uiLocale === 'en' ? 'en' : 'cn';
-  });
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem('homeRegionTab', regionalTab);
-  }, [regionalTab]);
+  const { showAnnouncement, handleCloseAnnouncement, formattedAnnouncement } =
+    useHomeAnnouncement(announcement, uiLocale);
+  const { regionalTab, setRegionalTab, regionOptions, activeRegion } =
+    useHomeRegions({ tt, uiLocale });
 
   // TV section focus index
   const [tvSectionIndex, setTvSectionIndex] = useState(0);
@@ -200,44 +120,7 @@ function HomeClient() {
     setTvSectionIndex(0);
   }, [tvSectionList]);
 
-  // 检查公告弹窗状态
-  useEffect(() => {
-    if (typeof window !== 'undefined' && announcement) {
-      const hasSeenAnnouncement = localStorage.getItem('hasSeenAnnouncement');
-      if (hasSeenAnnouncement !== announcement) {
-        setShowAnnouncement(true);
-      } else {
-        setShowAnnouncement(Boolean(!hasSeenAnnouncement && announcement));
-      }
-    }
-  }, [announcement]);
-
-  type FavoriteItem = {
-    id: string;
-    source: string;
-    title: string;
-    poster: string;
-    episodes: number;
-    source_name: string;
-    currentEpisode?: number;
-    search_title?: string;
-    origin?: 'vod' | 'live';
-  };
-
-  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (typeof window === 'undefined') return;
-      const nextInfo = detectDeviceInfo();
-      setScreenMode(nextInfo.screenMode);
-      setOsFamily(nextInfo.osFamily);
-      setResolutionTag(computeResolutionTag());
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [computeResolutionTag]);
+  const { favoriteItems, clearFavorites } = useHomeFavorites(activeTab);
 
   useEffect(() => {
     if (screenMode === 'tv' && activeTab !== 'home' && activeTab !== 'favorites') {
@@ -245,128 +128,37 @@ function HomeClient() {
     }
   }, [screenMode, activeTab]);
 
-  const formattedAnnouncement = useMemo(() => {
-    if (!announcement) return '';
-    if (uiLocale === 'zh-Hant') {
-      return convertToTraditional(announcement);
-    }
-    return announcement;
-  }, [announcement, uiLocale]);
-
-  const updateFavoriteItems = async (allFavorites: Record<string, any>) => {
-    const allPlayRecords = await getAllPlayRecords();
-
-    const sorted = Object.entries(allFavorites)
-      .sort(([, a], [, b]) => b.save_time - a.save_time)
-      .map(([key, fav]) => {
-        const plusIndex = key.indexOf('+');
-        const source = key.slice(0, plusIndex);
-        const id = key.slice(plusIndex + 1);
-        const playRecord = allPlayRecords[key];
-        const currentEpisode = playRecord?.index;
-
-        return {
-          id,
-          source,
-          title: fav.title,
-          year: fav.year,
-          poster: fav.cover,
-          episodes: fav.total_episodes,
-          source_name: fav.source_name,
-          currentEpisode,
-          search_title: fav?.search_title,
-          origin: fav?.origin,
-        } as FavoriteItem;
-      });
-    setFavoriteItems(sorted);
-  };
-
-  useEffect(() => {
-    if (activeTab !== 'favorites') return;
-
-    const loadFavorites = async () => {
-      const allFavorites = await getAllFavorites();
-      await updateFavoriteItems(allFavorites);
-    };
-
-    loadFavorites();
-
-    const unsubscribe = subscribeToDataUpdates(
-      'favoritesUpdated',
-      (newFavorites: Record<string, any>) => {
-        updateFavoriteItems(newFavorites);
-      }
-    );
-
-    return unsubscribe;
-  }, [activeTab]);
-
-  const handleCloseAnnouncement = (announcementStr: string) => {
-    setShowAnnouncement(false);
-    localStorage.setItem('hasSeenAnnouncement', announcementStr);
-  };
-
-  const isTV = screenMode === 'tv';
-  const isMobile = screenMode === 'mobile';
-  const mainLayoutClass = isTV
+  const isTVMode = isTV;
+  const isMobileMode = isMobile;
+  const mainLayoutClass = isTVMode
     ? 'flex flex-col gap-8 xl:gap-10'
-    : isMobile
+    : isMobileMode
     ? 'flex flex-col gap-6'
     : 'flex flex-col gap-6 xl:gap-8';
-  const tvRootClass = isTV ? 'min-h-screen bg-black text-white' : '';
-  const errorBannerClass = isTV
+  const tvRootClass = isTVMode ? 'min-h-screen bg-black text-white' : '';
+  const errorBannerClass = isTVMode
     ? 'mb-2 p-4 bg-amber-500/10 border border-amber-400/30 rounded-lg text-amber-100'
     : 'mb-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800';
-  const regionWrapperClass = isTV
+  const regionWrapperClass = isTVMode
     ? 'space-y-4'
     : 'rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-4';
-  const regionLabelClass = isTV
+  const regionLabelClass = isTVMode
     ? 'text-white/60'
     : 'text-gray-500 dark:text-gray-400';
-  const regionRailSpacingClass = isTV ? 'mt-2' : 'mt-4';
-  const regionTabBaseClass = isTV
+  const regionRailSpacingClass = isTVMode ? 'mt-2' : 'mt-4';
+  const regionTabBaseClass = isTVMode
     ? 'border-white/15 bg-white/5 text-white/70'
     : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400';
-  const regionTabActiveClass = isTV
+  const regionTabActiveClass = isTVMode
     ? 'bg-white text-black border-white'
     : 'bg-emerald-500 text-white border-emerald-500';
-
-  const regionOptions = useMemo(
-    () => [
-      {
-        key: 'cn' as const,
-        label: tt('Chinese TV', '华语剧', '華語劇'),
-        href: '/douban?type=tv&region=cn',
-      },
-      {
-        key: 'kr' as const,
-        label: tt('Korean TV', '韩剧', '韓劇'),
-        href: '/douban?type=tv&region=kr',
-      },
-      {
-        key: 'jp' as const,
-        label: tt('Japanese TV', '日剧', '日劇'),
-        href: '/douban?type=tv&region=jp',
-      },
-      {
-        key: 'en' as const,
-        label: tt('English TV', '欧美', '歐美'),
-        href: '/douban?type=tv&region=us',
-      },
-    ],
-    [tt]
-  );
-
-  const activeRegion =
-    regionOptions.find((option) => option.key === regionalTab) ||
-    regionOptions[0];
 
   const airingTitle =
     airingRail.title ||
     tt('This Week\'s Updates', '本周更新', '本週更新');
 
   const currentTvSection =
-    isTV && activeTab === 'home'
+    isTVMode && activeTab === 'home'
       ? tvSectionList[Math.min(tvSectionIndex, tvSectionList.length - 1)] || null
       : null;
 
@@ -379,10 +171,7 @@ function HomeClient() {
         {favoriteItems.length > 0 && (
           <button
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            onClick={async () => {
-              await clearAllFavorites();
-              setFavoriteItems([]);
-            }}
+            onClick={clearFavorites}
           >
             {tt('Clear', '清空', '清空')}
           </button>
@@ -409,14 +198,14 @@ function HomeClient() {
   );
 
   const tvSectionClass = (id: TvSectionId) =>
-    isTV && activeTab === 'home'
+    isTVMode && activeTab === 'home'
       ? currentTvSection === id
         ? 'ring-4 ring-emerald-400 shadow-[0_0_0_1px_rgba(16,185,129,0.7)] shadow-emerald-700/40 scale-[1.01] focus-within:ring-4 focus-within:ring-emerald-400/70'
         : 'opacity-60 hover:opacity-80 focus-within:opacity-100 focus-within:ring-4 focus-within:ring-emerald-400/70'
       : '';
 
   useTvSectionNavigation({
-    enabled: isTV && activeTab === 'home',
+    enabled: isTVMode && activeTab === 'home',
     sections: tvSectionList,
     currentSection: currentTvSection,
     setSectionIndex: setTvSectionIndex,
@@ -452,7 +241,7 @@ function HomeClient() {
             </span>
           </div>
         )}
-        {!isTV && (
+        {!isTVMode && (
           <div
             className={`mb-6 sm:mb-8 flex gap-2 ${
               screenMode === 'tablet' ? 'justify-start' : 'justify-center'
@@ -490,7 +279,7 @@ function HomeClient() {
                   data-tv-section="continue"
                   className={tvSectionClass('continue')}
                 >
-                  <ContinueWatching isTV={isTV} />
+                  <ContinueWatching isTV={isTVMode} />
                 </section>
 
                 {error && (
@@ -531,7 +320,7 @@ function HomeClient() {
                   <div className={regionWrapperClass}>
                     <div
                       className={`flex flex-wrap items-center justify-between gap-3 ${
-                        isTV ? 'px-1' : ''
+                        isTVMode ? 'px-1' : ''
                       }`}
                     >
                       <div
@@ -550,13 +339,13 @@ function HomeClient() {
                             <button
                               key={option.key}
                               type="button"
-                              disabled={isTV}
+                              disabled={isTVMode}
                               onClick={() => setRegionalTab(option.key)}
                               className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full border transition ${
                                 active
                                   ? regionTabActiveClass
                                   : regionTabBaseClass
-                              } ${isTV ? 'disabled:opacity-100 disabled:cursor-default' : ''}`}
+                              } ${isTVMode ? 'disabled:opacity-100 disabled:cursor-default' : ''}`}
                             >
                               {option.label}
                             </button>
@@ -576,45 +365,49 @@ function HomeClient() {
                   </div>
                 </section>
 
-                <section
-                  data-tv-section="animation"
-                  className={tvSectionClass('animation')}
-                >
-                  <ContentRail
-                    title={tt('Animation', '动画', '動畫')}
-                    href="/douban?type=anime"
-                    items={animationItems}
-                    screenMode={screenMode}
-                    tt={tt}
-                  />
-                </section>
+                {!isMobileMode && (
+                  <>
+                    <section
+                      data-tv-section="animation"
+                      className={tvSectionClass('animation')}
+                    >
+                      <ContentRail
+                        title={tt('Animation', '动画', '動畫')}
+                        href="/douban?type=anime"
+                        items={animationItems}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                    </section>
 
-                <section
-                  data-tv-section="variety"
-                  className={tvSectionClass('variety')}
-                >
-                  <ContentRail
-                    title={tt('Variety', '综艺', '綜藝')}
-                    href="/douban?type=show"
-                    items={varietyItems}
-                    screenMode={screenMode}
-                    tt={tt}
-                  />
-                </section>
+                    <section
+                      data-tv-section="variety"
+                      className={tvSectionClass('variety')}
+                    >
+                      <ContentRail
+                        title={tt('Variety', '综艺', '綜藝')}
+                        href="/douban?type=show"
+                        items={varietyItems}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                    </section>
 
-                {!isKidsMode && (
-                  <section
-                    data-tv-section="movies"
-                    className={tvSectionClass('movies')}
-                  >
-                    <ContentRail
-                      title={tt('Movies', '电影', '電影')}
-                      href="/douban?type=movie"
-                      items={movieItems}
-                      screenMode={screenMode}
-                      tt={tt}
-                    />
-                  </section>
+                    {!isKidsMode && (
+                      <section
+                        data-tv-section="movies"
+                        className={tvSectionClass('movies')}
+                      >
+                        <ContentRail
+                          title={tt('Movies', '电影', '電影')}
+                          href="/douban?type=movie"
+                          items={movieItems}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                    )}
+                  </>
                 )}
               </div>
             </div>
