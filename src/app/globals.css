@@ -340,22 +340,13 @@ div[data-media-provider] video {
     0 12px 28px rgba(0, 0, 0, 0.7);
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"] {
-  transition: transform 220ms ease-out, box-shadow 220ms ease-out,
-    opacity 150ms linear;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"]:focus,
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-focusable="true"]:focus-visible {
-  outline: 1px solid rgba(255, 255, 255, 0.25);
-  outline-offset: -2px;
-  transform: scale(1.06);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-  filter: none;
-}
-
 :is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-section] {
-  overflow: visible;
+  overflow: visible !important;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-group="rail"] {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
 }
 
 :is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-group] {
@@ -368,37 +359,39 @@ div[data-media-provider] video {
   overflow-y: visible;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-group]:focus-within
-  [data-tv-card="true"] {
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card {
+  transform-origin: center bottom;
+  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 140ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 120ms linear;
+  will-change: transform;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:focus,
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:focus-visible {
+  transform: scale(1.15);
+  z-index: 30;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.6);
+  opacity: 1;
+  outline: none;
+  filter: none;
+}
+
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:not(:focus):not(:focus-visible) {
   opacity: 0.65;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"] {
-  opacity: 1;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:focus,
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:focus-visible {
-  outline: none;
-  transform: scale(1.15);
-  box-shadow: 0 14px 46px rgba(0, 0, 0, 0.6);
-  opacity: 1;
-  z-index: 10;
-}
-
-:is(html.tv-mode, [data-screen-mode="tv"]) [data-tv-card="true"]:hover:not(:focus):not(:focus-visible) {
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card:hover {
   transform: none !important;
   box-shadow: none !important;
+  filter: none !important;
 }
 
 :is(html.tv-mode, [data-screen-mode="tv"]) .video-card-hover:hover {
   transform: none !important;
 }
 
-:is(html.tv-mode, [data-screen-mode="tv"])
-  [data-tv-group]:not(:focus-within)
-  [data-tv-card="true"][data-tv-selected="true"] {
+:is(html.tv-mode, [data-screen-mode="tv"]) .tv-card[data-tv-selected="true"] {
   opacity: 1;
 }
 

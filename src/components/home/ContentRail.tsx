@@ -57,7 +57,7 @@ const renderPersonCard = (
       href={buildPersonHref(item)}
       data-tv-focusable="true"
       data-tv-card="true"
-      className={`group flex h-full flex-col items-center justify-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-lg ${
+      className={`tv-card group flex h-full flex-col items-center justify-center gap-3 rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-lg ${
         isTv
           ? 'border-white/10 bg-white/5'
           : 'border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-gray-900/70'

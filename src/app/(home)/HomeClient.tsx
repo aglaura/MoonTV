@@ -31,6 +31,8 @@ const DEFAULT_TV_SECTIONS: TvSectionId[] = [
   'movies',
 ];
 
+const TV_REGION_ORDER: TvRegion[] = ['cn', 'kr', 'jp', 'en'];
+
 type HomeTab = 'home' | 'favorites';
 
 type RegionOption = {
@@ -38,6 +40,9 @@ type RegionOption = {
   label: string;
   href: string;
 };
+
+type RegionalSectionId = `regional-${TvRegion}`;
+type HomeSectionId = TvSectionId | RegionalSectionId;
 
 function resolveUiLocale(): UiLocale {
   try {
@@ -381,16 +386,42 @@ export default function HomeClient() {
   } = useHomeData({ uiLocale, isKidsMode });
   const { showAnnouncement, handleCloseAnnouncement, formattedAnnouncement } =
     useHomeAnnouncement(announcement, uiLocale);
-  const { regionalTab, setRegionalTab, regionOptions, activeRegion } =
+  const { setRegionalTab, regionOptions, activeRegion } =
     useHomeRegions({ tt, uiLocale });
+  const regionOptionByKey = useMemo(() => {
+    const map = new Map<TvRegion, RegionOption>();
+    regionOptions.forEach((option) => {
+      map.set(option.key, option);
+    });
+    return map;
+  }, [regionOptions]);
+  const tvRegionTitles: Record<TvRegion, string> = useMemo(
+    () => ({
+      cn: tt('Chinese TV Picks', '华语精选', '華語精選'),
+      kr: tt('Korean TV Picks', '韩剧精选', '韓劇精選'),
+      jp: tt('Japanese TV Picks', '日剧精选', '日劇精選'),
+      en: tt('English TV Picks', '欧美精选', '歐美精選'),
+    }),
+    [tt]
+  );
 
   const { favoriteItems, clearFavorites } = useHomeFavorites(activeTab);
 
   // TV section focus index
   const [tvSectionIndex, setTvSectionIndex] = useState(0);
-  const tvSectionList = useMemo<TvSectionId[]>(() => {
-    const sections = [...DEFAULT_TV_SECTIONS];
-    if (screenMode === 'tv' && isKidsMode) {
+  const tvSectionList = useMemo<HomeSectionId[]>(() => {
+    if (screenMode !== 'tv') {
+      return [...DEFAULT_TV_SECTIONS];
+    }
+    const sections: HomeSectionId[] = [
+      'continue',
+      'airing',
+      ...TV_REGION_ORDER.map((region) => `regional-${region}` as const),
+      'animation',
+      'variety',
+      'movies',
+    ];
+    if (isKidsMode) {
       return sections.filter((id) => id !== 'movies');
     }
     return sections;
@@ -424,10 +455,10 @@ export default function HomeClient() {
     : 'text-gray-500 dark:text-gray-400';
   const regionRailSpacingClass = isTVMode ? 'mt-2' : 'mt-4';
   const regionTabBaseClass = isTVMode
-    ? 'border-white/15 bg-white/5 text-white/70'
+    ? 'border-white/10 text-white/60'
     : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400';
   const regionTabActiveClass = isTVMode
-    ? 'border-white/30 text-white'
+    ? 'text-white'
     : 'bg-emerald-500 text-white border-emerald-500';
 
   const airingTitle =
@@ -439,7 +470,7 @@ export default function HomeClient() {
       ? tvSectionList[Math.min(tvSectionIndex, tvSectionList.length - 1)] || null
       : null;
 
-  const tvSectionClass = (id: TvSectionId) =>
+  const tvSectionClass = (id: HomeSectionId) =>
     isTVMode && activeTab === 'home'
       ? currentTvSection === id
         ? 'opacity-100 transition-opacity duration-150 ease-linear'
@@ -451,19 +482,6 @@ export default function HomeClient() {
     sections: tvSectionList,
     currentSection: currentTvSection,
     setSectionIndex: setTvSectionIndex,
-    onHorizontalEdge: ({ direction, sectionId, focusSection }) => {
-      if (sectionId !== 'regional') return false;
-      const order: TvRegion[] = ['cn', 'kr', 'jp', 'en'];
-      setRegionalTab((prev) => {
-        const idx = order.indexOf(prev);
-        const next = order[idx + (direction === 'right' ? 1 : -1)];
-        return next ?? prev;
-      });
-      setTimeout(() => {
-        focusSection('regional');
-      }, 0);
-      return true;
-    },
   });
 
   return (
@@ -516,21 +534,43 @@ export default function HomeClient() {
                   />
                 </section>
 
-                <HomeRegionSection
-                  sectionClass={tvSectionClass('regional')}
-                  regionWrapperClass={regionWrapperClass}
-                  regionLabelClass={regionLabelClass}
-                  regionRailSpacingClass={regionRailSpacingClass}
-                  regionTabBaseClass={regionTabBaseClass}
-                  regionTabActiveClass={regionTabActiveClass}
-                  regionOptions={regionOptions}
-                  activeRegion={activeRegion}
-                  setRegionalTab={setRegionalTab}
-                  regionalTv={regionalTv}
-                  screenMode={screenMode}
-                  tt={tt}
-                  isTVMode={isTVMode}
-                />
+                {isTVMode ? (
+                  TV_REGION_ORDER.map((regionKey) => {
+                    const option = regionOptionByKey.get(regionKey);
+                    const sectionId = `regional-${regionKey}` as const;
+                    return (
+                      <section
+                        key={sectionId}
+                        data-tv-section={sectionId}
+                        className={tvSectionClass(sectionId)}
+                      >
+                        <ContentRail
+                          title={tvRegionTitles[regionKey] || option?.label || ''}
+                          href={option?.href}
+                          items={regionalTv[regionKey] || []}
+                          screenMode={screenMode}
+                          tt={tt}
+                        />
+                      </section>
+                    );
+                  })
+                ) : (
+                  <HomeRegionSection
+                    sectionClass={tvSectionClass('regional')}
+                    regionWrapperClass={regionWrapperClass}
+                    regionLabelClass={regionLabelClass}
+                    regionRailSpacingClass={regionRailSpacingClass}
+                    regionTabBaseClass={regionTabBaseClass}
+                    regionTabActiveClass={regionTabActiveClass}
+                    regionOptions={regionOptions}
+                    activeRegion={activeRegion}
+                    setRegionalTab={setRegionalTab}
+                    regionalTv={regionalTv}
+                    screenMode={screenMode}
+                    tt={tt}
+                    isTVMode={isTVMode}
+                  />
+                )}
 
                 {!isMobileMode && (
                   <>
