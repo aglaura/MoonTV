@@ -90,21 +90,33 @@ export default function ContinueWatching({
     return null;
   }
 
+  const titleClass = isTV
+    ? 'text-white'
+    : 'text-gray-800 dark:text-gray-200';
+  const actionClass = isTV
+    ? 'text-white/60 hover:text-white'
+    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200';
+  const skeletonPosterClass = isTV
+    ? 'bg-white/10'
+    : 'bg-gray-200 dark:bg-gray-800';
+  const skeletonPosterInnerClass = isTV
+    ? 'bg-white/15'
+    : 'bg-gray-300 dark:bg-gray-700';
+  const skeletonLineClass = isTV
+    ? 'bg-white/10'
+    : 'bg-gray-200 dark:bg-gray-800';
+
   return (
     <section className={`mb-8 ${className || ''}`}>
       <div className='mb-4 flex items-center justify-between'>
         <h2
-          className={`font-bold text-gray-800 dark:text-gray-200 ${
-            isTV ? 'text-2xl' : 'text-xl'
-          }`}
+          className={`font-bold ${titleClass} ${isTV ? 'text-2xl' : 'text-xl'}`}
         >
           {tt('Continue watching', '继续观看', '繼續觀看')}
         </h2>
         {!loading && playRecords.length > 0 && (
           <button
-            className={`text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 ${
-              isTV ? 'text-base' : 'text-sm'
-            }`}
+            className={`${actionClass} ${isTV ? 'text-base' : 'text-sm'}`}
             onClick={async () => {
               await clearAllPlayRecords();
               setPlayRecords([]);
@@ -124,11 +136,19 @@ export default function ContinueWatching({
                   isTV ? 'lg:min-w-[220px] lg:w-52' : ''
                 }`}
               >
-                <div className='relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-200 animate-pulse dark:bg-gray-800'>
-                  <div className='absolute inset-0 bg-gray-300 dark:bg-gray-700'></div>
+                <div
+                  className={`relative aspect-[2/3] w-full overflow-hidden rounded-lg animate-pulse ${skeletonPosterClass}`}
+                >
+                  <div
+                    className={`absolute inset-0 ${skeletonPosterInnerClass}`}
+                  ></div>
                 </div>
-                <div className='mt-2 h-4 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
-                <div className='mt-1 h-3 bg-gray-200 rounded animate-pulse dark:bg-gray-800'></div>
+                <div
+                  className={`mt-2 h-4 rounded animate-pulse ${skeletonLineClass}`}
+                ></div>
+                <div
+                  className={`mt-1 h-3 rounded animate-pulse ${skeletonLineClass}`}
+                ></div>
               </div>
             ))
           : // 显示真实数据

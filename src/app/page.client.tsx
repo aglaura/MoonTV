@@ -313,6 +313,23 @@ function HomeClient() {
     : isMobile
     ? 'flex flex-col gap-6'
     : 'flex flex-col gap-6 xl:gap-8';
+  const tvRootClass = isTV ? 'min-h-screen bg-black text-white' : '';
+  const errorBannerClass = isTV
+    ? 'mb-2 p-4 bg-amber-500/10 border border-amber-400/30 rounded-lg text-amber-100'
+    : 'mb-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800';
+  const regionWrapperClass = isTV
+    ? 'space-y-4'
+    : 'rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-4';
+  const regionLabelClass = isTV
+    ? 'text-white/60'
+    : 'text-gray-500 dark:text-gray-400';
+  const regionRailSpacingClass = isTV ? 'mt-2' : 'mt-4';
+  const regionTabBaseClass = isTV
+    ? 'border-white/15 bg-white/5 text-white/70'
+    : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400';
+  const regionTabActiveClass = isTV
+    ? 'bg-white text-black border-white'
+    : 'bg-emerald-500 text-white border-emerald-500';
 
   const regionOptions = useMemo(
     () => [
@@ -425,7 +442,9 @@ function HomeClient() {
         topBarModeLabel && canToggleMode ? handleToggleMode : undefined
       }
     >
-      <div className="px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full">
+      <div
+        className={`${tvRootClass} px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full`}
+      >
         {isKidsMode && (
           <div className="mb-3 flex justify-center">
             <span className="px-3 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold dark:bg-amber-900/60 dark:text-amber-50 border border-amber-200 dark:border-amber-700">
@@ -475,7 +494,7 @@ function HomeClient() {
                 </section>
 
                 {error && (
-                  <div className="mb-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
+                  <div className={errorBannerClass}>
                     <p className="font-bold">
                       {tt(
                         '⚠️ Data load issue',
@@ -509,9 +528,15 @@ function HomeClient() {
                   data-tv-section="regional"
                   className={tvSectionClass('regional')}
                 >
-                  <div className="rounded-2xl border border-gray-200/40 dark:border-gray-800 bg-white/70 dark:bg-gray-900/60 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-xs uppercase tracking-[0.3em] text-gray-500 dark:text-gray-400">
+                  <div className={regionWrapperClass}>
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-3 ${
+                        isTV ? 'px-1' : ''
+                      }`}
+                    >
+                      <div
+                        className={`text-xs uppercase tracking-[0.3em] ${regionLabelClass}`}
+                      >
                         {tt('Regional TV Picks', '区域剧集', '區域劇集')}
                       </div>
                       <div
@@ -529,8 +554,8 @@ function HomeClient() {
                               onClick={() => setRegionalTab(option.key)}
                               className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full border transition ${
                                 active
-                                  ? 'bg-emerald-500 text-white border-emerald-500'
-                                  : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-emerald-400'
+                                  ? regionTabActiveClass
+                                  : regionTabBaseClass
                               } ${isTV ? 'disabled:opacity-100 disabled:cursor-default' : ''}`}
                             >
                               {option.label}
@@ -539,7 +564,7 @@ function HomeClient() {
                         })}
                       </div>
                     </div>
-                    <div className="mt-4">
+                    <div className={regionRailSpacingClass}>
                       <ContentRail
                         title={activeRegion.label}
                         href={activeRegion.href}
