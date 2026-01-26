@@ -38,6 +38,13 @@ type PersonInfo = {
     string,
     { title: string; summary: string; url: string; thumbnail?: string; lang: string }
   >;
+  douban?: {
+    id: string;
+    name: string;
+    name_en?: string;
+    url: string;
+    image?: string;
+  } | null;
 };
 
 type PersonPayload = {
@@ -149,6 +156,7 @@ export default function PersonPage() {
   const localizedNames = person?.nameVariants || {};
   const descriptionMap = person?.wikidataDescriptions || {};
   const wikipediaMap = person?.wikipedia || {};
+  const douban = person?.douban || null;
   const localeNameOrder: Array<{ key: string; label: string }> = [
     { key: 'en', label: 'English' },
     { key: 'zh-Hans', label: '简体中文' },
@@ -175,7 +183,9 @@ export default function PersonPage() {
     const processed = processImageUrl(value, { preferCached: true });
     return processed.startsWith('/api/image-proxy') ? value : processed;
   }, []);
-  const fallbackProfileUrl = posterParam ? safeProcessImageUrl(posterParam) : '';
+  const fallbackProfileUrl =
+    (posterParam && safeProcessImageUrl(posterParam)) ||
+    (douban?.image ? safeProcessImageUrl(douban.image) : '');
   const profileUrl = person?.profile
     ? safeProcessImageUrl(person.profile)
     : fallbackProfileUrl;
@@ -185,6 +195,7 @@ export default function PersonPage() {
     ? `https://www.wikidata.org/wiki/${person.wikidataId}`
     : '';
   const wikipediaUrl = wikipediaSummary?.url || '';
+  const doubanUrl = douban?.url || '';
 
   const buildRoleLabel = useCallback(
     (credit: Credit) => {
@@ -264,6 +275,12 @@ export default function PersonPage() {
                         {person.alsoKnownAs.slice(0, 6).join(' · ')}
                       </p>
                     )}
+                    {douban?.name && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {tt('Douban', '豆瓣', '豆瓣')}: {douban.name}
+                        {douban.name_en ? ` · ${douban.name_en}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
                     {person.birthday && (
@@ -322,6 +339,16 @@ export default function PersonPage() {
                         className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-emerald-400"
                       >
                         {tt('IMDb', 'IMDb', 'IMDb')}
+                      </a>
+                    )}
+                    {doubanUrl && (
+                      <a
+                        href={doubanUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-emerald-400"
+                      >
+                        {tt('Douban', '豆瓣', '豆瓣')}
                       </a>
                     )}
                     {wikipediaUrl && (

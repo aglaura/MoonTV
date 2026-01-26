@@ -75,6 +75,14 @@ type WikidataDetails = {
   sitelinks: Record<string, { title: string; lang: string; url: string }>;
 };
 
+type DoubanCeleb = {
+  id: string;
+  name: string;
+  name_en?: string;
+  url: string;
+  image?: string;
+};
+
 function getApiKey() {
   return process.env.TMDB_API_KEY || DEFAULT_API_KEY;
 }
@@ -124,6 +132,10 @@ function mapLangKey(key: string) {
   if (key === 'zh-hans' || key === 'zh') return 'zh-Hans';
   if (key === 'zh-hant') return 'zh-Hant';
   return key;
+}
+
+function hasCjk(value: string) {
+  return /[\u4e00-\u9fff]/.test(value);
 }
 
 async function fetchWikidataEntityIdByImdb(imdbId: string) {
@@ -274,6 +286,58 @@ async function fetchWikipediaSummary(
   }
 }
 
+async function fetchDoubanCelebrity(names: string[]): Promise<DoubanCeleb | null> {
+  const candidates = normalizeList(names);
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => Number(hasCjk(b)) - Number(hasCjk(a)));
+
+  for (const name of candidates) {
+    if (!name) continue;
+    const target = `https://movie.douban.com/j/subject_suggest?q=${encodeURIComponent(
+      name
+    )}`;
+    try {
+      const res = await fetch(target, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+          Accept: 'application/json,text/plain,*/*',
+          Referer: 'https://movie.douban.com/',
+        },
+        cache: 'no-store',
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const items = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.items)
+        ? (data as any).items
+        : [];
+      const celeb = items.find((item: any) => {
+        const type = String(item?.type || '').toLowerCase();
+        const url = String(item?.url || '');
+        return type.includes('celebrity') || url.includes('/celebrity/');
+      });
+      if (!celeb) continue;
+      const id = String(celeb?.id || '').trim();
+      const url =
+        String(celeb?.url || '').trim() ||
+        (id ? `https://movie.douban.com/celebrity/${id}/` : '');
+      if (!url) continue;
+      return {
+        id,
+        name: String(celeb?.title || '').trim(),
+        name_en: String(celeb?.sub_title || '').trim(),
+        url,
+        image: String(celeb?.img || '').trim(),
+      };
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const rawId = searchParams.get('id');
@@ -339,6 +403,10 @@ export async function GET(req: Request) {
       detail.name || '',
       detail.imdb_id || ''
     );
+    const doubanCeleb = await fetchDoubanCelebrity([
+      detail.name || '',
+      ...tmdbAlsoKnown,
+    ]);
     const wikipediaSummaries: Record<string, WikipediaSummary> = {};
     const summaryTargets = ['en', 'zh-Hans', 'zh-Hant', 'ja', 'ko'];
     await Promise.all(
@@ -370,6 +438,7 @@ export async function GET(req: Request) {
         wikidataId: wikidataDetails.id,
         wikidataDescriptions: wikidataDetails.descriptions,
         wikipedia: wikipediaSummaries,
+        douban: doubanCeleb,
       },
       credits: { cast, crew },
     });
