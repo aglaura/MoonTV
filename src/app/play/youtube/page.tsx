@@ -54,7 +54,6 @@ export default function YoutubePlayPage() {
   const [musicState, setMusicState] = useState(
     buildEmptyYoutubeMusicState()
   );
-  const [inList, setInList] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<MusicVideo>({
     id: videoId,
     title: displayTitle,
@@ -70,6 +69,13 @@ export default function YoutubePlayPage() {
   const activeList = useMemo(
     () => musicState.lists[musicState.activeIndex] || [],
     [musicState]
+  );
+  const listMemberships = useMemo(
+    () =>
+      musicState.lists.map((list) =>
+        currentVideo.id ? list.some((item) => item.id === currentVideo.id) : false
+      ),
+    [currentVideo.id, musicState.lists]
   );
 
   useEffect(() => {
@@ -110,14 +116,6 @@ export default function YoutubePlayPage() {
         });
     }
   }, [storageKey, username]);
-
-  useEffect(() => {
-    if (!currentVideo.id) {
-      setInList(false);
-      return;
-    }
-    setInList(activeList.some((item) => item.id === currentVideo.id));
-  }, [activeList, currentVideo.id]);
 
   useEffect(() => {
     listRef.current = activeList;
@@ -167,36 +165,33 @@ export default function YoutubePlayPage() {
     [storageKey, username]
   );
 
-  const updateActiveList = useCallback(
-    (nextList: MusicVideo[]) => {
+  const toggleInListAt = useCallback(
+    (index: number) => {
+      if (!currentVideo.id) return;
+      const entry: MusicVideo = {
+        id: currentVideo.id,
+        title: currentVideo.title || displayTitle,
+        artist: currentVideo.artist || artist || undefined,
+      };
+      const nextLists = musicState.lists.map((list, idx) => {
+        if (idx !== index) return list;
+        const exists = list.some((item) => item.id === currentVideo.id);
+        if (exists) {
+          return list.filter((item) => item.id !== currentVideo.id);
+        }
+        return [
+          entry,
+          ...list.filter((item) => item.id !== currentVideo.id),
+        ].slice(0, MAX_YOUTUBE_MUSIC_LIST_SIZE);
+      });
       const nextState = normalizeYoutubeMusicState({
-        lists: musicState.lists.map((list, idx) =>
-          idx === musicState.activeIndex ? nextList : list
-        ),
-        activeIndex: musicState.activeIndex,
+        lists: nextLists,
+        activeIndex: index,
       });
       persistState(nextState);
     },
-    [musicState, persistState]
+    [artist, currentVideo, displayTitle, musicState.lists, persistState]
   );
-
-  const toggleInList = useCallback(() => {
-    if (!currentVideo.id) return;
-    const entry: MusicVideo = {
-      id: currentVideo.id,
-      title: currentVideo.title || displayTitle,
-      artist: currentVideo.artist || artist || undefined,
-    };
-    if (inList) {
-      updateActiveList(activeList.filter((item) => item.id !== currentVideo.id));
-    } else {
-      const next = [
-        entry,
-        ...activeList.filter((item) => item.id !== currentVideo.id),
-      ].slice(0, MAX_YOUTUBE_MUSIC_LIST_SIZE);
-      updateActiveList(next);
-    }
-  }, [activeList, artist, currentVideo, displayTitle, inList, updateActiveList]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -314,19 +309,29 @@ export default function YoutubePlayPage() {
             {tt('Type: ', '类型：', '類型：')}MV
           </span>
           {currentVideo.id && (
-            <button
-              type="button"
-              onClick={toggleInList}
-              className={`px-3 py-1.5 rounded-full text-white shadow-sm border ${
-                inList
-                  ? 'bg-rose-500 border-rose-400 hover:bg-rose-600'
-                  : 'bg-emerald-500 border-emerald-400 hover:bg-emerald-600'
-                }`}
-            >
-              {inList
-                ? tt('Remove from My MVs', '从我的MV移除', '從我的MV移除')
-                : tt('Add to My MVs', '加入我的MV', '加入我的MV')}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {tt('Save to', '保存到', '保存到')}
+              </span>
+              {[0, 1, 2].map((idx) => {
+                const selected = listMemberships[idx];
+                const count = musicState.lists[idx]?.length || 0;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => toggleInListAt(idx)}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                      selected
+                        ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600'
+                        : 'bg-white/85 dark:bg-gray-800/80 text-gray-700 dark:text-gray-200 border-gray-200/80 dark:border-gray-700/60 hover:border-emerald-400'
+                    }`}
+                  >
+                    {tt('List', '列表', '清單')} {idx + 1} · {count}/30
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
