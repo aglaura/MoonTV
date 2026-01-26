@@ -60,6 +60,21 @@ type CreditEntry = {
 
 type NameVariants = Record<string, string[]>;
 
+type WikipediaSummary = {
+  title: string;
+  summary: string;
+  url: string;
+  thumbnail?: string;
+  lang: string;
+};
+
+type WikidataDetails = {
+  id: string;
+  nameVariants: NameVariants;
+  descriptions: Record<string, string>;
+  sitelinks: Record<string, { title: string; lang: string; url: string }>;
+};
+
 function getApiKey() {
   return process.env.TMDB_API_KEY || DEFAULT_API_KEY;
 }
@@ -151,39 +166,50 @@ async function fetchWikidataEntityIdByName(name: string) {
   }
 }
 
-async function fetchWikidataNames(
+async function fetchWikidataDetails(
   name: string,
   imdbId?: string
-): Promise<NameVariants> {
-  if (!name && !imdbId) return {};
+): Promise<WikidataDetails> {
+  if (!name && !imdbId) {
+    return { id: '', nameVariants: {}, descriptions: {}, sitelinks: {} };
+  }
   const entityId =
     (imdbId ? await fetchWikidataEntityIdByImdb(imdbId) : '') ||
     (name ? await fetchWikidataEntityIdByName(name) : '');
-  if (!entityId) return {};
+  if (!entityId) {
+    return { id: '', nameVariants: {}, descriptions: {}, sitelinks: {} };
+  }
   const params = new URLSearchParams();
   params.set('action', 'wbgetentities');
   params.set('format', 'json');
   params.set('ids', entityId);
-  params.set('props', 'labels|aliases');
+  params.set('props', 'labels|aliases|descriptions|sitelinks');
   params.set('languages', NAME_LANGS.join('|'));
   const url = `${WIKIDATA_API}?${params.toString()}`;
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'MoonTV/1.0 (actor names)' },
     });
-    if (!res.ok) return {};
+    if (!res.ok) {
+      return { id: entityId, nameVariants: {}, descriptions: {}, sitelinks: {} };
+    }
     const data = (await res.json()) as {
       entities?: Record<
         string,
         {
           labels?: Record<string, { value?: string }>;
           aliases?: Record<string, Array<{ value?: string }>>;
+          descriptions?: Record<string, { value?: string }>;
+          sitelinks?: Record<string, { title?: string }>;
         }
       >;
     };
     const entity = data?.entities?.[entityId];
-    if (!entity) return {};
+    if (!entity) {
+      return { id: entityId, nameVariants: {}, descriptions: {}, sitelinks: {} };
+    }
     const variants: NameVariants = {};
+    const descriptions: Record<string, string> = {};
     NAME_LANGS.forEach((lang) => {
       const label = entity.labels?.[lang]?.value;
       const aliases = (entity.aliases?.[lang] || []).map((item) => item.value);
@@ -191,10 +217,60 @@ async function fetchWikidataNames(
       if (merged.length > 0) {
         variants[mapLangKey(lang)] = merged;
       }
+      const description = (entity.descriptions?.[lang]?.value || '').trim();
+      if (description) {
+        descriptions[mapLangKey(lang)] = description;
+      }
     });
-    return variants;
+    const sitelinks: Record<string, { title: string; lang: string; url: string }> = {};
+    const allowedLangs = new Set(NAME_LANGS.map((lang) => mapLangKey(lang)));
+    Object.entries(entity.sitelinks || {}).forEach(([site, value]) => {
+      if (!site.endsWith('wiki')) return;
+      const rawLang = site.replace(/wiki$/, '').replace(/_/g, '-');
+      const mappedLang = mapLangKey(rawLang);
+      if (!allowedLangs.has(mappedLang)) return;
+      const title = (value?.title || '').trim();
+      if (!title) return;
+      const url = `https://${rawLang || 'en'}.wikipedia.org/wiki/${encodeURIComponent(
+        title.replace(/ /g, '_')
+      )}`;
+      sitelinks[mappedLang] = { title, lang: rawLang || mappedLang, url };
+    });
+    return { id: entityId, nameVariants: variants, descriptions, sitelinks };
   } catch {
-    return {};
+    return { id: entityId, nameVariants: {}, descriptions: {}, sitelinks: {} };
+  }
+}
+
+async function fetchWikipediaSummary(
+  lang: string,
+  title: string
+): Promise<WikipediaSummary | null> {
+  if (!lang || !title) return null;
+  const url = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
+    title
+  )}`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'MoonTV/1.0 (actor wiki)' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      title?: string;
+      extract?: string;
+      thumbnail?: { source?: string };
+      content_urls?: { desktop?: { page?: string } };
+    };
+    if (!data?.title) return null;
+    return {
+      title: data.title,
+      summary: data.extract || '',
+      url: data.content_urls?.desktop?.page || url,
+      thumbnail: data.thumbnail?.source,
+      lang,
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -259,9 +335,22 @@ export async function GET(req: Request) {
       .map(mapCredit);
 
     const tmdbAlsoKnown = normalizeList(detail.also_known_as || []);
-    const wikidataNames = await fetchWikidataNames(
+    const wikidataDetails = await fetchWikidataDetails(
       detail.name || '',
       detail.imdb_id || ''
+    );
+    const wikipediaSummaries: Record<string, WikipediaSummary> = {};
+    const summaryTargets = ['en', 'zh-Hans', 'zh-Hant', 'ja', 'ko'];
+    await Promise.all(
+      summaryTargets.map(async (langKey) => {
+        const link = wikidataDetails.sitelinks[langKey];
+        if (!link?.title) return;
+        const wikipediaLang = langKey === 'zh-Hant' ? 'zh' : langKey === 'zh-Hans' ? 'zh' : link.lang;
+        const summary = await fetchWikipediaSummary(wikipediaLang, link.title);
+        if (summary) {
+          wikipediaSummaries[langKey] = summary;
+        }
+      })
     );
 
     return NextResponse.json({
@@ -277,7 +366,10 @@ export async function GET(req: Request) {
         homepage: detail.homepage || '',
         imdbId: detail.imdb_id || '',
         alsoKnownAs: tmdbAlsoKnown,
-        nameVariants: wikidataNames,
+        nameVariants: wikidataDetails.nameVariants,
+        wikidataId: wikidataDetails.id,
+        wikidataDescriptions: wikidataDetails.descriptions,
+        wikipedia: wikipediaSummaries,
       },
       credits: { cast, crew },
     });

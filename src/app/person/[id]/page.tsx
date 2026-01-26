@@ -32,6 +32,12 @@ type PersonInfo = {
   imdbId: string;
   alsoKnownAs?: string[];
   nameVariants?: Record<string, string[]>;
+  wikidataId?: string;
+  wikidataDescriptions?: Record<string, string>;
+  wikipedia?: Record<
+    string,
+    { title: string; summary: string; url: string; thumbnail?: string; lang: string }
+  >;
 };
 
 type PersonPayload = {
@@ -141,6 +147,8 @@ export default function PersonPage() {
   const castCredits = data?.credits?.cast ?? [];
   const crewCredits = data?.credits?.crew ?? [];
   const localizedNames = person?.nameVariants || {};
+  const descriptionMap = person?.wikidataDescriptions || {};
+  const wikipediaMap = person?.wikipedia || {};
   const localeNameOrder: Array<{ key: string; label: string }> = [
     { key: 'en', label: 'English' },
     { key: 'zh-Hans', label: '简体中文' },
@@ -151,6 +159,16 @@ export default function PersonPage() {
     { key: 'de', label: 'Deutsch' },
     { key: 'es', label: 'Español' },
   ];
+  const localeKey =
+    locale === 'zh-Hans' || locale === 'zh-Hant' ? locale : 'en';
+  const wikidataDescription =
+    descriptionMap[localeKey] || descriptionMap.en || '';
+  const wikipediaSummary =
+    wikipediaMap[localeKey] ||
+    wikipediaMap.en ||
+    wikipediaMap['zh-Hans'] ||
+    wikipediaMap['zh-Hant'] ||
+    Object.values(wikipediaMap)[0];
 
   const safeProcessImageUrl = useCallback((value: string) => {
     if (!value) return '';
@@ -163,6 +181,10 @@ export default function PersonPage() {
     : fallbackProfileUrl;
   const tmdbUrl = buildTmdbPersonUrl(person?.id || personId);
   const imdbUrl = buildImdbUrl(person?.imdbId);
+  const wikidataUrl = person?.wikidataId
+    ? `https://www.wikidata.org/wiki/${person.wikidataId}`
+    : '';
+  const wikipediaUrl = wikipediaSummary?.url || '';
 
   const buildRoleLabel = useCallback(
     (credit: Credit) => {
@@ -302,6 +324,26 @@ export default function PersonPage() {
                         {tt('IMDb', 'IMDb', 'IMDb')}
                       </a>
                     )}
+                    {wikipediaUrl && (
+                      <a
+                        href={wikipediaUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-emerald-400"
+                      >
+                        {tt('Wikipedia', '维基百科', '維基百科')}
+                      </a>
+                    )}
+                    {wikidataUrl && (
+                      <a
+                        href={wikidataUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:border-emerald-400"
+                      >
+                        {tt('Wikidata', '维基数据', '維基數據')}
+                      </a>
+                    )}
                     {person.homepage && (
                       <a
                         href={person.homepage}
@@ -326,7 +368,53 @@ export default function PersonPage() {
                   ? person.biography
                   : tt('No biography available.', '暂无简介。', '暫無簡介。')}
               </p>
+              {wikidataDescription && (
+                <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                  {tt('Wikidata description', '维基数据简介', '維基數據簡介')}:
+                  {' '}
+                  {wikidataDescription}
+                </p>
+              )}
             </section>
+
+            {wikipediaSummary && (
+              <section className="rounded-3xl border border-gray-200/70 dark:border-gray-800 bg-white/85 dark:bg-gray-900/70 p-6 md:p-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {tt('From Wikipedia', '来自维基百科', '來自維基百科')}
+                  </h2>
+                  {wikipediaSummary.url && (
+                    <a
+                      href={wikipediaSummary.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-emerald-600 dark:text-emerald-300 hover:underline"
+                    >
+                      {tt('Read more', '阅读全文', '閱讀更多')}
+                    </a>
+                  )}
+                </div>
+                <div className="flex flex-col md:flex-row gap-4">
+                  {wikipediaSummary.thumbnail && (
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                      <Image
+                        src={wikipediaSummary.thumbnail}
+                        alt={wikipediaSummary.title}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm leading-7 text-gray-600 dark:text-gray-300">
+                      {wikipediaSummary.summary ||
+                        tt('No summary available.', '暂无摘要。', '暫無摘要。')}
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
 
             <section className="space-y-6">
               <div>
