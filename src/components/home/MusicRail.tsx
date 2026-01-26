@@ -21,6 +21,9 @@ const MUSIC_VIDEOS: MusicVideo[] = [
   { id: 'mtAc_bMYBsM', title: '温柔', artist: '五月天' },
   { id: 'G97_rOdHcnY', title: '江南', artist: '林俊杰' },
   { id: '_sQSXwdtxlY', title: '小幸运', artist: '田馥甄' },
+  { id: 'CjcyRRu7tcc', title: '洋葱', artist: '杨宗纬' },
+  { id: 'lSNRU4J73H4', title: '空白格', artist: '杨宗纬' },
+  { id: 'RP4Ufhq8DI0', title: '越过山丘', artist: '杨宗纬' },
 ];
 
 const readRuntimeVideos = (): MusicVideo[] => {
