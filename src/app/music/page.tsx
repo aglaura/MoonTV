@@ -93,10 +93,10 @@ export default function MusicPage() {
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== storageKey) return;
       try {
-        const next = event.newValue ? JSON.parse(event.newValue) : [];
-        if (Array.isArray(next)) {
-          setMusicList(next.filter((item) => item?.id && item?.title));
-        }
+        const nextState = normalizeYoutubeMusicState(
+          event.newValue ? JSON.parse(event.newValue) : []
+        );
+        setMusicState(nextState);
       } catch {
         // ignore
       }
