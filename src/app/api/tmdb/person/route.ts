@@ -156,8 +156,9 @@ function stripHtml(value: string) {
 }
 
 function extractMetaContent(html: string, name: string) {
+  const attr = name.includes(':') ? 'property' : 'name';
   const re = new RegExp(
-    `<meta[^>]+${name.includes(':') ? 'property' : 'name'}=[\"']${name}[\"'][^>]*content=[\"']([^\"']+)[\"']`,
+    `<meta[^>]+${attr}=["']${name}["'][^>]*content=["']([^"']+)["']`,
     'i'
   );
   const match = html.match(re);
@@ -368,13 +369,13 @@ async function fetchDoubanCelebrity(names: string[]): Promise<DoubanCeleb | null
         cache: 'no-store',
       });
       if (!res.ok) continue;
-      const data = await res.json();
+      const data: unknown = await res.json();
       const items = Array.isArray(data)
-        ? data
-        : Array.isArray((data as any)?.items)
-        ? (data as any).items
+        ? (data as Record<string, unknown>[])
+        : Array.isArray((data as { items?: unknown })?.items)
+        ? ((data as { items?: unknown }).items as Record<string, unknown>[])
         : [];
-      const celeb = items.find((item: any) => {
+      const celeb = items.find((item) => {
         const type = String(item?.type || '').toLowerCase();
         const url = String(item?.url || '');
         return type.includes('celebrity') || url.includes('/celebrity/');
