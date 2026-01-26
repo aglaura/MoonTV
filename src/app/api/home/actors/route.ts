@@ -6,7 +6,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
-const TMDB_PROFILE = 'https://image.tmdb.org/t/p/w300';
+const TMDB_PROFILE_BASE = 'https://image.tmdb.org/t/p';
+const TMDB_PROFILE_SIZES = ['w185', 'w300', 'w500', 'original'];
+const TMDB_PROFILE = `${TMDB_PROFILE_BASE}/w300`;
 const DEFAULT_API_KEY = '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
 type ActorSourceItem = {
@@ -23,6 +25,7 @@ type ActorScoreEntry = {
   score: number;
   name: string;
   profile: string;
+  profiles?: string[];
   tmdbId: string;
 };
 
@@ -57,6 +60,26 @@ type TmdbPerson = {
 const MAX_SOURCE_ITEMS = 12;
 const MAX_ACTORS = 18;
 
+const buildProfileUrls = (path?: string | null) => {
+  const cleaned = (path || '').trim();
+  if (!cleaned) return [] as string[];
+  return TMDB_PROFILE_SIZES.map((size) => `${TMDB_PROFILE_BASE}/${size}${cleaned}`);
+};
+
+const mergeProfiles = (...lists: Array<(string | undefined)[] | undefined>) => {
+  const seen = new Set<string>();
+  const merged: string[] = [];
+  lists.forEach((list) => {
+    (list || []).forEach((value) => {
+      const url = (value || '').trim();
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      merged.push(url);
+    });
+  });
+  return merged;
+};
+
 const normalizeTmdbId = (value?: string) => {
   if (!value) return '';
   return value.toString().trim().replace(/^tmdb:/, '');
@@ -74,6 +97,7 @@ const normalizeTitleKey = (value?: string) =>
 const buildActorCard = (entry: ActorScoreEntry): CardItem => ({
   title: entry.name,
   poster: entry.profile,
+  posterAlt: (entry.profiles || []).filter((url) => url && url !== entry.profile),
   type: 'person',
   query: entry.name,
   source_name: 'TMDB',
@@ -152,13 +176,19 @@ async function fetchCredits(
   const url = `${TMDB_BASE}/${mediaType}/${encodeURIComponent(
     tmdbId
   )}/credits?api_key=${encodeURIComponent(apiKey)}&language=en-US`;
-  const data = await fetchJson<{ cast?: Array<{ id?: number; name?: string; profile_path?: string }> }>(url);
+  const data = await fetchJson<{
+    cast?: Array<{ id?: number; name?: string; profile_path?: string }>;
+  }>(url);
   const cast = Array.isArray(data?.cast) ? data?.cast ?? [] : [];
-  return cast.slice(0, 3).map((member) => ({
-    tmdbId: member?.id ? String(member.id) : '',
-    name: member?.name || '',
-    profile: member?.profile_path ? `${TMDB_PROFILE}${member.profile_path}` : '',
-  }));
+  return cast.slice(0, 3).map((member) => {
+    const profiles = buildProfileUrls(member?.profile_path);
+    return {
+      tmdbId: member?.id ? String(member.id) : '',
+      name: member?.name || '',
+      profile: profiles[1] || profiles[0] || '',
+      profiles,
+    };
+  });
 }
 
 function matchRegion(person: TmdbPerson, region: TvRegion) {
@@ -206,6 +236,9 @@ async function fetchPopularActors(apiKey: string, region: TvRegion): Promise<Car
   return filtered.slice(0, MAX_ACTORS).map((person) => ({
     title: person?.name || '',
     poster: person?.profile_path ? `${TMDB_PROFILE}${person.profile_path}` : '',
+    posterAlt: buildProfileUrls(person?.profile_path).filter(
+      (url) => url !== `${TMDB_PROFILE}${person?.profile_path || ''}`
+    ),
     type: 'person',
     query: person?.name || '',
     source_name: 'TMDB',
@@ -276,7 +309,10 @@ export async function POST(request: Request) {
   const apiKey = getApiKey();
   const scoreMap = new Map<string, ActorScoreEntry>();
   const resolvedCache = new Map<string, { tmdbId: string; mediaType: 'movie' | 'tv' } | null>();
-  const creditsCache = new Map<string, Array<{ tmdbId: string; name: string; profile: string }>>();
+  const creditsCache = new Map<
+    string,
+    Array<{ tmdbId: string; name: string; profile: string; profiles?: string[] }>
+  >();
 
   const getCredits = async (mediaType: 'movie' | 'tv', tmdbId: string) => {
     const key = `${mediaType}:${tmdbId}`;
@@ -337,13 +373,24 @@ export async function POST(request: Request) {
       const existing = scoreMap.get(entryKey);
       if (existing) {
         existing.score += weight;
+        const mergedProfiles = mergeProfiles(
+          existing.profiles,
+          member.profiles,
+          [member.profile]
+        );
+        existing.profiles = mergedProfiles.length ? mergedProfiles : existing.profiles;
+        if (!existing.profile) {
+          existing.profile = mergedProfiles[0] || member.profile || '';
+        }
         scoreMap.set(entryKey, existing);
         return;
       }
+      const profiles = mergeProfiles(member.profiles, [member.profile]);
       scoreMap.set(entryKey, {
         score: weight,
         name: member.name,
         profile: member.profile,
+        profiles,
         tmdbId: member.tmdbId,
       });
     });

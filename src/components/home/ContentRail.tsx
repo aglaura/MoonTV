@@ -8,6 +8,7 @@ import type { CardItem } from '@/lib/home.types';
 import type { ScreenMode } from '@/lib/screenMode';
 import { processImageUrl } from '@/lib/utils';
 
+import RetryImage from '@/components/RetryImage';
 import VideoCard from '@/components/VideoCard';
 
 type ContentRailProps = {
@@ -40,7 +41,23 @@ const renderPersonCard = (
   variant: PersonVariant,
   tt: (en: string, zhHans: string, zhHant: string) => string
 ) => {
-  const posterUrl = processImageUrl(item.poster || '', { preferCached: true });
+  const rawCandidates = [
+    item.poster,
+    ...(item.posterAlt || []),
+    item.profile,
+  ]
+    .map((value) => (value || '').trim())
+    .filter(Boolean);
+  const proxyCandidates = rawCandidates
+    .map((url) => processImageUrl(url, { preferCached: true }))
+    .filter((url) => url && !url.startsWith('/api/image-proxy'));
+  const seen = new Set<string>();
+  const posterCandidates = [...rawCandidates, ...proxyCandidates].filter((url) => {
+    if (!url || seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+  const posterUrl = posterCandidates[0] || '';
   const name = item.title || tt('Unknown', '未知影人', '未知影人');
   const isTv = variant === 'tv';
   const avatarSize =
@@ -71,8 +88,9 @@ const renderPersonCard = (
         }`}
       >
         {posterUrl ? (
-          <img
+          <RetryImage
             src={posterUrl}
+            retrySrcs={posterCandidates.slice(1)}
             alt={name}
             className="h-full w-full object-cover"
             loading="lazy"

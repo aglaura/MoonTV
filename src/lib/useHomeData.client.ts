@@ -732,6 +732,7 @@ export const useHomeData = ({
     return tmdbPeople.map((person) => ({
       title: person.title,
       poster: person.poster,
+      posterAlt: [person.poster].filter(Boolean),
       rate: '',
       year: '',
       type: 'person',

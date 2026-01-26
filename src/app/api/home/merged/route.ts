@@ -412,6 +412,7 @@ function mapTmdbPeople(items: TmdbPerson[]): CardItem[] {
   return (items || []).map((item) => ({
     title: item.title,
     poster: item.poster,
+    posterAlt: [item.poster].filter(Boolean),
     rate: '',
     year: '',
     type: 'person',
@@ -430,6 +431,7 @@ function mapCastPeople(items: TmdbItem[]): CardItem[] {
       people.push({
         title: name,
         poster: member.profile || '',
+        posterAlt: [member.profile || ''].filter(Boolean),
         rate: '',
         year: '',
         type: 'person',
