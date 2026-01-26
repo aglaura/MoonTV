@@ -19,6 +19,7 @@ import { useUserLanguage } from '@/lib/userLanguage.client';
 
 import ContinueWatching from '@/components/ContinueWatching';
 import ContentRail from '@/components/home/ContentRail';
+import MusicRail from '@/components/home/MusicRail';
 import PageLayout from '@/components/PageLayout';
 import { useSite } from '@/components/SiteProvider';
 import VideoCard from '@/components/VideoCard';
@@ -43,7 +44,7 @@ type RegionOption = {
 };
 
 type RegionalSectionId = `regional-${TvRegion}`;
-type HomeSectionId = TvSectionId | RegionalSectionId | 'actors';
+type HomeSectionId = TvSectionId | RegionalSectionId | 'music' | 'actors';
 
 function resolveUiLocale(): UiLocale {
   try {
@@ -428,6 +429,7 @@ export default function HomeClient() {
       'animation',
       'variety',
       'movies',
+      'music',
       'actors',
     ];
     if (isKidsMode) {
@@ -625,6 +627,13 @@ export default function HomeClient() {
                     )}
                   </>
                 )}
+
+                <section
+                  data-tv-section="music"
+                  className={tvSectionClass('music')}
+                >
+                  <MusicRail screenMode={screenMode} tt={tt} />
+                </section>
 
                 <section
                   data-tv-section="actors"

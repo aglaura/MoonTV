@@ -118,6 +118,7 @@ export default async function RootLayout({
         process.env.CONFIGJSON || process.env.NEXT_PUBLIC_CONFIGJSON || ''
       ) || '',
     MUX_TOKEN: process.env.NEXT_PUBLIC_MUX_TOKEN || '',
+    MUSIC_VIDEOS: process.env.NEXT_PUBLIC_MUSIC_VIDEOS || '',
   };
 
   return (
