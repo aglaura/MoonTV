@@ -2909,25 +2909,52 @@ export function PlayPageClient({
     let pendingDiscontinuity = false;
     let skippedDuration = 0;
     let resumeAfterSegment = false;
+    let adDurationLimit = 3;
 
     const resetAdBlock = () => {
       inAdBlock = false;
       skippedDuration = 0;
       resumeAfterSegment = false;
+      adDurationLimit = 3;
       if (pendingDiscontinuity) {
         output.push('#EXT-X-DISCONTINUITY');
         pendingDiscontinuity = false;
       }
     };
 
+    const parseDateRangeDuration = (line: string) => {
+      const durationMatch = line.match(/DURATION=([0-9.]+)/i);
+      if (durationMatch) {
+        const value = Number(durationMatch[1]);
+        return Number.isFinite(value) && value > 0 ? value : null;
+      }
+      const startMatch = line.match(/START-DATE=\"?([^\",]+)\"?/i);
+      const endMatch = line.match(/END-DATE=\"?([^\",]+)\"?/i);
+      if (startMatch && endMatch) {
+        const start = Date.parse(startMatch[1]);
+        const end = Date.parse(endMatch[1]);
+        if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+          return (end - start) / 1000;
+        }
+      }
+      return null;
+    };
+
     const isAdStart = (line: string) => {
       return (
         line.startsWith('#EXT-X-CUE-OUT') ||
+        line.startsWith('#EXT-X-CUE-OUT-CONT') ||
         line.startsWith('#EXT-X-SCTE35-OUT') ||
         line.startsWith('#EXT-X-PLACEMENT-OPPORTUNITY') ||
         line.startsWith('#EXT-OATCLS-SCTE35') ||
+        line.startsWith('#EXT-X-GOOGLE-CUE-OUT') ||
+        line.startsWith('#EXT-X-MEDIA-TAILOR-AD') ||
+        line.startsWith('#EXT-X-MEDIA-TAILOR-SIGNAL') ||
+        line.startsWith('#EXT-X-FREEWHEEL-AD') ||
+        line.startsWith('#EXT-X-TV-TIMELINE') ||
+        line.startsWith('#EXT-X-TIMELINE-OFFSET') ||
         (line.startsWith('#EXT-X-DATERANGE') &&
-          /CLASS=.*ad|SCTE35-OUT|X-ASSET-URI/i.test(line)) ||
+          /CLASS=.*ad|CLASS=\"com\.apple\.hls\.interstitial\"|SCTE35-OUT|X-ASSET-URI|X-AD-ID|X-AD-URL/i.test(line)) ||
         line.startsWith('#EXT-X-AD') ||
         line.startsWith('#EXT-X-COMCAST-AD')
       );
@@ -2936,7 +2963,19 @@ export function PlayPageClient({
     const isAdEnd = (line: string) => {
       return (
         line.startsWith('#EXT-X-CUE-IN') ||
-        line.startsWith('#EXT-X-SCTE35-IN')
+        line.startsWith('#EXT-X-SCTE35-IN') ||
+        line.startsWith('#EXT-X-GOOGLE-CUE-IN')
+      );
+    };
+
+    const shouldAlwaysKeep = (line: string) => {
+      return (
+        line.startsWith('#EXTM3U') ||
+        line.startsWith('#EXT-X-VERSION') ||
+        line.startsWith('#EXT-X-TARGETDURATION') ||
+        line.startsWith('#EXT-X-MEDIA-SEQUENCE') ||
+        line.startsWith('#EXT-X-PROGRAM-DATE-TIME') ||
+        line.startsWith('#EXT-X-KEY')
       );
     };
 
@@ -2948,6 +2987,14 @@ export function PlayPageClient({
         inAdBlock = true;
         skippedDuration = 0;
         resumeAfterSegment = false;
+        const rangeDuration = line.startsWith('#EXT-X-DATERANGE')
+          ? parseDateRangeDuration(line)
+          : null;
+        if (rangeDuration && Number.isFinite(rangeDuration)) {
+          adDurationLimit = Math.max(3, Math.round(rangeDuration));
+        } else {
+          adDurationLimit = 3;
+        }
         continue;
       }
 
@@ -2957,13 +3004,17 @@ export function PlayPageClient({
       }
 
       if (inAdBlock) {
+        if (shouldAlwaysKeep(line)) {
+          output.push(rawLine);
+          continue;
+        }
         if (line.startsWith('#EXTINF:')) {
           const match = line.match(/#EXTINF:([\d.]+)/);
           const duration = match ? Number(match[1]) : 0;
           if (Number.isFinite(duration)) {
             skippedDuration += duration;
           }
-          if (skippedDuration >= 3) {
+          if (skippedDuration >= adDurationLimit) {
             resumeAfterSegment = true;
           }
           continue;
