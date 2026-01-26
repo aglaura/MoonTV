@@ -81,6 +81,8 @@ type DoubanCeleb = {
   name_en?: string;
   url: string;
   image?: string;
+  bio?: string;
+  info?: Record<string, string>;
 };
 
 function getApiKey() {
@@ -136,6 +138,65 @@ function mapLangKey(key: string) {
 
 function hasCjk(value: string) {
   return /[\u4e00-\u9fff]/.test(value);
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+function stripHtml(value: string) {
+  if (!value) return '';
+  return decodeHtml(value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+}
+
+function extractMetaContent(html: string, name: string) {
+  const re = new RegExp(
+    `<meta[^>]+${name.includes(':') ? 'property' : 'name'}=[\"']${name}[\"'][^>]*content=[\"']([^\"']+)[\"']`,
+    'i'
+  );
+  const match = html.match(re);
+  return match ? decodeHtml(match[1]).trim() : '';
+}
+
+function extractDoubanBio(html: string) {
+  const ogDesc = extractMetaContent(html, 'og:description');
+  if (ogDesc) return ogDesc;
+  const metaDesc = extractMetaContent(html, 'description');
+  if (metaDesc) return metaDesc;
+  const longMatch =
+    html.match(/<span[^>]*class=["']all hidden["'][^>]*>([\s\S]*?)<\/span>/i) ||
+    html.match(/<span[^>]*class=["']short["'][^>]*>([\s\S]*?)<\/span>/i);
+  if (longMatch) {
+    const text = stripHtml(longMatch[1]);
+    if (text) return text;
+  }
+  return '';
+}
+
+function extractDoubanInfo(html: string) {
+  const infoMatch =
+    html.match(/<div[^>]*class=["']info["'][^>]*>([\s\S]*?)<\/div>/i) ||
+    html.match(/<ul[^>]*class=["']celebrity-info["'][^>]*>([\s\S]*?)<\/ul>/i);
+  const infoHtml = infoMatch ? infoMatch[1] : '';
+  if (!infoHtml) return {};
+  const info: Record<string, string> = {};
+  const regex =
+    /<span[^>]*class=["']pl["'][^>]*>([^<]+)<\/span>\s*([\s\S]*?)(?:<br\s*\/?>|<\/li>|<\/p>|<\/div>)/gi;
+  let match: RegExpExecArray | null = null;
+  while ((match = regex.exec(infoHtml))) {
+    const key = stripHtml(match[1]).replace(/[:：]\s*$/, '');
+    const value = stripHtml(match[2]);
+    if (key && value && !info[key]) {
+      info[key] = value;
+    }
+  }
+  return info;
 }
 
 async function fetchWikidataEntityIdByImdb(imdbId: string) {
@@ -338,6 +399,32 @@ async function fetchDoubanCelebrity(names: string[]): Promise<DoubanCeleb | null
   return null;
 }
 
+async function fetchDoubanCelebrityDetails(celeb: DoubanCeleb) {
+  if (!celeb?.url) return celeb;
+  try {
+    const res = await fetch(celeb.url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        Referer: 'https://movie.douban.com/',
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) return celeb;
+    const html = await res.text();
+    const bio = extractDoubanBio(html);
+    const info = extractDoubanInfo(html);
+    return {
+      ...celeb,
+      bio: bio || celeb.bio,
+      info: Object.keys(info).length ? info : celeb.info,
+    };
+  } catch {
+    return celeb;
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const rawId = searchParams.get('id');
@@ -403,10 +490,13 @@ export async function GET(req: Request) {
       detail.name || '',
       detail.imdb_id || ''
     );
-    const doubanCeleb = await fetchDoubanCelebrity([
+    const doubanCandidate = await fetchDoubanCelebrity([
       detail.name || '',
       ...tmdbAlsoKnown,
     ]);
+    const doubanCeleb = doubanCandidate
+      ? await fetchDoubanCelebrityDetails(doubanCandidate)
+      : null;
     const wikipediaSummaries: Record<string, WikipediaSummary> = {};
     const summaryTargets = ['en', 'zh-Hans', 'zh-Hant', 'ja', 'ko'];
     await Promise.all(

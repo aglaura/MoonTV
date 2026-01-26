@@ -44,6 +44,8 @@ type PersonInfo = {
     name_en?: string;
     url: string;
     image?: string;
+    bio?: string;
+    info?: Record<string, string>;
   } | null;
 };
 
@@ -402,7 +404,30 @@ export default function PersonPage() {
                   {wikidataDescription}
                 </p>
               )}
+              {douban?.bio && (
+                <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-line">
+                  {tt('Douban bio', '豆瓣简介', '豆瓣簡介')}: {douban.bio}
+                </p>
+              )}
             </section>
+
+            {douban?.info && Object.keys(douban.info).length > 0 && (
+              <section className="rounded-3xl border border-gray-200/70 dark:border-gray-800 bg-white/85 dark:bg-gray-900/70 p-6 md:p-8">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  {tt('Douban details', '豆瓣信息', '豆瓣資訊')}
+                </h2>
+                <div className="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-300">
+                  {Object.entries(douban.info).map(([key, value]) => (
+                    <span
+                      key={key}
+                      className="px-3 py-1 rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-white/5"
+                    >
+                      {key}: {value}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {wikipediaSummary && (
               <section className="rounded-3xl border border-gray-200/70 dark:border-gray-800 bg-white/85 dark:bg-gray-900/70 p-6 md:p-8">
