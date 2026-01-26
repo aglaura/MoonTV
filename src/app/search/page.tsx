@@ -2,6 +2,7 @@
 
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { resolveUiLocale, tt } from '@/lib/i18n.client';
@@ -65,6 +66,11 @@ function HomeClient() {
   >([]);
   const [wikiLoading, setWikiLoading] = useState(false);
   const [wikiError, setWikiError] = useState<string | null>(null);
+  const [ytResults, setYtResults] = useState<
+    Array<{ id: string; title: string; channel: string; thumbnail: string }>
+  >([]);
+  const [ytLoading, setYtLoading] = useState(false);
+  const [ytError, setYtError] = useState<string | null>(null);
   const initializedHistoryRef = useRef(false);
   const { isKidsMode } = useKidsMode();
 
@@ -159,6 +165,9 @@ function HomeClient() {
         setWikiResults([]);
         setWikiError(null);
         setWikiLoading(false);
+        setYtResults([]);
+        setYtError(null);
+        setYtLoading(false);
         return;
       }
 
@@ -209,6 +218,9 @@ function HomeClient() {
           setWikiError(null);
           setWikiLoading(true);
           setWikiResults([]);
+          setYtError(null);
+          setYtLoading(true);
+          setYtResults([]);
           const primaryResults = await searchOnce(trimmed);
           let combinedResults = primaryResults;
 
@@ -278,6 +290,39 @@ function HomeClient() {
           } finally {
             setWikiLoading(false);
           }
+
+          try {
+            const response = await fetch(
+              `/api/youtube/search?q=${encodeURIComponent(
+                wikiQuery
+              )}&lang=${encodeURIComponent(wikiLang)}`
+            );
+            if (!response.ok) {
+              throw new Error(`YouTube ${response.status}`);
+            }
+            const data = (await response.json()) as {
+              results?: Array<{
+                id: string;
+                title: string;
+                channel: string;
+                thumbnail: string;
+              }>;
+            };
+            setYtResults(Array.isArray(data.results) ? data.results : []);
+          } catch (err) {
+            setYtError(
+              err instanceof Error
+                ? err.message
+                : tt(
+                    'YouTube search failed',
+                    'YouTube 搜索失败',
+                    'YouTube 搜尋失敗'
+                  )
+            );
+            setYtResults([]);
+          } finally {
+            setYtLoading(false);
+          }
         } catch (err) {
           setSearchError(
             err instanceof Error
@@ -288,6 +333,8 @@ function HomeClient() {
           setHasSearched(true);
           setWikiResults([]);
           setWikiLoading(false);
+          setYtResults([]);
+          setYtLoading(false);
         } finally {
           setSearching(false);
         }
@@ -681,6 +728,92 @@ function HomeClient() {
                       from='search'
                     />
                   ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(ytLoading ||
+              ytError ||
+              (hasSearched && ytResults.length > 0)) && (
+              <div className='mt-8'>
+                <div className='flex items-center justify-between mb-3'>
+                  <h2 className='text-lg font-semibold text-gray-800 dark:text-gray-200'>
+                    {tt('YouTube MVs', 'YouTube 音乐视频', 'YouTube 音樂視頻')}
+                  </h2>
+                  <span className='text-xs text-gray-500 dark:text-gray-400'>
+                    {tt('Music videos', '音乐视频', '音樂視頻')}
+                  </span>
+                </div>
+                {ytLoading && (
+                  <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+                    {Array.from({ length: 6 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className='h-28 rounded-xl bg-gray-200 dark:bg-gray-800 animate-pulse'
+                      />
+                    ))}
+                  </div>
+                )}
+                {ytError && (
+                  <p className='text-sm text-red-500 dark:text-red-400'>
+                    {ytError}
+                  </p>
+                )}
+                {!ytLoading && !ytError && ytResults.length === 0 && (
+                  <p className='text-sm text-gray-500 dark:text-gray-400'>
+                    {tt(
+                      'No music videos found.',
+                      '没有找到相关音乐视频。',
+                      '沒有找到相關音樂視頻。'
+                    )}
+                  </p>
+                )}
+                {!ytLoading && ytResults.length > 0 && (
+                  <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                    {ytResults.map((item) => {
+                      const params = new URLSearchParams();
+                      params.set('id', item.id);
+                      params.set('title', item.title);
+                      if (item.channel) params.set('artist', item.channel);
+                      const href = `/play/youtube?${params.toString()}`;
+                      return (
+                        <Link
+                          key={item.id}
+                          href={href}
+                          className='group flex gap-3 rounded-xl border border-gray-200/70 dark:border-gray-800 bg-white/80 dark:bg-gray-900/60 p-3 hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors'
+                        >
+                          <div className='h-20 w-32 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-800 flex-shrink-0'>
+                            {item.thumbnail ? (
+                              <img
+                                src={item.thumbnail}
+                                alt={item.title}
+                                className='h-full w-full object-cover'
+                              />
+                            ) : (
+                              <div className='h-full w-full flex items-center justify-center text-[10px] text-gray-400'>
+                                {tt('No image', '无图片', '無圖片')}
+                              </div>
+                            )}
+                          </div>
+                          <div className='min-w-0'>
+                            <div className='text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2'>
+                              {item.title}
+                            </div>
+                            <div className='mt-1 text-xs text-gray-600 dark:text-gray-300 line-clamp-1'>
+                              {item.channel || 'YouTube'}
+                            </div>
+                            <div className='mt-1 text-[11px] text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity'>
+                              {tt(
+                                'Play on Moontv',
+                                '在 Moontv 播放',
+                                '在 Moontv 播放'
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
