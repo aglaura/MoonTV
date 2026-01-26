@@ -6,6 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import PageLayout from '@/components/PageLayout';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
+import {
+  buildEmptyYoutubeMusicState,
+  MAX_YOUTUBE_MUSIC_LIST_SIZE,
+  normalizeYoutubeMusicState,
+} from '@/lib/youtubeMusicList';
 
 const MUSIC_LIST_EVENT = 'moontv:youtube-music-list';
 const YT_API_SRC = 'https://www.youtube.com/iframe_api';
@@ -46,7 +51,9 @@ export default function YoutubePlayPage() {
       return null;
     }
   }, []);
-  const [musicList, setMusicList] = useState<MusicVideo[]>([]);
+  const [musicState, setMusicState] = useState(
+    buildEmptyYoutubeMusicState()
+  );
   const [inList, setInList] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<MusicVideo>({
     id: videoId,
@@ -60,6 +67,10 @@ export default function YoutubePlayPage() {
   const listRef = useRef<MusicVideo[]>([]);
   const useListRef = useRef(false);
   const indexRef = useRef(0);
+  const activeList = useMemo(
+    () => musicState.lists[musicState.activeIndex] || [],
+    [musicState]
+  );
 
   useEffect(() => {
     if (!videoId) return;
@@ -75,26 +86,24 @@ export default function YoutubePlayPage() {
     try {
       const raw = localStorage.getItem(storageKey) || '';
       if (raw) {
-        const parsed = JSON.parse(raw) as MusicVideo[];
-        if (Array.isArray(parsed)) {
-          setMusicList(parsed);
-        }
+        const parsed = JSON.parse(raw) as unknown;
+        setMusicState(normalizeYoutubeMusicState(parsed));
       } else {
-        setMusicList([]);
+        setMusicState(buildEmptyYoutubeMusicState());
       }
     } catch {
-      setMusicList([]);
+      setMusicState(buildEmptyYoutubeMusicState());
     }
     if (username) {
       fetch('/api/youtube/music-list')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (!data?.list || !Array.isArray(data.list)) return;
-          const cleaned = data.list.filter(
-            (item: MusicVideo) => item?.id && item?.title
+          if (!data) return;
+          const nextState = normalizeYoutubeMusicState(
+            data?.state ?? data?.list ?? data
           );
-          setMusicList(cleaned);
-          localStorage.setItem(storageKey, JSON.stringify(cleaned));
+          setMusicState(nextState);
+          localStorage.setItem(storageKey, JSON.stringify(nextState));
         })
         .catch(() => {
           // ignore
@@ -107,18 +116,18 @@ export default function YoutubePlayPage() {
       setInList(false);
       return;
     }
-    setInList(musicList.some((item) => item.id === currentVideo.id));
-  }, [musicList, currentVideo.id]);
+    setInList(activeList.some((item) => item.id === currentVideo.id));
+  }, [activeList, currentVideo.id]);
 
   useEffect(() => {
-    listRef.current = musicList;
-    const idx = musicList.findIndex((item) => item.id === currentVideo.id);
-    const useList = idx >= 0 && musicList.length > 0;
+    listRef.current = activeList;
+    const idx = activeList.findIndex((item) => item.id === currentVideo.id);
+    const useList = idx >= 0 && activeList.length > 0;
     useListRef.current = useList;
     if (useList) {
       setCurrentIndex(idx);
       indexRef.current = idx;
-      const matched = musicList[idx];
+      const matched = activeList[idx];
       if (matched && (matched.title || matched.artist)) {
         setCurrentVideo((prev) => ({
           ...prev,
@@ -127,20 +136,21 @@ export default function YoutubePlayPage() {
         }));
       }
     }
-  }, [currentVideo.id, musicList]);
+  }, [activeList, currentVideo.id]);
 
   useEffect(() => {
     indexRef.current = currentIndex;
   }, [currentIndex]);
 
-  const persistList = useCallback(
-    (next: MusicVideo[]) => {
-      setMusicList(next);
+  const persistState = useCallback(
+    (nextState: ReturnType<typeof normalizeYoutubeMusicState>) => {
+      const normalized = normalizeYoutubeMusicState(nextState);
+      setMusicState(normalized);
       if (typeof window !== 'undefined') {
-        localStorage.setItem(storageKey, JSON.stringify(next));
+        localStorage.setItem(storageKey, JSON.stringify(normalized));
         window.dispatchEvent(
           new CustomEvent(MUSIC_LIST_EVENT, {
-            detail: { key: storageKey, list: next },
+            detail: { key: storageKey, state: normalized },
           })
         );
       }
@@ -148,13 +158,26 @@ export default function YoutubePlayPage() {
         fetch('/api/youtube/music-list', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ list: next }),
+          body: JSON.stringify({ state: normalized }),
         }).catch(() => {
           // ignore
         });
       }
     },
     [storageKey, username]
+  );
+
+  const updateActiveList = useCallback(
+    (nextList: MusicVideo[]) => {
+      const nextState = normalizeYoutubeMusicState({
+        lists: musicState.lists.map((list, idx) =>
+          idx === musicState.activeIndex ? nextList : list
+        ),
+        activeIndex: musicState.activeIndex,
+      });
+      persistState(nextState);
+    },
+    [musicState, persistState]
   );
 
   const toggleInList = useCallback(() => {
@@ -165,15 +188,33 @@ export default function YoutubePlayPage() {
       artist: currentVideo.artist || artist || undefined,
     };
     if (inList) {
-      persistList(musicList.filter((item) => item.id !== currentVideo.id));
+      updateActiveList(activeList.filter((item) => item.id !== currentVideo.id));
     } else {
       const next = [
         entry,
-        ...musicList.filter((item) => item.id !== currentVideo.id),
-      ];
-      persistList(next);
+        ...activeList.filter((item) => item.id !== currentVideo.id),
+      ].slice(0, MAX_YOUTUBE_MUSIC_LIST_SIZE);
+      updateActiveList(next);
     }
-  }, [artist, currentVideo, displayTitle, inList, musicList, persistList]);
+  }, [activeList, artist, currentVideo, displayTitle, inList, updateActiveList]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleListChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; state?: unknown }>)
+        .detail;
+      if (detail?.key && detail.key !== storageKey) return;
+      const nextState = normalizeYoutubeMusicState(detail?.state);
+      setMusicState(nextState);
+    };
+    window.addEventListener(MUSIC_LIST_EVENT, handleListChange as EventListener);
+    return () => {
+      window.removeEventListener(
+        MUSIC_LIST_EVENT,
+        handleListChange as EventListener
+      );
+    };
+  }, [storageKey]);
 
   useEffect(() => {
     if (!currentVideo.id || typeof window === 'undefined') return;

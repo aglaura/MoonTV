@@ -1,8 +1,18 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
+import {
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SourceValuation,
+  YoutubeMusicListState,
+} from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
+import {
+  buildEmptyYoutubeMusicState,
+  normalizeYoutubeMusicState,
+} from './youtubeMusicList';
 
 // 搜索历史最大条数
 const SEARCH_HISTORY_LIMIT = 20;
@@ -520,7 +530,7 @@ export class D1Storage implements IStorage {
     }
   }
 
-  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicListState> {
     try {
       await this.ensureYoutubeMusicTable();
       const db = await this.getDatabase();
@@ -528,26 +538,23 @@ export class D1Storage implements IStorage {
         .prepare('SELECT list FROM youtube_music_list WHERE username = ?')
         .bind(userName)
         .first<{ list: string }>();
-      if (!result?.list) return [];
-      const parsed = JSON.parse(result.list) as YoutubeMusicVideo[];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((item) => item?.id && item?.title);
+      if (!result?.list) return buildEmptyYoutubeMusicState();
+      const parsed = JSON.parse(result.list) as unknown;
+      return normalizeYoutubeMusicState(parsed);
     } catch (err) {
       console.error('Failed to get YouTube music list:', err);
-      return [];
+      return buildEmptyYoutubeMusicState();
     }
   }
 
   async setYoutubeMusicList(
     userName: string,
-    list: YoutubeMusicVideo[]
+    list: YoutubeMusicListState
   ): Promise<void> {
     try {
       await this.ensureYoutubeMusicTable();
       const db = await this.getDatabase();
-      const payload = Array.isArray(list)
-        ? list.filter((item) => item?.id && item?.title)
-        : [];
+      const payload = normalizeYoutubeMusicState(list);
       await db
         .prepare(
           'INSERT OR REPLACE INTO youtube_music_list (username, list, updated_at) VALUES (?, ?, ?)'

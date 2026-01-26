@@ -3,7 +3,17 @@
 import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
+import {
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SourceValuation,
+  YoutubeMusicListState,
+} from './types';
+import {
+  buildEmptyYoutubeMusicState,
+  normalizeYoutubeMusicState,
+} from './youtubeMusicList';
 import { getQualityRank, parseSpeedToKBps } from './utils';
 
 const SEARCH_HISTORY_LIMIT = 20;
@@ -388,27 +398,24 @@ export class RedisStorage implements IStorage {
     }
   }
 
-  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicListState> {
     const raw = await withRetry(() =>
       this.client.get(this.ytMusicKey(userName))
     );
-    if (!raw) return [];
+    if (!raw) return buildEmptyYoutubeMusicState();
     try {
-      const parsed = JSON.parse(raw) as YoutubeMusicVideo[];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((item) => item?.id && item?.title);
+      const parsed = JSON.parse(raw) as unknown;
+      return normalizeYoutubeMusicState(parsed);
     } catch {
-      return [];
+      return buildEmptyYoutubeMusicState();
     }
   }
 
   async setYoutubeMusicList(
     userName: string,
-    list: YoutubeMusicVideo[]
+    list: YoutubeMusicListState
   ): Promise<void> {
-    const payload = Array.isArray(list)
-      ? list.filter((item) => item?.id && item?.title)
-      : [];
+    const payload = normalizeYoutubeMusicState(list);
     await withRetry(() =>
       this.client.set(this.ytMusicKey(userName), JSON.stringify(payload))
     );

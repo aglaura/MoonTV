@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import type { ScreenMode } from '@/lib/screenMode';
+import {
+  buildEmptyYoutubeMusicState,
+  normalizeYoutubeMusicState,
+} from '@/lib/youtubeMusicList';
 
 type MusicVideo = {
   id: string;
@@ -96,7 +100,9 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
   const [playlistVideos, setPlaylistVideos] = useState<MusicVideo[]>([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [playlistError, setPlaylistError] = useState('');
-  const [customVideos, setCustomVideos] = useState<MusicVideo[]>([]);
+  const [musicState, setMusicState] = useState(
+    buildEmptyYoutubeMusicState()
+  );
 
   const videos = useMemo(() => {
     const runtimeVideos = readRuntimeVideos();
@@ -128,12 +134,8 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
     try {
       const listRaw = localStorage.getItem(listKey) || '';
       if (listRaw) {
-        const parsed = JSON.parse(listRaw) as MusicVideo[];
-        if (Array.isArray(parsed)) {
-          setCustomVideos(
-            parsed.filter((item) => item?.id && item?.title)
-          );
-        }
+        const parsed = JSON.parse(listRaw) as unknown;
+        setMusicState(normalizeYoutubeMusicState(parsed));
       }
     } catch {
       // ignore
@@ -146,12 +148,12 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
           return res.json();
         })
         .then((data) => {
-          if (!data?.list || !Array.isArray(data.list)) return;
-          const cleaned = data.list.filter(
-            (item: MusicVideo) => item?.id && item?.title
+          if (!data) return;
+          const nextState = normalizeYoutubeMusicState(
+            data?.state ?? data?.list ?? data
           );
-          setCustomVideos(cleaned);
-          localStorage.setItem(listKey, JSON.stringify(cleaned));
+          setMusicState(nextState);
+          localStorage.setItem(listKey, JSON.stringify(nextState));
         })
         .catch(() => {
           // ignore
@@ -165,11 +167,11 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
       setPlaylistId(next);
     };
     const handleListChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ key?: string; list?: MusicVideo[] }>)
+      const detail = (event as CustomEvent<{ key?: string; state?: unknown }>)
         .detail;
       if (detail?.key && detail.key !== listKey) return;
-      const nextList = Array.isArray(detail?.list) ? detail.list : [];
-      setCustomVideos(nextList.filter((item) => item?.id && item?.title));
+      const nextState = normalizeYoutubeMusicState(detail?.state);
+      setMusicState(nextState);
     };
     window.addEventListener(PLAYLIST_EVENT, handlePlaylistChange as EventListener);
     window.addEventListener(MUSIC_LIST_EVENT, handleListChange as EventListener);
@@ -237,9 +239,11 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
     };
   }, [playlistId]);
 
+  const activeList =
+    musicState.lists[musicState.activeIndex] || [];
   const effectiveVideos =
-    customVideos.length > 0
-      ? customVideos
+    activeList.length > 0
+      ? activeList
       : playlistVideos.length > 0
       ? playlistVideos
       : videos;

@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
+import {
+  buildEmptyYoutubeMusicState,
+  normalizeYoutubeMusicState,
+} from '@/lib/youtubeMusicList';
 
 type MusicVideo = {
   id: string;
@@ -48,34 +52,38 @@ export default function MusicPage() {
     }
   }, []);
   const storageKey = useMemo(() => buildMusicListStorageKey(username), [username]);
-  const [musicList, setMusicList] = useState<MusicVideo[]>([]);
+  const [musicState, setMusicState] = useState(
+    buildEmptyYoutubeMusicState()
+  );
+  const activeList = useMemo(
+    () => musicState.lists[musicState.activeIndex] || [],
+    [musicState]
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
       const raw = localStorage.getItem(storageKey) || '';
       if (raw) {
-        const parsed = JSON.parse(raw) as MusicVideo[];
-        if (Array.isArray(parsed)) {
-          setMusicList(parsed.filter((item) => item?.id && item?.title));
-        }
+        const parsed = JSON.parse(raw) as unknown;
+        setMusicState(normalizeYoutubeMusicState(parsed));
       } else {
-        setMusicList([]);
+        setMusicState(buildEmptyYoutubeMusicState());
       }
     } catch {
-      setMusicList([]);
+      setMusicState(buildEmptyYoutubeMusicState());
     }
 
     if (username) {
       fetch('/api/youtube/music-list')
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
-          if (!data?.list || !Array.isArray(data.list)) return;
-          const cleaned = data.list.filter(
-            (item: MusicVideo) => item?.id && item?.title
+          if (!data) return;
+          const nextState = normalizeYoutubeMusicState(
+            data?.state ?? data?.list ?? data
           );
-          setMusicList(cleaned);
-          localStorage.setItem(storageKey, JSON.stringify(cleaned));
+          setMusicState(nextState);
+          localStorage.setItem(storageKey, JSON.stringify(nextState));
         })
         .catch(() => {
           // ignore
@@ -94,11 +102,11 @@ export default function MusicPage() {
       }
     };
     const handleCustom = (event: Event) => {
-      const detail = (event as CustomEvent<{ key?: string; list?: MusicVideo[] }>)
+      const detail = (event as CustomEvent<{ key?: string; state?: unknown }>)
         .detail;
       if (detail?.key && detail.key !== storageKey) return;
-      const nextList = Array.isArray(detail?.list) ? detail.list : [];
-      setMusicList(nextList.filter((item) => item?.id && item?.title));
+      const nextState = normalizeYoutubeMusicState(detail?.state);
+      setMusicState(nextState);
     };
     window.addEventListener('storage', handleStorage);
     window.addEventListener(MUSIC_LIST_EVENT, handleCustom as EventListener);
@@ -107,6 +115,42 @@ export default function MusicPage() {
       window.removeEventListener(MUSIC_LIST_EVENT, handleCustom as EventListener);
     };
   }, [storageKey, username]);
+
+  const persistState = useCallback(
+    (nextState: ReturnType<typeof normalizeYoutubeMusicState>) => {
+      const normalized = normalizeYoutubeMusicState(nextState);
+      setMusicState(normalized);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, JSON.stringify(normalized));
+        window.dispatchEvent(
+          new CustomEvent(MUSIC_LIST_EVENT, {
+            detail: { key: storageKey, state: normalized },
+          })
+        );
+      }
+      if (username) {
+        fetch('/api/youtube/music-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: normalized }),
+        }).catch(() => {
+          // ignore
+        });
+      }
+    },
+    [storageKey, username]
+  );
+
+  const handleSelectList = useCallback(
+    (index: number) => {
+      const nextState = normalizeYoutubeMusicState({
+        lists: musicState.lists,
+        activeIndex: index,
+      });
+      persistState(nextState);
+    },
+    [musicState.lists, persistState]
+  );
 
   return (
     <PageLayout activePath="/music">
@@ -124,7 +168,28 @@ export default function MusicPage() {
           </p>
         </div>
 
-        {musicList.length === 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {[0, 1, 2].map((idx) => {
+            const count = musicState.lists[idx]?.length || 0;
+            const active = idx === musicState.activeIndex;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSelectList(idx)}
+                className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                  active
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-white/80 dark:bg-gray-900/40 text-gray-600 dark:text-gray-300 border-gray-200/70 dark:border-gray-700/60 hover:border-emerald-400'
+                }`}
+              >
+                {t('List', '列表', '清單')} {idx + 1} · {count}/30
+              </button>
+            );
+          })}
+        </div>
+
+        {activeList.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/40 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
             {t(
               'No music videos yet. Add from the player or search results.',
@@ -134,7 +199,7 @@ export default function MusicPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {musicList.map((video) => (
+            {activeList.map((video) => (
               <Link
                 key={video.id}
                 href={buildPlayHref(video)}

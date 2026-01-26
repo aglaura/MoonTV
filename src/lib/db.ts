@@ -3,7 +3,13 @@
 import { AdminConfig } from './admin.types';
 import { D1Storage } from './d1.db';
 import { RedisStorage } from './redis.db';
-import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
+import {
+  Favorite,
+  IStorage,
+  PlayRecord,
+  SourceValuation,
+  YoutubeMusicListState,
+} from './types';
 import {
   formatSpeedFromKBps,
   getQualityLabelFromRank,
@@ -438,16 +444,16 @@ export class DbManager {
     }
   }
 
-  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicListState> {
     if (typeof (this.storage as any).getYoutubeMusicList === 'function') {
       return (this.storage as any).getYoutubeMusicList(userName);
     }
-    return [];
+    return { lists: [[], [], []], activeIndex: 0 };
   }
 
   async saveYoutubeMusicList(
     userName: string,
-    list: YoutubeMusicVideo[]
+    list: YoutubeMusicListState
   ): Promise<void> {
     if (typeof (this.storage as any).setYoutubeMusicList === 'function') {
       await (this.storage as any).setYoutubeMusicList(userName, list);

@@ -56,6 +56,11 @@ export interface YoutubeMusicVideo {
   artist?: string;
 }
 
+export interface YoutubeMusicListState {
+  lists: YoutubeMusicVideo[][];
+  activeIndex: number;
+}
+
 // 存儲介面
 export interface IStorage {
   // 播放紀錄相關
@@ -105,10 +110,10 @@ export interface IStorage {
   // YouTube MV 列表
   getYoutubeMusicList?(
     userName: string
-  ): Promise<YoutubeMusicVideo[]>;
+  ): Promise<YoutubeMusicListState>;
   setYoutubeMusicList?(
     userName: string,
-    list: YoutubeMusicVideo[]
+    list: YoutubeMusicListState
   ): Promise<void>;
   deleteYoutubeMusicList?(userName: string): Promise<void>;
 }
