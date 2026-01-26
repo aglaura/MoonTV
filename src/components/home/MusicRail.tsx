@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import type { ScreenMode } from '@/lib/screenMode';
 
 type MusicVideo = {
@@ -16,6 +17,9 @@ type MusicRailProps = {
   tt: (en: string, zhHans: string, zhHant: string) => string;
 };
 
+const PLAYLIST_EVENT = 'moontv:youtube-playlist';
+const MUSIC_LIST_EVENT = 'moontv:youtube-music-list';
+
 const MUSIC_VIDEOS: MusicVideo[] = [
   { id: 'bu7nU9Mhpyo', title: '告白气球', artist: '周杰伦' },
   { id: 'T4SimnaiktU', title: '光年之外', artist: 'G.E.M. 邓紫棋' },
@@ -26,6 +30,23 @@ const MUSIC_VIDEOS: MusicVideo[] = [
   { id: 'lSNRU4J73H4', title: '空白格', artist: '杨宗纬' },
   { id: 'RP4Ufhq8DI0', title: '越过山丘', artist: '杨宗纬' },
 ];
+
+const buildPlaylistStorageKey = (username?: string | null) =>
+  username && username.trim().length > 0
+    ? `youtubePlaylist:${username.trim()}`
+    : 'youtubePlaylist';
+
+const buildMusicListStorageKey = (username?: string | null) =>
+  username && username.trim().length > 0
+    ? `youtubeMusicList:${username.trim()}`
+    : 'youtubeMusicList';
+
+const readRuntimePlaylistId = (): string => {
+  if (typeof window === 'undefined') return '';
+  const runtime = (window as { RUNTIME_CONFIG?: { YOUTUBE_PLAYLIST?: string } })
+    .RUNTIME_CONFIG;
+  return (runtime?.YOUTUBE_PLAYLIST || '').trim();
+};
 
 const readRuntimeVideos = (): MusicVideo[] => {
   if (typeof window === 'undefined') return [];
@@ -71,6 +92,11 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
   const wrapperClass = isTv
     ? 'rounded-2xl border border-white/10 bg-white/5 p-4'
     : 'rounded-2xl border border-gray-200/50 dark:border-gray-800 bg-white/60 dark:bg-gray-900/50 p-4';
+  const [playlistId, setPlaylistId] = useState('');
+  const [playlistVideos, setPlaylistVideos] = useState<MusicVideo[]>([]);
+  const [playlistLoading, setPlaylistLoading] = useState(false);
+  const [playlistError, setPlaylistError] = useState('');
+  const [customVideos, setCustomVideos] = useState<MusicVideo[]>([]);
 
   const videos = useMemo(() => {
     const runtimeVideos = readRuntimeVideos();
@@ -85,6 +111,120 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
     return `/play/youtube?${params.toString()}`;
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let username: string | null = null;
+    try {
+      username = getAuthInfoFromBrowserCookie()?.username || null;
+    } catch {
+      username = null;
+    }
+    const storageKey = buildPlaylistStorageKey(username);
+    const listKey = buildMusicListStorageKey(username);
+    const saved = localStorage.getItem(storageKey) || '';
+    const fallback = readRuntimePlaylistId();
+    const nextId = (saved || fallback).trim();
+    setPlaylistId(nextId);
+    try {
+      const listRaw = localStorage.getItem(listKey) || '';
+      if (listRaw) {
+        const parsed = JSON.parse(listRaw) as MusicVideo[];
+        if (Array.isArray(parsed)) {
+          setCustomVideos(
+            parsed.filter((item) => item?.id && item?.title)
+          );
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    const handlePlaylistChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: string; key?: string }>).detail;
+      if (detail?.key && detail.key !== storageKey) return;
+      const next = (detail?.id || '').trim();
+      setPlaylistId(next);
+    };
+    const handleListChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; list?: MusicVideo[] }>)
+        .detail;
+      if (detail?.key && detail.key !== listKey) return;
+      const nextList = Array.isArray(detail?.list) ? detail.list : [];
+      setCustomVideos(nextList.filter((item) => item?.id && item?.title));
+    };
+    window.addEventListener(PLAYLIST_EVENT, handlePlaylistChange as EventListener);
+    window.addEventListener(MUSIC_LIST_EVENT, handleListChange as EventListener);
+    return () => {
+      window.removeEventListener(
+        PLAYLIST_EVENT,
+        handlePlaylistChange as EventListener
+      );
+      window.removeEventListener(
+        MUSIC_LIST_EVENT,
+        handleListChange as EventListener
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!playlistId) {
+      setPlaylistVideos([]);
+      setPlaylistError('');
+      setPlaylistLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const run = async () => {
+      try {
+        setPlaylistLoading(true);
+        setPlaylistError('');
+        const res = await fetch(
+          `/api/youtube/playlist?id=${encodeURIComponent(playlistId)}`
+        );
+        if (!res.ok) {
+          throw new Error(`YouTube ${res.status}`);
+        }
+        const data = (await res.json()) as {
+          results?: Array<{ id: string; title: string; channel: string }>;
+        };
+        if (!cancelled) {
+          const items = Array.isArray(data.results) ? data.results : [];
+          setPlaylistVideos(
+            items
+              .map((item) => ({
+                id: item.id,
+                title: item.title,
+                artist: item.channel || undefined,
+              }))
+              .filter((item) => item.id && item.title)
+          );
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setPlaylistError(
+            err instanceof Error ? err.message : 'YouTube playlist error'
+          );
+          setPlaylistVideos([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPlaylistLoading(false);
+        }
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [playlistId]);
+
+  const effectiveVideos =
+    customVideos.length > 0
+      ? customVideos
+      : playlistVideos.length > 0
+      ? playlistVideos
+      : videos;
+
   return (
     <>
       <section className={wrapperClass}>
@@ -98,13 +238,20 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
             {tt('YouTube embeds', 'YouTube 嵌入', 'YouTube 嵌入')}
           </span>
         </div>
+        {playlistId && (
+          <div className={`mb-2 text-xs ${isTv ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'}`}>
+            {tt('Playlist', '播放列表', '播放清單')}: {playlistId}
+            {playlistLoading && ` · ${tt('Loading…', '加载中…', '載入中…')}`}
+            {playlistError && ` · ${tt('Error', '错误', '錯誤')}: ${playlistError}`}
+          </div>
+        )}
         <div className="flex gap-4 overflow-x-auto pb-3 px-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {videos.length === 0 ? (
+          {effectiveVideos.length === 0 ? (
             <div className={`text-sm ${isTv ? 'text-white/60' : 'text-gray-500 dark:text-gray-400'}`}>
               {tt('No music videos configured.', '未配置音乐视频。', '未配置音樂視頻。')}
             </div>
           ) : (
-            videos.map((video) => (
+            effectiveVideos.map((video) => (
               <Link
                 key={video.id}
                 href={buildPlayHref(video)}

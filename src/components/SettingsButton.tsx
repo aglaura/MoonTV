@@ -38,6 +38,9 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     imageProxyUrlTitle: 'Image proxy URL',
     imageProxyUrlDesc: 'Only applies when image proxy is enabled',
     imageProxyUrlPlaceholder: 'e.g. https://imageproxy.example.com/?url=',
+    youtubePlaylistTitle: 'YouTube MV playlist',
+    youtubePlaylistDesc: 'Per-user playlist ID for the MV rail',
+    youtubePlaylistPlaceholder: 'e.g. PLxxxxxxxxxxxxxxx',
     footerNote: 'These settings are stored in this browser',
     settingsAria: 'Settings',
     closeAria: 'Close',
@@ -74,6 +77,9 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     imageProxyUrlTitle: '图片代理地址',
     imageProxyUrlDesc: '仅在启用图片代理时生效',
     imageProxyUrlPlaceholder: '例如：https://imageproxy.example.com/?url=',
+    youtubePlaylistTitle: 'YouTube MV 播放列表',
+    youtubePlaylistDesc: '为当前用户设置 MV 播放列表 ID',
+    youtubePlaylistPlaceholder: '例如：PLxxxxxxxxxxxxxxx',
     footerNote: '这些设置保存在本地浏览器中',
     settingsAria: '设置',
     closeAria: '关闭',
@@ -110,6 +116,9 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
     imageProxyUrlTitle: '圖片代理地址',
     imageProxyUrlDesc: '僅在啟用圖片代理時生效',
     imageProxyUrlPlaceholder: '例如：https://imageproxy.example.com/?url=',
+    youtubePlaylistTitle: 'YouTube MV 播放清單',
+    youtubePlaylistDesc: '為目前用戶設定 MV 播放清單 ID',
+    youtubePlaylistPlaceholder: '例如：PLxxxxxxxxxxxxxxx',
     footerNote: '這些設定保存在本地瀏覽器中',
     settingsAria: '設定',
     closeAria: '關閉',
@@ -129,6 +138,13 @@ const LOCALE_TEXTS: Record<string, Record<string, string>> = {
   },
 };
 
+const YOUTUBE_PLAYLIST_EVENT = 'moontv:youtube-playlist';
+
+const buildYoutubePlaylistKey = (username?: string | null) =>
+  username && username.trim().length > 0
+    ? `youtubePlaylist:${username.trim()}`
+    : 'youtubePlaylist';
+
 export const SettingsButton: React.FC = () => {
   const router = useRouter();
   const { screenMode } = useDeviceInfo();
@@ -137,6 +153,7 @@ export const SettingsButton: React.FC = () => {
   const [defaultAggregateSearch, setDefaultAggregateSearch] = useState(true);
   const [doubanProxyUrl, setDoubanProxyUrl] = useState('');
   const [imageProxyUrl, setImageProxyUrl] = useState('');
+  const [youtubePlaylistId, setYoutubePlaylistId] = useState('');
   const [enableOptimization, setEnableOptimization] = useState(true);
   const [enableImageProxy, setEnableImageProxy] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -166,6 +183,10 @@ export const SettingsButton: React.FC = () => {
   }, []);
   const downloadStorageKey = useMemo(
     () => buildDownloadStorageKey(username),
+    [username]
+  );
+  const youtubePlaylistKey = useMemo(
+    () => buildYoutubePlaylistKey(username),
     [username]
   );
 
@@ -228,13 +249,18 @@ export const SettingsButton: React.FC = () => {
         setImageProxyUrl(defaultImageProxy);
       }
 
+      const savedYoutubePlaylist = localStorage.getItem(youtubePlaylistKey);
+      if (savedYoutubePlaylist !== null) {
+        setYoutubePlaylistId(savedYoutubePlaylist);
+      }
+
       const savedEnableOptimization =
         localStorage.getItem('enableOptimization');
       if (savedEnableOptimization !== null) {
         setEnableOptimization(JSON.parse(savedEnableOptimization));
       }
     }
-  }, []);
+  }, [youtubePlaylistKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -290,6 +316,18 @@ export const SettingsButton: React.FC = () => {
     setImageProxyUrl(value);
     if (typeof window !== 'undefined') {
       localStorage.setItem('imageProxyUrl', value);
+    }
+  };
+
+  const handleYoutubePlaylistChange = (value: string) => {
+    setYoutubePlaylistId(value);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(youtubePlaylistKey, value);
+      window.dispatchEvent(
+        new CustomEvent(YOUTUBE_PLAYLIST_EVENT, {
+          detail: { id: value, key: youtubePlaylistKey },
+        })
+      );
     }
   };
 
@@ -350,6 +388,7 @@ export const SettingsButton: React.FC = () => {
     setDoubanProxyUrl('');
     setEnableImageProxy(!!defaultImageProxy);
     setImageProxyUrl(defaultImageProxy);
+    setYoutubePlaylistId('');
 
     // 保存到 localStorage
     if (typeof window !== 'undefined') {
@@ -361,6 +400,12 @@ export const SettingsButton: React.FC = () => {
         JSON.stringify(!!defaultImageProxy)
       );
       localStorage.setItem('imageProxyUrl', defaultImageProxy);
+      localStorage.setItem(youtubePlaylistKey, '');
+      window.dispatchEvent(
+        new CustomEvent(YOUTUBE_PLAYLIST_EVENT, {
+          detail: { id: '', key: youtubePlaylistKey },
+        })
+      );
     }
   };
 
@@ -535,6 +580,25 @@ export const SettingsButton: React.FC = () => {
               value={imageProxyUrl}
               onChange={(e) => handleImageProxyUrlChange(e.target.value)}
               disabled={!enableImageProxy}
+            />
+          </div>
+
+          {/* YouTube MV playlist */}
+          <div className='space-y-3'>
+            <div>
+              <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                {t('youtubePlaylistTitle')}
+              </h4>
+              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                {t('youtubePlaylistDesc')}
+              </p>
+            </div>
+            <input
+              type='text'
+              className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+              placeholder={t('youtubePlaylistPlaceholder')}
+              value={youtubePlaylistId}
+              onChange={(e) => handleYoutubePlaylistChange(e.target.value)}
             />
           </div>
 

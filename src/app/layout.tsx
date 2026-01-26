@@ -119,6 +119,7 @@ export default async function RootLayout({
       ) || '',
     MUX_TOKEN: process.env.NEXT_PUBLIC_MUX_TOKEN || '',
     MUSIC_VIDEOS: process.env.NEXT_PUBLIC_MUSIC_VIDEOS || '',
+    YOUTUBE_PLAYLIST: process.env.NEXT_PUBLIC_YOUTUBE_PLAYLIST || '',
   };
 
   return (
