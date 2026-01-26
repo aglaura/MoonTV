@@ -30,6 +30,8 @@ type PersonInfo = {
   profile: string;
   homepage: string;
   imdbId: string;
+  alsoKnownAs?: string[];
+  nameVariants?: Record<string, string[]>;
 };
 
 type PersonPayload = {
@@ -133,6 +135,17 @@ export default function PersonPage() {
   const person = data?.person;
   const castCredits = data?.credits?.cast ?? [];
   const crewCredits = data?.credits?.crew ?? [];
+  const localizedNames = person?.nameVariants || {};
+  const localeNameOrder: Array<{ key: string; label: string }> = [
+    { key: 'en', label: 'English' },
+    { key: 'zh-Hans', label: '简体中文' },
+    { key: 'zh-Hant', label: '繁體中文' },
+    { key: 'ja', label: '日本語' },
+    { key: 'ko', label: '한국어' },
+    { key: 'fr', label: 'Français' },
+    { key: 'de', label: 'Deutsch' },
+    { key: 'es', label: 'Español' },
+  ];
 
   const profileUrl = person?.profile
     ? processImageUrl(person.profile, { preferCached: true })
@@ -212,6 +225,12 @@ export default function PersonPage() {
                         {person.knownFor}
                       </p>
                     )}
+                    {person.alsoKnownAs && person.alsoKnownAs.length > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                        {tt('Also known as', '别名', '別名')}:{' '}
+                        {person.alsoKnownAs.slice(0, 6).join(' · ')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
                     {person.birthday && (
@@ -230,6 +249,27 @@ export default function PersonPage() {
                       </span>
                     )}
                   </div>
+                  {Object.keys(localizedNames).length > 0 && (
+                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                      <p className="text-xs uppercase tracking-[0.2em] text-gray-500">
+                        {tt('Names in other languages', '多语言名字', '多語言名字')}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {localeNameOrder.map((entry) => {
+                          const names = localizedNames[entry.key];
+                          if (!names || names.length === 0) return null;
+                          return (
+                            <span
+                              key={entry.key}
+                              className="px-3 py-1 rounded-full border border-gray-200/70 dark:border-gray-700/70 bg-white/70 dark:bg-white/5"
+                            >
+                              {entry.label}: {names.slice(0, 2).join(' / ')}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-3 text-sm">
                     {tmdbUrl && (
                       <a
