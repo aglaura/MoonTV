@@ -2906,32 +2906,57 @@ export function PlayPageClient({
     const lines = m3u8Content.split('\n');
     const output: string[] = [];
     let inAdBlock = false;
+    let pendingDiscontinuity = false;
+
+    const isAdStart = (line: string) => {
+      return (
+        line.startsWith('#EXT-X-CUE-OUT') ||
+        line.startsWith('#EXT-X-SCTE35-OUT') ||
+        line.startsWith('#EXT-X-PLACEMENT-OPPORTUNITY') ||
+        line.startsWith('#EXT-OATCLS-SCTE35') ||
+        (line.startsWith('#EXT-X-DATERANGE') &&
+          /CLASS=.*ad|SCTE35-OUT|X-ASSET-URI/i.test(line)) ||
+        line.startsWith('#EXT-X-AD') ||
+        line.startsWith('#EXT-X-COMCAST-AD')
+      );
+    };
+
+    const isAdEnd = (line: string) => {
+      return (
+        line.startsWith('#EXT-X-CUE-IN') ||
+        line.startsWith('#EXT-X-SCTE35-IN')
+      );
+    };
 
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
       const line = rawLine.trim();
 
-      if (
-        line.startsWith('#EXT-X-CUE-OUT') ||
-        (line.startsWith('#EXT-X-DATERANGE') &&
-          /CLASS=.*ad|SCTE35-OUT|X-ASSET-URI/i.test(line))
-      ) {
+      if (isAdStart(line)) {
         inAdBlock = true;
         continue;
       }
 
-      if (line.startsWith('#EXT-X-CUE-IN')) {
+      if (isAdEnd(line)) {
         inAdBlock = false;
+        if (pendingDiscontinuity) {
+          output.push('#EXT-X-DISCONTINUITY');
+          pendingDiscontinuity = false;
+        }
         continue;
       }
 
-      if (inAdBlock && line.startsWith('#EXT-X-DISCONTINUITY')) {
-        inAdBlock = false;
-        output.push(rawLine);
+      if (inAdBlock) {
+        if (line.startsWith('#EXT-X-DISCONTINUITY')) {
+          pendingDiscontinuity = true;
+        }
         continue;
       }
 
-      if (inAdBlock) continue;
+      // Strip any explicit ad markers that aren't part of a block
+      if (isAdStart(line) || isAdEnd(line)) {
+        continue;
+      }
 
       output.push(rawLine);
     }

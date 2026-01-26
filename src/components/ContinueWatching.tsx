@@ -51,6 +51,34 @@ export default function ContinueWatching({
 
   // 处理播放记录数据更新的函数
   const updatePlayRecords = (allRecords: Record<string, PlayRecord>) => {
+    const normalizeTitle = (title?: string) =>
+      (title || '').trim().toLowerCase();
+    const normalizeImdbId = (value?: string | null) => {
+      if (!value) return null;
+      const match = value.match(/(tt\d{5,}|imdbt\d+)/i);
+      return match ? match[0].toLowerCase() : null;
+    };
+    const buildMergeKey = (record: PlayRecord & { key: string }) => {
+      const imdbId = normalizeImdbId(record.imdbId);
+      if (imdbId) return `imdb:${imdbId}`;
+      const doubanId =
+        typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
+          ? record.douban_id
+          : null;
+      if (doubanId) return `douban:${doubanId}`;
+
+      const title = normalizeTitle(
+        record.search_title || record.title || record.imdbTitle
+      );
+      const year = (record.year || '').toString().trim();
+      const episodeTag = record.total_episodes > 1 ? 'tv' : 'movie';
+      if (title && year) return `titleyear:${title}:${year}:${episodeTag}`;
+      const cover = (record.cover || '').toString().trim();
+      if (title && cover) return `titlecover:${title}:${cover}`;
+      if (title) return `title:${title}:${episodeTag}`;
+      return `key:${record.key}`;
+    };
+
     // 将记录转换为数组并根据 save_time 由近到远排序
     const recordsArray = Object.entries(allRecords).map(([key, record]) => ({
       ...record,
@@ -62,7 +90,17 @@ export default function ContinueWatching({
       (a, b) => b.save_time - a.save_time
     );
 
-    setPlayRecords(sortedRecords);
+    // 合并不同来源的同一视频，只保留最新记录
+    const merged: (PlayRecord & { key: string })[] = [];
+    const seen = new Set<string>();
+    for (const record of sortedRecords) {
+      const mergeKey = buildMergeKey(record);
+      if (seen.has(mergeKey)) continue;
+      seen.add(mergeKey);
+      merged.push(record);
+    }
+
+    setPlayRecords(merged);
   };
 
   useEffect(() => {
