@@ -7,6 +7,7 @@ import type { PlayRecord } from '@/lib/db.client';
 import {
   clearAllPlayRecords,
   getAllPlayRecords,
+  savePlayRecord,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
 import { resolveUiLocale } from '@/lib/i18n.client';
@@ -41,6 +42,7 @@ export default function ContinueWatching({
     (PlayRecord & { key: string })[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const episodeUpdateKeysRef = useMemo(() => new Set<string>(), []);
   const mode = useMemo<ContinueWatchingMode>(() => {
     if (isTV) return 'tv';
     if (typeof window !== 'undefined' && window.innerWidth >= 768) {
@@ -178,6 +180,51 @@ export default function ContinueWatching({
     await clearAllPlayRecords();
     setPlayRecords([]);
   };
+
+  useEffect(() => {
+    if (!visibleRecords.length) return;
+    let cancelled = false;
+
+    const refreshEpisodeCounts = async () => {
+      for (const record of visibleRecords) {
+        if (!record?.key) continue;
+        if (episodeUpdateKeysRef.has(record.key)) continue;
+        episodeUpdateKeysRef.add(record.key);
+
+        const plusIndex = record.key.indexOf('+');
+        if (plusIndex <= 0) continue;
+        const source = record.key.slice(0, plusIndex);
+        const id = record.key.slice(plusIndex + 1);
+        if (!source || !id) continue;
+
+        try {
+          const res = await fetch(
+            `/api/detail?source=${encodeURIComponent(source)}&id=${encodeURIComponent(id)}`
+          );
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (cancelled || !data) continue;
+          const episodeCount = Array.isArray(data.episodes)
+            ? data.episodes.length
+            : 0;
+          if (episodeCount > 0 && episodeCount !== record.total_episodes) {
+            await savePlayRecord(source, id, {
+              ...record,
+              total_episodes: episodeCount,
+            });
+          }
+        } catch {
+          // ignore lookup failures
+        }
+      }
+    };
+
+    void refreshEpisodeCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleRecords, episodeUpdateKeysRef]);
 
   return (
     <section className={`mb-8 ${className || ''}`}>
