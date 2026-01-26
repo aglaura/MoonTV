@@ -739,10 +739,10 @@ function HomeClient() {
               <div className='mt-8'>
                 <div className='flex items-center justify-between mb-3'>
                   <h2 className='text-lg font-semibold text-gray-800 dark:text-gray-200'>
-                    {tt('YouTube MVs', 'YouTube 音乐视频', 'YouTube 音樂視頻')}
+                    {tt('YouTube Videos', 'YouTube 视频', 'YouTube 影片')}
                   </h2>
                   <span className='text-xs text-gray-500 dark:text-gray-400'>
-                    {tt('Music videos', '音乐视频', '音樂視頻')}
+                    {tt('YouTube results', 'YouTube 结果', 'YouTube 結果')}
                   </span>
                 </div>
                 {ytLoading && (
@@ -763,9 +763,9 @@ function HomeClient() {
                 {!ytLoading && !ytError && ytResults.length === 0 && (
                   <p className='text-sm text-gray-500 dark:text-gray-400'>
                     {tt(
-                      'No music videos found.',
-                      '没有找到相关音乐视频。',
-                      '沒有找到相關音樂視頻。'
+                      'No YouTube videos found.',
+                      '没有找到相关 YouTube 视频。',
+                      '沒有找到相關 YouTube 影片。'
                     )}
                   </p>
                 )}

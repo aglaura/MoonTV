@@ -44,9 +44,8 @@ export async function GET(request: Request) {
   const params = new URLSearchParams();
   params.set('part', 'snippet');
   params.set('type', 'video');
-  params.set('videoCategoryId', '10');
   params.set('maxResults', '8');
-  params.set('q', `${query} mv`);
+  params.set('q', query);
   params.set('safeSearch', 'moderate');
   params.set('regionCode', region);
   params.set('relevanceLanguage', relevance);
