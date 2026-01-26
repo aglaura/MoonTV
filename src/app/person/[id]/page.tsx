@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
@@ -73,10 +73,15 @@ export default function PersonPage() {
   );
 
   const params = useParams();
+  const searchParams = useSearchParams();
   const personId = useMemo(
     () => normalizeParam(params?.id as string | string[] | undefined),
     [params]
   );
+  const posterParam = useMemo(() => {
+    const raw = searchParams?.get('poster') || '';
+    return raw.trim();
+  }, [searchParams]);
 
   const [data, setData] = useState<PersonPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -147,9 +152,15 @@ export default function PersonPage() {
     { key: 'es', label: 'Español' },
   ];
 
+  const safeProcessImageUrl = useCallback((value: string) => {
+    if (!value) return '';
+    const processed = processImageUrl(value, { preferCached: true });
+    return processed.startsWith('/api/image-proxy') ? value : processed;
+  }, []);
+  const fallbackProfileUrl = posterParam ? safeProcessImageUrl(posterParam) : '';
   const profileUrl = person?.profile
-    ? processImageUrl(person.profile, { preferCached: true })
-    : '';
+    ? safeProcessImageUrl(person.profile)
+    : fallbackProfileUrl;
   const tmdbUrl = buildTmdbPersonUrl(person?.id || personId);
   const imdbUrl = buildImdbUrl(person?.imdbId);
 

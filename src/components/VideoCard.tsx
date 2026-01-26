@@ -406,11 +406,22 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       if (actualSearchType !== 'person') return undefined;
       return parseTmdbId(actualId) || parseTmdbId(tmdbUrl);
     }, [actualId, actualSearchType, tmdbUrl]);
+    const personPosterParam = useMemo(() => {
+      if (!personId) return '';
+      const candidate = (fallbackPosters[0] || actualPoster || '').trim();
+      return candidate;
+    }, [personId, fallbackPosters, actualPoster]);
     const personUrl = useMemo(() => {
       if (!personId) return '/person';
       const normalized = personId.replace(/^tmdb:/, '');
-      return normalized ? `/person/${encodeURIComponent(normalized)}` : '/person';
-    }, [personId]);
+      if (!normalized) return '/person';
+      if (personPosterParam) {
+        return `/person/${encodeURIComponent(
+          normalized
+        )}?poster=${encodeURIComponent(personPosterParam)}`;
+      }
+      return `/person/${encodeURIComponent(normalized)}`;
+    }, [personId, personPosterParam]);
     const englishTitleToShow = useMemo(() => {
       const sanitized = sanitizeEnglishTitle(englishTitle);
       if (sanitized) {

@@ -33,6 +33,12 @@ const buildPersonHref = (item: CardItem) => {
   const value = String(raw).trim();
   if (!value) return '#';
   const normalized = value.replace(/^tmdb:/, '');
+  const poster = (item.poster || item.posterAlt?.[0] || item.profile || '').trim();
+  if (poster) {
+    return `/person/${encodeURIComponent(normalized)}?poster=${encodeURIComponent(
+      poster
+    )}`;
+  }
   return `/person/${encodeURIComponent(normalized)}`;
 };
 
