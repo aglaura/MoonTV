@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useMemo } from 'react';
 
 import type { ScreenMode } from '@/lib/screenMode';
 
@@ -62,13 +63,7 @@ const readRuntimeVideos = (): MusicVideo[] => {
 const buildThumbnail = (id: string) =>
   `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
 
-const buildEmbedUrl = (id: string) =>
-  `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
-    id
-  )}?autoplay=1&rel=0&playsinline=1`;
-
 export default function MusicRail({ screenMode, tt }: MusicRailProps) {
-  const [active, setActive] = useState<MusicVideo | null>(null);
   const isTv = screenMode === 'tv';
   const isMobile = screenMode === 'mobile';
   const cardWidth = isTv ? 'min-w-[240px]' : isMobile ? 'min-w-[70%]' : 'min-w-[200px]';
@@ -82,6 +77,13 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
     if (runtimeVideos.length) return runtimeVideos;
     return MUSIC_VIDEOS;
   }, []);
+  const buildPlayHref = (video: MusicVideo) => {
+    const params = new URLSearchParams();
+    params.set('id', video.id);
+    params.set('title', video.title);
+    if (video.artist) params.set('artist', video.artist);
+    return `/play/youtube?${params.toString()}`;
+  };
 
   return (
     <>
@@ -103,10 +105,9 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
             </div>
           ) : (
             videos.map((video) => (
-              <button
+              <Link
                 key={video.id}
-                type="button"
-                onClick={() => setActive(video)}
+                href={buildPlayHref(video)}
                 className={`${cardWidth} group text-left transition active:scale-[0.98]`}
               >
                 <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-800">
@@ -131,41 +132,11 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
                     </p>
                   )}
                 </div>
-              </button>
+              </Link>
             ))
           )}
         </div>
       </section>
-
-      {active && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-3xl rounded-2xl bg-black shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 bg-black/80">
-              <div className="text-sm text-white">
-                {active.title}
-                {active.artist ? ` · ${active.artist}` : ''}
-              </div>
-              <button
-                type="button"
-                className="text-white/70 hover:text-white text-lg"
-                onClick={() => setActive(null)}
-                aria-label={tt('Close', '关闭', '關閉')}
-              >
-                ×
-              </button>
-            </div>
-            <div className="relative w-full pb-[56.25%]">
-              <iframe
-                title={active.title}
-                src={buildEmbedUrl(active.id)}
-                className="absolute inset-0 h-full w-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
