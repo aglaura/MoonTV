@@ -27,9 +27,12 @@ let rawConfig;
 
 async function loadConfig() {
   if (remoteConfigBase) {
-    const remoteConfigUrl = /\.json($|\?)/i.test(remoteConfigBase)
+    const normalizedBase = /^https?:\/\//i.test(remoteConfigBase)
       ? remoteConfigBase
-      : `${remoteConfigBase.replace(/\/+$/, '')}/config.json`;
+      : `https://${remoteConfigBase}`;
+    const remoteConfigUrl = /\.json($|\?)/i.test(normalizedBase)
+      ? normalizedBase
+      : `${normalizedBase.replace(/\/+$/, '')}/config.json`;
     try {
       const resp = await fetch(remoteConfigUrl);
       if (!resp.ok) {
