@@ -2907,6 +2907,18 @@ export function PlayPageClient({
     const output: string[] = [];
     let inAdBlock = false;
     let pendingDiscontinuity = false;
+    let skippedDuration = 0;
+    let resumeAfterSegment = false;
+
+    const resetAdBlock = () => {
+      inAdBlock = false;
+      skippedDuration = 0;
+      resumeAfterSegment = false;
+      if (pendingDiscontinuity) {
+        output.push('#EXT-X-DISCONTINUITY');
+        pendingDiscontinuity = false;
+      }
+    };
 
     const isAdStart = (line: string) => {
       return (
@@ -2934,21 +2946,37 @@ export function PlayPageClient({
 
       if (isAdStart(line)) {
         inAdBlock = true;
+        skippedDuration = 0;
+        resumeAfterSegment = false;
         continue;
       }
 
       if (isAdEnd(line)) {
-        inAdBlock = false;
-        if (pendingDiscontinuity) {
-          output.push('#EXT-X-DISCONTINUITY');
-          pendingDiscontinuity = false;
-        }
+        resetAdBlock();
         continue;
       }
 
       if (inAdBlock) {
+        if (line.startsWith('#EXTINF:')) {
+          const match = line.match(/#EXTINF:([\d.]+)/);
+          const duration = match ? Number(match[1]) : 0;
+          if (Number.isFinite(duration)) {
+            skippedDuration += duration;
+          }
+          if (skippedDuration >= 3) {
+            resumeAfterSegment = true;
+          }
+          continue;
+        }
         if (line.startsWith('#EXT-X-DISCONTINUITY')) {
           pendingDiscontinuity = true;
+          continue;
+        }
+        if (resumeAfterSegment) {
+          if (!line.startsWith('#')) {
+            resetAdBlock();
+          }
+          continue;
         }
         continue;
       }
