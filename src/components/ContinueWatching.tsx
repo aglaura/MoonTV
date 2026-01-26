@@ -60,24 +60,26 @@ export default function ContinueWatching({
       const match = value.match(/(tt\d{5,}|imdbt\d+)/i);
       return match ? match[0].toLowerCase() : null;
     };
+    const normalizeDoubanId = (value?: number | string | null) => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
     const buildMergeKey = (record: PlayRecord & { key: string }) => {
+      const doubanId = normalizeDoubanId(record.douban_id);
+      if (doubanId) return `douban:${doubanId}`;
       const imdbId = normalizeImdbId(record.imdbId);
       if (imdbId) return `imdb:${imdbId}`;
-      const doubanId =
-        typeof record.douban_id === 'number' && Number.isFinite(record.douban_id)
-          ? record.douban_id
-          : null;
-      if (doubanId) return `douban:${doubanId}`;
 
       const title = normalizeTitle(
         record.search_title || record.title || record.imdbTitle
       );
       const year = (record.year || '').toString().trim();
-      const episodeTag = record.total_episodes > 1 ? 'tv' : 'movie';
-      if (title && year) return `titleyear:${title}:${year}:${episodeTag}`;
-      const cover = (record.cover || '').toString().trim();
-      if (title && cover) return `titlecover:${title}:${cover}`;
-      if (title) return `title:${title}:${episodeTag}`;
+      if (title && year) return `titleyear:${title}:${year}`;
+      if (title) return `title:${title}`;
       return `key:${record.key}`;
     };
 
@@ -309,7 +311,7 @@ export default function ContinueWatching({
                     poster={record.cover}
                     year={record.year}
                     episodes={record.total_episodes}
-                    source_name={record.source_name}
+                    source_name={undefined}
                     currentEpisode={record.index}
                     query={record.search_title || record.title}
                     progress={progress}
