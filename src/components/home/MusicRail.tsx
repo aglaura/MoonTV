@@ -15,7 +15,13 @@ type MusicRailProps = {
   tt: (en: string, zhHans: string, zhHant: string) => string;
 };
 
-const MUSIC_VIDEOS: MusicVideo[] = [];
+const MUSIC_VIDEOS: MusicVideo[] = [
+  { id: 'bu7nU9Mhpyo', title: '告白气球', artist: '周杰伦' },
+  { id: 'T4SimnaiktU', title: '光年之外', artist: 'G.E.M. 邓紫棋' },
+  { id: 'mtAc_bMYBsM', title: '温柔', artist: '五月天' },
+  { id: 'G97_rOdHcnY', title: '江南', artist: '林俊杰' },
+  { id: '_sQSXwdtxlY', title: '小幸运', artist: '田馥甄' },
+];
 
 const readRuntimeVideos = (): MusicVideo[] => {
   if (typeof window === 'undefined') return [];
