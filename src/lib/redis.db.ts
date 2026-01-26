@@ -3,7 +3,7 @@
 import { createClient, RedisClientType } from 'redis';
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
 
 const SEARCH_HISTORY_LIMIT = 20;
@@ -313,6 +313,16 @@ export class RedisStorage implements IStorage {
       `u:${newUserName}:fav:`
     );
 
+    const musicList = await withRetry(() =>
+      this.client.get(this.ytMusicKey(oldUserName))
+    );
+    if (musicList !== null) {
+      await withRetry(() =>
+        this.client.set(this.ytMusicKey(newUserName), musicList)
+      );
+      await withRetry(() => this.client.del(this.ytMusicKey(oldUserName)));
+    }
+
     // Search history list
     const history = await withRetry(() =>
       this.client.lRange(this.shKey(oldUserName), 0, -1)
@@ -344,10 +354,16 @@ export class RedisStorage implements IStorage {
     if (favoriteKeys.length > 0) {
       await withRetry(() => this.client.del(favoriteKeys));
     }
+
+    await withRetry(() => this.client.del(this.ytMusicKey(userName)));
   }
 
   private shKey(user: string) {
     return `u:${user}:sh`; // u:username:sh
+  }
+
+  private ytMusicKey(user: string) {
+    return `u:${user}:ytmusic`;
   }
 
   async getSearchHistory(userName: string): Promise<string[]> {
@@ -370,6 +386,36 @@ export class RedisStorage implements IStorage {
     } else {
       await withRetry(() => this.client.del(key));
     }
+  }
+
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+    const raw = await withRetry(() =>
+      this.client.get(this.ytMusicKey(userName))
+    );
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw) as YoutubeMusicVideo[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => item?.id && item?.title);
+    } catch {
+      return [];
+    }
+  }
+
+  async setYoutubeMusicList(
+    userName: string,
+    list: YoutubeMusicVideo[]
+  ): Promise<void> {
+    const payload = Array.isArray(list)
+      ? list.filter((item) => item?.id && item?.title)
+      : [];
+    await withRetry(() =>
+      this.client.set(this.ytMusicKey(userName), JSON.stringify(payload))
+    );
+  }
+
+  async deleteYoutubeMusicList(userName: string): Promise<void> {
+    await withRetry(() => this.client.del(this.ytMusicKey(userName)));
   }
 
   async getAllUsers(): Promise<string[]> {

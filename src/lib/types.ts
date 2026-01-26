@@ -50,6 +50,12 @@ export interface SourceValuation {
   updated_at: number;
 }
 
+export interface YoutubeMusicVideo {
+  id: string;
+  title: string;
+  artist?: string;
+}
+
 // 存儲介面
 export interface IStorage {
   // 播放紀錄相關
@@ -95,6 +101,16 @@ export interface IStorage {
     keys: string[]
   ): Promise<Record<string, SourceValuation>>;
   getAllSourceValuations?(): Promise<SourceValuation[]>;
+
+  // YouTube MV 列表
+  getYoutubeMusicList?(
+    userName: string
+  ): Promise<YoutubeMusicVideo[]>;
+  setYoutubeMusicList?(
+    userName: string,
+    list: YoutubeMusicVideo[]
+  ): Promise<void>;
+  deleteYoutubeMusicList?(userName: string): Promise<void>;
 }
 
 // 搜尋結果資料結構

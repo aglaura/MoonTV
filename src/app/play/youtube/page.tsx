@@ -1,18 +1,14 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import PageLayout from '@/components/PageLayout';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 
-const buildEmbedUrl = (id: string) =>
-  `https://www.youtube-nocookie.com/embed/${encodeURIComponent(
-    id
-  )}?autoplay=1&rel=0&playsinline=1&modestbranding=1`;
-
 const MUSIC_LIST_EVENT = 'moontv:youtube-music-list';
+const YT_API_SRC = 'https://www.youtube.com/iframe_api';
 
 type MusicVideo = {
   id: string;
@@ -43,10 +39,6 @@ export default function YoutubePlayPage() {
   const artist = (searchParams.get('artist') || '').trim();
   const displayTitle =
     title || tt('Untitled MV', '未命名MV', '未命名MV');
-  const embedUrl = useMemo(
-    () => (videoId ? buildEmbedUrl(videoId) : ''),
-    [videoId]
-  );
   const username = useMemo(() => {
     try {
       return getAuthInfoFromBrowserCookie()?.username || null;
@@ -56,7 +48,27 @@ export default function YoutubePlayPage() {
   }, []);
   const [musicList, setMusicList] = useState<MusicVideo[]>([]);
   const [inList, setInList] = useState(false);
+  const [currentVideo, setCurrentVideo] = useState<MusicVideo>({
+    id: videoId,
+    title: displayTitle,
+    artist: artist || undefined,
+  });
+  const [currentIndex, setCurrentIndex] = useState(0);
   const storageKey = useMemo(() => buildMusicListKey(username), [username]);
+  const playerRef = useRef<any>(null);
+  const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<MusicVideo[]>([]);
+  const useListRef = useRef(false);
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    if (!videoId) return;
+    setCurrentVideo({
+      id: videoId,
+      title: displayTitle,
+      artist: artist || undefined,
+    });
+  }, [artist, displayTitle, videoId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -66,22 +78,60 @@ export default function YoutubePlayPage() {
         const parsed = JSON.parse(raw) as MusicVideo[];
         if (Array.isArray(parsed)) {
           setMusicList(parsed);
-          return;
         }
+      } else {
+        setMusicList([]);
       }
     } catch {
-      // ignore
+      setMusicList([]);
     }
-    setMusicList([]);
-  }, [storageKey]);
+    if (username) {
+      fetch('/api/youtube/music-list')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (!data?.list || !Array.isArray(data.list)) return;
+          const cleaned = data.list.filter(
+            (item: MusicVideo) => item?.id && item?.title
+          );
+          setMusicList(cleaned);
+          localStorage.setItem(storageKey, JSON.stringify(cleaned));
+        })
+        .catch(() => {
+          // ignore
+        });
+    }
+  }, [storageKey, username]);
 
   useEffect(() => {
-    if (!videoId) {
+    if (!currentVideo.id) {
       setInList(false);
       return;
     }
-    setInList(musicList.some((item) => item.id === videoId));
-  }, [musicList, videoId]);
+    setInList(musicList.some((item) => item.id === currentVideo.id));
+  }, [musicList, currentVideo.id]);
+
+  useEffect(() => {
+    listRef.current = musicList;
+    const idx = musicList.findIndex((item) => item.id === currentVideo.id);
+    const useList = idx >= 0 && musicList.length > 0;
+    useListRef.current = useList;
+    if (useList) {
+      setCurrentIndex(idx);
+      indexRef.current = idx;
+      const matched = musicList[idx];
+      if (matched && (matched.title || matched.artist)) {
+        setCurrentVideo((prev) => ({
+          ...prev,
+          title: matched.title || prev.title,
+          artist: matched.artist || prev.artist,
+        }));
+      }
+    }
+  }, [currentVideo.id, musicList]);
+
+  useEffect(() => {
+    indexRef.current = currentIndex;
+  }, [currentIndex]);
 
   const persistList = useCallback(
     (next: MusicVideo[]) => {
@@ -94,27 +144,112 @@ export default function YoutubePlayPage() {
           })
         );
       }
+      if (username) {
+        fetch('/api/youtube/music-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ list: next }),
+        }).catch(() => {
+          // ignore
+        });
+      }
     },
-    [storageKey]
+    [storageKey, username]
   );
 
   const toggleInList = useCallback(() => {
-    if (!videoId) return;
+    if (!currentVideo.id) return;
     const entry: MusicVideo = {
-      id: videoId,
-      title: displayTitle,
-      artist: artist || undefined,
+      id: currentVideo.id,
+      title: currentVideo.title || displayTitle,
+      artist: currentVideo.artist || artist || undefined,
     };
     if (inList) {
-      persistList(musicList.filter((item) => item.id !== videoId));
+      persistList(musicList.filter((item) => item.id !== currentVideo.id));
     } else {
       const next = [
         entry,
-        ...musicList.filter((item) => item.id !== videoId),
+        ...musicList.filter((item) => item.id !== currentVideo.id),
       ];
       persistList(next);
     }
-  }, [artist, displayTitle, inList, musicList, persistList, videoId]);
+  }, [artist, currentVideo, displayTitle, inList, musicList, persistList]);
+
+  useEffect(() => {
+    if (!currentVideo.id || typeof window === 'undefined') return;
+    const params = new URLSearchParams();
+    params.set('id', currentVideo.id);
+    params.set('title', currentVideo.title || displayTitle);
+    if (currentVideo.artist) params.set('artist', currentVideo.artist);
+    window.history.replaceState(null, '', `/play/youtube?${params.toString()}`);
+  }, [currentVideo, displayTitle]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+    const ensureApi = () =>
+      new Promise<void>((resolve) => {
+        const ready = () => {
+          if ((window as any).YT && (window as any).YT.Player) {
+            resolve();
+            return;
+          }
+          setTimeout(ready, 50);
+        };
+        if (document.querySelector(`script[src="${YT_API_SRC}"]`)) {
+          ready();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = YT_API_SRC;
+        script.async = true;
+        script.onload = () => {
+          ready();
+        };
+        document.body.appendChild(script);
+      });
+
+    ensureApi().then(() => {
+      if (cancelled) return;
+      if (!playerContainerRef.current || !currentVideo.id) return;
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        playerRef.current.destroy();
+      }
+      const YT = (window as any).YT;
+      playerRef.current = new YT.Player(playerContainerRef.current, {
+        videoId: currentVideo.id,
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+        },
+        events: {
+          onStateChange: (event: any) => {
+            if (event.data !== YT.PlayerState.ENDED) return;
+            if (!useListRef.current) return;
+            const list = listRef.current;
+            if (!list.length) return;
+            const nextIndex = (indexRef.current + 1) % list.length;
+            indexRef.current = nextIndex;
+            const next = list[nextIndex];
+            if (next) {
+              setCurrentIndex(nextIndex);
+              setCurrentVideo(next);
+            }
+          },
+        },
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      if (playerRef.current && typeof playerRef.current.destroy === 'function') {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+    };
+  }, [currentVideo.id]);
 
   return (
     <PageLayout activePath="/play">
@@ -137,7 +272,7 @@ export default function YoutubePlayPage() {
           <span className="px-2 py-1 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60">
             {tt('Type: ', '类型：', '類型：')}MV
           </span>
-          {videoId && (
+          {currentVideo.id && (
             <button
               type="button"
               onClick={toggleInList}
@@ -145,7 +280,7 @@ export default function YoutubePlayPage() {
                 inList
                   ? 'bg-rose-500 border-rose-400 hover:bg-rose-600'
                   : 'bg-emerald-500 border-emerald-400 hover:bg-emerald-600'
-              }`}
+                }`}
             >
               {inList
                 ? tt('Remove from My MVs', '从我的MV移除', '從我的MV移除')
@@ -158,7 +293,7 @@ export default function YoutubePlayPage() {
           <div className="relative grid gap-3 md:h-[520px] xl:h-[680px] 2xl:h-[760px] transition-all duration-300 ease-in-out grid-cols-1">
             <div className="h-full min-w-0 transition-all duration-300 ease-in-out rounded-xl border border-white/0 dark:border-white/30">
               <div className="relative w-full aspect-video md:h-full" id="player-root">
-                {!videoId && (
+                {!currentVideo.id && (
                   <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/80 text-white">
                     {tt(
                       'Missing YouTube video id.',
@@ -167,13 +302,10 @@ export default function YoutubePlayPage() {
                     )}
                   </div>
                 )}
-                {videoId && (
-                  <iframe
-                    title={displayTitle}
-                    src={embedUrl}
-                    className="absolute inset-0 h-full w-full rounded-xl"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
+                {currentVideo.id && (
+                  <div
+                    ref={playerContainerRef}
+                    className="absolute inset-0 h-full w-full rounded-xl overflow-hidden"
                   />
                 )}
               </div>

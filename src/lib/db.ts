@@ -3,7 +3,7 @@
 import { AdminConfig } from './admin.types';
 import { D1Storage } from './d1.db';
 import { RedisStorage } from './redis.db';
-import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
 import {
   formatSpeedFromKBps,
   getQualityLabelFromRank,
@@ -435,6 +435,28 @@ export class DbManager {
     } catch (error) {
       console.error('Failed to get all source valuations:', error);
       return [];
+    }
+  }
+
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+    if (typeof (this.storage as any).getYoutubeMusicList === 'function') {
+      return (this.storage as any).getYoutubeMusicList(userName);
+    }
+    return [];
+  }
+
+  async saveYoutubeMusicList(
+    userName: string,
+    list: YoutubeMusicVideo[]
+  ): Promise<void> {
+    if (typeof (this.storage as any).setYoutubeMusicList === 'function') {
+      await (this.storage as any).setYoutubeMusicList(userName, list);
+    }
+  }
+
+  async deleteYoutubeMusicList(userName: string): Promise<void> {
+    if (typeof (this.storage as any).deleteYoutubeMusicList === 'function') {
+      await (this.storage as any).deleteYoutubeMusicList(userName);
     }
   }
 }

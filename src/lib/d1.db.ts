@@ -1,7 +1,7 @@
 /* eslint-disable no-console, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 import { AdminConfig } from './admin.types';
-import { Favorite, IStorage, PlayRecord, SourceValuation } from './types';
+import { Favorite, IStorage, PlayRecord, SourceValuation, YoutubeMusicVideo } from './types';
 import { getQualityRank, parseSpeedToKBps } from './utils';
 
 // 搜索历史最大条数
@@ -46,6 +46,7 @@ function getD1Database(): D1Database {
 export class D1Storage implements IStorage {
   private db: D1Database | null = null;
   private valuationTableInitialized = false;
+  private youtubeTableInitialized = false;
 
   private async getDatabase(): Promise<D1Database> {
     if (!this.db) {
@@ -86,6 +87,19 @@ export class D1Storage implements IStorage {
       }
     }
     this.valuationTableInitialized = true;
+  }
+
+  private async ensureYoutubeMusicTable(): Promise<void> {
+    if (this.youtubeTableInitialized) return;
+    const db = await this.getDatabase();
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS youtube_music_list (
+        username TEXT PRIMARY KEY,
+        list TEXT,
+        updated_at INTEGER
+      )
+    `);
+    this.youtubeTableInitialized = true;
   }
 
   // 播放记录相关
@@ -367,6 +381,7 @@ export class D1Storage implements IStorage {
   async renameUser(oldUserName: string, newUserName: string): Promise<void> {
     try {
       const db = await this.getDatabase();
+      await this.ensureYoutubeMusicTable();
       const exists = await db
         .prepare('SELECT 1 FROM users WHERE username = ?')
         .bind(oldUserName)
@@ -388,6 +403,11 @@ export class D1Storage implements IStorage {
         db
           .prepare('UPDATE search_history SET username = ? WHERE username = ?')
           .bind(newUserName, oldUserName),
+        db
+          .prepare(
+            'UPDATE youtube_music_list SET username = ? WHERE username = ?'
+          )
+          .bind(newUserName, oldUserName),
       ];
 
       await db.batch(statements);
@@ -400,6 +420,7 @@ export class D1Storage implements IStorage {
   async deleteUser(userName: string): Promise<void> {
     try {
       const db = await this.getDatabase();
+      await this.ensureYoutubeMusicTable();
       const statements = [
         db.prepare('DELETE FROM users WHERE username = ?').bind(userName),
         db
@@ -408,6 +429,9 @@ export class D1Storage implements IStorage {
         db.prepare('DELETE FROM favorites WHERE username = ?').bind(userName),
         db
           .prepare('DELETE FROM search_history WHERE username = ?')
+          .bind(userName),
+        db
+          .prepare('DELETE FROM youtube_music_list WHERE username = ?')
           .bind(userName),
       ];
 
@@ -492,6 +516,60 @@ export class D1Storage implements IStorage {
       }
     } catch (err) {
       console.error('Failed to delete search history:', err);
+      throw err;
+    }
+  }
+
+  async getYoutubeMusicList(userName: string): Promise<YoutubeMusicVideo[]> {
+    try {
+      await this.ensureYoutubeMusicTable();
+      const db = await this.getDatabase();
+      const result = await db
+        .prepare('SELECT list FROM youtube_music_list WHERE username = ?')
+        .bind(userName)
+        .first<{ list: string }>();
+      if (!result?.list) return [];
+      const parsed = JSON.parse(result.list) as YoutubeMusicVideo[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => item?.id && item?.title);
+    } catch (err) {
+      console.error('Failed to get YouTube music list:', err);
+      return [];
+    }
+  }
+
+  async setYoutubeMusicList(
+    userName: string,
+    list: YoutubeMusicVideo[]
+  ): Promise<void> {
+    try {
+      await this.ensureYoutubeMusicTable();
+      const db = await this.getDatabase();
+      const payload = Array.isArray(list)
+        ? list.filter((item) => item?.id && item?.title)
+        : [];
+      await db
+        .prepare(
+          'INSERT OR REPLACE INTO youtube_music_list (username, list, updated_at) VALUES (?, ?, ?)'
+        )
+        .bind(userName, JSON.stringify(payload), Date.now())
+        .run();
+    } catch (err) {
+      console.error('Failed to set YouTube music list:', err);
+      throw err;
+    }
+  }
+
+  async deleteYoutubeMusicList(userName: string): Promise<void> {
+    try {
+      await this.ensureYoutubeMusicTable();
+      const db = await this.getDatabase();
+      await db
+        .prepare('DELETE FROM youtube_music_list WHERE username = ?')
+        .bind(userName)
+        .run();
+    } catch (err) {
+      console.error('Failed to delete YouTube music list:', err);
       throw err;
     }
   }

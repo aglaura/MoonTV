@@ -139,6 +139,25 @@ export default function MusicRail({ screenMode, tt }: MusicRailProps) {
       // ignore
     }
 
+    if (username) {
+      fetch('/api/youtube/music-list')
+        .then((res) => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then((data) => {
+          if (!data?.list || !Array.isArray(data.list)) return;
+          const cleaned = data.list.filter(
+            (item: MusicVideo) => item?.id && item?.title
+          );
+          setCustomVideos(cleaned);
+          localStorage.setItem(listKey, JSON.stringify(cleaned));
+        })
+        .catch(() => {
+          // ignore
+        });
+    }
+
     const handlePlaylistChange = (event: Event) => {
       const detail = (event as CustomEvent<{ id?: string; key?: string }>).detail;
       if (detail?.key && detail.key !== storageKey) return;
