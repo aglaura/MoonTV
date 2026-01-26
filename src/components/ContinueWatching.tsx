@@ -134,11 +134,6 @@ export default function ContinueWatching({
     return unsubscribe;
   }, []);
 
-  // 如果没有播放记录，则不渲染组件
-  if (!loading && playRecords.length === 0) {
-    return null;
-  }
-
   const maxItems = mode === 'tv' ? 12 : mode === 'tablet' ? 10 : 8;
   const visibleRecords = playRecords.slice(0, maxItems);
   const progressHeight =
@@ -225,6 +220,11 @@ export default function ContinueWatching({
       cancelled = true;
     };
   }, [visibleRecords, episodeUpdateKeysRef]);
+
+  // 如果没有播放记录，则不渲染组件
+  if (!loading && playRecords.length === 0) {
+    return null;
+  }
 
   return (
     <section className={`mb-8 ${className || ''}`}>
