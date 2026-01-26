@@ -36,8 +36,8 @@ const MobileBottomNav = ({ activePath }: MobileBottomNavProps) => {
 
   const navItems: NavItem[] = [
     { icon: Home, label: t('Home', '首页', '首頁'), href: '/' },
-    { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
     { icon: Music2, label: t('Music', '音乐', '音樂'), href: '/music' },
+    { icon: Search, label: t('Search', '搜索', '搜尋'), href: '/search' },
     {
       icon: Film,
       label: t('Category', '分类', '分類'),
