@@ -2928,8 +2928,8 @@ export function PlayPageClient({
         const value = Number(durationMatch[1]);
         return Number.isFinite(value) && value > 0 ? value : null;
       }
-      const startMatch = line.match(/START-DATE=\"?([^\",]+)\"?/i);
-      const endMatch = line.match(/END-DATE=\"?([^\",]+)\"?/i);
+      const startMatch = line.match(/START-DATE="?([^",]+)"?/i);
+      const endMatch = line.match(/END-DATE="?([^",]+)"?/i);
       if (startMatch && endMatch) {
         const start = Date.parse(startMatch[1]);
         const end = Date.parse(endMatch[1]);
@@ -2954,7 +2954,7 @@ export function PlayPageClient({
         line.startsWith('#EXT-X-TV-TIMELINE') ||
         line.startsWith('#EXT-X-TIMELINE-OFFSET') ||
         (line.startsWith('#EXT-X-DATERANGE') &&
-          /CLASS=.*ad|CLASS=\"com\.apple\.hls\.interstitial\"|SCTE35-OUT|X-ASSET-URI|X-AD-ID|X-AD-URL/i.test(line)) ||
+          /CLASS=.*ad|CLASS="com\.apple\.hls\.interstitial"|SCTE35-OUT|X-ASSET-URI|X-AD-ID|X-AD-URL/i.test(line)) ||
         line.startsWith('#EXT-X-AD') ||
         line.startsWith('#EXT-X-COMCAST-AD')
       );
@@ -3106,7 +3106,6 @@ export function PlayPageClient({
       firstPlayCandidatesRef.current = [];
       setFirstPlayCandidates([]);
       const allSources: SearchResult[] = [];
-      const penaltyEntries: SourceValuationPayload[] = [];
       const providersWithPlayableSources = new Set<string>();
       const providersWithEmptySources = new Map<string, string>();
 
