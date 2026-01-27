@@ -156,6 +156,7 @@ export function PlayPageClient({
   const { userLocale } = useUserLanguage();
   const isTvVariant = variant === 'tv';
   const searchParams = useSearchParams();
+  const isIOS = useMemo(() => isIOSDevice(), []);
   const configJsonBase = useMemo(() => {
     if (typeof window === 'undefined') return '';
     const runtimeConfig = (window as any).RUNTIME_CONFIG || {};
@@ -313,6 +314,8 @@ export function PlayPageClient({
   useEffect(() => {
     blockAdEnabledRef.current = blockAdEnabled;
   }, [blockAdEnabled]);
+  const [audioOnly, setAudioOnly] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [videoTitle, setVideoTitle] = useState(searchParams.get('title') || '');
   const [videoYear, setVideoYear] = useState(searchParams.get('year') || '');
@@ -2203,6 +2206,10 @@ export function PlayPageClient({
     };
   }, [videoUrl, refreshOfflineAvailability]);
   const playbackUrl = offlineUrl || videoUrl;
+  const supportsAudioOnly = useMemo(
+    () => isIOS && Boolean(playbackUrl),
+    [isIOS, playbackUrl]
+  );
   const downloadStatus = downloadRecord?.status;
   const downloadProgress =
     typeof downloadRecord?.progress === 'number'
@@ -2239,6 +2246,97 @@ export function PlayPageClient({
     downloadStatus === 'queued' ||
     downloadStatus === 'downloading' ||
     downloadStatus === 'downloaded';
+  const enableAudioOnly = useCallback(async () => {
+    if (!playbackUrl) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+    if (video && Number.isFinite(video.currentTime)) {
+      audio.currentTime = video.currentTime;
+    }
+    audio.src = playbackUrl;
+    audio.preload = 'auto';
+    audio.crossOrigin = 'anonymous';
+    (audio as any).playsInline = true;
+    setAudioOnly(true);
+    try {
+      await audio.play();
+    } catch {
+      // autoplay might be blocked until user gesture
+    }
+    if (video) {
+      try {
+        video.pause();
+      } catch {
+        // ignore
+      }
+    }
+  }, [playbackUrl]);
+  const disableAudioOnly = useCallback(() => {
+    const audio = audioRef.current;
+    const resumeTime = audio?.currentTime ?? 0;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      try {
+        audio.load();
+      } catch {
+        // ignore
+      }
+    }
+    setAudioOnly(false);
+    const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+    if (video && playbackUrl) {
+      if (resumeTime > 0 && Number.isFinite(resumeTime)) {
+        try {
+          video.currentTime = resumeTime;
+        } catch {
+          // ignore
+        }
+      }
+      video.play().catch(() => {});
+    }
+  }, [playbackUrl]);
+  useEffect(() => {
+    if (!audioOnly) return;
+    if (!playbackUrl) {
+      setAudioOnly(false);
+      return;
+    }
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.src !== playbackUrl) {
+      audio.src = playbackUrl;
+    }
+    audio.preload = 'auto';
+    audio.crossOrigin = 'anonymous';
+    (audio as any).playsInline = true;
+    audio.play().catch(() => {
+      // ignore autoplay errors
+    });
+    const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+    if (video) {
+      try {
+        video.pause();
+      } catch {
+        // ignore
+      }
+    }
+  }, [audioOnly, playbackUrl]);
+  useEffect(() => {
+    if (!supportsAudioOnly && audioOnly) {
+      disableAudioOnly();
+    }
+  }, [audioOnly, disableAudioOnly, supportsAudioOnly]);
+  useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+      }
+    };
+  }, []);
   const handleDownload = useCallback(async () => {
     if (!videoUrl) {
       reportError(
@@ -4835,8 +4933,44 @@ export function PlayPageClient({
             >
               {downloadButtonLabel}
             </button>
+            {supportsAudioOnly && (
+              <button
+                type='button'
+                onClick={() =>
+                  audioOnly ? disableAudioOnly() : enableAudioOnly()
+                }
+                className={`px-3 py-1.5 rounded-full text-white shadow-sm border ${
+                  audioOnly
+                    ? 'bg-rose-500 border-rose-400 hover:bg-rose-600'
+                    : 'bg-indigo-500 border-indigo-400 hover:bg-indigo-600'
+                }`}
+              >
+                {audioOnly
+                  ? tt('Back to video', '返回视频', '返回影片')
+                  : tt('Audio only', '仅音频', '僅音訊')}
+              </button>
+            )}
           </div>
         )}
+
+        {supportsAudioOnly && (
+          <div
+            className={`rounded-2xl border border-gray-200/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/50 px-3 py-2 text-xs text-gray-600 dark:text-gray-300 ${
+              audioOnly ? 'block' : 'hidden'
+            }`}
+          >
+            {tt(
+              'Audio-only mode for iOS background playback.',
+              'iOS 后台播放的仅音频模式。',
+              'iOS 背景播放的僅音訊模式。'
+            )}
+          </div>
+        )}
+        <audio
+          ref={audioRef}
+          controls={audioOnly}
+          className={audioOnly ? 'w-full' : 'hidden'}
+        />
 
         {/* 第二行：播放器和选集 */}
         <div className='space-y-2.5'>
