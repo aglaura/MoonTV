@@ -21,6 +21,17 @@ type MusicVideo = {
   artist?: string;
 };
 
+const buildPlayHref = (video: MusicVideo) => {
+  const params = new URLSearchParams();
+  params.set('id', video.id);
+  params.set('title', video.title);
+  if (video.artist) params.set('artist', video.artist);
+  return `/play/youtube?${params.toString()}`;
+};
+
+const buildThumbnail = (id: string) =>
+  `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+
 const buildSuggestionQuery = (
   video: MusicVideo,
   locale: 'zh-Hans' | 'zh-Hant' | 'en'

@@ -1519,10 +1519,20 @@ export function PlayPageClient({
     'initing' | 'sourceChanging'
   >('initing');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [needsUserPlay, setNeedsUserPlay] = useState(false);
+  const [needsUserPlayMessage, setNeedsUserPlayMessage] = useState('');
+  const needsUserPlayRef = useRef(false);
+  useEffect(() => {
+    needsUserPlayRef.current = needsUserPlay;
+  }, [needsUserPlay]);
 
   const saveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveTimeRef = useRef<number>(0);
   const autoNextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const playbackRecoveryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const playbackRecoveryCountRef = useRef(0);
+  const playbackListenersCleanupRef = useRef<(() => void) | null>(null);
 
   const artPlayerRef = useRef<any>(null);
   const [imdbVideoTitle, setImdbVideoTitle] = useState<string | undefined>(
@@ -2329,6 +2339,12 @@ export function PlayPageClient({
     }
   }, [audioOnly, disableAudioOnly, supportsAudioOnly]);
   useEffect(() => {
+    if (audioOnly) {
+      setNeedsUserPlay(false);
+      setIsBuffering(false);
+    }
+  }, [audioOnly]);
+  useEffect(() => {
     return () => {
       const audio = audioRef.current;
       if (audio) {
@@ -2974,6 +2990,9 @@ export function PlayPageClient({
 
   const ensureVideoSource = (video: HTMLVideoElement | null, url: string) => {
     if (!video || !url) return;
+    video.playsInline = true;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('webkit-playsinline', 'true');
     // When Hls.js is driving playback (common on Android/Chrome), touching <source>
     // can cause reload loops / restarts. Only keep remote playback flags in sync.
     if ((video as any).hls) {
@@ -2997,6 +3016,129 @@ export function PlayPageClient({
       video.removeAttribute('disableRemotePlayback');
     }
   };
+
+  const clearPlaybackRecoveryTimer = useCallback(() => {
+    if (playbackRecoveryTimerRef.current) {
+      clearTimeout(playbackRecoveryTimerRef.current);
+      playbackRecoveryTimerRef.current = null;
+    }
+  }, []);
+
+  const attemptUserPlay = useCallback(
+    (reason: string) => {
+      const player = artPlayerRef.current;
+      if (!player) return;
+      try {
+        if (player.muted) {
+          player.muted = false;
+        }
+        if (typeof player.volume === 'number') {
+          player.volume = Math.max(player.volume, lastVolumeRef.current || 0.7);
+        }
+      } catch {
+        // ignore
+      }
+      const playPromise = player.play?.();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {
+          setNeedsUserPlay(true);
+          setNeedsUserPlayMessage(
+            tt(
+              'Tap to resume playback',
+              '点击继续播放',
+              '點擊繼續播放'
+            )
+          );
+        });
+      } else {
+        setNeedsUserPlay(false);
+      }
+      console.log(`Attempted playback (${reason})`);
+    },
+    [tt]
+  );
+
+  const schedulePlaybackRecovery = useCallback(
+    (reason: string) => {
+      const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+      if (!video) return;
+      if (playbackRecoveryTimerRef.current) return;
+      const attempt = playbackRecoveryCountRef.current;
+      if (attempt >= 3) return;
+      const delay = 500 + attempt * 700;
+      playbackRecoveryTimerRef.current = setTimeout(() => {
+        playbackRecoveryTimerRef.current = null;
+        playbackRecoveryCountRef.current += 1;
+        try {
+          const hls = (video as any).hls;
+          if (hls && typeof hls.startLoad === 'function') {
+            hls.startLoad();
+          }
+        } catch {
+          // ignore
+        }
+        try {
+          video.load();
+        } catch {
+          // ignore
+        }
+        attemptUserPlay(`recover:${reason}`);
+      }, delay);
+    },
+    [attemptUserPlay]
+  );
+
+  const resetPlaybackRecovery = useCallback(() => {
+    playbackRecoveryCountRef.current = 0;
+    clearPlaybackRecoveryTimer();
+    setIsBuffering(false);
+  }, [clearPlaybackRecoveryTimer]);
+
+  const attachPlaybackReliabilityHandlers = useCallback(
+    (video: HTMLVideoElement) => {
+      const onWaiting = () => {
+        setIsBuffering(true);
+        schedulePlaybackRecovery('waiting');
+      };
+      const onStalled = () => {
+        setIsBuffering(true);
+        schedulePlaybackRecovery('stalled');
+      };
+      const onPlaying = () => {
+        setIsBuffering(false);
+        setNeedsUserPlay(false);
+        resetPlaybackRecovery();
+      };
+      const onCanPlay = () => {
+        setIsBuffering(false);
+        resetPlaybackRecovery();
+      };
+      const onError = () => {
+        schedulePlaybackRecovery('error');
+      };
+
+      video.addEventListener('waiting', onWaiting);
+      video.addEventListener('stalled', onStalled);
+      video.addEventListener('playing', onPlaying);
+      video.addEventListener('canplay', onCanPlay);
+      video.addEventListener('error', onError);
+
+      return () => {
+        video.removeEventListener('waiting', onWaiting);
+        video.removeEventListener('stalled', onStalled);
+        video.removeEventListener('playing', onPlaying);
+        video.removeEventListener('canplay', onCanPlay);
+        video.removeEventListener('error', onError);
+      };
+    },
+    [resetPlaybackRecovery, schedulePlaybackRecovery]
+  );
+
+  const handleUserPlay = useCallback(() => {
+    setNeedsUserPlay(false);
+    setIsBuffering(false);
+    attemptUserPlay('user');
+  }, [attemptUserPlay]);
 
   function filterAdsFromM3U8(m3u8Content: string): string {
     if (!m3u8Content) return '';
@@ -4052,8 +4194,13 @@ export function PlayPageClient({
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
       }
+      if (playbackListenersCleanupRef.current) {
+        playbackListenersCleanupRef.current();
+        playbackListenersCleanupRef.current = null;
+      }
+      clearPlaybackRecoveryTimer();
     };
-  }, []);
+  }, [clearPlaybackRecoveryTimer]);
 
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
@@ -4194,6 +4341,10 @@ export function PlayPageClient({
       if (resumePreviewCleanupRef.current) {
         resumePreviewCleanupRef.current();
         resumePreviewCleanupRef.current = null;
+      }
+      if (playbackListenersCleanupRef.current) {
+        playbackListenersCleanupRef.current();
+        playbackListenersCleanupRef.current = null;
       }
       if (artPlayerRef.current.video && artPlayerRef.current.video.hls) {
         artPlayerRef.current.video.hls.destroy();
@@ -4341,6 +4492,10 @@ export function PlayPageClient({
                   if (resumePreviewCleanupRef.current) {
                     resumePreviewCleanupRef.current();
                     resumePreviewCleanupRef.current = null;
+                  }
+                  if (playbackListenersCleanupRef.current) {
+                    playbackListenersCleanupRef.current();
+                    playbackListenersCleanupRef.current = null;
                   }
                   if (
                     artPlayerRef.current.video &&
@@ -4499,6 +4654,16 @@ export function PlayPageClient({
       artPlayerRef.current.on('ready', () => {
         clearError();
         updateResumePreviewPosition();
+        const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+        if (video) {
+          if (playbackListenersCleanupRef.current) {
+            playbackListenersCleanupRef.current();
+          }
+          playbackListenersCleanupRef.current =
+            attachPlaybackReliabilityHandlers(video);
+          ensureVideoSource(video, playbackUrl);
+        }
+        attemptUserPlay('ready');
       });
       artPlayerRef.current.on('control', (visible: boolean) => {
         if (visible) {
@@ -4526,6 +4691,9 @@ export function PlayPageClient({
         setIsPlaying(!artPlayerRef.current?.paused);
         hasStartedRef.current = true;
         autoSwitchLockedRef.current = true;
+        if (artPlayerRef.current?.paused) {
+          attemptUserPlay('canplay');
+        }
         if (loadTimeoutRef.current) {
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
@@ -4574,6 +4742,8 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('play', () => {
         setIsPlaying(true);
+        setNeedsUserPlay(false);
+        resetPlaybackRecovery();
       });
 
       artPlayerRef.current.on('video:ended', () => {
@@ -5139,6 +5309,29 @@ export function PlayPageClient({
                       ✕
                     </button>
                   </div>
+                </div>
+              )}
+              {!audioOnly && needsUserPlay && (
+                <div className='absolute inset-0 z-[640] flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl'>
+                  <div className='text-center space-y-3 px-6'>
+                    <div className='text-white text-sm font-semibold'>
+                      {needsUserPlayMessage ||
+                        tt('Tap to play', '点击播放', '點擊播放')}
+                    </div>
+                    <button
+                      type='button'
+                      onClick={handleUserPlay}
+                      className='px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-lg'
+                    >
+                      {tt('Play', '开始播放', '開始播放')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!audioOnly && isBuffering && (
+                <div className='absolute bottom-3 right-3 z-[610] rounded-full bg-black/60 text-white text-xs px-3 py-1.5 flex items-center gap-2'>
+                  <span className='inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse'></span>
+                  {tt('Buffering…', '缓冲中…', '緩衝中…')}
                 </div>
               )}
               <div
