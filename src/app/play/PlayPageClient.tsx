@@ -3008,6 +3008,9 @@ export function PlayPageClient({
     let skippedDuration = 0;
     let resumeAfterSegment = false;
     let adDurationLimit = 3;
+    let lastOutputWasExtinf = false;
+    let lastExtinfIndex: number | null = null;
+    const MAX_AD_SECONDS = 90;
 
     const resetAdBlock = () => {
       inAdBlock = false;
@@ -3038,6 +3041,15 @@ export function PlayPageClient({
       return null;
     };
 
+    const isAdDateRange = (line: string) => {
+      return (
+        line.startsWith('#EXT-X-DATERANGE') &&
+        (/CLASS="com\.apple\.hls\.interstitial"/i.test(line) ||
+          /SCTE35-OUT/i.test(line) ||
+          /X-(ASSET|AD)-/i.test(line))
+      );
+    };
+
     const isAdStart = (line: string) => {
       return (
         line.startsWith('#EXT-X-CUE-OUT') ||
@@ -3051,11 +3063,15 @@ export function PlayPageClient({
         line.startsWith('#EXT-X-FREEWHEEL-AD') ||
         line.startsWith('#EXT-X-TV-TIMELINE') ||
         line.startsWith('#EXT-X-TIMELINE-OFFSET') ||
-        (line.startsWith('#EXT-X-DATERANGE') &&
-          /CLASS=.*ad|CLASS="com\.apple\.hls\.interstitial"|SCTE35-OUT|X-ASSET-URI|X-AD-ID|X-AD-URL/i.test(line)) ||
+        isAdDateRange(line) ||
         line.startsWith('#EXT-X-AD') ||
         line.startsWith('#EXT-X-COMCAST-AD')
       );
+    };
+
+    const isAdUrl = (line: string) => {
+      if (!line || line.startsWith('#')) return false;
+      return /adserver\.com|doubleclick\.net/i.test(line);
     };
 
     const isAdEnd = (line: string) => {
@@ -3077,9 +3093,28 @@ export function PlayPageClient({
       );
     };
 
+    const findNextNonEmpty = (startIndex: number) => {
+      for (let j = startIndex; j < lines.length; j++) {
+        const candidate = lines[j].trim();
+        if (candidate.length > 0) return candidate;
+      }
+      return '';
+    };
+
+    const findNextSegment = (startIndex: number) => {
+      for (let j = startIndex; j < lines.length; j++) {
+        const candidate = lines[j].trim();
+        if (!candidate || candidate.startsWith('#')) continue;
+        return candidate;
+      }
+      return '';
+    };
+
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
       const line = rawLine.trim();
+      const nextNonEmpty = findNextNonEmpty(i + 1);
+      const nextSegment = findNextSegment(i + 1);
 
       if (isAdStart(line)) {
         inAdBlock = true;
@@ -3104,13 +3139,20 @@ export function PlayPageClient({
       if (inAdBlock) {
         if (shouldAlwaysKeep(line)) {
           output.push(rawLine);
+          lastOutputWasExtinf = false;
+          lastExtinfIndex = null;
           continue;
         }
         if (line.startsWith('#EXTINF:')) {
+          lastExtinfIndex = output.length;
           const match = line.match(/#EXTINF:([\d.]+)/);
           const duration = match ? Number(match[1]) : 0;
           if (Number.isFinite(duration)) {
             skippedDuration += duration;
+          }
+          if (skippedDuration >= MAX_AD_SECONDS) {
+            resetAdBlock();
+            continue;
           }
           if (skippedDuration >= adDurationLimit) {
             resumeAfterSegment = true;
@@ -3130,12 +3172,33 @@ export function PlayPageClient({
         continue;
       }
 
-      // Strip any explicit ad markers that aren't part of a block
-      if (isAdStart(line) || isAdEnd(line)) {
-        continue;
+      // Soft ad URL filter: only drop if it looks like a segment and is near ad markers
+      if (isAdUrl(line) && lastOutputWasExtinf) {
+        const likelyAdContext =
+          isAdStart(nextNonEmpty) ||
+          isAdEnd(nextNonEmpty) ||
+          nextNonEmpty.startsWith('#EXT-X-DISCONTINUITY') ||
+          isAdUrl(nextSegment);
+        if (likelyAdContext) {
+          if (lastExtinfIndex !== null) {
+            output.splice(lastExtinfIndex, 1);
+            lastExtinfIndex = null;
+          }
+          lastOutputWasExtinf = false;
+          continue;
+        }
       }
 
       output.push(rawLine);
+      if (line.startsWith('#EXTINF:')) {
+        lastExtinfIndex = output.length - 1;
+        lastOutputWasExtinf = true;
+      } else {
+        lastOutputWasExtinf = false;
+        if (!line.startsWith('#')) {
+          lastExtinfIndex = null;
+        }
+      }
     }
 
     return output.join('\n');
