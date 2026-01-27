@@ -283,9 +283,9 @@ const ProviderSourceSearch = ({
                       }`}
                     >
                       <div className='min-w-0 sm:flex-1'>
-                        <div className='flex items-center gap-1.5 min-w-0'>
+                        <div className='flex items-start gap-1.5 min-w-0'>
                           <div
-                            className='text-xs font-semibold text-gray-900 dark:text-gray-100 truncate'
+                            className='text-xs font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words'
                             title={providerName}
                           >
                             {providerName}
