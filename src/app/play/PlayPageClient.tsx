@@ -3095,23 +3095,23 @@ export function PlayPageClient({
       );
     };
 
-    const nextNonEmpty: string[] = Array(lines.length).fill('');
-    const nextSegment: string[] = Array(lines.length).fill('');
+    const nextNonEmptyLines: string[] = Array(lines.length).fill('');
+    const nextSegmentLines: string[] = Array(lines.length).fill('');
     let lastNonEmpty = '';
     let lastSegment = '';
     for (let i = lines.length - 1; i >= 0; i--) {
       const t = lines[i].trim();
       if (t) lastNonEmpty = t;
       if (t && !t.startsWith('#')) lastSegment = t;
-      nextNonEmpty[i] = lastNonEmpty;
-      nextSegment[i] = lastSegment;
+      nextNonEmptyLines[i] = lastNonEmpty;
+      nextSegmentLines[i] = lastSegment;
     }
 
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
       const line = rawLine.trim();
-      const nextNonEmpty = nextNonEmpty[i + 1] || '';
-      const nextSegment = nextSegment[i + 1] || '';
+      const nextNonEmpty = nextNonEmptyLines[i + 1] || '';
+      const nextSegment = nextSegmentLines[i + 1] || '';
 
       if (isAdStart(line)) {
         inAdBlock = true;
