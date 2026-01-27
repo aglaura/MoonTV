@@ -60,6 +60,9 @@ export default function YoutubePlayPage() {
     artist: artist || undefined,
   });
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [similarVideos, setSimilarVideos] = useState<MusicVideo[]>([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [similarError, setSimilarError] = useState('');
   const storageKey = useMemo(() => buildMusicListKey(username), [username]);
   const playerRef = useRef<any>(null);
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
@@ -221,6 +224,57 @@ export default function YoutubePlayPage() {
   }, [currentVideo, displayTitle]);
 
   useEffect(() => {
+    if (!currentVideo.id) {
+      setSimilarVideos([]);
+      setSimilarError('');
+      return;
+    }
+    const query = [currentVideo.title, currentVideo.artist]
+      .filter(Boolean)
+      .join(' ');
+    if (!query) {
+      setSimilarVideos([]);
+      setSimilarError('');
+      return;
+    }
+    let cancelled = false;
+    setSimilarLoading(true);
+    setSimilarError('');
+    fetch(`/api/youtube/search?q=${encodeURIComponent(query)}&limit=18`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const results = Array.isArray(data?.results) ? data.results : [];
+        const cleaned = results
+          .map((item: any) => ({
+            id: String(item?.id || '').trim(),
+            title: String(item?.title || '').trim(),
+            artist: String(item?.channel || '').trim() || undefined,
+          }))
+          .filter(
+            (item: MusicVideo) =>
+              item.id &&
+              item.title &&
+              item.id !== currentVideo.id
+          )
+          .slice(0, 12);
+        setSimilarVideos(cleaned);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSimilarError(err instanceof Error ? err.message : 'Failed to load');
+        setSimilarVideos([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setSimilarLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentVideo.id, currentVideo.artist, currentVideo.title]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     let cancelled = false;
     const ensureApi = () =>
@@ -357,6 +411,58 @@ export default function YoutubePlayPage() {
               </div>
             </div>
           </div>
+          <section className="rounded-2xl border border-gray-200/70 dark:border-gray-700/60 bg-white/70 dark:bg-gray-900/50 px-3 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {tt('Similar videos', '相似视频', '相似影片')}
+              </h2>
+              {similarLoading && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {tt('Loading…', '加载中…', '載入中…')}
+                </span>
+              )}
+            </div>
+            {similarError && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 mb-2">
+                {similarError}
+              </div>
+            )}
+            {similarVideos.length === 0 && !similarLoading && !similarError ? (
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {tt('No suggestions yet.', '暂无推荐。', '暫無推薦。')}
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-1 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {similarVideos.map((video) => (
+                  <a
+                    key={`${video.id}-similar`}
+                    href={buildPlayHref(video)}
+                    className="min-w-[180px] sm:min-w-[200px] group transition active:scale-[0.98]"
+                  >
+                    <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-200 dark:bg-gray-800">
+                      <img
+                        src={buildThumbnail(video.id)}
+                        alt={video.title}
+                        className="h-full w-full object-cover transition group-hover:scale-[1.02]"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition" />
+                    </div>
+                    <div className="mt-2 space-y-0.5">
+                      <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
+                        {video.title}
+                      </p>
+                      {video.artist && (
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-1">
+                          {video.artist}
+                        </p>
+                      )}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </PageLayout>
