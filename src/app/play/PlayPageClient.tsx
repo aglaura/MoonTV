@@ -3004,23 +3004,25 @@ export function PlayPageClient({
     const lines = m3u8Content.split('\n');
     const output: string[] = [];
     let inAdBlock = false;
-    let pendingDiscontinuity = false;
+    let pendingDiscontinuities = 0;
     let skippedDuration = 0;
     let resumeAfterSegment = false;
     let adDurationLimit = 3;
     let lastOutputWasExtinf = false;
     let lastExtinfIndex: number | null = null;
     const MAX_AD_SECONDS = 90;
+    let expectingSegment = false;
 
     const resetAdBlock = () => {
       inAdBlock = false;
       skippedDuration = 0;
       resumeAfterSegment = false;
       adDurationLimit = 3;
-      if (pendingDiscontinuity) {
+      while (pendingDiscontinuities > 0) {
         output.push('#EXT-X-DISCONTINUITY');
-        pendingDiscontinuity = false;
+        pendingDiscontinuities -= 1;
       }
+      expectingSegment = false;
     };
 
     const parseDateRangeDuration = (line: string) => {
@@ -3145,6 +3147,7 @@ export function PlayPageClient({
         }
         if (line.startsWith('#EXTINF:')) {
           lastExtinfIndex = output.length;
+          expectingSegment = true;
           const match = line.match(/#EXTINF:([\d.]+)/);
           const duration = match ? Number(match[1]) : 0;
           if (Number.isFinite(duration)) {
@@ -3160,12 +3163,15 @@ export function PlayPageClient({
           continue;
         }
         if (line.startsWith('#EXT-X-DISCONTINUITY')) {
-          pendingDiscontinuity = true;
+          pendingDiscontinuities += 1;
           continue;
         }
         if (resumeAfterSegment) {
-          if (!line.startsWith('#')) {
+          if (!line.startsWith('#') && expectingSegment) {
             resetAdBlock();
+            output.push('#EXTINF:0,');
+            output.push(rawLine);
+            expectingSegment = false;
           }
           continue;
         }
@@ -3193,10 +3199,12 @@ export function PlayPageClient({
       if (line.startsWith('#EXTINF:')) {
         lastExtinfIndex = output.length - 1;
         lastOutputWasExtinf = true;
+        expectingSegment = true;
       } else {
         lastOutputWasExtinf = false;
         if (!line.startsWith('#')) {
           lastExtinfIndex = null;
+          expectingSegment = false;
         }
       }
     }
