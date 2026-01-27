@@ -3095,28 +3095,23 @@ export function PlayPageClient({
       );
     };
 
-    const findNextNonEmpty = (startIndex: number) => {
-      for (let j = startIndex; j < lines.length; j++) {
-        const candidate = lines[j].trim();
-        if (candidate.length > 0) return candidate;
-      }
-      return '';
-    };
-
-    const findNextSegment = (startIndex: number) => {
-      for (let j = startIndex; j < lines.length; j++) {
-        const candidate = lines[j].trim();
-        if (!candidate || candidate.startsWith('#')) continue;
-        return candidate;
-      }
-      return '';
-    };
+    const nextNonEmpty: string[] = Array(lines.length).fill('');
+    const nextSegment: string[] = Array(lines.length).fill('');
+    let lastNonEmpty = '';
+    let lastSegment = '';
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const t = lines[i].trim();
+      if (t) lastNonEmpty = t;
+      if (t && !t.startsWith('#')) lastSegment = t;
+      nextNonEmpty[i] = lastNonEmpty;
+      nextSegment[i] = lastSegment;
+    }
 
     for (let i = 0; i < lines.length; i++) {
       const rawLine = lines[i];
       const line = rawLine.trim();
-      const nextNonEmpty = findNextNonEmpty(i + 1);
-      const nextSegment = findNextSegment(i + 1);
+      const nextNonEmpty = nextNonEmpty[i + 1] || '';
+      const nextSegment = nextSegment[i + 1] || '';
 
       if (isAdStart(line)) {
         inAdBlock = true;
