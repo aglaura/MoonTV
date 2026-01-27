@@ -36,6 +36,9 @@ function HomeClient() {
 
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [trendingSuggestions, setTrendingSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const searchBoxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && announcement) {
@@ -88,6 +91,97 @@ function HomeClient() {
     } catch {
       // ignore
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const cacheKey = 'trendingSearchSuggestions';
+    const maxAgeMs = 12 * 60 * 60 * 1000;
+    let shouldFetch = true;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as {
+          updatedAt?: number;
+          items?: string[];
+        };
+        if (Array.isArray(parsed.items)) {
+          setTrendingSuggestions(parsed.items.filter((item) => typeof item === 'string'));
+        }
+        if (parsed.updatedAt && Date.now() - parsed.updatedAt < maxAgeMs) {
+          shouldFetch = false;
+        }
+      }
+    } catch {
+      // ignore cache parse errors
+    }
+
+    if (!shouldFetch) return;
+    let cancelled = false;
+    const fetchTrending = async () => {
+      try {
+        const response = await fetch('/api/douban/home');
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          movies?: Array<{ title?: string }>;
+          tv?: Array<{ title?: string }>;
+          variety?: Array<{ title?: string }>;
+          latestMovies?: Array<{ title?: string }>;
+          latestTv?: Array<{ title?: string }>;
+        };
+        const combined = [
+          ...(Array.isArray(data.movies) ? data.movies : []),
+          ...(Array.isArray(data.tv) ? data.tv : []),
+          ...(Array.isArray(data.variety) ? data.variety : []),
+          ...(Array.isArray(data.latestMovies) ? data.latestMovies : []),
+          ...(Array.isArray(data.latestTv) ? data.latestTv : []),
+        ];
+        const seen = new Set<string>();
+        const titles = combined
+          .map((item) => (item?.title || '').trim())
+          .filter((title) => {
+            if (!title) return false;
+            const key = title.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .slice(0, 40);
+        if (!cancelled && titles.length > 0) {
+          setTrendingSuggestions(titles);
+        }
+        if (typeof window !== 'undefined' && titles.length > 0) {
+          try {
+            localStorage.setItem(
+              cacheKey,
+              JSON.stringify({ updatedAt: Date.now(), items: titles })
+            );
+          } catch {
+            // ignore cache write errors
+          }
+        }
+      } catch {
+        // ignore fetch errors
+      }
+    };
+    void fetchTrending();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (searchBoxRef.current && target && !searchBoxRef.current.contains(target)) {
+        setSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+    };
   }, []);
 
   const saveHistory = useCallback((terms: string[]) => {
@@ -367,6 +461,7 @@ function HomeClient() {
         typeName?: string;
         className?: string;
         order: number;
+        sourceNames: string[];
       }
     >();
 
@@ -385,12 +480,29 @@ function HomeClient() {
       return `${titleKey}#${yearKey}`;
     };
 
+    const collectSourceNames = (item: SearchResult) => {
+      const names = new Set<string>();
+      if (item.source_name) {
+        names.add(item.source_name);
+      } else if (item.source) {
+        names.add(item.source);
+      }
+      if (Array.isArray(item.providerLinks)) {
+        item.providerLinks.forEach((link) => {
+          if (link?.name) names.add(link.name);
+          else if (link?.key) names.add(link.key);
+        });
+      }
+      return Array.from(names).filter(Boolean);
+    };
+
     searchResults.forEach((item, index) => {
       const key = buildKey(item);
       const existing = map.get(key);
       const episodesCount = Array.isArray(item.episodes)
         ? item.episodes.length
         : 0;
+      const sourceNames = collectSourceNames(item);
 
       if (!existing) {
         map.set(key, {
@@ -407,6 +519,7 @@ function HomeClient() {
           typeName: item.type_name,
           className: item.class,
           order: index,
+          sourceNames,
         });
         return;
       }
@@ -420,6 +533,10 @@ function HomeClient() {
       const mergedDouban = existing.douban_id || item.douban_id;
       const mergedType = existing.typeName || item.type_name;
       const mergedClass = existing.className || item.class;
+      const mergedSourceNames = existing.sourceNames.slice();
+      sourceNames.forEach((name) => {
+        if (!mergedSourceNames.includes(name)) mergedSourceNames.push(name);
+      });
 
       map.set(key, {
         ...existing,
@@ -432,6 +549,7 @@ function HomeClient() {
         episodesCount: mergedEpisodes,
         typeName: mergedType,
         className: mergedClass,
+        sourceNames: mergedSourceNames,
       });
     });
 
@@ -527,7 +645,10 @@ function HomeClient() {
             }}
             className='max-w-3xl mx-auto'
           >
-            <div className='relative shadow-lg rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/60 backdrop-blur'>
+            <div
+              className='relative shadow-lg rounded-2xl overflow-visible border border-gray-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/60 backdrop-blur'
+              ref={searchBoxRef}
+            >
               <input
                 type='text'
                 className='w-full py-4 px-6 pr-20 text-base sm:text-lg bg-transparent focus:outline-none text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400'
@@ -537,7 +658,11 @@ function HomeClient() {
                   '輸入想看的影片、演員或關鍵字'
                 )}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSuggestionsOpen(true);
+                }}
+                onFocus={() => setSuggestionsOpen(true)}
                 autoComplete='off'
               />
               <div className='absolute inset-y-0 right-0 flex items-center gap-2 pr-4'>
@@ -563,6 +688,82 @@ function HomeClient() {
                   {tt('Search', '搜索', '搜尋')}
                 </button>
               </div>
+              {(() => {
+                const normalizedQuery = searchQuery.trim().toLowerCase();
+                const hasQuery = normalizedQuery.length > 0;
+                if (!hasQuery || !suggestionsOpen) return null;
+                const recentMatches = searchHistory.filter((term) =>
+                  term.toLowerCase().includes(normalizedQuery)
+                );
+                const recentSet = new Set(
+                  recentMatches.map((term) => term.toLowerCase())
+                );
+                const trendingMatches = trendingSuggestions.filter(
+                  (term) =>
+                    term.toLowerCase().includes(normalizedQuery) &&
+                    !recentSet.has(term.toLowerCase())
+                );
+                const showSuggestions =
+                  recentMatches.length > 0 || trendingMatches.length > 0;
+                if (!showSuggestions) return null;
+                return (
+                  <div className='absolute left-3 right-3 top-full mt-3 z-20 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl'>
+                    <div className='max-h-72 overflow-y-auto p-3 space-y-3'>
+                      {recentMatches.length > 0 && (
+                        <div>
+                          <div className='text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2'>
+                            {tt('Recent', '最近', '最近')}
+                          </div>
+                          <div className='flex flex-col gap-1.5'>
+                            {recentMatches.slice(0, 6).map((term) => (
+                              <button
+                                key={`recent-${term}`}
+                                type='button'
+                                className='text-left px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-gray-700 dark:text-gray-200'
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setSearchQuery(term);
+                                  setSuggestionsOpen(false);
+                                  void runSearch(term);
+                                }}
+                              >
+                                {term}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {trendingMatches.length > 0 && (
+                        <div>
+                          <div className='text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2'>
+                            <span>{tt('Trending', '热门', '熱門')}</span>
+                            <span className='text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300'>
+                              {tt('Today', '今日', '今日')}
+                            </span>
+                          </div>
+                          <div className='flex flex-col gap-1.5'>
+                            {trendingMatches.slice(0, 8).map((term) => (
+                              <button
+                                key={`trend-${term}`}
+                                type='button'
+                                className='text-left px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-gray-700 dark:text-gray-200'
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setSearchQuery(term);
+                                  setSuggestionsOpen(false);
+                                  void runSearch(term);
+                                }}
+                              >
+                                {term}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </form>
 
@@ -723,6 +924,7 @@ function HomeClient() {
                       year={item.year}
                       episodes={item.episodesCount}
                       source_name={undefined}
+                      source_names={item.sourceNames}
                       query={item.title}
                       isAggregate
                       from='search'

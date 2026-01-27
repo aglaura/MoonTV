@@ -21,6 +21,34 @@ type MusicVideo = {
   artist?: string;
 };
 
+const buildSuggestionQuery = (
+  video: MusicVideo,
+  locale: 'zh-Hans' | 'zh-Hant' | 'en'
+) => {
+  const languageHint =
+    locale === 'zh-Hant' ? '繁體中文' : locale === 'zh-Hans' ? '中文' : 'English';
+  return [video.title, video.artist, 'MV', languageHint]
+    .filter(Boolean)
+    .join(' ');
+};
+
+const shouldFilterSuggestionTitle = (title: string) => {
+  const normalized = title.toLowerCase();
+  if (
+    /\blive\b/i.test(normalized) ||
+    /现场|現場|演唱会|演唱會|現場版|现场版|舞台/.test(title)
+  ) {
+    return true;
+  }
+  if (
+    /\blyric(s)?\b/i.test(normalized) ||
+    /歌词|歌詞|字幕/.test(title)
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const buildMusicListKey = (username?: string | null) =>
   username && username.trim().length > 0
     ? `youtubeMusicList:${username.trim()}`
@@ -229,9 +257,7 @@ export default function YoutubePlayPage() {
       setSimilarError('');
       return;
     }
-    const query = [currentVideo.title, currentVideo.artist]
-      .filter(Boolean)
-      .join(' ');
+    const query = buildSuggestionQuery(currentVideo, uiLocale);
     if (!query) {
       setSimilarVideos([]);
       setSimilarError('');
@@ -255,7 +281,8 @@ export default function YoutubePlayPage() {
             (item: MusicVideo) =>
               item.id &&
               item.title &&
-              item.id !== currentVideo.id
+              item.id !== currentVideo.id &&
+              !shouldFilterSuggestionTitle(item.title)
           )
           .slice(0, 12);
         setSimilarVideos(cleaned);
