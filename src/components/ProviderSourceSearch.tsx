@@ -276,34 +276,34 @@ const ProviderSourceSearch = ({
                     }}
                   >
                     <div
-                      className={`flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-1.5 py-1 ${
+                      className={`flex flex-col gap-1 px-1.5 py-1 ${
                         isTvVariant
                           ? 'bg-white/5'
                           : 'bg-gradient-to-r from-emerald-50/70 via-white to-white dark:from-white/10 dark:via-white/5 dark:to-white/5'
                       }`}
                     >
-                      <div className='min-w-0 sm:flex-1'>
-                        <div className='flex items-start gap-1.5 min-w-0'>
-                          <div
-                            className='text-xs font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words'
-                            title={providerName}
-                          >
-                            {providerName}
-                          </div>
-                          {groupHasCurrent && (
+                      <div className='flex items-center justify-between gap-2'>
+                        <div className='min-w-0 flex-1'>
+                          <div className='flex items-start gap-1.5 min-w-0'>
                             <div
-                              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                                isTvVariant
-                                  ? 'bg-white/10 text-white/80'
-                                  : 'bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'
-                              }`}
+                              className='text-xs font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 break-words'
+                              title={providerName}
                             >
-                              Playing
+                              {providerName}
                             </div>
-                          )}
+                            {groupHasCurrent && (
+                              <div
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  isTvVariant
+                                    ? 'bg-white/10 text-white/80'
+                                    : 'bg-green-800/15 dark:bg-green-700/25 text-green-900 dark:text-green-100'
+                                }`}
+                              >
+                                Playing
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className='flex flex-wrap items-center gap-1.5 sm:justify-end'>
                         <button
                           type='button'
                           onClick={(e) => {
@@ -326,6 +326,8 @@ const ProviderSourceSearch = ({
                         >
                           {group.sources.length} sources
                         </button>
+                      </div>
+                      <div className='flex flex-wrap items-center gap-1.5'>
                         {providerHasError ? (
                           <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                             檢測失敗
