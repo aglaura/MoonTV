@@ -319,6 +319,8 @@ export function PlayPageClient({
   });
   const blockAdEnabledRef = useRef(blockAdEnabled);
   const blockAdModeRef = useRef(blockAdMode);
+  const lastPlaybackTimeRef = useRef(0);
+  const lastManualSeekAtRef = useRef(0);
   useEffect(() => {
     blockAdEnabledRef.current = blockAdEnabled;
   }, [blockAdEnabled]);
@@ -4105,6 +4107,7 @@ export function PlayPageClient({
 
     if (!e.altKey && e.key === 'ArrowLeft') {
       if (artPlayerRef.current && artPlayerRef.current.currentTime > 5) {
+        lastManualSeekAtRef.current = Date.now();
         artPlayerRef.current.currentTime -= 10;
         e.preventDefault();
       }
@@ -4115,6 +4118,7 @@ export function PlayPageClient({
         artPlayerRef.current &&
         artPlayerRef.current.currentTime < artPlayerRef.current.duration - 5
       ) {
+        lastManualSeekAtRef.current = Date.now();
         artPlayerRef.current.currentTime += 10;
         e.preventDefault();
       }
@@ -4679,6 +4683,7 @@ export function PlayPageClient({
               if (isIOSDevice()) return; // iOS/macOS Safari use native controls
               const player = artPlayerRef.current;
               if (!player) return;
+              lastManualSeekAtRef.current = Date.now();
               player.currentTime = Math.max(0, player.currentTime - 10);
             },
           },
@@ -4698,6 +4703,7 @@ export function PlayPageClient({
               if (isIOSDevice()) return; // iOS/macOS Safari use native controls
               const player = artPlayerRef.current;
               if (!player) return;
+              lastManualSeekAtRef.current = Date.now();
               player.currentTime = Math.min(
                 player.duration || Number.MAX_SAFE_INTEGER,
                 player.currentTime + 10
@@ -4762,19 +4768,20 @@ export function PlayPageClient({
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
         }
-        if (resumeTimeRef.current && resumeTimeRef.current > 0) {
-          try {
-            const duration = artPlayerRef.current.duration || 0;
-            let target = resumeTimeRef.current;
-            if (duration && target >= duration - 2) {
-              target = Math.max(0, duration - 5);
+            if (resumeTimeRef.current && resumeTimeRef.current > 0) {
+              try {
+                const duration = artPlayerRef.current.duration || 0;
+                let target = resumeTimeRef.current;
+                if (duration && target >= duration - 2) {
+                  target = Math.max(0, duration - 5);
+                }
+                artPlayerRef.current.currentTime = target;
+                lastPlaybackTimeRef.current = target;
+                console.log('成功恢復播放進度到:', resumeTimeRef.current);
+              } catch (err) {
+                console.warn('恢復播放進度失敗:', err);
+              }
             }
-            artPlayerRef.current.currentTime = target;
-            console.log('成功恢復播放進度到:', resumeTimeRef.current);
-          } catch (err) {
-            console.warn('恢復播放進度失敗:', err);
-          }
-        }
         resumeTimeRef.current = null;
         updateResumePreviewPosition();
         showResumePreview(true);
@@ -4810,6 +4817,17 @@ export function PlayPageClient({
         resetPlaybackRecovery();
       });
 
+      artPlayerRef.current.on('video:seeking', () => {
+        lastManualSeekAtRef.current = Date.now();
+      });
+
+      artPlayerRef.current.on('video:seeked', () => {
+        lastManualSeekAtRef.current = Date.now();
+        if (artPlayerRef.current) {
+          lastPlaybackTimeRef.current = artPlayerRef.current.currentTime || 0;
+        }
+      });
+
       artPlayerRef.current.on('video:ended', () => {
         const d = detailRef.current;
         if (!d?.episodes) return;
@@ -4829,6 +4847,21 @@ export function PlayPageClient({
 
       artPlayerRef.current.on('video:timeupdate', () => {
         const now = Date.now();
+        const currentTime = artPlayerRef.current?.currentTime || 0;
+        if (blockAdEnabledRef.current) {
+          const lastTime = lastPlaybackTimeRef.current;
+          const allowManualSeek = now - lastManualSeekAtRef.current < 1500;
+          if (!allowManualSeek && lastTime > 0 && currentTime + 0.25 < lastTime) {
+            if (artPlayerRef.current) {
+              artPlayerRef.current.currentTime = lastTime;
+            }
+            lastPlaybackTimeRef.current = lastTime;
+            return;
+          }
+        }
+        if (Number.isFinite(currentTime)) {
+          lastPlaybackTimeRef.current = currentTime;
+        }
         refreshActualPlaybackInfo();
         if (
           now - lastSaveTimeRef.current >
