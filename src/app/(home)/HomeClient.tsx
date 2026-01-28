@@ -777,6 +777,8 @@ export default function HomeClient() {
           )}
         </div>
       </div>
+      </div>
+      </div>
       {announcement && (
         <HomeAnnouncementModal
           announcement={announcement}
