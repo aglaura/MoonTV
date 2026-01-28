@@ -5743,7 +5743,7 @@ export function PlayPageClient({
                 </div>
               )}
               {!audioOnly && recoverySplash && (
-                <div className='absolute inset-0 z-[635] flex items-center justify-center pointer-events-none'>
+                <div className='absolute top-3 left-1/2 z-[635] -translate-x-1/2 pointer-events-none'>
                   <div className='rounded-full bg-black/70 text-white text-xs px-4 py-2 shadow-lg'>
                     {recoverySplash}
                   </div>
