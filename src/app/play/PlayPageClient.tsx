@@ -1537,6 +1537,8 @@ export function PlayPageClient({
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferedAheadSec, setBufferedAheadSec] = useState(0);
   const [bufferedPillPct, setBufferedPillPct] = useState(0);
+  const bufferedAheadSecRef = useRef(0);
+  const bufferedPillPctRef = useRef(0);
   const [needsUserPlay, setNeedsUserPlay] = useState(false);
   const [needsUserPlayMessage, setNeedsUserPlayMessage] = useState('');
   const needsUserPlayRef = useRef(false);
@@ -4260,7 +4262,7 @@ export function PlayPageClient({
   // ---------------------------------------------------------------------------
   const handleEpisodeChange = (episodeNumber: number) => {
     if (episodeNumber >= 0 && episodeNumber < totalEpisodes) {
-      if (artPlayerRef.current && artPlayerRef.current.paused) {
+      if (artPlayerRef.current && !artPlayerRef.current.paused) {
         saveCurrentPlayProgress();
       }
       setCurrentEpisodeIndex(episodeNumber);
@@ -5108,6 +5110,7 @@ export function PlayPageClient({
         const videoEl = artPlayerRef.current?.video as HTMLVideoElement | undefined;
         if (videoEl) {
           let bufferedAhead = 0;
+          let inRange = false;
           try {
             const ranges = videoEl.buffered;
             for (let i = 0; i < ranges.length; i += 1) {
@@ -5115,13 +5118,14 @@ export function PlayPageClient({
               const end = ranges.end(i);
               if (currentTime >= start && currentTime <= end) {
                 bufferedAhead = Math.max(0, end - currentTime);
+                inRange = true;
                 break;
-              }
-              if (currentTime < start && bufferedAhead === 0) {
-                bufferedAhead = Math.max(0, start - currentTime);
               }
             }
           } catch {
+            bufferedAhead = 0;
+          }
+          if (!inRange) {
             bufferedAhead = 0;
           }
           const MAX_BUFFER_PILL_SEC = 90;
@@ -5129,11 +5133,13 @@ export function PlayPageClient({
             100,
             Math.max(0, (bufferedAhead / MAX_BUFFER_PILL_SEC) * 100)
           );
-          if (Math.abs(bufferedAhead - bufferedAheadSec) > 0.25) {
+          if (Math.abs(bufferedAhead - bufferedAheadSecRef.current) > 0.25) {
             setBufferedAheadSec(bufferedAhead);
+            bufferedAheadSecRef.current = bufferedAhead;
           }
-          if (Math.abs(pct - bufferedPillPct) > 1) {
+          if (Math.abs(pct - bufferedPillPctRef.current) > 1) {
             setBufferedPillPct(pct);
+            bufferedPillPctRef.current = pct;
           }
         }
         const adBlockActive =
