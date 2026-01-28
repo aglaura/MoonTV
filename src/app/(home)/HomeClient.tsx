@@ -3,7 +3,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from 'react';
 
 import type { CardItem, TvRegion, TvSectionId, UiLocale } from '@/lib/home.types';
 import { useKidsMode } from '@/lib/kidsMode.client';
@@ -494,7 +494,7 @@ export default function HomeClient() {
   }, [refresh, refreshing]);
 
   const handleTouchStart = useCallback(
-    (event: React.TouchEvent<HTMLDivElement>) => {
+    (event: TouchEvent<HTMLDivElement>) => {
       if (!isMobileMode || isTVMode) return;
       if (window.scrollY > 0) return;
       if (event.touches.length !== 1) return;
@@ -504,7 +504,7 @@ export default function HomeClient() {
   );
 
   const handleTouchMove = useCallback(
-    (event: React.TouchEvent<HTMLDivElement>) => {
+    (event: TouchEvent<HTMLDivElement>) => {
       if (!isMobileMode || isTVMode) return;
       const startY = pullStartRef.current;
       if (startY === null) return;
@@ -542,6 +542,16 @@ export default function HomeClient() {
       setPullDistance(0);
     }
   }, [refreshing]);
+  const displayPull = Math.min(
+    maxPullDistance,
+    refreshing ? pullThreshold : pullDistance
+  );
+  const pullTransform =
+    displayPull > 0 || refreshing ? `translateY(${displayPull * 0.45}px)` : '';
+  const pullTransitionClass =
+    displayPull === 0 && !refreshing
+      ? 'transition-transform duration-200 ease-out'
+      : '';
 
   const currentTvSection =
     isTVMode && activeTab === 'home'
@@ -576,69 +586,90 @@ export default function HomeClient() {
         onTouchEnd={handleTouchEnd}
         style={{ touchAction: isMobileMode && !isTVMode ? 'pan-y' : 'auto' }}
       >
-        {isMobileMode && !isTVMode && (pullDistance > 0 || refreshing) && (
-          <div className="flex justify-center -mt-2 mb-4">
-            <div className="rounded-full bg-black/70 text-white text-xs px-4 py-2 flex items-center gap-3 shadow-md">
-              <div className="h-1.5 w-16 rounded-full bg-white/20 overflow-hidden">
+        <div className="relative">
+          {isMobileMode && !isTVMode && (displayPull > 0 || refreshing) && (
+            <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
+              <div className="w-full max-w-4xl px-4">
                 <div
-                  className="h-full bg-emerald-400 transition-all"
+                  className="w-full rounded-b-[28px] bg-emerald-400/20"
                   style={{
-                    width: `${Math.min(
-                      100,
-                      (pullDistance / pullThreshold) * 100
-                    )}%`,
+                    height: Math.max(12, displayPull * 0.6),
+                    transform: `scaleY(${1 + Math.min(displayPull, maxPullDistance) / 260})`,
+                    transformOrigin: 'top',
                   }}
                 ></div>
               </div>
-              <span>
-                {refreshing
-                  ? tt('Refreshing…', '刷新中…', '重新整理中…')
-                  : pullDistance >= pullThreshold
-                  ? tt('Release to refresh', '松开刷新', '放開重新整理')
-                  : tt('Pull to refresh', '下拉刷新', '下拉重新整理')}
-              </span>
             </div>
-          </div>
-        )}
-        {isKidsMode && <HomeKidsBadge tt={tt} />}
-        {!isTVMode && (
-          <HomeTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            isTablet={screenMode === 'tablet'}
-            tt={tt}
-          />
-        )}
-        <div className="w-full">
-          {activeTab === 'favorites' ? (
-            <HomeFavoritesSection
-              items={favoriteItems}
-              onClear={clearFavorites}
-              tt={tt}
-            />
-          ) : (
-            <div className={mainLayoutClass}>
-              <div className="flex flex-col gap-6 sm:gap-8">
-                <section
-                  data-tv-section="continue"
-                  className={tvSectionClass('continue')}
-                >
-                  <ContinueWatching isTV={isTVMode} />
-                </section>
+          )}
+          {isMobileMode && !isTVMode && (displayPull > 0 || refreshing) && (
+            <div className="flex justify-center -mt-2 mb-4 pointer-events-none">
+              <div className="rounded-full bg-black/70 text-white text-xs px-4 py-2 flex items-center gap-3 shadow-md">
+                <div className="h-1.5 w-16 rounded-full bg-white/20 overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 transition-all"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (displayPull / pullThreshold) * 100
+                      )}%`,
+                    }}
+                  ></div>
+                </div>
+                <span>
+                  {refreshing
+                    ? tt('Refreshing…', '刷新中…', '重新整理中…')
+                    : displayPull >= pullThreshold
+                    ? tt('Release to refresh', '松开刷新', '放開重新整理')
+                    : tt('Pull to refresh', '下拉刷新', '下拉重新整理')}
+                </span>
+              </div>
+            </div>
+          )}
+          <div
+            className={pullTransitionClass}
+            style={{ transform: pullTransform || undefined }}
+          >
+            {isKidsMode && <HomeKidsBadge tt={tt} />}
+            {!isTVMode && (
+              <HomeTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                isTablet={screenMode === 'tablet'}
+                tt={tt}
+              />
+            )}
+            <div className="w-full">
+              {activeTab === 'favorites' ? (
+                <HomeFavoritesSection
+                  items={favoriteItems}
+                  onClear={clearFavorites}
+                  tt={tt}
+                />
+              ) : (
+                <div className={mainLayoutClass}>
+                  <div className="flex flex-col gap-6 sm:gap-8">
+                    <section
+                      data-tv-section="continue"
+                      className={tvSectionClass('continue')}
+                    >
+                      <ContinueWatching isTV={isTVMode} />
+                    </section>
 
-                {error && <HomeErrorBanner className={errorBannerClass} tt={tt} />}
+                    {error && (
+                      <HomeErrorBanner className={errorBannerClass} tt={tt} />
+                    )}
 
-                <section
-                  data-tv-section="airing"
-                  className={tvSectionClass('airing')}
-                >
-                  <ContentRail
-                    title={airingTitle}
-                    items={airingRail.items}
-                    screenMode={screenMode}
-                    tt={tt}
-                  />
-                </section>
+                    <section
+                      data-tv-section="airing"
+                      className={tvSectionClass('airing')}
+                    >
+                      <ContentRail
+                        title={airingTitle}
+                        items={airingRail.items}
+                        screenMode={screenMode}
+                        tt={tt}
+                      />
+                    </section>
 
                 {isTVMode ? (
                   TV_REGION_ORDER.map((regionKey) => {
