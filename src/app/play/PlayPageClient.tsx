@@ -5165,6 +5165,7 @@ export function PlayPageClient({
             lastProgressTimeRef.current = currentTime;
             lastProgressAtRef.current = now;
             stallRecoveryCountRef.current = 0;
+            setIsBuffering(false);
           } else if (
             !artPlayerRef.current?.paused &&
             lastProgressAtRef.current &&
@@ -5747,12 +5748,6 @@ export function PlayPageClient({
                       {tt('Play', '开始播放', '開始播放')}
                     </button>
                   </div>
-                </div>
-              )}
-              {!audioOnly && isBuffering && (
-                <div className='absolute bottom-3 right-3 z-[610] rounded-full bg-black/60 text-white text-xs px-3 py-1.5 flex items-center gap-2'>
-                  <span className='inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse'></span>
-                  {tt('Buffering…', '缓冲中…', '緩衝中…')}
                 </div>
               )}
               {!audioOnly && isPlaying && (
