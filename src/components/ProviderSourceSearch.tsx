@@ -304,30 +304,45 @@ const ProviderSourceSearch = ({
                             )}
                           </div>
                         </div>
-                        <button
-                          type='button'
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedProviders((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(group.key)) {
-                                next.delete(group.key);
-                              } else {
-                                next.add(group.key);
-                              }
-                              return next;
-                            });
-                          }}
-                          className={`text-[10px] px-1 py-0.5 rounded-full transition min-h-[24px] ${
-                            isTvVariant
-                              ? 'bg-white/10 text-white/80 hover:bg-white/15'
-                              : 'bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25'
-                          }`}
-                        >
-                          {group.sources.length} sources
-                        </button>
+                        <div className='flex items-center gap-1.5 flex-shrink-0'>
+                          <button
+                            type='button'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedProviders((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(group.key)) {
+                                  next.delete(group.key);
+                                } else {
+                                  next.add(group.key);
+                                }
+                                return next;
+                              });
+                            }}
+                            className={`text-[10px] px-1 py-0.5 rounded-full transition min-h-[24px] ${
+                              isTvVariant
+                                ? 'bg-white/10 text-white/80 hover:bg-white/15'
+                                : 'bg-green-800/15 text-green-900 dark:bg-green-700/25 dark:text-green-100 hover:bg-green-800/25'
+                            }`}
+                          >
+                            {group.sources.length} sources
+                          </button>
+                          <div className='flex items-center gap-1.5 sm:hidden'>
+                            {providerHasError ? (
+                              <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
+                                檢測失敗
+                              </div>
+                            ) : (
+                              <div
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 ${qualityTextColor}`}
+                              >
+                                {qualityText}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className='flex flex-wrap items-center gap-1.5'>
+                      <div className='hidden sm:flex flex-wrap items-center gap-1.5'>
                         {providerHasError ? (
                           <div className='text-[10px] px-1.5 py-0.5 rounded-full bg-gray-500/10 dark:bg-gray-400/20 text-red-600 dark:text-red-400'>
                             檢測失敗
