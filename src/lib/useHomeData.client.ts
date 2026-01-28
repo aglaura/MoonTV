@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   GetBangumiCalendarData,
@@ -48,6 +48,9 @@ export const useHomeData = ({
   uiLocale,
   isKidsMode,
 }: UseHomeDataParams): UseHomeDataResult => {
+  const HOME_LOCAL_CACHE_KEY = 'moontv:home-merged-cache:v1';
+  const HOME_LOCAL_TTL_MS = 1000 * 60 * 30; // 30 minutes
+
   const [hotMovies, setHotMovies] = useState<DoubanItem[]>([]);
   const [hotTvShows, setHotTvShows] = useState<DoubanItem[]>([]);
   const [hotVarietyShows, setHotVarietyShows] = useState<DoubanItem[]>([]);
@@ -69,6 +72,7 @@ export const useHomeData = ({
     title: string;
     items: CardItem[];
   }>({ title: '', items: [] });
+  const hasLocalCacheRef = useRef(false);
 
   const tt = useCallback(
     (en: string, zhHans: string, zhHant: string) => {
@@ -88,7 +92,9 @@ export const useHomeData = ({
   useEffect(() => {
     const fetchRecommendData = async () => {
       try {
-        setLoading(true);
+        if (!hasLocalCacheRef.current) {
+          setLoading(true);
+        }
         setError(false);
 
         const bangumiPromise = GetBangumiCalendarData();
@@ -101,6 +107,14 @@ export const useHomeData = ({
           if (mergedRes.ok) {
             const merged = (await mergedRes.json()) as PrefetchedHome;
             setPrefetchedHome(merged);
+            try {
+              localStorage.setItem(
+                HOME_LOCAL_CACHE_KEY,
+                JSON.stringify({ ts: Date.now(), data: merged })
+              );
+            } catch {
+              // ignore storage failures
+            }
             mergedOk = true;
           } else {
             setPrefetchedHome(null);
@@ -176,6 +190,24 @@ export const useHomeData = ({
         setLoading(false);
       }
     };
+
+    try {
+      const raw = localStorage.getItem(HOME_LOCAL_CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { ts?: number; data?: PrefetchedHome };
+        if (
+          parsed?.data &&
+          typeof parsed.ts === 'number' &&
+          Date.now() - parsed.ts <= HOME_LOCAL_TTL_MS
+        ) {
+          hasLocalCacheRef.current = true;
+          setPrefetchedHome(parsed.data);
+          setLoading(false);
+        }
+      }
+    } catch {
+      // ignore
+    }
 
     fetchRecommendData();
   }, []);

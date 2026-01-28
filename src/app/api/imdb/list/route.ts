@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import { normalizeConfigJsonBase } from '@/lib/configjson';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 86400; // cache for 24 hours (best-effort; dynamic fetch)
@@ -7,6 +9,55 @@ export const revalidate = 86400; // cache for 24 hours (best-effort; dynamic fet
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p/w500';
 const TMDB_PROFILE = 'https://image.tmdb.org/t/p/w300';
+
+function buildSqliteCacheEndpoint(): string | null {
+  const override = (
+    process.env.CONFIGJSON_SQLITE_ENDPOINT ||
+    process.env.CONFIGJSON_HOME_ENDPOINT ||
+    ''
+  ).trim();
+  if (override) return override;
+  const base = normalizeConfigJsonBase(process.env.CONFIGJSON);
+  if (!base) return null;
+  const enabled =
+    (process.env.CONFIGJSON_HOME_SQLITE || process.env.CONFIGJSON_SQLITE || '')
+      .toLowerCase() === 'true';
+  if (!enabled) return null;
+  return `${base.replace(/\/+$/, '')}/posters/esmeetv-sqlite.php`;
+}
+
+function buildSqliteCacheUrl(key: string): string | null {
+  const endpoint = buildSqliteCacheEndpoint();
+  if (!endpoint) return null;
+  const token = (process.env.CONFIGJSON_SQLITE_TOKEN || '').trim();
+  const joiner = endpoint.includes('?') ? '&' : '?';
+  const base = `${endpoint}${joiner}key=${encodeURIComponent(key)}`;
+  return token ? `${base}&token=${encodeURIComponent(token)}` : base;
+}
+
+async function tryFetchCache(url: string) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function tryUploadCache(url: string, data: unknown) {
+  try {
+    const buffer = Buffer.from(JSON.stringify(data));
+    const putResp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: buffer,
+    });
+    if (putResp.ok) return;
+  } catch {
+    // ignore cache write failures
+  }
+}
 
 const FALLBACK_MOVIES: TmdbItem[] = [
   {
@@ -334,6 +385,23 @@ export async function GET() {
     process.env.TMDB_API_KEY || '2de27bb73e68f7ebdc05dfcf29a5c2ed';
 
   try {
+    const cacheUrl = buildSqliteCacheUrl('tmdb-home');
+    if (cacheUrl) {
+      const cached = await tryFetchCache(cacheUrl);
+      if (
+        cached &&
+        Array.isArray((cached as any).movies) &&
+        Array.isArray((cached as any).tv)
+      ) {
+        return NextResponse.json(cached, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
+            'x-cache': 'remote-hit',
+          },
+        });
+      }
+    }
+
     let fetchError: string | null = null;
     let movies: TmdbItem[] = [];
     let tv: TmdbItem[] = [];
@@ -407,23 +475,24 @@ export async function GET() {
       movies = FALLBACK_MOVIES;
     }
 
-    return NextResponse.json(
-      {
-        movies,
-        tv,
-        krTv,
-        jpTv,
-        people,
-        nowPlaying: nowPlayingMovies,
-        onAir: onAirTv,
-        error: fetchError ?? undefined,
+    const payload = {
+      movies,
+      tv,
+      krTv,
+      jpTv,
+      people,
+      nowPlaying: nowPlayingMovies,
+      onAir: onAirTv,
+      error: fetchError ?? undefined,
+    };
+    if (cacheUrl) {
+      void tryUploadCache(cacheUrl, payload);
+    }
+    return NextResponse.json(payload, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
       },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300',
-        },
-      }
-    );
+    });
   } catch (error) {
     return NextResponse.json(
       {

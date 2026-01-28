@@ -77,12 +77,27 @@ function buildCacheBase(): string | null {
 }
 
 function buildHomeCacheUrl(cacheBase: string | null): string | null {
-  const override = (process.env.CONFIGJSON_HOME_ENDPOINT || '').trim();
-  if (override) return override;
+  const override = (
+    process.env.CONFIGJSON_SQLITE_ENDPOINT ||
+    process.env.CONFIGJSON_HOME_ENDPOINT ||
+    ''
+  ).trim();
+  if (override) {
+    const token = (process.env.CONFIGJSON_SQLITE_TOKEN || '').trim();
+    if (!token) return override;
+    if (/[\?&]token=/.test(override)) return override;
+    const joiner = override.includes('?') ? '&' : '?';
+    return `${override}${joiner}token=${encodeURIComponent(token)}`;
+  }
   if (!cacheBase) return null;
   const base = cacheBase.replace(/\/+$/, '');
-  if ((process.env.CONFIGJSON_HOME_SQLITE || '').toLowerCase() === 'true') {
-    return `${base}/posters/esmeetv-sqlite.php`;
+  const enabled =
+    (process.env.CONFIGJSON_HOME_SQLITE || process.env.CONFIGJSON_SQLITE || '')
+      .toLowerCase() === 'true';
+  if (enabled) {
+    const token = (process.env.CONFIGJSON_SQLITE_TOKEN || '').trim();
+    if (!token) return `${base}/posters/esmeetv-sqlite.php`;
+    return `${base}/posters/esmeetv-sqlite.php?token=${encodeURIComponent(token)}`;
   }
   return `${base}/posters/video_info/home-merged.json`;
 }

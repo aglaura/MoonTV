@@ -75,6 +75,55 @@ function buildPosterBase(): string | null {
   return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
+function buildSqliteCacheEndpoint(): string | null {
+  const override = (
+    process.env.CONFIGJSON_SQLITE_ENDPOINT ||
+    process.env.CONFIGJSON_HOME_ENDPOINT ||
+    ''
+  ).trim();
+  if (override) return override;
+  const base = normalizeConfigJsonBase(process.env.CONFIGJSON);
+  if (!base) return null;
+  const enabled =
+    (process.env.CONFIGJSON_HOME_SQLITE || process.env.CONFIGJSON_SQLITE || '')
+      .toLowerCase() === 'true';
+  if (!enabled) return null;
+  return `${base.replace(/\/+$/, '')}/posters/esmeetv-sqlite.php`;
+}
+
+function buildSqliteCacheUrl(key: string): string | null {
+  const endpoint = buildSqliteCacheEndpoint();
+  if (!endpoint) return null;
+  const token = (process.env.CONFIGJSON_SQLITE_TOKEN || '').trim();
+  const joiner = endpoint.includes('?') ? '&' : '?';
+  const base = `${endpoint}${joiner}key=${encodeURIComponent(key)}`;
+  return token ? `${base}&token=${encodeURIComponent(token)}` : base;
+}
+
+async function tryFetchCache(url: string) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function tryUploadCache(url: string, data: unknown) {
+  try {
+    const buffer = Buffer.from(JSON.stringify(data));
+    const putResp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: buffer,
+    });
+    if (putResp.ok) return;
+  } catch {
+    // ignore cache write failures
+  }
+}
+
 function extFromContentType(ct?: string | null): string {
   if (!ct) return '.jpg';
   if (ct.includes('png')) return '.png';
@@ -153,6 +202,24 @@ async function cachePoster(url: string, doubanId: string) {
 
 export async function GET() {
   try {
+    const cacheUrl = buildSqliteCacheUrl('douban-home');
+    if (cacheUrl) {
+      const cached = await tryFetchCache(cacheUrl);
+      if (
+        cached &&
+        Array.isArray((cached as any).movies) &&
+        Array.isArray((cached as any).tv) &&
+        Array.isArray((cached as any).variety)
+      ) {
+        return NextResponse.json(cached, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=60',
+            'x-cache': 'remote-hit',
+          },
+        });
+      }
+    }
+
     const [movies, tv, variety, latestMovies, latestTv] = await Promise.all([
       fetchRecentHot('movie', '热门', '全部'),
       fetchRecentHot('tv', 'tv', 'tv'),
@@ -168,15 +235,16 @@ export async function GET() {
         .map((item) => cachePoster(item.poster, item.id.toString()))
     ).catch(() => {});
 
-    return NextResponse.json(
-      { movies, tv, variety, latestMovies, latestTv },
-      {
-        headers: {
-          // Encourage CDN caching; Next's `revalidate` controls refresh cadence.
-          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=60',
-        },
+    const payload = { movies, tv, variety, latestMovies, latestTv };
+    if (cacheUrl) {
+      void tryUploadCache(cacheUrl, payload);
+    }
+    return NextResponse.json(payload, {
+      headers: {
+        // Encourage CDN caching; Next's `revalidate` controls refresh cadence.
+        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=60',
       },
-    );
+    });
   } catch (error) {
     return NextResponse.json(
       {
