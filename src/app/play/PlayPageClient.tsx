@@ -348,7 +348,7 @@ export function PlayPageClient({
   }, [searchParams]);
   const targetImdbId = useMemo(() => {
     const raw = searchParams.get('imdbId');
-    const m = raw?.match(/(tt\\d{5,}|imdbt\\d+)/i);
+    const m = raw?.match(/(tt\d{5,}|imdbt\d+)/i);
     return m ? m[0].toLowerCase() : null;
   }, [searchParams]);
 
@@ -1031,7 +1031,7 @@ export function PlayPageClient({
         if (targetImdbId) {
           const found =
             all.find((r) => {
-              const m = r.imdbId?.match(/(tt\\d{5,}|imdbt\\d+)/i);
+              const m = r.imdbId?.match(/(tt\d{5,}|imdbt\d+)/i);
               return m ? m[0].toLowerCase() === targetImdbId : false;
             }) || null;
           if (found) {
@@ -3504,15 +3504,48 @@ export function PlayPageClient({
   }, [currentEpisodeIndex, detail, preloadNextEpisodeUrl]);
 
   useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    let flushTimer: NodeJS.Timeout | null = null;
+    const pendingSources: SearchResult[] = [];
+    const flushPendingSources = () => {
+      if (cancelled || pendingSources.length === 0) return;
+      const chunk = pendingSources.splice(0, pendingSources.length);
+      setAvailableSources((prev) => {
+        const merged = [...prev, ...chunk];
+        availableSourcesRef.current = merged;
+        return merged;
+      });
+    };
+    const scheduleFlush = () => {
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        flushPendingSources();
+      }, 100);
+    };
+
     const streamSourcesData = async (query: string) => {
       setSourceSearchLoading(true);
       setSourceSearchError(null);
       failedSourcesRef.current.clear();
       availableSourcesRef.current = [];
       setAvailableSources([]);
-      const response = await fetch(
-        `/api/search/stream?q=${encodeURIComponent(query.trim())}`
-      );
+      pendingSources.length = 0;
+      let response: Response;
+      try {
+        response = await fetch(
+          `/api/search/stream?q=${encodeURIComponent(query.trim())}`,
+          { signal: controller.signal }
+        );
+      } catch (error) {
+        if (cancelled || (error as any)?.name === 'AbortError') {
+          return;
+        }
+        setSourceSearchError(tt('Search failed', '搜索失败', '搜尋失敗'));
+        setSourceSearchLoading(false);
+        return;
+      }
 
       if (!response.body) {
         setSourceSearchError(tt('Search failed', '搜索失败', '搜尋失敗'));
@@ -3569,167 +3602,197 @@ export function PlayPageClient({
         }, 1000);
       };
 
-      let keepReading = true;
-      while (keepReading) {
-        const { done, value } = await reader.read();
-        if (value) {
-          buffer += decoder.decode(value, { stream: !done });
-        }
-        if (done) {
-          buffer += decoder.decode();
-          keepReading = false;
-        }
-
-        const payloads: string[] = [];
-        for (let idx = buffer.indexOf('\n'); idx >= 0; idx = buffer.indexOf('\n')) {
-          const line = buffer.slice(0, idx).trim();
-          buffer = buffer.slice(idx + 1);
-          if (line) payloads.push(line);
-        }
-        if (!keepReading) {
-          const tail = buffer.trim();
-          buffer = '';
-          if (tail) payloads.push(tail);
-        }
-        if (!payloads.length) continue;
-
-        const parsedSources: SearchResult[] = [];
-        for (const payload of payloads) {
-          try {
-            const entries = JSON.parse(payload);
-            if (Array.isArray(entries)) {
-              parsedSources.push(...entries);
-            } else if (entries && typeof entries === 'object') {
-              if (entries.__meta) {
-                const searchedCount = entries.searched ?? 0;
-                setSearchStats({
-                  total: searchedCount,
-                  found: entries.found ?? 0,
-                  notFound: entries.notFound ?? 0,
-                  empty: entries.empty ?? 0,
-                  failed: entries.failed ?? 0,
-                });
-                if (searchedCount > 0) {
-                  setProviderCount(searchedCount);
-                }
-                continue;
-              }
-              parsedSources.push(entries as SearchResult);
+      let streamError: unknown = null;
+      try {
+        let keepReading = true;
+        while (keepReading && !cancelled) {
+          const { done, value } = await reader.read().catch((error) => {
+            if ((error as any)?.name === 'AbortError') {
+              return { done: true, value: undefined as Uint8Array | undefined };
             }
-          } catch (error) {
-            console.warn('Failed to parse stream chunk:', error);
+            throw error;
+          });
+          if (value) {
+            buffer += decoder.decode(value, { stream: !done });
           }
-        }
-
-        if (!parsedSources.length) {
-          continue;
-        }
-        const newSources: SearchResult[] = parsedSources;
-        allSources.push(...newSources);
-
-        newSources.forEach((source) => {
-          const key = getValuationKey(source.source);
-          if (!key) return;
-          if (Array.isArray(source.episodes) && source.episodes.length > 0) {
-            providersWithPlayableSources.add(key);
-            return;
+          if (done) {
+            buffer += decoder.decode();
+            keepReading = false;
           }
-          if (!providersWithEmptySources.has(key)) {
-            providersWithEmptySources.set(key, source.source);
+
+          const payloads: string[] = [];
+          for (
+            let idx = buffer.indexOf('\n');
+            idx >= 0;
+            idx = buffer.indexOf('\n')
+          ) {
+            const line = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 1);
+            if (line) payloads.push(line);
           }
-        });
-
-        setAvailableSources((prev) => {
-          const merged = [...prev, ...newSources];
-          availableSourcesRef.current = merged;
-          return merged;
-        });
-        const resumeCandidate = tryResumeFromRecord();
-        if (!initialPlaybackChosenRef.current && resumeCandidate) {
-          initializePlayback(resumeCandidate);
-        }
-
-        if (
-          !initialPlaybackChosenRef.current &&
-          !delayInitialPlaybackRef.current &&
-          currentSourceRef.current &&
-          currentIdRef.current
-        ) {
-          const match =
-            newSources.find(
-              (s) =>
-                s.source === currentSourceRef.current &&
-                String(s.id ?? '') === String(currentIdRef.current ?? '')
-            ) ||
-            availableSourcesRef.current.find(
-              (s) =>
-                s.source === currentSourceRef.current &&
-                String(s.id ?? '') === String(currentIdRef.current ?? '')
-            ) ||
-            null;
-          if (match) {
-            initializePlayback(match);
+          if (!keepReading) {
+            const tail = buffer.trim();
+            buffer = '';
+            if (tail) payloads.push(tail);
           }
-        }
+          if (!payloads.length) continue;
 
-        if (!initialPlaybackChosenRef.current && delayInitialPlaybackRef.current) {
-          const grouped = new Map<string, SearchResult[]>();
-          newSources.forEach((s) => {
-            const key = getValuationKey(s.source);
+          const parsedSources: SearchResult[] = [];
+          for (const payload of payloads) {
+            try {
+              const entries = JSON.parse(payload);
+              if (Array.isArray(entries)) {
+                parsedSources.push(...entries);
+              } else if (entries && typeof entries === 'object') {
+                if (entries.__meta) {
+                  const searchedCount = entries.searched ?? 0;
+                  setSearchStats({
+                    total: searchedCount,
+                    found: entries.found ?? 0,
+                    notFound: entries.notFound ?? 0,
+                    empty: entries.empty ?? 0,
+                    failed: entries.failed ?? 0,
+                  });
+                  if (searchedCount > 0) {
+                    setProviderCount(searchedCount);
+                  }
+                  continue;
+                }
+                parsedSources.push(entries as SearchResult);
+              }
+            } catch (error) {
+              console.warn('Failed to parse stream chunk:', error);
+            }
+          }
+
+          if (!parsedSources.length) {
+            continue;
+          }
+          const newSources: SearchResult[] = parsedSources;
+          allSources.push(...newSources);
+
+          newSources.forEach((source) => {
+            const key = getValuationKey(source.source);
             if (!key) return;
-            if (!Array.isArray(s.episodes) || s.episodes.length === 0) return;
-            const arr = grouped.get(key);
-            if (arr) {
-              arr.push(s);
-            } else {
-              grouped.set(key, [s]);
+            if (Array.isArray(source.episodes) && source.episodes.length > 0) {
+              providersWithPlayableSources.add(key);
+              return;
+            }
+            if (!providersWithEmptySources.has(key)) {
+              providersWithEmptySources.set(key, source.source);
             }
           });
 
-          if (grouped.size > 0) {
-            const next = [...firstPlayCandidatesRef.current];
-            grouped.forEach((items, key) => {
-              if (firstPlayProviderSetRef.current.has(key)) return;
-              const bestFromProvider = pickBestInitialCandidate(items);
-              if (!bestFromProvider) return;
-              firstPlayProviderSetRef.current.add(key);
-              if (next.length < FIRST_PLAY_CANDIDATE_LIMIT) {
-                next.push(bestFromProvider);
-              }
-            });
-            if (next.length !== firstPlayCandidatesRef.current.length) {
-              const limited = next.slice(0, FIRST_PLAY_CANDIDATE_LIMIT);
-              firstPlayCandidatesRef.current = limited;
-              setFirstPlayCandidates(limited);
+          availableSourcesRef.current = [
+            ...availableSourcesRef.current,
+            ...newSources,
+          ];
+          pendingSources.push(...newSources);
+          scheduleFlush();
+          const resumeCandidate = tryResumeFromRecord();
+          if (!initialPlaybackChosenRef.current && resumeCandidate) {
+            initializePlayback(resumeCandidate);
+          }
+
+          if (
+            !initialPlaybackChosenRef.current &&
+            !delayInitialPlaybackRef.current &&
+            currentSourceRef.current &&
+            currentIdRef.current
+          ) {
+            const match =
+              newSources.find(
+                (s) =>
+                  s.source === currentSourceRef.current &&
+                  String(s.id ?? '') === String(currentIdRef.current ?? '')
+              ) ||
+              availableSourcesRef.current.find(
+                (s) =>
+                  s.source === currentSourceRef.current &&
+                  String(s.id ?? '') === String(currentIdRef.current ?? '')
+              ) ||
+              null;
+            if (match) {
+              initializePlayback(match);
             }
           }
 
-          const providerThresholdReached =
-            firstPlayProviderSetRef.current.size >= FIRST_PLAY_CANDIDATE_LIMIT;
-          const candidatesNow = firstPlayCandidatesRef.current;
           if (
-            providerThresholdReached &&
-            candidatesNow.length > 0 &&
-            !initialPlaybackChosenRef.current
+            !initialPlaybackChosenRef.current &&
+            delayInitialPlaybackRef.current
           ) {
-            const picked = pickFirstPlayCandidate(
-              candidatesNow.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
-            );
-            if (picked) {
-              initializePlayback(picked);
+            const grouped = new Map<string, SearchResult[]>();
+            newSources.forEach((s) => {
+              const key = getValuationKey(s.source);
+              if (!key) return;
+              if (!Array.isArray(s.episodes) || s.episodes.length === 0) return;
+              const arr = grouped.get(key);
+              if (arr) {
+                arr.push(s);
+              } else {
+                grouped.set(key, [s]);
+              }
+            });
+
+            if (grouped.size > 0) {
+              const next = [...firstPlayCandidatesRef.current];
+              grouped.forEach((items, key) => {
+                if (firstPlayProviderSetRef.current.has(key)) return;
+                const bestFromProvider = pickBestInitialCandidate(items);
+                if (!bestFromProvider) return;
+                firstPlayProviderSetRef.current.add(key);
+                if (next.length < FIRST_PLAY_CANDIDATE_LIMIT) {
+                  next.push(bestFromProvider);
+                }
+              });
+              if (next.length !== firstPlayCandidatesRef.current.length) {
+                const limited = next.slice(0, FIRST_PLAY_CANDIDATE_LIMIT);
+                firstPlayCandidatesRef.current = limited;
+                setFirstPlayCandidates(limited);
+              }
+            }
+
+            const providerThresholdReached =
+              firstPlayProviderSetRef.current.size >= FIRST_PLAY_CANDIDATE_LIMIT;
+            const candidatesNow = firstPlayCandidatesRef.current;
+            if (
+              providerThresholdReached &&
+              candidatesNow.length > 0 &&
+              !initialPlaybackChosenRef.current
+            ) {
+              const picked = pickFirstPlayCandidate(
+                candidatesNow.slice(0, FIRST_PLAY_CANDIDATE_LIMIT)
+              );
+              if (picked) {
+                initializePlayback(picked);
+              }
             }
           }
         }
 
+      } catch (error) {
+        streamError = error;
+      }
+
+      if (streamError && !cancelled) {
+        console.warn('Stream search interrupted:', streamError);
+        setSourceSearchError(tt('Search failed', '搜索失败', '搜尋失敗'));
       }
 
       // Skip penalizing empty providers to avoid inflating failed samples
 
       // No penalty entries pushed; only successful probes persist
 
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      flushPendingSources();
+      if (cancelled) return;
+
       setSourceSearchLoading(false);
       setSourceSearchCompleted(true);
-      fetchStoredValuations(allSources);
+      await fetchStoredValuations(allSources);
       await probeResolutionsForSources(
         allSources,
         providersWithEmptySources,
@@ -3821,10 +3884,9 @@ export function PlayPageClient({
         }
       }
 
-      if (allSources.length > 1) {
+      if (optimizationEnabled && allSources.length > 1) {
         const bestSource = await preferBestSource(allSources);
         if (
-          optimizationEnabled &&
           !hasStartedRef.current &&
           (bestSource.source !== currentSourceRef.current ||
             bestSource.id !== currentIdRef.current)
@@ -3872,6 +3934,15 @@ export function PlayPageClient({
     };
 
     initAll();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -3928,7 +3999,9 @@ export function PlayPageClient({
         // are merged/deduped by video identity (douban/imdb/title+year) on save.
 
         const newDetail = availableSourcesRef.current.find(
-          (source) => source.source === newSource && source.id === newId
+          (source) =>
+            source.source === newSource &&
+            String(source.id ?? '') === String(newId ?? '')
         );
         if (!newDetail) {
           reportError(
