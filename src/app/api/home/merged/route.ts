@@ -76,6 +76,17 @@ function buildCacheBase(): string | null {
   return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
 
+function buildHomeCacheUrl(cacheBase: string | null): string | null {
+  const override = (process.env.CONFIGJSON_HOME_ENDPOINT || '').trim();
+  if (override) return override;
+  if (!cacheBase) return null;
+  const base = cacheBase.replace(/\/+$/, '');
+  if ((process.env.CONFIGJSON_HOME_SQLITE || '').toLowerCase() === 'true') {
+    return `${base}/posters/esmeetv-sqlite.php`;
+  }
+  return `${base}/posters/video_info/home-merged.json`;
+}
+
 const omdbMemoryCache = new Map<string, { cachedAt: number; data: OmdbContribution | null }>();
 
 function normalizeOmdbValue(value?: string): string | undefined {
@@ -513,9 +524,7 @@ function splitTvByRegion(items: DoubanItem[]) {
 export async function GET(request: Request) {
   const { origin } = new URL(request.url);
   const cacheBase = buildCacheBase();
-  const cacheUrl = cacheBase
-    ? `${cacheBase}/posters/video_info/home-merged.json`
-    : null;
+  const cacheUrl = buildHomeCacheUrl(cacheBase);
 
   if (cacheUrl) {
     const cached = await tryFetchCache(cacheUrl);

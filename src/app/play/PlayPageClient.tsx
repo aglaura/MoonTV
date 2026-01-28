@@ -3550,6 +3550,12 @@ export function PlayPageClient({
     updateVideoUrl(detail, currentEpisodeIndex);
   }, [detail, currentEpisodeIndex]);
   useEffect(() => {
+    setBufferedAheadSec(0);
+    setBufferedPillPct(0);
+    bufferedAheadSecRef.current = 0;
+    bufferedPillPctRef.current = 0;
+  }, [playbackUrl]);
+  useEffect(() => {
     if (!detail?.episodes || detail.episodes.length === 0) return;
     const nextIndex = currentEpisodeIndex + 1;
     if (nextIndex >= detail.episodes.length) return;
@@ -4070,6 +4076,7 @@ export function PlayPageClient({
             String(source.id ?? '') === String(newId ?? '')
         );
         if (!newDetail) {
+          setIsVideoLoading(false);
           reportError(
             tt('No matching result found', '未找到匹配结果', '未找到匹配結果'),
             'source'
@@ -4415,8 +4422,7 @@ export function PlayPageClient({
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes:
           majorityEpisodeCountRef.current ??
-          detailRef.current?.episodes?.length ??
-          1,
+          Math.max(1, detailRef.current?.episodes?.length ?? 0),
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
         save_time: Date.now(),
@@ -5199,6 +5205,10 @@ export function PlayPageClient({
       artPlayerRef.current.on('pause', () => {
         cancelAutoNext();
         setIsPlaying(false);
+        setBufferedAheadSec(0);
+        setBufferedPillPct(0);
+        bufferedAheadSecRef.current = 0;
+        bufferedPillPctRef.current = 0;
         saveCurrentPlayProgress();
       });
 
