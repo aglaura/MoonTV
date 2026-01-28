@@ -131,8 +131,11 @@ async function readResponseWithLimit(
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let received = 0;
-  while (true) {
-    const { done, value } = await reader.read();
+  let done = false;
+  while (!done) {
+    const result = await reader.read();
+    done = result.done;
+    const value = result.value;
     if (done) break;
     if (value) {
       received += value.byteLength;
