@@ -5758,7 +5758,18 @@ export function PlayPageClient({
                       style={{ width: `${bufferedPillPct}%` }}
                     ></div>
                     <span className='relative z-10 text-[10px] font-semibold text-white/95'>
-                      {bufferedAheadSec.toFixed(1)}s
+                      {(() => {
+                        const totalSeconds = Math.max(
+                          0,
+                          Math.round(bufferedAheadSec)
+                        );
+                        if (totalSeconds >= 60) {
+                          const minutes = Math.floor(totalSeconds / 60);
+                          const seconds = totalSeconds % 60;
+                          return `${minutes}m${String(seconds).padStart(2, '0')}s`;
+                        }
+                        return `${totalSeconds}s`;
+                      })()}
                     </span>
                   </div>
                 </div>
