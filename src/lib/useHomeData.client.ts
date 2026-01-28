@@ -28,6 +28,8 @@ export type UseHomeDataParams = {
 export type UseHomeDataResult = {
   loading: boolean;
   error: boolean;
+  refreshing: boolean;
+  refresh: () => void;
   categoryData: CategoryData;
   airingRail: { title: string; items: CardItem[] };
   regionalTv: Record<TvRegion, CardItem[]>;
@@ -68,6 +70,7 @@ export const useHomeData = ({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [airingRail, setAiringRail] = useState<{
     title: string;
     items: CardItem[];
@@ -89,20 +92,24 @@ export const useHomeData = ({
     [isKidsMode]
   );
 
-  useEffect(() => {
-    const fetchRecommendData = async () => {
+  const fetchRecommendData = useCallback(
+    async (options?: { isRefresh?: boolean }) => {
       try {
-        if (!hasLocalCacheRef.current) {
+        const isRefresh = options?.isRefresh ?? false;
+        if (isRefresh) {
+          setRefreshing(true);
+        } else if (!hasLocalCacheRef.current) {
           setLoading(true);
         }
         setError(false);
 
         const bangumiPromise = GetBangumiCalendarData();
+        const cacheMode: RequestCache = isRefresh ? 'no-store' : 'force-cache';
 
         let mergedOk = false;
         try {
           const mergedRes = await fetch('/api/home/merged', {
-            cache: 'force-cache',
+            cache: cacheMode,
           });
           if (mergedRes.ok) {
             const merged = (await mergedRes.json()) as PrefetchedHome;
@@ -125,7 +132,7 @@ export const useHomeData = ({
 
         if (!mergedOk) {
           const doubanPromise = fetch('/api/douban/home', {
-            cache: 'force-cache',
+            cache: cacheMode,
           }).then((r) => {
             if (!r.ok) throw new Error(`Douban home failed (${r.status})`);
             return r.json() as Promise<{
@@ -136,7 +143,7 @@ export const useHomeData = ({
           });
 
           const tmdbPromise = fetch('/api/imdb/list', {
-            cache: 'force-cache',
+            cache: cacheMode,
           }).then(async (res) => {
             if (!res.ok) throw new Error(`TMDB list failed (${res.status})`);
             return (await res.json()) as {
@@ -188,9 +195,13 @@ export const useHomeData = ({
         setError(true);
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
-    };
+    },
+    []
+  );
 
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(HOME_LOCAL_CACHE_KEY);
       if (raw) {
@@ -210,7 +221,7 @@ export const useHomeData = ({
     }
 
     fetchRecommendData();
-  }, []);
+  }, [fetchRecommendData]);
 
   const animeList = useMemo(() => {
     if (!bangumiCalendarData || bangumiCalendarData.length === 0) return [];
@@ -915,6 +926,10 @@ export const useHomeData = ({
   return {
     loading,
     error,
+    refreshing,
+    refresh: () => {
+      fetchRecommendData({ isRefresh: true });
+    },
     categoryData,
     airingRail,
     regionalTv,

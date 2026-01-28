@@ -3,7 +3,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { CardItem, TvRegion, TvSectionId, UiLocale } from '@/lib/home.types';
 import { useKidsMode } from '@/lib/kidsMode.client';
@@ -380,6 +380,8 @@ export default function HomeClient() {
   const { isKidsMode } = useKidsMode();
   const {
     error,
+    refreshing,
+    refresh,
     airingRail,
     regionalTv,
     animationItems,
@@ -476,6 +478,71 @@ export default function HomeClient() {
     airingRail.title ||
     tt('This Week\'s Updates', '本周更新', '本週更新');
 
+  const pullThreshold = 80;
+  const maxPullDistance = 140;
+  const refreshCooldownMs = 1200;
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullStartRef = useRef<number | null>(null);
+  const lastRefreshAtRef = useRef(0);
+
+  const triggerRefresh = useCallback(() => {
+    if (refreshing) return;
+    const now = Date.now();
+    if (now - lastRefreshAtRef.current < refreshCooldownMs) return;
+    lastRefreshAtRef.current = now;
+    refresh();
+  }, [refresh, refreshing]);
+
+  const handleTouchStart = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      if (!isMobileMode || isTVMode) return;
+      if (window.scrollY > 0) return;
+      if (event.touches.length !== 1) return;
+      pullStartRef.current = event.touches[0].clientY;
+    },
+    [isMobileMode, isTVMode]
+  );
+
+  const handleTouchMove = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      if (!isMobileMode || isTVMode) return;
+      const startY = pullStartRef.current;
+      if (startY === null) return;
+      if (window.scrollY > 0) {
+        pullStartRef.current = null;
+        setPullDistance(0);
+        return;
+      }
+      const delta = event.touches[0].clientY - startY;
+      if (delta <= 0) {
+        setPullDistance(0);
+        return;
+      }
+      const clamped = Math.min(maxPullDistance, delta);
+      setPullDistance(clamped);
+      if (clamped > 0) {
+        event.preventDefault();
+      }
+    },
+    [isMobileMode, isTVMode]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isMobileMode || isTVMode) return;
+    const shouldRefresh = pullDistance >= pullThreshold;
+    pullStartRef.current = null;
+    setPullDistance(0);
+    if (shouldRefresh) {
+      triggerRefresh();
+    }
+  }, [isMobileMode, isTVMode, pullDistance, triggerRefresh]);
+
+  useEffect(() => {
+    if (refreshing) {
+      setPullDistance(0);
+    }
+  }, [refreshing]);
+
   const currentTvSection =
     isTVMode && activeTab === 'home'
       ? tvSectionList[Math.min(tvSectionIndex, tvSectionList.length - 1)] || null
@@ -504,7 +571,35 @@ export default function HomeClient() {
     >
       <div
         className={`${tvRootClass} px-2 sm:px-6 lg:px-10 xl:px-12 py-4 sm:py-8 overflow-visible w-full`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ touchAction: isMobileMode && !isTVMode ? 'pan-y' : 'auto' }}
       >
+        {isMobileMode && !isTVMode && (pullDistance > 0 || refreshing) && (
+          <div className="flex justify-center -mt-2 mb-4">
+            <div className="rounded-full bg-black/70 text-white text-xs px-4 py-2 flex items-center gap-3 shadow-md">
+              <div className="h-1.5 w-16 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 transition-all"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      (pullDistance / pullThreshold) * 100
+                    )}%`,
+                  }}
+                ></div>
+              </div>
+              <span>
+                {refreshing
+                  ? tt('Refreshing…', '刷新中…', '重新整理中…')
+                  : pullDistance >= pullThreshold
+                  ? tt('Release to refresh', '松开刷新', '放開重新整理')
+                  : tt('Pull to refresh', '下拉刷新', '下拉重新整理')}
+              </span>
+            </div>
+          </div>
+        )}
         {isKidsMode && <HomeKidsBadge tt={tt} />}
         {!isTVMode && (
           <HomeTabs

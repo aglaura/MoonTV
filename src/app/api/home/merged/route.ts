@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { normalizeConfigJsonBase } from '@/lib/configjson';
 import { DoubanItem } from '@/lib/types';
+import type { PrefetchedHome } from '@/lib/home.types';
 
 export const runtime = 'nodejs';
 export const revalidate = 86400;
@@ -85,7 +86,7 @@ function buildHomeCacheUrl(cacheBase: string | null): string | null {
   if (override) {
     const token = (process.env.CONFIGJSON_SQLITE_TOKEN || '').trim();
     if (!token) return override;
-    if (/[\?&]token=/.test(override)) return override;
+    if (/[?&]token=/.test(override)) return override;
     const joiner = override.includes('?') ? '&' : '?';
     return `${override}${joiner}token=${encodeURIComponent(token)}`;
   }
@@ -542,11 +543,11 @@ export async function GET(request: Request) {
   const cacheUrl = buildHomeCacheUrl(cacheBase);
 
   if (cacheUrl) {
-    const cached = await tryFetchCache(cacheUrl);
+    const cached = (await tryFetchCache(cacheUrl)) as PrefetchedHome | null;
     if (
       cached &&
-      Array.isArray((cached as any).tvKr) &&
-      Array.isArray((cached as any).tvJp)
+      Array.isArray(cached.tvKr) &&
+      Array.isArray(cached.tvJp)
     ) {
       return NextResponse.json(cached, {
         headers: {
