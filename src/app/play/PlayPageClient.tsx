@@ -4464,9 +4464,9 @@ export function PlayPageClient({
         poster: videoCover,
         volume: 0.7,
         isLive: false,
-        // iOS Safari blocks autoplay-with-sound; muted autoplay is allowed.
-        muted: isIOS,
-        autoplay: true,
+        // Start paused; user gesture required to play.
+        muted: false,
+        autoplay: false,
         pip: true,
         autoSize: false,
         autoMini: false,
