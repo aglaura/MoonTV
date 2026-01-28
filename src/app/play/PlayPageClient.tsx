@@ -5683,180 +5683,187 @@ export function PlayPageClient({
               }`}
             >
               <div className={`relative w-full ${playerHeightClass}`} id='player-root'>
-              <div className='absolute top-2 left-2 z-[605] flex flex-wrap items-center gap-2 bg-black/60 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
-                <div className='text-sm font-semibold truncate max-w-[60%]'>
-                  {displayTitleText}
-                  {totalEpisodes > 1 && ` · E${currentEpisodeIndex + 1}`}
-                </div>
-                <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
-                  {actualPlaybackInfo?.quality ||
-                    (currentPlayingInfo?.quality
-                      ? localizeInfoLabel(currentPlayingInfo.quality)
-                      : 'NA')}
-                </div>
-              </div>
-              {error && (
-                <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
-                  <div className='flex items-start justify-between gap-3'>
-                    <div className='min-w-0'>
-                      <div className='text-[11px] uppercase tracking-wider text-white/80'>
-                        {errorType === 'playback'
-                          ? tt('Playback error', '播放错误', '播放錯誤')
-                          : errorType === 'source'
-                          ? tt('Source error', '来源错误', '來源錯誤')
-                          : errorType === 'search'
-                          ? tt('Search error', '搜索错误', '搜尋錯誤')
-                          : errorType === 'network'
-                          ? tt('Network error', '网络错误', '網路錯誤')
-                          : errorType === 'params'
-                          ? tt('Parameter error', '参数错误', '參數錯誤')
-                          : tt('Error', '错误', '錯誤')}
+                <div
+                  className={`absolute inset-0 ${
+                    forceRotate ? 'forced-rotate-player' : ''
+                  }`}
+                >
+                  <div className='relative w-full h-full'>
+                    <div className='absolute top-2 left-2 z-[605] flex flex-wrap items-center gap-2 bg-black/60 text-white rounded-lg px-3 py-2 backdrop-blur-sm max-w-[92%]'>
+                      <div className='text-sm font-semibold truncate max-w-[60%]'>
+                        {displayTitleText}
+                        {totalEpisodes > 1 && ` · E${currentEpisodeIndex + 1}`}
                       </div>
-                      <div className='mt-1 text-sm font-medium break-words whitespace-pre-wrap'>
-                        {error}
+                      <div className='text-xs px-2 py-0.5 rounded-full bg-white/15 border border-white/20'>
+                        {actualPlaybackInfo?.quality ||
+                          (currentPlayingInfo?.quality
+                            ? localizeInfoLabel(currentPlayingInfo.quality)
+                            : 'NA')}
                       </div>
-                      {(errorType === 'playback' || errorType === 'source') && (
-                        <div className='mt-2 flex items-center gap-2'>
-                          <button
-                            type='button'
-                            onClick={() => {
-                              clearError();
-                              trySwitchToNextSource();
-                            }}
-                            className='rounded-md bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold'
-                          >
-                            {tt(
-                              'Try next source',
-                              '尝试下一个来源',
-                              '嘗試下一個來源'
+                    </div>
+                    {error && (
+                      <div className='absolute top-3 left-3 z-[650] max-w-[92%] md:max-w-[70%] rounded-xl bg-black/75 text-white backdrop-blur px-4 py-3 shadow-lg pointer-events-auto'>
+                        <div className='flex items-start justify-between gap-3'>
+                          <div className='min-w-0'>
+                            <div className='text-[11px] uppercase tracking-wider text-white/80'>
+                              {errorType === 'playback'
+                                ? tt('Playback error', '播放错误', '播放錯誤')
+                                : errorType === 'source'
+                                ? tt('Source error', '来源错误', '來源錯誤')
+                                : errorType === 'search'
+                                ? tt('Search error', '搜索错误', '搜尋錯誤')
+                                : errorType === 'network'
+                                ? tt('Network error', '网络错误', '網路錯誤')
+                                : errorType === 'params'
+                                ? tt('Parameter error', '参数错误', '參數錯誤')
+                                : tt('Error', '错误', '錯誤')}
+                            </div>
+                            <div className='mt-1 text-sm font-medium break-words whitespace-pre-wrap'>
+                              {error}
+                            </div>
+                            {(errorType === 'playback' ||
+                              errorType === 'source') && (
+                              <div className='mt-2 flex items-center gap-2'>
+                                <button
+                                  type='button'
+                                  onClick={() => {
+                                    clearError();
+                                    trySwitchToNextSource();
+                                  }}
+                                  className='rounded-md bg-white/15 hover:bg-white/25 px-3 py-1.5 text-xs font-semibold'
+                                >
+                                  {tt(
+                                    'Try next source',
+                                    '尝试下一个来源',
+                                    '嘗試下一個來源'
+                                  )}
+                                </button>
+                                <button
+                                  type='button'
+                                  onClick={() => window.location.reload()}
+                                  className='rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold'
+                                >
+                                  {tt('Reload', '刷新', '重新整理')}
+                                </button>
+                              </div>
                             )}
-                          </button>
+                          </div>
                           <button
                             type='button'
-                            onClick={() => window.location.reload()}
-                            className='rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold'
+                            onClick={clearError}
+                            className='shrink-0 rounded-md bg-white/10 hover:bg-white/20 px-2 py-1 text-xs font-semibold'
+                            aria-label={tt(
+                              'Dismiss error',
+                              '关闭错误提示',
+                              '關閉錯誤提示'
+                            )}
+                            title={tt('Dismiss', '关闭', '關閉')}
                           >
-                            {tt('Reload', '刷新', '重新整理')}
+                            ✕
                           </button>
                         </div>
-                      )}
-                    </div>
-                    <button
-                      type='button'
-                      onClick={clearError}
-                      className='shrink-0 rounded-md bg-white/10 hover:bg-white/20 px-2 py-1 text-xs font-semibold'
-                      aria-label={tt(
-                        'Dismiss error',
-                        '关闭错误提示',
-                        '關閉錯誤提示'
-                      )}
-                      title={tt('Dismiss', '关闭', '關閉')}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )}
-              {!audioOnly && recoverySplash && (
-                <div className='absolute top-3 left-1/2 z-[635] -translate-x-1/2 pointer-events-none'>
-                  <div className='rounded-full bg-black/70 text-white text-xs px-4 py-2 shadow-lg'>
-                    {recoverySplash}
-                  </div>
-                </div>
-              )}
-              {!audioOnly && needsUserPlay && (
-                <div className='absolute inset-0 z-[640] flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl'>
-                  <div className='text-center space-y-3 px-6'>
-                    <div className='text-white text-sm font-semibold'>
-                      {needsUserPlayMessage ||
-                        tt('Tap to play', '点击播放', '點擊播放')}
-                    </div>
-                    <button
-                      type='button'
-                      onClick={handleUserPlay}
-                      className='px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-lg'
-                    >
-                      {tt('Play', '开始播放', '開始播放')}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {!audioOnly && isPlaying && (
-                <div className='absolute top-3 right-3 z-[612] rounded-full bg-black/65 text-white text-[11px] px-3 py-1.5 flex items-center gap-2 shadow-sm'>
-                  <div className='relative h-4 w-20 rounded-full bg-white/20 overflow-hidden flex items-center justify-center'>
+                      </div>
+                    )}
+                    {!audioOnly && recoverySplash && (
+                      <div className='absolute top-3 left-1/2 z-[635] -translate-x-1/2 pointer-events-none'>
+                        <div className='rounded-full bg-black/70 text-white text-xs px-4 py-2 shadow-lg'>
+                          {recoverySplash}
+                        </div>
+                      </div>
+                    )}
+                    {!audioOnly && needsUserPlay && (
+                      <div className='absolute inset-0 z-[640] flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl'>
+                        <div className='text-center space-y-3 px-6'>
+                          <div className='text-white text-sm font-semibold'>
+                            {needsUserPlayMessage ||
+                              tt('Tap to play', '点击播放', '點擊播放')}
+                          </div>
+                          <button
+                            type='button'
+                            onClick={handleUserPlay}
+                            className='px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold shadow-lg'
+                          >
+                            {tt('Play', '开始播放', '開始播放')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!audioOnly && isPlaying && (
+                      <div className='absolute top-3 right-3 z-[612] rounded-full bg-black/65 text-white text-[11px] px-3 py-1.5 flex items-center gap-2 shadow-sm'>
+                        <div className='relative h-4 w-20 rounded-full bg-white/20 overflow-hidden flex items-center justify-center'>
+                          <div
+                            className='absolute inset-y-0 left-0 bg-emerald-400'
+                            style={{ width: `${bufferedPillPct}%` }}
+                          ></div>
+                          <span className='relative z-10 text-[10px] font-semibold text-white/95'>
+                            {(() => {
+                              const totalSeconds = Math.max(
+                                0,
+                                Math.round(bufferedAheadSec)
+                              );
+                              if (totalSeconds >= 60) {
+                                const minutes = Math.floor(totalSeconds / 60);
+                                const seconds = totalSeconds % 60;
+                                return `${minutes}m${String(seconds).padStart(2, '0')}s`;
+                              }
+                              return `${totalSeconds}s`;
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                     <div
-                      className='absolute inset-y-0 left-0 bg-emerald-400'
-                      style={{ width: `${bufferedPillPct}%` }}
+                      ref={artRef}
+                      className='absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg'
                     ></div>
-                    <span className='relative z-10 text-[10px] font-semibold text-white/95'>
-                      {(() => {
-                        const totalSeconds = Math.max(
-                          0,
-                          Math.round(bufferedAheadSec)
-                        );
-                        if (totalSeconds >= 60) {
-                          const minutes = Math.floor(totalSeconds / 60);
-                          const seconds = totalSeconds % 60;
-                          return `${minutes}m${String(seconds).padStart(2, '0')}s`;
-                        }
-                        return `${totalSeconds}s`;
-                      })()}
-                    </span>
+
+                    {/* 换源加载蒙层 */}
+                    {isVideoLoading && (
+                      <div className='absolute inset-0 bg-black/85 backdrop-blur-sm rounded-xl flex items-center justify-center z-[500] transition-all duration-300'>
+                        <div className='text-center max-w-md mx-auto px-6'>
+                          {/* 动画影院图标 */}
+                          <div className='relative mb-8'>
+                            <div className='relative mx-auto w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-2xl flex items-center justify-center transform hover:scale-105 transition-transform duration-300'>
+                              <div className='text-white text-4xl'>🎬</div>
+                              {/* 旋转光环 */}
+                              <div className='absolute -inset-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl opacity-20 animate-spin'></div>
+                            </div>
+
+                            {/* 浮动粒子效果 */}
+                            <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
+                              <div className='absolute top-2 left-2 w-2 h-2 bg-green-400 rounded-full animate-bounce'></div>
+                              <div
+                                className='absolute top-4 right-4 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce'
+                                style={{ animationDelay: '0.5s' }}
+                              ></div>
+                              <div
+                                className='absolute bottom-3 left-6 w-1 h-1 bg-lime-400 rounded-full animate-bounce'
+                                style={{ animationDelay: '1s' }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          {/* 换源消息 */}
+                          <div className='space-y-2'>
+                            <p className='text-xl font-semibold text-white animate-pulse'>
+                              {videoLoadingStage === 'sourceChanging'
+                                ? tt(
+                                    '🔄 Switching source…',
+                                    '🔄 切换播放源…',
+                                    '🔄 切換播放源...'
+                                  )
+                                : tt(
+                                    '🔄 Loading video…',
+                                    '🔄 视频载入中…',
+                                    '🔄 影片載入中...'
+                                  )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              <div
-                ref={artRef}
-                className={`absolute inset-0 bg-black w-full h-full rounded-xl overflow-hidden shadow-lg ${
-                  forceRotate ? 'forced-rotate-player' : ''
-                }`}
-              ></div>
-
-                {/* 换源加载蒙层 */}
-                {isVideoLoading && (
-                  <div className='absolute inset-0 bg-black/85 backdrop-blur-sm rounded-xl flex items-center justify-center z-[500] transition-all duration-300'>
-                    <div className='text-center max-w-md mx-auto px-6'>
-                      {/* 动画影院图标 */}
-                      <div className='relative mb-8'>
-                        <div className='relative mx-auto w-24 h-24 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-2xl flex items-center justify-center transform hover:scale-105 transition-transform duration-300'>
-                          <div className='text-white text-4xl'>🎬</div>
-                          {/* 旋转光环 */}
-                          <div className='absolute -inset-2 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl opacity-20 animate-spin'></div>
-                        </div>
-
-                        {/* 浮动粒子效果 */}
-                        <div className='absolute top-0 left-0 w-full h-full pointer-events-none'>
-                          <div className='absolute top-2 left-2 w-2 h-2 bg-green-400 rounded-full animate-bounce'></div>
-                          <div
-                            className='absolute top-4 right-4 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-bounce'
-                            style={{ animationDelay: '0.5s' }}
-                          ></div>
-                          <div
-                            className='absolute bottom-3 left-6 w-1 h-1 bg-lime-400 rounded-full animate-bounce'
-                            style={{ animationDelay: '1s' }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {/* 换源消息 */}
-                      <div className='space-y-2'>
-                        <p className='text-xl font-semibold text-white animate-pulse'>
-                          {videoLoadingStage === 'sourceChanging'
-                            ? tt(
-                                '🔄 Switching source…',
-                                '🔄 切换播放源…',
-                                '🔄 切換播放源...'
-                              )
-                            : tt(
-                                '🔄 Loading video…',
-                                '🔄 视频载入中…',
-                                '🔄 影片載入中...'
-                              )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
