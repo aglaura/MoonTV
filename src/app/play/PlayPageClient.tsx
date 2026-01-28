@@ -3212,19 +3212,6 @@ export function PlayPageClient({
     if (!m3u8Content) return '';
 
     const lines = m3u8Content.split('\n');
-    const CONSERVATIVE_MODE = true;
-    if (CONSERVATIVE_MODE) {
-      const output: string[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const rawLine = lines[i];
-        const line = rawLine.trim();
-        if (isAdStart(line) || isAdEnd(line)) {
-          continue;
-        }
-        output.push(rawLine);
-      }
-      return output.join('\n');
-    }
     const output: string[] = [];
     let inAdBlock = false;
     let pendingDiscontinuities = 0;
@@ -3318,6 +3305,20 @@ export function PlayPageClient({
         line.startsWith('#EXT-X-KEY')
       );
     };
+
+    const CONSERVATIVE_MODE = true;
+    if (CONSERVATIVE_MODE) {
+      const safeOutput: string[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const rawLine = lines[i];
+        const line = rawLine.trim();
+        if (isAdStart(line) || isAdEnd(line)) {
+          continue;
+        }
+        safeOutput.push(rawLine);
+      }
+      return safeOutput.join('\n');
+    }
 
     const nextNonEmptyLines: string[] = Array(lines.length).fill('');
     const nextSegmentLines: string[] = Array(lines.length).fill('');
