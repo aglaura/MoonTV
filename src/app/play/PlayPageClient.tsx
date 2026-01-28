@@ -5757,19 +5757,15 @@ export function PlayPageClient({
               )}
               {!audioOnly && isPlaying && (
                 <div className='absolute top-3 right-3 z-[612] rounded-full bg-black/65 text-white text-[11px] px-3 py-1.5 flex items-center gap-2 shadow-sm'>
-                  <div className='relative h-2 w-14 rounded-full bg-white/20 overflow-hidden'>
+                  <div className='relative h-4 w-20 rounded-full bg-white/20 overflow-hidden flex items-center justify-center'>
                     <div
                       className='absolute inset-y-0 left-0 bg-emerald-400'
                       style={{ width: `${bufferedPillPct}%` }}
                     ></div>
+                    <span className='relative z-10 text-[10px] font-semibold text-white/95'>
+                      {bufferedAheadSec.toFixed(1)}s
+                    </span>
                   </div>
-                  <span>
-                    {tt(
-                      `Buffer ${bufferedAheadSec.toFixed(1)}s`,
-                      `缓冲 ${bufferedAheadSec.toFixed(1)}秒`,
-                      `緩衝 ${bufferedAheadSec.toFixed(1)}秒`
-                    )}
-                  </span>
                 </div>
               )}
               <div
