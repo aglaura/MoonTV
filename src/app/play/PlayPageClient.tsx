@@ -4848,7 +4848,10 @@ export function PlayPageClient({
       artPlayerRef.current.on('video:timeupdate', () => {
         const now = Date.now();
         const currentTime = artPlayerRef.current?.currentTime || 0;
-        if (blockAdEnabledRef.current) {
+        const adBlockActive =
+          blockAdEnabledRef.current &&
+          (blockAdModeRef.current === 'smart' || blockAdModeRef.current === 'simple');
+        if (adBlockActive) {
           const lastTime = lastPlaybackTimeRef.current;
           const allowManualSeek = now - lastManualSeekAtRef.current < 1500;
           if (!allowManualSeek && lastTime > 0 && currentTime + 0.25 < lastTime) {
