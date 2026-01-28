@@ -1547,6 +1547,7 @@ export function PlayPageClient({
   const autoNextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const playbackRecoveryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playbackRecoveryCountRef = useRef(0);
+  const lastRecoveryAtRef = useRef(0);
   const lastProgressAtRef = useRef(0);
   const lastProgressTimeRef = useRef(0);
   const stallRecoveryCountRef = useRef(0);
@@ -3115,12 +3116,15 @@ export function PlayPageClient({
       const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
       if (!video) return;
       if (playbackRecoveryTimerRef.current) return;
+      const now = Date.now();
+      if (now - lastRecoveryAtRef.current < 3500) return;
       const attempt = playbackRecoveryCountRef.current;
       if (attempt >= 3) return;
       const delay = 500 + attempt * 700;
       playbackRecoveryTimerRef.current = setTimeout(() => {
         playbackRecoveryTimerRef.current = null;
         playbackRecoveryCountRef.current += 1;
+        lastRecoveryAtRef.current = Date.now();
         try {
           const hls = (video as any).hls;
           if (hls && typeof hls.startLoad === 'function') {
@@ -3129,10 +3133,15 @@ export function PlayPageClient({
         } catch {
           // ignore
         }
-        try {
-          video.load();
-        } catch {
-          // ignore
+        const shouldReload =
+          reason === 'error' ||
+          (reason === 'watchdog' && (video.readyState ?? 0) <= 2);
+        if (shouldReload) {
+          try {
+            video.load();
+          } catch {
+            // ignore
+          }
         }
         attemptUserPlay(`recover:${reason}`);
       }, delay);
@@ -5045,13 +5054,23 @@ export function PlayPageClient({
       artPlayerRef.current.on('video:timeupdate', () => {
         const now = Date.now();
         const currentTime = artPlayerRef.current?.currentTime || 0;
+        const duration = artPlayerRef.current?.duration ?? 0;
+        const isLiveStream =
+          !Number.isFinite(duration) || duration === Infinity || duration <= 0;
         const adBlockActive =
           blockAdEnabledRef.current &&
-          (blockAdModeRef.current === 'smart' || blockAdModeRef.current === 'simple');
+          (blockAdModeRef.current === 'smart' ||
+            blockAdModeRef.current === 'simple');
         if (adBlockActive) {
           const lastTime = lastPlaybackTimeRef.current;
           const allowManualSeek = now - lastManualSeekAtRef.current < 1500;
-          if (!allowManualSeek && lastTime > 0 && currentTime + 0.25 < lastTime) {
+          const backJump = lastTime - currentTime;
+          if (
+            !allowManualSeek &&
+            !isLiveStream &&
+            lastTime > 0 &&
+            backJump > 2
+          ) {
             if (artPlayerRef.current) {
               artPlayerRef.current.currentTime = lastTime;
             }
