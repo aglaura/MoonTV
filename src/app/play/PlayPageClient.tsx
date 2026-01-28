@@ -310,10 +310,21 @@ export function PlayPageClient({
     }
     return true;
   });
+  const [blockAdMode, setBlockAdMode] = useState<'smart' | 'simple'>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('blockad_mode');
+      if (v === 'simple') return 'simple';
+    }
+    return 'smart';
+  });
   const blockAdEnabledRef = useRef(blockAdEnabled);
+  const blockAdModeRef = useRef(blockAdMode);
   useEffect(() => {
     blockAdEnabledRef.current = blockAdEnabled;
   }, [blockAdEnabled]);
+  useEffect(() => {
+    blockAdModeRef.current = blockAdMode;
+  }, [blockAdMode]);
   const [audioOnly, setAudioOnly] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -3153,6 +3164,7 @@ export function PlayPageClient({
     let lastOutputWasExtinf = false;
     let lastExtinfIndex: number | null = null;
     const MAX_AD_SECONDS = 90;
+    const MAX_SKIP_SECONDS = 20;
     let expectingSegment = false;
 
     const resetAdBlock = () => {
@@ -3288,7 +3300,16 @@ export function PlayPageClient({
           const match = line.match(/#EXTINF:([\d.]+)/);
           const duration = match ? Number(match[1]) : 0;
           if (Number.isFinite(duration)) {
-            skippedDuration += duration;
+            const projected = skippedDuration + duration;
+            if (projected > MAX_SKIP_SECONDS) {
+              resetAdBlock();
+              output.push(rawLine);
+              lastOutputWasExtinf = true;
+              lastExtinfIndex = output.length - 1;
+              expectingSegment = true;
+              continue;
+            }
+            skippedDuration = projected;
           }
           if (skippedDuration >= MAX_AD_SECONDS) {
             resetAdBlock();
@@ -3349,6 +3370,27 @@ export function PlayPageClient({
     return output.join('\n');
   }
 
+  function filterAdsFromM3U8Simple(m3u8Content: string): string {
+    if (!m3u8Content) return '';
+
+    const lines = m3u8Content.split('\n');
+    const filteredLines: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (
+        line.includes('adserver.com') ||
+        line.includes('doubleclick.net') ||
+        line.startsWith('#EXT-X-DISCONTINUITY')
+      ) {
+        continue;
+      }
+      filteredLines.push(lines[i]);
+    }
+
+    return filteredLines.join('\n');
+  }
+
   class CustomHlsJsLoader extends Hls.DefaultConfig.loader {
     constructor(config: any) {
       super(config);
@@ -3365,7 +3407,10 @@ export function PlayPageClient({
             context: any
           ) {
             if (response.data && typeof response.data === 'string') {
-              response.data = filterAdsFromM3U8(response.data);
+              response.data =
+                blockAdModeRef.current === 'simple'
+                  ? filterAdsFromM3U8Simple(response.data)
+                  : filterAdsFromM3U8(response.data);
             }
             return onSuccess(response, stats, context, null);
           };
@@ -4513,6 +4558,25 @@ export function PlayPageClient({
               return newVal
                 ? tt('Enabled', '已启用', '已啟用')
                 : tt('Disabled', '已禁用', '已禁用');
+            },
+          },
+          {
+            html: tt('Ad block mode', '拦截模式', '攔截模式'),
+            tooltip:
+              blockAdMode === 'simple'
+                ? tt('Simple', '简单', '簡單')
+                : tt('Smart', '智能', '智能'),
+            onClick() {
+              const nextMode = blockAdMode === 'simple' ? 'smart' : 'simple';
+              try {
+                localStorage.setItem('blockad_mode', nextMode);
+              } catch (_) {
+                // ignore
+              }
+              setBlockAdMode(nextMode);
+              return nextMode === 'simple'
+                ? tt('Simple', '简单', '簡單')
+                : tt('Smart', '智能', '智能');
             },
           },
         ],
