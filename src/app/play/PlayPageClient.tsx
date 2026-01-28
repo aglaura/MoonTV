@@ -1535,6 +1535,8 @@ export function PlayPageClient({
   >('initing');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [bufferedAheadSec, setBufferedAheadSec] = useState(0);
+  const [bufferedPillPct, setBufferedPillPct] = useState(0);
   const [needsUserPlay, setNeedsUserPlay] = useState(false);
   const [needsUserPlayMessage, setNeedsUserPlayMessage] = useState('');
   const needsUserPlayRef = useRef(false);
@@ -5103,6 +5105,37 @@ export function PlayPageClient({
         const duration = artPlayerRef.current?.duration ?? 0;
         const isLiveStream =
           !Number.isFinite(duration) || duration === Infinity || duration <= 0;
+        const videoEl = artPlayerRef.current?.video as HTMLVideoElement | undefined;
+        if (videoEl) {
+          let bufferedAhead = 0;
+          try {
+            const ranges = videoEl.buffered;
+            for (let i = 0; i < ranges.length; i += 1) {
+              const start = ranges.start(i);
+              const end = ranges.end(i);
+              if (currentTime >= start && currentTime <= end) {
+                bufferedAhead = Math.max(0, end - currentTime);
+                break;
+              }
+              if (currentTime < start && bufferedAhead === 0) {
+                bufferedAhead = Math.max(0, start - currentTime);
+              }
+            }
+          } catch {
+            bufferedAhead = 0;
+          }
+          const MAX_BUFFER_PILL_SEC = 90;
+          const pct = Math.min(
+            100,
+            Math.max(0, (bufferedAhead / MAX_BUFFER_PILL_SEC) * 100)
+          );
+          if (Math.abs(bufferedAhead - bufferedAheadSec) > 0.25) {
+            setBufferedAheadSec(bufferedAhead);
+          }
+          if (Math.abs(pct - bufferedPillPct) > 1) {
+            setBufferedPillPct(pct);
+          }
+        }
         const adBlockActive =
           blockAdEnabledRef.current &&
           (blockAdModeRef.current === 'smart' ||
@@ -5720,6 +5753,23 @@ export function PlayPageClient({
                 <div className='absolute bottom-3 right-3 z-[610] rounded-full bg-black/60 text-white text-xs px-3 py-1.5 flex items-center gap-2'>
                   <span className='inline-block h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse'></span>
                   {tt('Buffering…', '缓冲中…', '緩衝中…')}
+                </div>
+              )}
+              {!audioOnly && isPlaying && (
+                <div className='absolute top-3 right-3 z-[612] rounded-full bg-black/65 text-white text-[11px] px-3 py-1.5 flex items-center gap-2 shadow-sm'>
+                  <div className='relative h-2 w-14 rounded-full bg-white/20 overflow-hidden'>
+                    <div
+                      className='absolute inset-y-0 left-0 bg-emerald-400'
+                      style={{ width: `${bufferedPillPct}%` }}
+                    ></div>
+                  </div>
+                  <span>
+                    {tt(
+                      `Buffer ${bufferedAheadSec.toFixed(1)}s`,
+                      `缓冲 ${bufferedAheadSec.toFixed(1)}秒`,
+                      `緩衝 ${bufferedAheadSec.toFixed(1)}秒`
+                    )}
+                  </span>
                 </div>
               )}
               <div
