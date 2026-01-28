@@ -4532,28 +4532,29 @@ export function PlayPageClient({
               const newVal = !blockAdEnabled;
               try {
                 localStorage.setItem('enable_blockad', String(newVal));
-                if (artPlayerRef.current) {
-                  resumeTimeRef.current = artPlayerRef.current.currentTime;
+                const player = artPlayerRef.current;
+                if (player) {
+                  const currentTime = player.currentTime || 0;
+                  resumeTimeRef.current = currentTime;
+                  lastPlaybackTimeRef.current = currentTime;
                   setResumePreviewTime(
-                    resumeTimeRef.current,
+                    currentTime,
                     currentEpisodeIndexRef.current
                   );
-                  if (resumePreviewCleanupRef.current) {
-                    resumePreviewCleanupRef.current();
-                    resumePreviewCleanupRef.current = null;
+                  if (player.video && (player.video as any).hls) {
+                    try {
+                      (player.video as any).hls.destroy();
+                    } catch {
+                      // ignore
+                    }
                   }
-                  if (playbackListenersCleanupRef.current) {
-                    playbackListenersCleanupRef.current();
-                    playbackListenersCleanupRef.current = null;
+                  if (playbackUrl) {
+                    try {
+                      player.switchUrl(playbackUrl);
+                    } catch {
+                      player.switch = playbackUrl;
+                    }
                   }
-                  if (
-                    artPlayerRef.current.video &&
-                    artPlayerRef.current.video.hls
-                  ) {
-                    artPlayerRef.current.video.hls.destroy();
-                  }
-                  artPlayerRef.current.destroy();
-                  artPlayerRef.current = null;
                 }
                 setBlockAdEnabled(newVal);
               } catch (_) {
@@ -4578,6 +4579,28 @@ export function PlayPageClient({
                 // ignore
               }
               setBlockAdMode(nextMode);
+              if (blockAdEnabled && artPlayerRef.current && playbackUrl) {
+                const player = artPlayerRef.current;
+                const currentTime = player.currentTime || 0;
+                resumeTimeRef.current = currentTime;
+                lastPlaybackTimeRef.current = currentTime;
+                setResumePreviewTime(
+                  currentTime,
+                  currentEpisodeIndexRef.current
+                );
+                if (player.video && (player.video as any).hls) {
+                  try {
+                    (player.video as any).hls.destroy();
+                  } catch {
+                    // ignore
+                  }
+                }
+                try {
+                  player.switchUrl(playbackUrl);
+                } catch {
+                  player.switch = playbackUrl;
+                }
+              }
               return nextMode === 'simple'
                 ? tt('Simple', '简单', '簡單')
                 : tt('Smart', '智能', '智能');
