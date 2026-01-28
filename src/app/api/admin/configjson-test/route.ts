@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
+import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getConfig } from '@/lib/config';
 import { normalizeConfigJsonBase } from '@/lib/configjson';
 
 export const runtime = 'nodejs';
@@ -11,7 +13,36 @@ function buildBaseUrl(raw?: string | null): string | null {
   return normalizeConfigJsonBase(raw);
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+  if (storageType === 'localstorage') {
+    return NextResponse.json(
+      { error: '不支持本地存储进行管理员配置' },
+      { status: 400 }
+    );
+  }
+
+  const authInfo = getAuthInfoFromCookie(request);
+  if (!authInfo || !authInfo.username) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const username = authInfo.username;
+
+  try {
+    const config = await getConfig();
+    if (username !== process.env.USERNAME) {
+      const user = config.UserConfig.Users.find((u) => u.username === username);
+      if (!user || user.role !== 'admin') {
+        return NextResponse.json({ error: '权限不足' }, { status: 401 });
+      }
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to validate admin', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
+
   const base = buildBaseUrl(process.env.CONFIGJSON);
   if (!base) {
     return NextResponse.json(

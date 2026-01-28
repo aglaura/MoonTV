@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 验证播放记录数据
-    if (!record.title || !record.source_name || record.index < 1) {
+    if (!record.title || record.index < 1) {
       return NextResponse.json(
         { error: 'Invalid record data' },
         { status: 400 }
@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
 
     const finalRecord = {
       ...record,
+      source_name: (record.source_name || '').toString(),
       save_time: record.save_time ?? Date.now(),
     } as PlayRecord;
 

@@ -1,5 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from 'redis';
+
+import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getConfig } from '@/lib/config';
 
 type RedisInfo = {
   used_memory?: number;
@@ -39,7 +42,35 @@ const formatBytes = (bytes?: number): string | null => {
   return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[u]}`;
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+  if (storageType === 'localstorage') {
+    return NextResponse.json(
+      { error: '不支持本地存储进行管理员配置' },
+      { status: 400 }
+    );
+  }
+
+  const authInfo = getAuthInfoFromCookie(request);
+  if (!authInfo || !authInfo.username) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const username = authInfo.username;
+  try {
+    const config = await getConfig();
+    if (username !== process.env.USERNAME) {
+      const user = config.UserConfig.Users.find((u) => u.username === username);
+      if (!user || user.role !== 'admin') {
+        return NextResponse.json({ error: '权限不足' }, { status: 401 });
+      }
+    }
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to validate admin', details: (error as Error).message },
+      { status: 500 }
+    );
+  }
+
   const url = process.env.REDIS_URL;
   if (!url) {
     return NextResponse.json(
