@@ -1548,6 +1548,8 @@ export function PlayPageClient({
   const playbackRecoveryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playbackRecoveryCountRef = useRef(0);
   const lastRecoveryAtRef = useRef(0);
+  const recoverySplashTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [recoverySplash, setRecoverySplash] = useState<string | null>(null);
   const lastProgressAtRef = useRef(0);
   const lastProgressTimeRef = useRef(0);
   const stallRecoveryCountRef = useRef(0);
@@ -3111,6 +3113,45 @@ export function PlayPageClient({
     [tt]
   );
 
+  const getRecoveryReasonLabel = useCallback(
+    (reason: string) => {
+      switch (reason) {
+        case 'waiting':
+          return tt('Buffering', '缓冲中', '緩衝中');
+        case 'stalled':
+          return tt('Playback stalled', '播放卡顿', '播放卡頓');
+        case 'error':
+          return tt('Playback error', '播放错误', '播放錯誤');
+        case 'watchdog':
+          return tt('Playback not progressing', '播放未继续推进', '播放未繼續推進');
+        default:
+          return reason;
+      }
+    },
+    [tt]
+  );
+
+  const showRecoverySplash = useCallback(
+    (reason: string) => {
+      const label = getRecoveryReasonLabel(reason);
+      setRecoverySplash(
+        tt(
+          `Auto-resume: ${label}`,
+          `自动恢复：${label}`,
+          `自動恢復：${label}`
+        )
+      );
+      if (recoverySplashTimerRef.current) {
+        clearTimeout(recoverySplashTimerRef.current);
+      }
+      recoverySplashTimerRef.current = setTimeout(() => {
+        setRecoverySplash(null);
+        recoverySplashTimerRef.current = null;
+      }, 2200);
+    },
+    [getRecoveryReasonLabel, tt]
+  );
+
   const schedulePlaybackRecovery = useCallback(
     (reason: string) => {
       const video = artPlayerRef.current?.video as HTMLVideoElement | undefined;
@@ -3125,6 +3166,7 @@ export function PlayPageClient({
         playbackRecoveryTimerRef.current = null;
         playbackRecoveryCountRef.current += 1;
         lastRecoveryAtRef.current = Date.now();
+        showRecoverySplash(reason);
         try {
           const hls = (video as any).hls;
           if (hls && typeof hls.startLoad === 'function') {
@@ -3146,7 +3188,7 @@ export function PlayPageClient({
         attemptUserPlay(`recover:${reason}`);
       }, delay);
     },
-    [attemptUserPlay]
+    [attemptUserPlay, showRecoverySplash]
   );
 
   const resetPlaybackRecovery = useCallback(() => {
@@ -4364,7 +4406,7 @@ export function PlayPageClient({
       await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
         title: videoTitleRef.current,
         source_name: detailRef.current?.source_name || '',
-        year: detailRef.current?.year,
+        year: detailRef.current?.year || '',
         cover: detailRef.current?.poster || '',
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes:
@@ -4422,6 +4464,10 @@ export function PlayPageClient({
         playbackListenersCleanupRef.current = null;
       }
       clearPlaybackRecoveryTimer();
+      if (recoverySplashTimerRef.current) {
+        clearTimeout(recoverySplashTimerRef.current);
+        recoverySplashTimerRef.current = null;
+      }
     };
   }, [clearPlaybackRecoveryTimer]);
 
@@ -5643,6 +5689,13 @@ export function PlayPageClient({
                     >
                       ✕
                     </button>
+                  </div>
+                </div>
+              )}
+              {!audioOnly && recoverySplash && (
+                <div className='absolute inset-0 z-[635] flex items-center justify-center pointer-events-none'>
+                  <div className='rounded-full bg-black/70 text-white text-xs px-4 py-2 shadow-lg'>
+                    {recoverySplash}
                   </div>
                 </div>
               )}
