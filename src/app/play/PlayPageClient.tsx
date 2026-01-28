@@ -3568,6 +3568,9 @@ export function PlayPageClient({
         if (initialPlaybackChosenRef.current) return;
         initialPlaybackChosenRef.current = true;
 
+        const episodes = Array.isArray(detailData.episodes)
+          ? detailData.episodes
+          : [];
         setNeedPrefer(false);
         setCurrentSource(detailData.source);
         setCurrentId(detailData.id);
@@ -3575,7 +3578,7 @@ export function PlayPageClient({
         setVideoTitle(detailData.title || videoTitleRef.current);
         setVideoCover(detailData.poster);
         setDetail(detailData);
-        if (currentEpisodeIndexRef.current >= detailData.episodes.length) {
+        if (currentEpisodeIndexRef.current >= episodes.length) {
           setCurrentEpisodeIndex(0);
           currentEpisodeIndexRef.current = 0;
         }
@@ -3583,8 +3586,16 @@ export function PlayPageClient({
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('source', detailData.source);
         newUrl.searchParams.set('id', detailData.id);
-        newUrl.searchParams.set('year', detailData.year);
-        newUrl.searchParams.set('title', detailData.title);
+        if (detailData.year) {
+          newUrl.searchParams.set('year', detailData.year);
+        } else {
+          newUrl.searchParams.delete('year');
+        }
+        if (detailData.title) {
+          newUrl.searchParams.set('title', detailData.title);
+        } else {
+          newUrl.searchParams.delete('title');
+        }
         newUrl.searchParams.delete('prefer');
         window.history.replaceState({}, '', newUrl.toString());
 
@@ -4033,7 +4044,11 @@ export function PlayPageClient({
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set('source', newSource);
         newUrl.searchParams.set('id', newId);
-        newUrl.searchParams.set('year', newDetail.year);
+        if (newDetail.year) {
+          newUrl.searchParams.set('year', newDetail.year);
+        } else {
+          newUrl.searchParams.delete('year');
+        }
         window.history.replaceState({}, '', newUrl.toString());
 
         setVideoTitle(newDetail.title || newTitle);
@@ -4105,10 +4120,15 @@ export function PlayPageClient({
     return false;
   }, [getValuationKey, handleSourceChange, tt]);
 
+  const keyboardHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+
   useEffect(() => {
-    document.addEventListener('keydown', handleKeyboardShortcuts);
+    const onKeyDown = (event: KeyboardEvent) => {
+      keyboardHandlerRef.current(event);
+    };
+    document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyboardShortcuts);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, []);
 
@@ -4307,6 +4327,10 @@ export function PlayPageClient({
     }
   };
 
+  useEffect(() => {
+    keyboardHandlerRef.current = handleKeyboardShortcuts;
+  }, [handleKeyboardShortcuts]);
+
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
   const saveCurrentPlayProgress = async () => {
@@ -4314,8 +4338,7 @@ export function PlayPageClient({
       !artPlayerRef.current ||
       !currentSourceRef.current ||
       !currentIdRef.current ||
-      !videoTitleRef.current ||
-      !detailRef.current?.source_name
+      !videoTitleRef.current
     ) {
       return;
     }
@@ -4337,7 +4360,7 @@ export function PlayPageClient({
         index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
         total_episodes:
           majorityEpisodeCountRef.current ??
-          detailRef.current?.episodes.length ??
+          detailRef.current?.episodes?.length ??
           1,
         play_time: Math.floor(currentTime),
         total_time: Math.floor(duration),
