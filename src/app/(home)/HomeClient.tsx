@@ -537,6 +537,12 @@ export default function HomeClient() {
     }
   }, [isMobileMode, isTVMode, pullDistance, triggerRefresh]);
 
+  const handleTouchCancel = useCallback(() => {
+    if (!isMobileMode || isTVMode) return;
+    pullStartRef.current = null;
+    setPullDistance(0);
+  }, [isMobileMode, isTVMode]);
+
   useEffect(() => {
     if (refreshing) {
       setPullDistance(0);
@@ -584,6 +590,7 @@ export default function HomeClient() {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         style={{ touchAction: isMobileMode && !isTVMode ? 'pan-y' : 'auto' }}
       >
         <div className="relative">

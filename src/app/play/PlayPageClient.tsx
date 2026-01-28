@@ -4395,7 +4395,7 @@ export function PlayPageClient({
 
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
-  const saveCurrentPlayProgress = async () => {
+  const saveCurrentPlayProgress = async (options?: { keepalive?: boolean }) => {
     if (
       !artPlayerRef.current ||
       !currentSourceRef.current ||
@@ -4414,23 +4414,28 @@ export function PlayPageClient({
     }
 
     try {
-      await savePlayRecord(currentSourceRef.current, currentIdRef.current, {
-        title: videoTitleRef.current,
-        source_name: detailRef.current?.source_name || '',
-        year: detailRef.current?.year || '',
-        cover: detailRef.current?.poster || '',
-        index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
-        total_episodes:
-          majorityEpisodeCountRef.current ??
-          Math.max(1, detailRef.current?.episodes?.length ?? 0),
-        play_time: Math.floor(currentTime),
-        total_time: Math.floor(duration),
-        save_time: Date.now(),
+      await savePlayRecord(
+        currentSourceRef.current,
+        currentIdRef.current,
+        {
+          title: videoTitleRef.current,
+          source_name: detailRef.current?.source_name || '',
+          year: detailRef.current?.year || '',
+          cover: detailRef.current?.poster || '',
+          index: currentEpisodeIndexRef.current + 1, // 转换为1基索引
+          total_episodes:
+            majorityEpisodeCountRef.current ??
+            Math.max(1, detailRef.current?.episodes?.length ?? 0),
+          play_time: Math.floor(currentTime),
+          total_time: Math.floor(duration),
+          save_time: Date.now(),
           imdbId: imdbVideoId,
           imdbTitle: imdbVideoTitle,
           douban_id: detailRef.current?.douban_id,
-        search_title: searchTitle,
-      });
+          search_title: searchTitle,
+        },
+        options
+      );
 
       lastSaveTimeRef.current = Date.now();
       console.log('播放進度已保存:', {
@@ -4446,20 +4451,26 @@ export function PlayPageClient({
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      saveCurrentPlayProgress();
+      saveCurrentPlayProgress({ keepalive: true });
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        saveCurrentPlayProgress();
+        saveCurrentPlayProgress({ keepalive: true });
       }
     };
 
+    const handlePageHide = () => {
+      saveCurrentPlayProgress({ keepalive: true });
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [currentEpisodeIndex, detail, artPlayerRef.current]);
@@ -4468,6 +4479,10 @@ export function PlayPageClient({
     return () => {
       if (saveIntervalRef.current) {
         clearInterval(saveIntervalRef.current);
+      }
+      if (autoNextTimeoutRef.current) {
+        clearTimeout(autoNextTimeoutRef.current);
+        autoNextTimeoutRef.current = null;
       }
       if (playbackListenersCleanupRef.current) {
         playbackListenersCleanupRef.current();

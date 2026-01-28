@@ -518,7 +518,8 @@ export async function getAllPlayRecords(): Promise<Record<string, PlayRecord>> {
 export async function savePlayRecord(
   source: string,
   id: string,
-  record: PlayRecord
+  record: PlayRecord,
+  options?: { keepalive?: boolean }
 ): Promise<void> {
   const key = generateStorageKey(source, id);
   const identities = getVideoIdentities(record);
@@ -555,6 +556,7 @@ export async function savePlayRecord(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ key, record }),
+        keepalive: options?.keepalive,
       });
 
       if (!res.ok) {
