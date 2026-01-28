@@ -321,6 +321,8 @@ export function PlayPageClient({
   const blockAdModeRef = useRef(blockAdMode);
   const lastPlaybackTimeRef = useRef(0);
   const lastManualSeekAtRef = useRef(0);
+  const pendingUnmuteRef = useRef(false);
+  const pendingUnmuteVolumeRef = useRef<number | null>(null);
   useEffect(() => {
     blockAdEnabledRef.current = blockAdEnabled;
   }, [blockAdEnabled]);
@@ -3038,34 +3040,68 @@ export function PlayPageClient({
   }, []);
 
   const attemptUserPlay = useCallback(
-    (reason: string) => {
+    async (reason: string) => {
       const player = artPlayerRef.current;
       if (!player) return;
-      try {
-        if (player.muted) {
-          player.muted = false;
-        }
-        if (typeof player.volume === 'number') {
-          player.volume = Math.max(player.volume, lastVolumeRef.current || 0.7);
-        }
-      } catch {
-        // ignore
-      }
-      const playPromise = player.play?.();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {
-          setNeedsUserPlay(true);
-          setNeedsUserPlayMessage(
-            tt(
-              'Tap to resume playback',
-              '点击继续播放',
-              '點擊繼續播放'
-            )
-          );
-        });
-      } else {
+      if (!player.paused && !player.ended) {
         setNeedsUserPlay(false);
+        return;
       }
+
+      const tryPlay = async () => {
+        const playPromise = player.play?.();
+        if (playPromise && typeof playPromise.then === 'function') {
+          await playPromise;
+        }
+      };
+
+      const prevMuted = Boolean(player.muted);
+      const prevVolume = typeof player.volume === 'number' ? player.volume : null;
+      const allowUnmute = reason === 'user';
+
+      try {
+        if (allowUnmute) {
+          if (player.muted) {
+            player.muted = false;
+          }
+          if (typeof player.volume === 'number') {
+            player.volume = Math.max(player.volume, lastVolumeRef.current || 0.7);
+          }
+        }
+        await tryPlay();
+        pendingUnmuteRef.current = false;
+        pendingUnmuteVolumeRef.current = null;
+        setNeedsUserPlay(false);
+        return;
+      } catch {
+        // fall through
+      }
+
+      if (!allowUnmute && !player.muted) {
+        try {
+          player.muted = true;
+          await tryPlay();
+          pendingUnmuteRef.current = !prevMuted;
+          pendingUnmuteVolumeRef.current = prevVolume;
+          setNeedsUserPlay(false);
+          return;
+        } catch {
+          // fall through
+        }
+      }
+
+      if (prevMuted !== player.muted) {
+        try {
+          player.muted = prevMuted;
+        } catch {
+          // ignore
+        }
+      }
+
+      setNeedsUserPlay(true);
+      setNeedsUserPlayMessage(
+        tt('Tap to resume playback', '点击继续播放', '點擊繼續播放')
+      );
       console.log(`Attempted playback (${reason})`);
     },
     [tt]
@@ -3150,6 +3186,22 @@ export function PlayPageClient({
   const handleUserPlay = useCallback(() => {
     setNeedsUserPlay(false);
     setIsBuffering(false);
+    const player = artPlayerRef.current;
+    if (player && pendingUnmuteRef.current) {
+      try {
+        player.muted = false;
+        if (
+          pendingUnmuteVolumeRef.current !== null &&
+          typeof player.volume === 'number'
+        ) {
+          player.volume = pendingUnmuteVolumeRef.current;
+        }
+      } catch {
+        // ignore
+      }
+      pendingUnmuteRef.current = false;
+      pendingUnmuteVolumeRef.current = null;
+    }
     attemptUserPlay('user');
   }, [attemptUserPlay]);
 
