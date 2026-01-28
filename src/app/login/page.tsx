@@ -677,8 +677,10 @@ function LoginPageClient() {
 
   return (
     <div
-      className={`relative min-h-screen flex items-center justify-center px-4 overflow-hidden ${
-        isTV ? 'bg-black text-white' : ''
+      className={`relative min-h-screen flex px-4 overflow-hidden ${
+        isTV
+          ? 'items-center justify-center bg-black text-white'
+          : 'items-start justify-center pt-6 sm:pt-10 pb-24'
       }`}
     >
       {isTV && (

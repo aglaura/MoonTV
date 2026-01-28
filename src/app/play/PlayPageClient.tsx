@@ -1547,6 +1547,9 @@ export function PlayPageClient({
   const autoNextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const playbackRecoveryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const playbackRecoveryCountRef = useRef(0);
+  const lastProgressAtRef = useRef(0);
+  const lastProgressTimeRef = useRef(0);
+  const stallRecoveryCountRef = useRef(0);
   const playbackListenersCleanupRef = useRef<(() => void) | null>(null);
 
   const artPlayerRef = useRef<any>(null);
@@ -4808,6 +4811,9 @@ export function PlayPageClient({
             attachPlaybackReliabilityHandlers(video);
           ensureVideoSource(video, playbackUrl);
         }
+        lastProgressAtRef.current = Date.now();
+        lastProgressTimeRef.current = 0;
+        stallRecoveryCountRef.current = 0;
         attemptUserPlay('ready');
       });
       artPlayerRef.current.on('control', (visible: boolean) => {
@@ -4843,6 +4849,9 @@ export function PlayPageClient({
           clearTimeout(loadTimeoutRef.current);
           loadTimeoutRef.current = null;
         }
+        lastProgressAtRef.current = Date.now();
+        lastProgressTimeRef.current = artPlayerRef.current?.currentTime || 0;
+        stallRecoveryCountRef.current = 0;
             if (resumeTimeRef.current && resumeTimeRef.current > 0) {
               try {
                 const duration = artPlayerRef.current.duration || 0;
@@ -4890,6 +4899,9 @@ export function PlayPageClient({
         setIsPlaying(true);
         setNeedsUserPlay(false);
         resetPlaybackRecovery();
+        lastProgressAtRef.current = Date.now();
+        lastProgressTimeRef.current = artPlayerRef.current?.currentTime || 0;
+        stallRecoveryCountRef.current = 0;
       });
 
       artPlayerRef.current.on('video:seeking', () => {
@@ -4939,6 +4951,25 @@ export function PlayPageClient({
         }
         if (Number.isFinite(currentTime)) {
           lastPlaybackTimeRef.current = currentTime;
+          const progressed =
+            currentTime > lastProgressTimeRef.current + 0.15;
+          if (progressed) {
+            lastProgressTimeRef.current = currentTime;
+            lastProgressAtRef.current = now;
+            stallRecoveryCountRef.current = 0;
+          } else if (
+            !artPlayerRef.current?.paused &&
+            lastProgressAtRef.current &&
+            now - lastProgressAtRef.current > 7000
+          ) {
+            lastProgressAtRef.current = now;
+            stallRecoveryCountRef.current += 1;
+            schedulePlaybackRecovery('watchdog');
+            if (stallRecoveryCountRef.current >= 2) {
+              stallRecoveryCountRef.current = 0;
+              trySwitchToNextSource();
+            }
+          }
         }
         refreshActualPlaybackInfo();
         if (
