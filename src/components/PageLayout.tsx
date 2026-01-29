@@ -31,8 +31,12 @@ const PageLayout = ({
   topBarModeLabel,
   onTopBarModeClick,
 }: PageLayoutProps) => {
-  const { screenMode } = useDeviceInfo();
+  const { screenMode, isIOS, isAndroid } = useDeviceInfo();
   const isTV = screenMode === 'tv';
+  const isTouchTablet =
+    screenMode === 'tablet' && (isIOS || isAndroid);
+  const showMobileHeader =
+    !hideTopBar && (screenMode === 'mobile' || isTouchTablet);
   const showSidebar = !hideTopBar && isTV;
 
   useTvFullscreen(isTV);
@@ -54,8 +58,11 @@ const PageLayout = ({
     <TvInputProvider enabled={isTV}>
       <div className='w-full min-h-screen'>
         {/* 移动端头部 */}
-        {!hideTopBar && (
-          <MobileHeader showBackButton={['/play'].includes(activePath)} />
+        {showMobileHeader && (
+          <MobileHeader
+            showBackButton={['/play'].includes(activePath)}
+            forceVisible={isTouchTablet}
+          />
         )}
 
         {/* 主要布局容器 */}
@@ -86,7 +93,7 @@ const PageLayout = ({
             }`}
           >
             {/* 桌面端左上角返回按钮 */}
-            {['/play'].includes(activePath) && !hideTopBar && (
+            {['/play'].includes(activePath) && !hideTopBar && !showMobileHeader && (
               <div className='absolute top-3 left-3 z-20 hidden md:flex items-center gap-3'>
                 <div className='bg-white/85 dark:bg-gray-900/75 backdrop-blur-md rounded-full shadow-sm border border-gray-200/70 dark:border-gray-700/70 p-1 scale-90'>
                   <BackButton />
@@ -96,7 +103,7 @@ const PageLayout = ({
             )}
 
             {/* 桌面端顶部按钮 */}
-            {!hideTopBar && !isTV && (
+            {!hideTopBar && !isTV && !showMobileHeader && (
               <div className='absolute top-2 right-4 z-20 hidden md:flex items-center gap-2'>
                 {topBarModeLabel && (
                   <>
