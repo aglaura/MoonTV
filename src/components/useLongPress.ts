@@ -79,9 +79,10 @@ export const useLongPress = ({
       const dx = clientX - startPosition.current.x;
       const dy = clientY - startPosition.current.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
+      const scrollThreshold = Math.max(4, Math.floor(moveThreshold * 0.6));
 
-      // 优先判定纵向滚动
-      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > moveThreshold) {
+      // 任何方向移动超过滚动阈值，都视为滚动并取消长按
+      if (Math.abs(dx) > scrollThreshold || Math.abs(dy) > scrollThreshold) {
         wasScroll.current = true;
         clearTimer();
         isActive.current = false;
