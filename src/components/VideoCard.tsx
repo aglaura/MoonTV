@@ -163,6 +163,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
     const isTV = screenMode === 'tv';
     const [favorited, setFavorited] = useState(false);
     const [showMobileActions, setShowMobileActions] = useState(false);
+    const lastActionSheetCloseRef = useRef(0);
     const [searchFavorited, setSearchFavorited] = useState<boolean | null>(
       null
     ); // 搜索结果的收藏状态
@@ -1123,9 +1124,18 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       }
     }, [from, isAggregate, actualSource, actualId, searchFavorited]);
 
+    const canOpenActionSheet = useCallback(() => {
+      return Date.now() - lastActionSheetCloseRef.current > 300;
+    }, []);
+
+    const handleCloseActionSheet = useCallback(() => {
+      lastActionSheetCloseRef.current = Date.now();
+      setShowMobileActions(false);
+    }, []);
+
     // 长按操作
     const handleLongPress = useCallback(() => {
-      if (!showMobileActions) {
+      if (!showMobileActions && canOpenActionSheet()) {
         // 防止重复触发
         // 立即显示菜单，避免等待数据加载导致动画卡顿
         setShowMobileActions(true);
@@ -1149,6 +1159,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       actualId,
       searchFavorited,
       checkSearchFavoriteStatus,
+      canOpenActionSheet,
     ]);
 
     // 长按手势hook
@@ -1389,7 +1400,9 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
             e.stopPropagation();
 
             // 右键弹出操作菜单
-            setShowMobileActions(true);
+            if (!showMobileActions && canOpenActionSheet()) {
+              setShowMobileActions(true);
+            }
 
             // 异步检查收藏状态，不阻塞菜单显示
             if (
@@ -2094,7 +2107,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
         {/* 操作菜单 - 支持右键和长按触发 */}
         <MobileActionSheet
           isOpen={showMobileActions}
-          onClose={() => setShowMobileActions(false)}
+          onClose={handleCloseActionSheet}
           title={
             englishTitleToShow
               ? `${actualTitle} (${englishTitleToShow})`
