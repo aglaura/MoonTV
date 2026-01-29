@@ -1378,7 +1378,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               userSelect: 'none',
               WebkitTouchCallout: 'none',
               WebkitTapHighlightColor: 'transparent',
-              touchAction: 'pan-y',
+              touchAction: 'pan-x pan-y',
               // 禁用右键菜单和长按菜单
               pointerEvents: 'auto',
             } as React.CSSProperties
