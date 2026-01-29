@@ -87,6 +87,12 @@ export type PrefetchedHome = {
   tmdbPeople: CardItem[];
   tmdbNowPlaying: CardItem[];
   tmdbOnAir: CardItem[];
+  airingRail?: {
+    title?: string;
+    titleKey?: 'today' | 'week';
+    items: CardItem[];
+    cachedAt?: number;
+  };
   updatedAt?: number;
 };
 

@@ -103,8 +103,8 @@ export const useHomeData = ({
         }
         setError(false);
 
-        const bangumiPromise = GetBangumiCalendarData();
         const cacheMode: RequestCache = isRefresh ? 'no-store' : 'force-cache';
+        let bangumiPromise: Promise<BangumiCalendarData[]> | null = null;
 
         let mergedOk = false;
         try {
@@ -123,6 +123,9 @@ export const useHomeData = ({
               // ignore storage failures
             }
             mergedOk = true;
+            if (!merged.airingRail || !merged.airingRail.items?.length) {
+              bangumiPromise = GetBangumiCalendarData();
+            }
           } else {
             setPrefetchedHome(null);
           }
@@ -131,6 +134,7 @@ export const useHomeData = ({
         }
 
         if (!mergedOk) {
+          bangumiPromise = GetBangumiCalendarData();
           const doubanPromise = fetch('/api/douban/home', {
             cache: cacheMode,
           }).then((r) => {
@@ -187,9 +191,11 @@ export const useHomeData = ({
           }
         }
 
-        const bangumiRes = await Promise.allSettled([bangumiPromise]);
-        if (bangumiRes[0]?.status === 'fulfilled') {
-          setBangumiCalendarData(bangumiRes[0].value);
+        if (bangumiPromise) {
+          const bangumiRes = await Promise.allSettled([bangumiPromise]);
+          if (bangumiRes[0]?.status === 'fulfilled') {
+            setBangumiCalendarData(bangumiRes[0].value);
+          }
         }
       } catch {
         setError(true);
@@ -485,6 +491,17 @@ export const useHomeData = ({
   );
 
   const effectiveTmdbOnAir = prefetchedHome?.tmdbOnAir ?? tmdbOnAirCards;
+
+  const localizedAiringRail = useMemo(() => {
+    const serverRail = prefetchedHome?.airingRail;
+    if (!serverRail || !Array.isArray(serverRail.items)) return null;
+    const title =
+      serverRail.title ||
+      (serverRail.titleKey === 'today'
+        ? tt('Airing Today', '今日更新', '今日更新')
+        : tt('This Week\'s Updates', '本周更新', '本週更新'));
+    return { title, items: serverRail.items };
+  }, [prefetchedHome, tt]);
 
   const [hotTvShowsCn, hotTvShowsKr, hotTvShowsJp, hotTvShowsUsEu] = useMemo(() => {
     const krList: DoubanItem[] = [];
@@ -786,6 +803,10 @@ export const useHomeData = ({
   }, [prefetchedHome, tmdbPeople]);
 
   useEffect(() => {
+    if (localizedAiringRail?.items?.length) {
+      setAiringRail(localizedAiringRail);
+      return;
+    }
     let cancelled = false;
 
     const mapBangumiItems = (items: BangumiCalendarData['items']) =>
@@ -920,6 +941,7 @@ export const useHomeData = ({
     bangumiCalendarData,
     effectiveTmdbOnAir,
     getCardKey,
+    localizedAiringRail,
     tt,
   ]);
 

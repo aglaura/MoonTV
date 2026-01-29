@@ -10,6 +10,8 @@ export const revalidate = 86400;
 const MAX_PEOPLE = 60;
 const OMDB_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 const OMDB_HERO_LIMIT = 10;
+const AIRING_CACHE_TTL_MS = 1000 * 60 * 10;
+const TVMAZE_CACHE_TTL_MS = 1000 * 60 * 60 * 12;
 
 type TmdbItem = {
   tmdbId: string;
@@ -35,6 +37,30 @@ type TmdbPerson = {
   tmdbId: string;
   title: string;
   poster: string;
+};
+
+type BangumiCalendarData = {
+  weekday?: { en?: string };
+  items?: Array<{
+    id: number;
+    name: string;
+    name_cn?: string;
+    rating?: { score?: number };
+    air_date?: string;
+    images?: {
+      large?: string;
+      common?: string;
+      medium?: string;
+      small?: string;
+      grid?: string;
+    };
+  }>;
+};
+
+type AiringRail = {
+  titleKey: 'today' | 'week';
+  items: CardItem[];
+  cachedAt: number;
 };
 
 type OmdbContribution = {
@@ -73,6 +99,20 @@ type CardItem = {
   id?: string | number;
 };
 
+type TvmazeShow = {
+  id?: number;
+  _links?: {
+    nextepisode?: {
+      href?: string;
+    };
+  };
+};
+
+type TvmazeEpisode = {
+  airdate?: string | null;
+  airstamp?: string | null;
+};
+
 function buildCacheBase(): string | null {
   return normalizeConfigJsonBase(process.env.CONFIGJSON);
 }
@@ -104,10 +144,220 @@ function buildHomeCacheUrl(cacheBase: string | null): string | null {
 }
 
 const omdbMemoryCache = new Map<string, { cachedAt: number; data: OmdbContribution | null }>();
+const tvmazeNextCache = new Map<string, { cachedAt: number; airdate?: string | null }>();
 
 function normalizeOmdbValue(value?: string): string | undefined {
   if (!value || value === 'N/A') return undefined;
   return value;
+}
+
+function normalizeImdbId(value?: string | null): string | null {
+  if (!value) return null;
+  const match = value.trim().match(/(tt\d{5,}|imdbt\d+)/i);
+  return match ? match[0].toLowerCase() : null;
+}
+
+function normalizeTmdbId(value?: string | null): string | null {
+  if (!value) return null;
+  const raw = value.trim();
+  if (!raw) return null;
+  if (raw.startsWith('tmdb:')) return raw.replace('tmdb:', '');
+  const match = raw.match(/themoviedb\.org\/(?:movie|tv)\/(\d+)/i);
+  if (match?.[1]) return match[1];
+  if (/^\d+$/.test(raw)) return raw;
+  return null;
+}
+
+async function fetchTvmazeShow(
+  key: 'imdb' | 'tmdb',
+  value: string
+): Promise<TvmazeShow | null> {
+  try {
+    const url = `https://api.tvmaze.com/lookup/shows?${key}=${encodeURIComponent(
+      value
+    )}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return (await res.json()) as TvmazeShow;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTvmazeEpisode(
+  href?: string
+): Promise<TvmazeEpisode | null> {
+  if (!href) return null;
+  try {
+    const res = await fetch(href, { cache: 'no-store' });
+    if (!res.ok) return null;
+    return (await res.json()) as TvmazeEpisode;
+  } catch {
+    return null;
+  }
+}
+
+async function getTvmazeNextAirdate(opts: {
+  imdbId?: string | null;
+  tmdbId?: string | null;
+}): Promise<string | undefined> {
+  const normalizedImdb = normalizeImdbId(opts.imdbId);
+  const normalizedTmdb = normalizeTmdbId(opts.tmdbId);
+  const cacheKey = normalizedImdb
+    ? `imdb:${normalizedImdb}`
+    : normalizedTmdb
+    ? `tmdb:${normalizedTmdb}`
+    : '';
+  if (!cacheKey) return undefined;
+  const cached = tvmazeNextCache.get(cacheKey);
+  if (cached && Date.now() - cached.cachedAt < TVMAZE_CACHE_TTL_MS) {
+    return cached.airdate ?? undefined;
+  }
+  let show: TvmazeShow | null = null;
+  if (normalizedImdb) {
+    show = await fetchTvmazeShow('imdb', normalizedImdb);
+  }
+  if (!show && normalizedTmdb) {
+    show = await fetchTvmazeShow('tmdb', normalizedTmdb);
+  }
+  if (!show?.id) {
+    tvmazeNextCache.set(cacheKey, { cachedAt: Date.now(), airdate: null });
+    return undefined;
+  }
+  const episode = await fetchTvmazeEpisode(show._links?.nextepisode?.href);
+  const airdate = episode?.airdate || episode?.airstamp || undefined;
+  tvmazeNextCache.set(cacheKey, { cachedAt: Date.now(), airdate: airdate ?? null });
+  return airdate || undefined;
+}
+
+async function fetchBangumiCalendar(): Promise<BangumiCalendarData[]> {
+  try {
+    const res = await fetch('https://api.bgm.tv/calendar', { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = (await res.json()) as BangumiCalendarData[];
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function mapBangumiItems(items?: BangumiCalendarData['items']): CardItem[] {
+  if (!items || !items.length) return [];
+  return items.map((anime) => {
+    const title = anime.name_cn || anime.name;
+    return {
+      title,
+      poster:
+        anime.images?.large ||
+        anime.images?.common ||
+        anime.images?.medium ||
+        anime.images?.small ||
+        anime.images?.grid,
+      rate: anime.rating?.score ? anime.rating.score.toFixed(1) : '',
+      year: anime.air_date?.split('-')?.[0] || '',
+      douban_id: anime.id,
+      type: 'tv',
+      query: title,
+      source_name: 'Bangumi',
+    } as CardItem;
+  });
+}
+
+async function buildAiringRail(opts: {
+  tmdbOnAir: CardItem[];
+  getCardKeyFn: (item: CardItem) => string;
+}): Promise<AiringRail> {
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const addDays = (d: Date, days: number) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+  const windowStart = startOfDay(addDays(now, -3));
+  const windowEnd = startOfDay(addDays(now, 7));
+  const todayStart = startOfDay(now);
+  const todayEnd = addDays(todayStart, 1);
+
+  const parseDate = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
+  const isInWindow = (value?: string) => {
+    const date = parseDate(value);
+    if (!date) return false;
+    return date >= windowStart && date <= windowEnd;
+  };
+
+  const isToday = (value?: string) => {
+    const date = parseDate(value);
+    if (!date) return false;
+    return date >= todayStart && date < todayEnd;
+  };
+
+  const candidates = (opts.tmdbOnAir || []).slice(0, 12);
+  const resolveTmdbId = (item: CardItem) => {
+    if (item.tmdb_id) return item.tmdb_id;
+    const raw = typeof item.id === 'string' ? item.id : '';
+    if (raw.startsWith('tmdb:')) return raw.replace('tmdb:', '');
+    return raw || undefined;
+  };
+  const tvmazeAirDates = await Promise.all(
+    candidates.map((item) =>
+      getTvmazeNextAirdate({
+        imdbId: item.imdb_id,
+        tmdbId: resolveTmdbId(item),
+      })
+    )
+  );
+
+  const tvAiring = candidates.filter((_, index) =>
+    isInWindow(tvmazeAirDates[index])
+  );
+  const hasTvToday = candidates.some((_, index) =>
+    isToday(tvmazeAirDates[index])
+  );
+
+  const bangumiCalendar = await fetchBangumiCalendar();
+  const weekdayNames = [
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+  ];
+  const todayName = weekdayNames[now.getDay()] || '';
+  const todayBangumi =
+    bangumiCalendar.find(
+      (entry) => entry.weekday?.en?.toLowerCase() === todayName
+    )?.items || [];
+  const bangumiTodayCards = mapBangumiItems(todayBangumi);
+  const bangumiWeekCards = bangumiCalendar.flatMap((entry) =>
+    mapBangumiItems(entry.items)
+  );
+  const bangumiUpdates =
+    bangumiTodayCards.length > 0 ? bangumiTodayCards : bangumiWeekCards;
+  const hasAnimeToday = bangumiTodayCards.length > 0;
+
+  const baseUpdates = tvAiring.length > 0 ? tvAiring : candidates;
+
+  const seen = new Set<string>();
+  const combined: CardItem[] = [];
+  [...baseUpdates, ...bangumiUpdates].forEach((item) => {
+    const key = opts.getCardKeyFn(item);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    combined.push(item);
+  });
+
+  return {
+    titleKey: hasTvToday || hasAnimeToday ? 'today' : 'week',
+    items: combined.slice(0, 18),
+    cachedAt: Date.now(),
+  };
 }
 
 function buildOmdbCacheUrl(cacheBase: string | null, imdbId: string): string | null {
@@ -549,12 +799,18 @@ export async function GET(request: Request) {
       Array.isArray(cached.tvKr) &&
       Array.isArray(cached.tvJp)
     ) {
-      return NextResponse.json(cached, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
-          'x-cache': 'remote-hit',
-        },
-      });
+      const cachedAt =
+        typeof cached.airingRail?.cachedAt === 'number'
+          ? cached.airingRail.cachedAt
+          : cached.updatedAt;
+      if (cachedAt && Date.now() - cachedAt < AIRING_CACHE_TTL_MS) {
+        return NextResponse.json(cached, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=120',
+            'x-cache': 'remote-hit',
+          },
+        });
+      }
     }
   }
 
@@ -681,6 +937,11 @@ export async function GET(request: Request) {
       OMDB_HERO_LIMIT
     );
 
+    const airingRail = await buildAiringRail({
+      tmdbOnAir,
+      getCardKeyFn: getCardKey,
+    });
+
     const payload = {
       movies: mergedMovies,
       tvCn: mergedTvCn,
@@ -697,6 +958,7 @@ export async function GET(request: Request) {
       tmdbPeople,
       tmdbNowPlaying,
       tmdbOnAir,
+      airingRail,
       updatedAt: Date.now(),
     };
 
