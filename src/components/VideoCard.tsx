@@ -1158,6 +1158,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
       },
       onClick: handleCardClick,
       longPressDelay: 500,
+      moveThreshold: 6,
     });
 
     const config = useMemo(() => {
@@ -1376,7 +1377,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               userSelect: 'none',
               WebkitTouchCallout: 'none',
               WebkitTapHighlightColor: 'transparent',
-              touchAction: 'manipulation',
+              touchAction: 'pan-y',
               // 禁用右键菜单和长按菜单
               pointerEvents: 'auto',
             } as React.CSSProperties

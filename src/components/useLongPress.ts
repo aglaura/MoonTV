@@ -23,6 +23,7 @@ export const useLongPress = ({
   const startPosition = useRef<TouchPosition | null>(null);
   const isActive = useRef(false); // 防止重复触发
   const wasButton = useRef(false); // 记录触摸开始时是否是按钮
+  const wasScroll = useRef(false);
 
   const clearTimer = useCallback(() => {
     if (pressTimer.current) {
@@ -41,6 +42,7 @@ export const useLongPress = ({
       isActive.current = true;
       isLongPress.current = false;
       startPosition.current = { x: clientX, y: clientY };
+      wasScroll.current = false;
 
       // 记录触摸开始时是否是按钮
       wasButton.current = isButton;
@@ -66,10 +68,17 @@ export const useLongPress = ({
     (clientX: number, clientY: number) => {
       if (!startPosition.current || !isActive.current) return;
 
-      const distance = Math.sqrt(
-        Math.pow(clientX - startPosition.current.x, 2) +
-          Math.pow(clientY - startPosition.current.y, 2)
-      );
+      const dx = clientX - startPosition.current.x;
+      const dy = clientY - startPosition.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // 优先判定纵向滚动
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > moveThreshold) {
+        wasScroll.current = true;
+        clearTimer();
+        isActive.current = false;
+        return;
+      }
 
       // 如果移动距离超过阈值，取消长按
       if (distance > moveThreshold) {
@@ -130,11 +139,11 @@ export const useLongPress = ({
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       // 仅在手势仍然有效时阻止默认行为（避免影响滚动）
-      if (isActive.current) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      handleEnd();
+    if (isActive.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    handleEnd();
     },
     [handleEnd]
   );
