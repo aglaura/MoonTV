@@ -264,6 +264,7 @@ function mapBangumiItems(items?: BangumiCalendarData['items']): CardItem[] {
 }
 
 async function buildAiringRail(opts: {
+  doubanLatest: CardItem[];
   tmdbOnAir: CardItem[];
   getCardKeyFn: (item: CardItem) => string;
 }): Promise<AiringRail> {
@@ -296,7 +297,8 @@ async function buildAiringRail(opts: {
     return date >= todayStart && date < todayEnd;
   };
 
-  const candidates = (opts.tmdbOnAir || []).slice(0, 12);
+  const doubanCandidates = (opts.doubanLatest || []).slice(0, 12);
+  const tmdbCandidates = (opts.tmdbOnAir || []).slice(0, 12);
   const resolveTmdbId = (item: CardItem) => {
     if (item.tmdb_id) return item.tmdb_id;
     const raw = typeof item.id === 'string' ? item.id : '';
@@ -304,7 +306,7 @@ async function buildAiringRail(opts: {
     return raw || undefined;
   };
   const tvmazeAirDates = await Promise.all(
-    candidates.map((item) =>
+    tmdbCandidates.map((item) =>
       getTvmazeNextAirdate({
         imdbId: item.imdb_id,
         tmdbId: resolveTmdbId(item),
@@ -312,10 +314,10 @@ async function buildAiringRail(opts: {
     )
   );
 
-  const tvAiring = candidates.filter((_, index) =>
+  const tvAiring = tmdbCandidates.filter((_, index) =>
     isInWindow(tvmazeAirDates[index])
   );
-  const hasTvToday = candidates.some((_, index) =>
+  const hasTvToday = tmdbCandidates.some((_, index) =>
     isToday(tvmazeAirDates[index])
   );
 
@@ -342,16 +344,31 @@ async function buildAiringRail(opts: {
     bangumiTodayCards.length > 0 ? bangumiTodayCards : bangumiWeekCards;
   const hasAnimeToday = bangumiTodayCards.length > 0;
 
-  const baseUpdates = tvAiring.length > 0 ? tvAiring : candidates;
+  const fallbackBase = tvAiring.length > 0 ? tvAiring : tmdbCandidates;
 
   const seen = new Set<string>();
   const combined: CardItem[] = [];
-  [...baseUpdates, ...bangumiUpdates].forEach((item) => {
+  const mergeInto = (item: CardItem) => {
     const key = opts.getCardKeyFn(item);
     if (!key || seen.has(key)) return;
     seen.add(key);
     combined.push(item);
-  });
+  };
+
+  const queues = [doubanCandidates, fallbackBase, bangumiUpdates];
+  let cursor = 0;
+  while (combined.length < 18) {
+    let hasAny = false;
+    queues.forEach((list) => {
+      const item = list[cursor];
+      if (item) {
+        hasAny = true;
+        mergeInto(item);
+      }
+    });
+    if (!hasAny) break;
+    cursor += 1;
+  }
 
   return {
     titleKey: hasTvToday || hasAnimeToday ? 'today' : 'week',
@@ -882,6 +899,10 @@ export async function GET(request: Request) {
     const doubanTvJp = mapDoubanCards(tvJpRaw, 'tv');
     const doubanTvUs = mapDoubanCards(tvUsRaw, 'tv');
     const doubanVariety = mapDoubanCards(doubanHome.variety || [], 'show');
+    const doubanLatestTv = mapDoubanCards(
+      dedupDouban(doubanHome.latestTv || doubanHome.tv || []),
+      'tv'
+    );
 
     const tmdbMovieCards = mapTmdbCards(tmdbHome.movies || []);
     const tmdbTvCards = mapTmdbCards(tmdbHome.tv || []);
@@ -938,6 +959,7 @@ export async function GET(request: Request) {
     );
 
     const airingRail = await buildAiringRail({
+      doubanLatest: doubanLatestTv,
       tmdbOnAir,
       getCardKeyFn: getCardKey,
     });
