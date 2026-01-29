@@ -908,6 +908,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const detailPath = isTV ? '/play/tvdetail' : '/play';
     const playPath = isTV ? '/play/tvplay' : '/play';
+    const enableLongPress = !isTV && from !== 'douban';
 
     const buildSearchUrl = useCallback(
       () => {
@@ -1364,7 +1365,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
               handleCardClick();
             }
           }}
-          {...longPressProps}
+          {...(enableLongPress ? longPressProps : {})}
           tabIndex={0}
           role='button'
           aria-label={traditionalTitle || actualTitle}
