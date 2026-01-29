@@ -908,7 +908,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
 
     const detailPath = isTV ? '/play/tvdetail' : '/play';
     const playPath = isTV ? '/play/tvplay' : '/play';
-    const enableLongPress = !isTV && from !== 'douban';
+    const enableLongPress = !isTV;
 
     const buildSearchUrl = useCallback(
       () => {

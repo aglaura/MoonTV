@@ -32,6 +32,14 @@ export const useLongPress = ({
     }
   }, []);
 
+  const resetState = useCallback(() => {
+    isLongPress.current = false;
+    startPosition.current = null;
+    isActive.current = false;
+    wasButton.current = false;
+    wasScroll.current = false;
+  }, []);
+
   const handleStart = useCallback(
     (clientX: number, clientY: number, isButton = false) => {
       // 如果已经有活跃的手势，忽略新的开始
@@ -57,11 +65,11 @@ export const useLongPress = ({
           navigator.vibrate(50);
         }
 
-        // 触发长按事件
-        onLongPress();
-      }, longPressDelay);
-    },
-    [onLongPress, longPressDelay]
+      // 触发长按事件
+      onLongPress();
+    }, longPressDelay);
+  },
+  [onLongPress, longPressDelay]
   );
 
   const handleMove = useCallback(
@@ -97,18 +105,19 @@ export const useLongPress = ({
     // 2. 如果不是长按且触摸开始时是按钮，不触发点击
     // 3. 否则触发点击
     const shouldClick =
-      !isLongPress.current && !wasButton.current && onClick && isActive.current;
+      !isLongPress.current &&
+      !wasButton.current &&
+      !wasScroll.current &&
+      onClick &&
+      isActive.current;
 
     if (shouldClick) {
       onClick();
     }
 
     // 重置所有状态
-    isLongPress.current = false;
-    startPosition.current = null;
-    isActive.current = false;
-    wasButton.current = false;
-  }, [clearTimer, onClick]);
+    resetState();
+  }, [clearTimer, onClick, resetState]);
 
   // 触摸事件处理器
   const onTouchStart = useCallback(
@@ -138,19 +147,20 @@ export const useLongPress = ({
 
   const onTouchEnd = useCallback(
     (e: React.TouchEvent) => {
-      // 仅在手势仍然有效时阻止默认行为（避免影响滚动）
-    if (isActive.current) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    handleEnd();
+      handleEnd();
     },
     [handleEnd]
   );
+
+  const onTouchCancel = useCallback(() => {
+    clearTimer();
+    resetState();
+  }, [clearTimer, resetState]);
 
   return {
     onTouchStart,
     onTouchMove,
     onTouchEnd,
+    onTouchCancel,
   };
 };
