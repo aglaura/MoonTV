@@ -482,8 +482,11 @@ export default function HomeClient() {
   const maxPullDistance = 140;
   const refreshCooldownMs = 1200;
   const [pullDistance, setPullDistance] = useState(0);
+  const pullDistanceRef = useRef(0);
+  const [isPulling, setIsPulling] = useState(false);
   const pullStartRef = useRef<number | null>(null);
   const lastRefreshAtRef = useRef(0);
+  const pullRafRef = useRef(0);
 
   const triggerRefresh = useCallback(() => {
     if (refreshing) return;
@@ -493,12 +496,29 @@ export default function HomeClient() {
     refresh();
   }, [refresh, refreshing]);
 
+  const cancelPullRaf = useCallback(() => {
+    if (pullRafRef.current && typeof window !== 'undefined') {
+      window.cancelAnimationFrame(pullRafRef.current);
+      pullRafRef.current = 0;
+    }
+  }, []);
+
+  const schedulePullDistance = useCallback((value: number) => {
+    pullDistanceRef.current = value;
+    if (pullRafRef.current || typeof window === 'undefined') return;
+    pullRafRef.current = window.requestAnimationFrame(() => {
+      pullRafRef.current = 0;
+      setPullDistance(pullDistanceRef.current);
+    });
+  }, []);
+
   const handleTouchStart = useCallback(
     (event: TouchEvent<HTMLDivElement>) => {
       if (!isMobileMode || isTVMode) return;
       if (window.scrollY > 0) return;
       if (event.touches.length !== 1) return;
       pullStartRef.current = event.touches[0].clientY;
+      setIsPulling(true);
     },
     [isMobileMode, isTVMode]
   );
@@ -510,52 +530,61 @@ export default function HomeClient() {
       if (startY === null) return;
       if (window.scrollY > 0) {
         pullStartRef.current = null;
-        setPullDistance(0);
+        schedulePullDistance(0);
+        setIsPulling(false);
         return;
       }
       const delta = event.touches[0].clientY - startY;
       if (delta <= 0) {
-        setPullDistance(0);
+        schedulePullDistance(0);
         return;
       }
-      const clamped = Math.min(maxPullDistance, delta);
-      setPullDistance(clamped);
+      const eased =
+        maxPullDistance * (1 - Math.exp(-delta / (maxPullDistance * 0.6)));
+      const clamped = Math.min(maxPullDistance, eased);
+      schedulePullDistance(clamped);
       if (clamped > 0) {
         event.preventDefault();
       }
     },
-    [isMobileMode, isTVMode]
+    [isMobileMode, isTVMode, maxPullDistance, schedulePullDistance]
   );
 
   const handleTouchEnd = useCallback(() => {
     if (!isMobileMode || isTVMode) return;
-    const shouldRefresh = pullDistance >= pullThreshold;
+    const shouldRefresh = pullDistanceRef.current >= pullThreshold;
     pullStartRef.current = null;
-    setPullDistance(0);
+    schedulePullDistance(0);
+    setIsPulling(false);
     if (shouldRefresh) {
       triggerRefresh();
     }
-  }, [isMobileMode, isTVMode, pullDistance, triggerRefresh]);
+  }, [isMobileMode, isTVMode, pullThreshold, schedulePullDistance, triggerRefresh]);
 
   const handleTouchCancel = useCallback(() => {
     if (!isMobileMode || isTVMode) return;
     pullStartRef.current = null;
-    setPullDistance(0);
-  }, [isMobileMode, isTVMode]);
+    schedulePullDistance(0);
+    setIsPulling(false);
+  }, [isMobileMode, isTVMode, schedulePullDistance]);
 
   useEffect(() => {
     if (refreshing) {
-      setPullDistance(0);
+      schedulePullDistance(0);
+      setIsPulling(false);
     }
-  }, [refreshing]);
+  }, [refreshing, schedulePullDistance]);
+  useEffect(() => () => cancelPullRaf(), [cancelPullRaf]);
   const displayPull = Math.min(
     maxPullDistance,
     refreshing ? pullThreshold : pullDistance
   );
+  const pullProgress = Math.min(1, displayPull / pullThreshold);
+  const pullArrowRotation = `${pullProgress * 180}deg`;
   const pullTransform =
     displayPull > 0 || refreshing ? `translateY(${displayPull * 0.45}px)` : '';
   const pullTransitionClass =
-    displayPull === 0 && !refreshing
+    displayPull === 0 && !refreshing && !isPulling
       ? 'transition-transform duration-200 ease-out'
       : '';
 
@@ -611,18 +640,19 @@ export default function HomeClient() {
           {isMobileMode && !isTVMode && (displayPull > 0 || refreshing) && (
             <div className="flex justify-center -mt-2 mb-4 pointer-events-none">
               <div className="rounded-full bg-black/70 text-white text-xs px-4 py-2 flex items-center gap-3 shadow-md">
-                <div className="h-1.5 w-16 rounded-full bg-white/20 overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-400 transition-all"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        (displayPull / pullThreshold) * 100
-                      )}%`,
-                    }}
-                  ></div>
+                <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center">
+                  {refreshing ? (
+                    <div className="h-4 w-4 rounded-full border-2 border-white/80 border-t-transparent animate-spin" />
+                  ) : (
+                    <span
+                      className="block text-base leading-none transition-transform duration-150"
+                      style={{ transform: `rotate(${pullArrowRotation})` }}
+                    >
+                      ↓
+                    </span>
+                  )}
                 </div>
-                <span>
+                <span className="whitespace-nowrap">
                   {refreshing
                     ? tt('Refreshing…', '刷新中…', '重新整理中…')
                     : displayPull >= pullThreshold
@@ -634,7 +664,10 @@ export default function HomeClient() {
           )}
           <div
             className={pullTransitionClass}
-            style={{ transform: pullTransform || undefined }}
+            style={{
+              transform: pullTransform || undefined,
+              willChange: displayPull > 0 || refreshing ? 'transform' : undefined,
+            }}
           >
             {isKidsMode && <HomeKidsBadge tt={tt} />}
             {!isTVMode && (
