@@ -338,20 +338,45 @@ export function PlayPageClient({
   useEffect(() => {
     blockAdModeRef.current = blockAdMode;
   }, [blockAdMode]);
-  useEffect(() => {
+  const loadDebugDecisions = useCallback(() => {
     if (typeof window === 'undefined') return;
     try {
       const raw = localStorage.getItem(DEBUG_DECISION_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object') {
-          debugDecisionRef.current = parsed as Record<string, boolean>;
-        }
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+      const normalized: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'boolean') normalized[key] = value;
+        else if (value === 'true') normalized[key] = true;
+        else if (value === 'false') normalized[key] = false;
+      }
+      if (Object.keys(normalized).length > 0) {
+        debugDecisionRef.current = {
+          ...debugDecisionRef.current,
+          ...normalized,
+        };
       }
     } catch {
       // ignore
     }
   }, []);
+
+  const persistDebugDecisions = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(
+        DEBUG_DECISION_KEY,
+        JSON.stringify(debugDecisionRef.current)
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDebugDecisions();
+  }, [loadDebugDecisions]);
   const [audioOnly, setAudioOnly] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -3290,6 +3315,9 @@ export function PlayPageClient({
     if (blockAdModeRef.current !== 'debug') return true;
     const existing = debugDecisionRef.current[tagType];
     if (typeof existing === 'boolean') return existing;
+    loadDebugDecisions();
+    const loaded = debugDecisionRef.current[tagType];
+    if (typeof loaded === 'boolean') return loaded;
     const message = [
       tt('Ad block debug', '广告拦截调试', '廣告攔截除錯'),
       `${tt('Tag type', '标签类型', '標籤類型')}: ${tagType}`,
@@ -3303,14 +3331,7 @@ export function PlayPageClient({
     ].join('\n');
     const decision = window.confirm(message);
     debugDecisionRef.current[tagType] = decision;
-    try {
-      localStorage.setItem(
-        DEBUG_DECISION_KEY,
-        JSON.stringify(debugDecisionRef.current)
-      );
-    } catch {
-      // ignore
-    }
+    persistDebugDecisions();
     return decision;
   };
 
