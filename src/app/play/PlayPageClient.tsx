@@ -56,6 +56,7 @@ import {
   type TvmazeContribution,
 } from '@/lib/tvmaze.client';
 import { convertToTraditional } from '@/lib/locale';
+import { useDeviceInfo } from '@/lib/screenMode';
 import { SearchResult } from '@/lib/types';
 import { useUserLanguage } from '@/lib/userLanguage.client';
 import {
@@ -74,6 +75,7 @@ import {
   parseSpeedToKBps,
 } from '@/lib/utils';
 
+import { BackButton } from '@/components/BackButton';
 import EpisodeSelector from '@/components/EpisodeSelector';
 import PageLayout from '@/components/PageLayout';
 import PlayDetails from '@/components/play/PlayDetails';
@@ -154,6 +156,8 @@ export function PlayPageClient({
   TvLayout,
 }: PlayPageClientProps) {
   const { userLocale } = useUserLanguage();
+  const { screenMode } = useDeviceInfo();
+  const showInlineBackButton = screenMode === 'tablet';
   const isTvVariant = variant === 'tv';
   const searchParams = useSearchParams();
   const isIOS = useMemo(() => isIOSDevice(), []);
@@ -5554,7 +5558,12 @@ export function PlayPageClient({
       <PageLayout activePath={layoutActivePath} hideTopBar={hideLayoutBars}>
       <div className='flex flex-col gap-2 py-2 px-2.5 sm:px-3.5 md:pt-10 lg:pt-2 lg:px-5 xl:px-7'>
         {/* 第一行：影片標題 */}
-        <div className='py-1'>
+        <div className='py-1 flex items-center gap-3'>
+          {showInlineBackButton && (
+            <div className='shrink-0'>
+              <BackButton />
+            </div>
+          )}
           <h1 className='text-xl font-semibold text-gray-900 dark:text-gray-100'>
             {displayTitleText}
             {englishVideoTitle && (

@@ -60,7 +60,7 @@ const PageLayout = ({
         {/* 移动端头部 */}
         {showMobileHeader && (
           <MobileHeader
-            showBackButton={['/play'].includes(activePath)}
+            showBackButton={['/play'].includes(activePath) && !isTouchTablet}
             forceVisible={isTouchTablet}
           />
         )}
