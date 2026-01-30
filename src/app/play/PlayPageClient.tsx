@@ -314,15 +314,20 @@ export function PlayPageClient({
     }
     return true;
   });
-  const [blockAdMode, setBlockAdMode] = useState<'smart' | 'simple'>(() => {
+  const [blockAdMode, setBlockAdMode] = useState<
+    'smart' | 'simple' | 'debug'
+  >(() => {
     if (typeof window !== 'undefined') {
       const v = localStorage.getItem('blockad_mode');
+      if (v === 'debug') return 'debug';
       if (v === 'simple') return 'simple';
     }
     return 'smart';
   });
   const blockAdEnabledRef = useRef(blockAdEnabled);
   const blockAdModeRef = useRef(blockAdMode);
+  const debugDecisionRef = useRef<Record<string, boolean>>({});
+  const DEBUG_DECISION_KEY = 'blockad_debug_decisions';
   const lastPlaybackTimeRef = useRef(0);
   const lastManualSeekAtRef = useRef(0);
   const pendingUnmuteRef = useRef(false);
@@ -333,6 +338,20 @@ export function PlayPageClient({
   useEffect(() => {
     blockAdModeRef.current = blockAdMode;
   }, [blockAdMode]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(DEBUG_DECISION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          debugDecisionRef.current = parsed as Record<string, boolean>;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
   const [audioOnly, setAudioOnly] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -3267,7 +3286,62 @@ export function PlayPageClient({
     attemptUserPlay('user');
   }, [attemptUserPlay]);
 
-  function filterAdsFromM3U8(m3u8Content: string): string {
+  const shouldBlockDebugTag = (tagType: string, line: string) => {
+    if (blockAdModeRef.current !== 'debug') return true;
+    const existing = debugDecisionRef.current[tagType];
+    if (typeof existing === 'boolean') return existing;
+    const message = [
+      tt('Ad block debug', '广告拦截调试', '廣告攔截除錯'),
+      `${tt('Tag type', '标签类型', '標籤類型')}: ${tagType}`,
+      `${tt('Tag', '标签', '標籤')}: ${line}`,
+      '',
+      tt(
+        'Block this tag type? (OK = block, Cancel = keep)',
+        '是否拦截此标签类型？（确定=拦截，取消=保留）',
+        '是否攔截此標籤類型？（確定=攔截，取消=保留）'
+      ),
+    ].join('\n');
+    const decision = window.confirm(message);
+    debugDecisionRef.current[tagType] = decision;
+    try {
+      localStorage.setItem(
+        DEBUG_DECISION_KEY,
+        JSON.stringify(debugDecisionRef.current)
+      );
+    } catch {
+      // ignore
+    }
+    return decision;
+  };
+
+  const getAdTagType = (line: string) => {
+    if (line.startsWith('#EXT-X-CUE-OUT-CONT')) return 'CUE-OUT-CONT';
+    if (line.startsWith('#EXT-X-CUE-OUT')) return 'CUE-OUT';
+    if (line.startsWith('#EXT-X-CUE-IN')) return 'CUE-IN';
+    if (line.startsWith('#EXT-X-SCTE35-OUT')) return 'SCTE35-OUT';
+    if (line.startsWith('#EXT-X-SCTE35-IN')) return 'SCTE35-IN';
+    if (line.startsWith('#EXT-X-PLACEMENT-OPPORTUNITY'))
+      return 'PLACEMENT-OPPORTUNITY';
+    if (line.startsWith('#EXT-OATCLS-SCTE35')) return 'OATCLS-SCTE35';
+    if (line.startsWith('#EXT-X-GOOGLE-CUE-OUT')) return 'GOOGLE-CUE-OUT';
+    if (line.startsWith('#EXT-X-GOOGLE-CUE-IN')) return 'GOOGLE-CUE-IN';
+    if (line.startsWith('#EXT-X-MEDIA-TAILOR-AD')) return 'MEDIA-TAILOR-AD';
+    if (line.startsWith('#EXT-X-MEDIA-TAILOR-SIGNAL'))
+      return 'MEDIA-TAILOR-SIGNAL';
+    if (line.startsWith('#EXT-X-FREEWHEEL-AD')) return 'FREEWHEEL-AD';
+    if (line.startsWith('#EXT-X-TV-TIMELINE')) return 'TV-TIMELINE';
+    if (line.startsWith('#EXT-X-TIMELINE-OFFSET')) return 'TIMELINE-OFFSET';
+    if (line.startsWith('#EXT-X-DATERANGE')) return 'DATERANGE';
+    if (line.startsWith('#EXT-X-AD')) return 'AD';
+    if (line.startsWith('#EXT-X-COMCAST-AD')) return 'COMCAST-AD';
+    if (!line.startsWith('#')) return 'AD-URL';
+    return 'AD';
+  };
+
+  function filterAdsFromM3U8(
+    m3u8Content: string,
+    options?: { debug?: boolean }
+  ): string {
     if (!m3u8Content) return '';
 
     const lines = m3u8Content.split('\n');
@@ -3365,6 +3439,7 @@ export function PlayPageClient({
       );
     };
 
+    const debugMode = options?.debug ?? false;
     const CONSERVATIVE_MODE = true;
     if (CONSERVATIVE_MODE) {
       const safeOutput: string[] = [];
@@ -3372,7 +3447,15 @@ export function PlayPageClient({
         const rawLine = lines[i];
         const line = rawLine.trim();
         if (isAdStart(line) || isAdEnd(line)) {
-          continue;
+          const tagType = getAdTagType(line);
+          if (!debugMode || shouldBlockDebugTag(tagType, line)) {
+            continue;
+          }
+        }
+        if (debugMode && isAdUrl(line)) {
+          if (shouldBlockDebugTag('AD-URL', line)) {
+            continue;
+          }
         }
         safeOutput.push(rawLine);
       }
@@ -3398,22 +3481,30 @@ export function PlayPageClient({
       const nextSegment = nextSegmentLines[i + 1] || '';
 
       if (isAdStart(line)) {
-        inAdBlock = true;
-        skippedDuration = 0;
-        resumeAfterSegment = false;
-        const rangeDuration = line.startsWith('#EXT-X-DATERANGE')
-          ? parseDateRangeDuration(line)
-          : null;
-        if (rangeDuration && Number.isFinite(rangeDuration)) {
-          adDurationLimit = Math.max(3, Math.round(rangeDuration));
-        } else {
-          adDurationLimit = 3;
+        const tagType = getAdTagType(line);
+        if (!debugMode || shouldBlockDebugTag(tagType, line)) {
+          inAdBlock = true;
+          skippedDuration = 0;
+          resumeAfterSegment = false;
+          const rangeDuration = line.startsWith('#EXT-X-DATERANGE')
+            ? parseDateRangeDuration(line)
+            : null;
+          if (rangeDuration && Number.isFinite(rangeDuration)) {
+            adDurationLimit = Math.max(3, Math.round(rangeDuration));
+          } else {
+            adDurationLimit = 3;
+          }
         }
         continue;
       }
 
       if (isAdEnd(line)) {
-        resetAdBlock();
+        const tagType = getAdTagType(line);
+        if (!debugMode || shouldBlockDebugTag(tagType, line)) {
+          resetAdBlock();
+        } else {
+          output.push(rawLine);
+        }
         continue;
       }
 
@@ -3473,7 +3564,9 @@ export function PlayPageClient({
           isAdEnd(nextNonEmpty) ||
           nextNonEmpty.startsWith('#EXT-X-DISCONTINUITY') ||
           isAdUrl(nextSegment);
-        if (likelyAdContext) {
+        const shouldBlock =
+          !debugMode || shouldBlockDebugTag('AD-URL', line);
+        if (likelyAdContext && shouldBlock) {
           if (lastExtinfIndex !== null) {
             output.splice(lastExtinfIndex, 1);
             lastExtinfIndex = null;
@@ -3540,7 +3633,9 @@ export function PlayPageClient({
               response.data =
                 blockAdModeRef.current === 'simple'
                   ? filterAdsFromM3U8Simple(response.data)
-                  : filterAdsFromM3U8(response.data);
+                  : filterAdsFromM3U8(response.data, {
+                      debug: blockAdModeRef.current === 'debug',
+                    });
             }
             return onSuccess(response, stats, context, null);
           };
@@ -4819,9 +4914,16 @@ export function PlayPageClient({
             tooltip:
               blockAdMode === 'simple'
                 ? tt('Simple', '简单', '簡單')
+                : blockAdMode === 'debug'
+                ? tt('Debug', '调试', '除錯')
                 : tt('Smart', '智能', '智能'),
             onClick() {
-              const nextMode = blockAdMode === 'simple' ? 'smart' : 'simple';
+              const nextMode =
+                blockAdMode === 'simple'
+                  ? 'smart'
+                  : blockAdMode === 'smart'
+                  ? 'debug'
+                  : 'simple';
               try {
                 localStorage.setItem('blockad_mode', nextMode);
               } catch (_) {
@@ -4852,6 +4954,8 @@ export function PlayPageClient({
               }
               return nextMode === 'simple'
                 ? tt('Simple', '简单', '簡單')
+                : nextMode === 'debug'
+                ? tt('Debug', '调试', '除錯')
                 : tt('Smart', '智能', '智能');
             },
           },
@@ -5170,7 +5274,8 @@ export function PlayPageClient({
         const adBlockActive =
           blockAdEnabledRef.current &&
           (blockAdModeRef.current === 'smart' ||
-            blockAdModeRef.current === 'simple');
+            blockAdModeRef.current === 'simple' ||
+            blockAdModeRef.current === 'debug');
         if (adBlockActive) {
           const lastTime = lastPlaybackTimeRef.current;
           const allowManualSeek = now - lastManualSeekAtRef.current < 1500;
