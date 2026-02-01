@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     if (STORAGE_TYPE === 'localstorage') {
       // 未配置任何共享密碼時直接放行
       if (sharedPasswords.length === 0) {
-        const response = NextResponse.json({ ok: true });
+        const response = NextResponse.json({ ok: true, authCookie: 'guest' });
         const expires = new Date();
         expires.setDate(expires.getDate() + 7); // 7天过期
 
@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
       }
 
       // 验证成功，设置认证cookie
-      const response = NextResponse.json({ ok: true });
       const cookieValue = await generateAuthCookie(undefined, password, true); // localstorage 模式包含 password
+      const response = NextResponse.json({ ok: true, authCookie: cookieValue });
       const expires = new Date();
       expires.setDate(expires.getDate() + 7); // 7天过期
 
@@ -114,8 +114,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!username || typeof username !== 'string') {
-      const response = NextResponse.json({ ok: true, requiresSelection: true });
       const cookieValue = await generateAuthCookie(undefined, matchedPassword, true);
+      const response = NextResponse.json({
+        ok: true,
+        requiresSelection: true,
+        authCookie: cookieValue,
+      });
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
 
@@ -141,12 +145,12 @@ export async function POST(req: NextRequest) {
     try {
       await ensureAdminUser(username, config, normalizedGroup);
 
-      const response = NextResponse.json({ ok: true });
       const cookieValue = await generateAuthCookie(
         username,
         matchedPassword,
         false
       );
+      const response = NextResponse.json({ ok: true, authCookie: cookieValue });
       const expires = new Date();
       expires.setDate(expires.getDate() + 7);
 

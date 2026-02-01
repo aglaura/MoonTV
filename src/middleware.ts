@@ -85,6 +85,7 @@ export async function middleware(request: NextRequest) {
     '/api/login/select',
     '/api/logout',
     '/api/register',
+    '/api/server-config',
     '/api/users',
   ]);
 

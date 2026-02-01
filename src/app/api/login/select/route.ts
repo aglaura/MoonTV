@@ -63,12 +63,12 @@ export async function POST(req: NextRequest) {
 
     await ensureAdminUser(username, config, normalizedGroup);
 
-    const response = NextResponse.json({ ok: true });
     const cookieValue = await generateAuthCookie(
       username,
       matchedPassword,
       false
     );
+    const response = NextResponse.json({ ok: true, authCookie: cookieValue });
     const expires = new Date();
     expires.setDate(expires.getDate() + 7);
 
