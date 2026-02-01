@@ -156,9 +156,10 @@ export function PlayPageClient({
   TvLayout,
 }: PlayPageClientProps) {
   const { userLocale } = useUserLanguage();
-  const { screenMode } = useDeviceInfo();
+  const { screenMode, isAndroid } = useDeviceInfo();
   const showInlineBackButton = screenMode === 'tablet';
   const isTvVariant = variant === 'tv';
+  const preferWebFullscreen = screenMode === 'tablet' && isAndroid;
   const searchParams = useSearchParams();
   const isIOS = useMemo(() => isIOSDevice(), []);
   const configJsonBase = useMemo(() => {
@@ -4503,7 +4504,11 @@ export function PlayPageClient({
 
     if (e.key === 'f' || e.key === 'F') {
       if (artPlayerRef.current) {
-        artPlayerRef.current.fullscreen = !artPlayerRef.current.fullscreen;
+        if (preferWebFullscreen && artPlayerRef.current.fullscreenWeb !== undefined) {
+          artPlayerRef.current.fullscreenWeb = !artPlayerRef.current.fullscreenWeb;
+        } else {
+          artPlayerRef.current.fullscreen = !artPlayerRef.current.fullscreen;
+        }
         e.preventDefault();
       }
     }
@@ -4789,8 +4794,8 @@ export function PlayPageClient({
         flip: false,
         playbackRate: true,
         aspectRatio: false,
-        fullscreen: true, // allow native fullscreen
-        fullscreenWeb: !isIOS, // prefer native on iOS
+        fullscreen: !preferWebFullscreen, // avoid native fullscreen on Android tablets
+        fullscreenWeb: preferWebFullscreen || !isIOS, // allow web fullscreen when native is disabled
         subtitleOffset: false,
         miniProgressBar: false,
         mutex: true,
@@ -5430,6 +5435,7 @@ export function PlayPageClient({
     Hls,
     blockAdEnabled,
     loading,
+    preferWebFullscreen,
     tt,
     refreshActualPlaybackInfo,
     trySwitchToNextSource,
